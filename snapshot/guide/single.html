@@ -4227,16 +4227,18 @@ switch (Environment.current) {
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> init = { ServletContext ctx -&gt;
+<pre class="CodeRay highlight"><code data-lang="groovy">ServletContext servletContext
+
+<span class="keyword">def</span> init = {
     environments {
         production {
-            ctx.setAttribute(<span class="string"><span class="delimiter">&quot;</span><span class="content">env</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">prod</span><span class="delimiter">&quot;</span></span>)
+            servletContext.setAttribute(<span class="string"><span class="delimiter">&quot;</span><span class="content">env</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">prod</span><span class="delimiter">&quot;</span></span>)
         }
         development {
-            ctx.setAttribute(<span class="string"><span class="delimiter">&quot;</span><span class="content">env</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">dev</span><span class="delimiter">&quot;</span></span>)
+            servletContext.setAttribute(<span class="string"><span class="delimiter">&quot;</span><span class="content">env</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">dev</span><span class="delimiter">&quot;</span></span>)
         }
     }
-    ctx.setAttribute(<span class="string"><span class="delimiter">&quot;</span><span class="content">foo</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">bar</span><span class="delimiter">&quot;</span></span>)
+    servletContext.setAttribute(<span class="string"><span class="delimiter">&quot;</span><span class="content">foo</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">bar</span><span class="delimiter">&quot;</span></span>)
 }</code></pre>
 </div>
 </div>
@@ -13001,7 +13003,7 @@ If the accept header is used but contains no registered content types, Grails wi
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> init = { servletContext -&gt;
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> init = {
     <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">The Stand</span><span class="delimiter">&quot;</span></span>).save()
     <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">The Shining</span><span class="delimiter">&quot;</span></span>).save()
 }</code></pre>
@@ -17979,7 +17981,7 @@ Author.withTransaction { status -&gt;
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">AuthorController</span> {
 
-    <span class="keyword">def</span> authorService
+    AuthorService authorService
 
     <span class="keyword">def</span> <span class="function">updateAge</span>() {
         <span class="keyword">try</span> {
@@ -18050,7 +18052,7 @@ This is the optimal solution as it requires fewer queries than the following sug
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">AuthorController</span> {
 
-    <span class="keyword">def</span> authorService
+    AuthorService authorService
 
     <span class="keyword">def</span> <span class="function">updateAge</span>() {
         <span class="keyword">try</span> {
@@ -18095,7 +18097,7 @@ This is the optimal solution as it requires fewer queries than the following sug
 
 <span class="type">class</span> <span class="class">AuthorController</span> {
 
-    <span class="keyword">def</span> authorService
+    AuthorService authorService
 
     <span class="keyword">def</span> <span class="function">updateAge</span>() {
         <span class="keyword">try</span> {
@@ -18221,18 +18223,18 @@ If non-singleton services are required, controller scope should be changed as we
 <p>A key aspect of Grails services is the ability to use <a href="http://www.springframework.org/">Spring Framework</a>'s dependency injection features. Grails supports "dependency injection by convention". In other words, you can use the property name representation of the class name of a service to automatically inject them into controllers, tag libraries, and so on.</p>
 </div>
 <div class="paragraph">
-<p>As an example, given a service called <code>BookService</code>, if you define a property called <code>bookService</code> in a controller as follows:</p>
+<p>As an example, given a service called <code>BookService</code>, you can define a property called <code>bookService</code> in a controller as follows:</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">BookController</span> {
-    <span class="keyword">def</span> bookService
+    BookService bookService
     ...
 }</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>In this case, the Spring container will automatically inject an instance of that service based on its configured scope. All dependency injection is done by name. You can also specify the type as follows:</p>
+<p>In this case, the Spring container will automatically inject an instance of that service based on its configured scope. Since all dependency injection is done by name you can also specify the type as follows:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -18276,15 +18278,15 @@ Only the top level object is subjected to injection as traversing all nested obj
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">dataSources</span>:
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">dataSources</span>:
     <span class="key">dataSource</span>:
-        <span class="key">pooled</span>: <span class="predefined-constant">true</span>
-        <span class="key">jmxExport</span>: <span class="predefined-constant">true</span>
-        .....
-    secondary:
-        <span class="key">pooled</span>: <span class="predefined-constant">true</span>
-        <span class="key">jmxExport</span>: <span class="predefined-constant">true</span>
-        .....</code></pre>
+        <span class="key">pooled</span>: <span class="string"><span class="content">true</span></span>
+        <span class="key">jmxExport</span>: <span class="string"><span class="content">true</span></span>
+<span class="error">        </span><span class="error">...</span>
+    <span class="key">secondary</span>:
+        <span class="key">pooled</span>: <span class="string"><span class="content">true</span></span>
+        <span class="key">jmxExport</span>: <span class="string"><span class="content">true</span></span>
+<span class="error">        </span><span class="error">...</span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -18292,9 +18294,8 @@ Only the top level object is subjected to injection as traversing all nested obj
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="type">class</span> <span class="class">BookSqlService</span> {
-
-      def dataSource
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">BookSqlService</span> {
+      <span class="predefined-type">DataSource</span> dataSource
 }</code></pre>
 </div>
 </div>
@@ -18303,11 +18304,11 @@ Only the top level object is subjected to injection as traversing all nested obj
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="type">class</span> <span class="class">BookSqlSecondaryService</span> {
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">BookSqlSecondaryService</span> {
 
   <span class="annotation">@Autowired</span>
   <span class="annotation">@Qualifier</span>(<span class="string"><span class="delimiter">'</span><span class="content">dataSource_secondary</span><span class="delimiter">'</span></span>)
-  def dataSource2
+  <span class="predefined-type">DataSource</span> dataSource2
 }</code></pre>
 </div>
 </div>
@@ -18320,7 +18321,7 @@ Only the top level object is subjected to injection as traversing all nested obj
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">AuthorService</span> {
-    <span class="keyword">def</span> bookService
+    BookService bookService
 }</code></pre>
 </div>
 </div>
@@ -18334,7 +18335,7 @@ Only the top level object is subjected to injection as traversing all nested obj
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">Book</span> {
     ...
-    def bookService
+    BookService bookService
 
     <span class="keyword">def</span> <span class="function">buyBook</span>() {
         bookService.buyBook(<span class="local-variable">this</span>)
@@ -23578,7 +23579,7 @@ If you define a bean in <code>resources.groovy</code> with the same name as one 
 <span class="type">class</span> <span class="class">MyBeanImpl</span> {
     <span class="predefined-type">Integer</span> someProperty
     <span class="predefined-type">String</span> otherProperty
-    BookService bookService <span class="comment">// or just &quot;def bookService&quot;</span>
+    BookService bookService
 }</code></pre>
 </div>
 </div>
