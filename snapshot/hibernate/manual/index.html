@@ -1016,37 +1016,22 @@ configurations.all {
 <div class="sect2">
 <h3 id="springBoot">2.3. Using GORM in Spring Boot</h3>
 <div class="paragraph">
-<p>To use GORM for Hibernate in Spring Boot add the necessary dependencies to your Boot application:</p>
+<p>To use GORM for Hibernate in Spring Boot, add the necessary dependency to your Boot application:</p>
 </div>
 <div class="listingblock">
+<div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">compile("org.grails:gorm-hibernate5-spring-boot:9.0.0-SNAPSHOT")
-compile "org.hibernate:hibernate-core-jakarta"
-compile "org.hibernate:hibernate-ehcache"
-runtime "com.h2database:h2:1.4.192"
-// for MySQL
-// runtime "mysql:mysql-connector-java"
-
-// for connection pooling
-runtime "org.apache.tomcat:tomcat-jdbc:8.5.0"
-runtime "org.apache.tomcat.embed:tomcat-embed-logging-log4j:8.5.0"</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">implementation 'org.grails:gorm-hibernate5-spring-boot:9.0.0-SNAPSHOT'</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Then ensure you have configured a <a href="https://docs.spring.io/spring-boot/docs/current/reference/html/boot-features-sql.html">datasource and Hibernate as per the Spring Boot guide</a>. For example in the case of MySQL:</p>
+<p>Then ensure you have configured a <a href="https://docs.spring.io/spring-boot/reference/data/sql.html#data.sql.datasource">datasource and Hibernate as per the Spring Boot guide</a>. For example in the case of MySQL:</p>
 </div>
 <div class="listingblock">
+<div class="title">application.yml</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">hibernate</span>:
-    <span class="key">hbm2ddl</span>:
-        <span class="key">auto</span>: <span class="string"><span class="content">update</span></span>
-    <span class="key">dialect</span>: <span class="string"><span class="content">org.hibernate.dialect.MySQL5InnoDBDialect</span></span>
-<span class="key">spring</span>:
-    <span class="key">datasource</span>:
-        <span class="key">driverClassName</span>: <span class="string"><span class="content">com.mysql.jdbc.Driver</span></span>
-        <span class="key">url</span>:   <span class="string"><span class="content">jdbc:mysql://127.0.0.1:3306/gorm</span></span>
-        <span class="key">username</span>: <span class="string"><span class="content">root</span></span>
-        <span class="key">password</span>: <span class="string"><span class="delimiter">&quot;</span><span class="delimiter">&quot;</span></span></code></pre>
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">hibernate.hbm2ddl.auto</span>: <span class="string"><span class="content">update</span></span>
+<span class="key">spring.datasource.url</span>: <span class="string"><span class="content">jdbc:h2:mem:devDb;LOCK_TIMEOUT=10000;DB_CLOSE_ON_EXIT=FALSE</span></span></code></pre>
 </div>
 </div>
 <div class="admonitionblock tip">
@@ -1056,26 +1041,25 @@ runtime "org.apache.tomcat.embed:tomcat-embed-logging-log4j:8.5.0"</code></pre>
 <i class="fa icon-tip" title="Tip"></i>
 </td>
 <td class="content">
-If if you prefer to use the Grails way of configuring the <code>DataSource</code> (with <code>dataSource.url</code> etc.) then you can add <code>@EnableAutoConfiguration(exclude = DataSourceAutoConfiguration)</code> to your <code>Application</code> class, which will allow GORM to take over configuring the data source.
+If you prefer to use the Grails way of configuring the <code>DataSource</code> (with <code>dataSource.url</code> etc.), these will
+work as well.
 </td>
 </tr>
 </table>
 </div>
-<div class="paragraph">
-<p>Ensure your Boot <code>Application</code> class is annotated with <code>ComponentScan</code>, for example:</p>
-</div>
 <div class="listingblock">
+<div class="title">Application.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">org.springframework.boot.SpringApplication</span>
-<span class="keyword">import</span> <span class="include">org.springframework.boot.autoconfigure.EnableAutoConfiguration</span>
-<span class="keyword">import</span> <span class="include">org.springframework.context.annotation.*</span>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">org.springframework.boot.SpringApplication</span>
+<span class="keyword">import</span> <span class="include">org.springframework.boot.autoconfigure.SpringBootApplication</span>
+<span class="keyword">import</span> <span class="include">org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration</span>
 
-<span class="annotation">@Configuration</span>
-<span class="annotation">@EnableAutoConfiguration</span>
-<span class="annotation">@ComponentScan</span>
+<span class="annotation">@CompileStatic</span>
+<span class="annotation">@SpringBootApplication</span>(exclude = HibernateJpaAutoConfiguration)
 <span class="type">class</span> <span class="class">Application</span> {
     <span class="directive">static</span> <span class="type">void</span> main(<span class="predefined-type">String</span><span class="type">[]</span> args) {
-        SpringApplication.run Application, args
+        SpringApplication.run(Application, args)
     }
 }</code></pre>
 </div>
@@ -1087,8 +1071,8 @@ If if you prefer to use the Grails way of configuring the <code>DataSource</code
 <i class="fa icon-note" title="Note"></i>
 </td>
 <td class="content">
-Using <code>ComponentScan</code> without a value results in Boot scanning for classes in the same package or any package nested within the <code>Application</code> class package.
-If your GORM entities are in a different package specify the package name as the value of the <code>ComponentScan</code> annotation.
+You need to exclude the <code>HibernateJpaAutoconfiguration</code> as we are using GORM. Using <code>SpringBootApplication</code> without a <code>basePackages</code> attribute results in Boot scanning for classes in the same package or any package nested within the <code>Application</code> class package.
+If your GORM entities are in a different package, specify the package name as the value of the <code>basePackages</code> attribute on the <code>@SpringBootApplication</code> annotation.
 </td>
 </tr>
 </table>
@@ -1097,8 +1081,9 @@ If your GORM entities are in a different package specify the package name as the
 <p>Finally create your GORM entities and ensure they are annotated with <code>grails.persistence.Entity</code>:</p>
 </div>
 <div class="listingblock">
+<div class="title">Person.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.persistence.*</span>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.persistence.Entity</span>
 
 <span class="annotation">@Entity</span>
 <span class="type">class</span> <span class="class">Person</span> {
@@ -1111,6 +1096,7 @@ If your GORM entities are in a different package specify the package name as the
 <p>Note that Spring Boot does not include any kind of OpenSessionInView interceptor so if you try and invoke GORM methods in a Spring <code>@Controller</code> you may encounter a session not found error. To eliminate this problem make sure your <code>@Controller</code> methods are annotated with <code>@Transactional</code>. For example:</p>
 </div>
 <div class="listingblock">
+<div class="title">PersonController.groovy</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">org.springframework.transaction.annotation.Transactional</span>
 <span class="keyword">import</span> <span class="include">org.springframework.web.bind.annotation.RequestMapping</span>
@@ -1133,8 +1119,9 @@ If your GORM entities are in a different package specify the package name as the
 <p>In addition, if you wish to return a GORM instance from a Spring <code>@Controller</code>, it should be noted that Spring uses Jackson for JSON marshalling, and Jackson will attempt to marshal the entire object to JSON, which can present an issue since GORM adds additional persistence related properties to your domain instance. To resolve this issue you should use <code>@JsonIgnoreProperties</code> on your GORM entity class to ignore any properties added by GORM:</p>
 </div>
 <div class="listingblock">
+<div class="title">Person.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.persistence.*</span>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.persistence.Entity</span>
 <span class="keyword">import</span> <span class="include">com.fasterxml.jackson.annotation.JsonIgnoreProperties</span>
 
 <span class="annotation">@Entity</span>
