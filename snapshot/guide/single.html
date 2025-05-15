@@ -803,17 +803,12 @@ function addJsClass(el) {
 <div class="sect2">
 <h3 id="_overview">Overview</h3>
 <div class="paragraph">
-<p>Grails framework 7.0.0-SNAPSHOT updates Spring Boot to version 3.5.0-RC1. We recommend checking the following Spring technologies release notes for more information.</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><a href="https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-3.4-Release-Notes">Spring Boot 3.4</a></p>
-</li>
-</ul>
+<p>Grails 7.0.0-SNAPSHOT is a major release that includes new features, improvements, and dependency upgrades.
+This release focuses on enhancing the developer experience, improving performance, and ensuring compatibility with the latest technologies.</p>
 </div>
 <div class="paragraph">
-<p>The minimum Java version required to run Grails 7.0.0-SNAPSHOT has been updated to Java 17.</p>
+<p>For detailed information on how to upgrade to Grails 7, including major dependency changes, please see the <a href="upgrading.html#upgrading60x">Upgrading from Grails 6 to Grails 7</a> section.
+Notable new features are included below.</p>
 </div>
 </div>
 <div class="sect2">
@@ -881,6 +876,46 @@ See the <a href="conf.html#externalConfiguration">Configuration</a> section for 
 <p>With this setup, you gain the benefits of containerized testing, such as isolation, reproducibility, and reduced setup complexity.</p>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_formactionsubmit_tag">formActionSubmit tag</h4>
+<div class="paragraph">
+<p>A new tag <code>formActionSubmit</code> has been added to replace <code>actionSubmit</code>.
+Dispatching actions via a parameter name on a form submit will be removed in a future version of grails.
+See ticket <a href="https://github.com/grails/grails-gsp/issues/551">#551</a> for details.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_scaffold_support_for_controllers_and_services">@Scaffold support for Controllers and Services</h4>
+<div class="paragraph">
+<p>The <code>@Scaffold</code> annotation was added to customize scaffolding generation for controllers and services.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_bootstrap_5_3_3_support">Bootstrap 5.3.3 support</h4>
+<div class="paragraph">
+<p>Bootstrap 5.3.3 support.
+Saffolding and Fields tags now optionally support boostrap classes.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_prioritization_of_autoconfiguration_over_bean_overriding">Prioritization of AutoConfiguration over bean overriding.</h4>
+<div class="paragraph">
+<p>The core dependencies of Grails are moving to using <code>@Configuration</code> to better integrate with the Spring Boot ecosystem.
+Please note that this does mean that some beans are now initialized earlier in the application context lifecycle.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_significant_dependency_removals">Significant Dependency Removals</h4>
+<div class="paragraph">
+<p>With the removal of Micronaut, and the fixes to the asset pipeline plugin, Grails build sizes should now be significantly reduced.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_gform_csrf_protection">g:form &amp; CSRF protection</h4>
+<div class="paragraph">
+<p>The <code>g:form</code> tag now automatically provides csrf protection when Spring Security CSRF is enabled.</p>
+</div>
+</div>
 </div>
 
 
@@ -902,9 +937,6 @@ See the <a href="conf.html#externalConfiguration">Configuration</a> section for 
 <p>Groovy 4.0.26</p>
 </li>
 <li>
-<p>GORM 7.0.0-SNAPSHOT</p>
-</li>
-<li>
 <p>Spring Framework 6.2.6</p>
 </li>
 <li>
@@ -915,12 +947,6 @@ See the <a href="conf.html#externalConfiguration">Configuration</a> section for 
 </li>
 <li>
 <p>Spock 2.3-groovy-4.0</p>
-</li>
-<li>
-<p>Grails Testing Support 7.0.0-SNAPSHOT</p>
-</li>
-<li>
-<p>Grails Gradle Plugin 7.0.0-SNAPSHOT</p>
 </li>
 </ul>
 </div>
@@ -1015,10 +1041,40 @@ On Windows you would have to configure these environment variables in <code>My C
 
 
 <div class="paragraph">
-<p>The first step to getting up and running with Grails is to install the distribution.</p>
+<p>There are many ways to create a Grails application.
+The best way is to use either <a href="https://start.grails.org">start.grails.org</a> or use the Grails CLI via <a href="https://sdkman.io">SDKMAN</a>.
+SDKMAN greatly simplifies installing and managing multiple Grails versions.</p>
+</div>
+<div class="sect2">
+<h3 id="_types_of_cli">Types of CLI</h3>
+<div class="paragraph">
+<p>Historically, Grails had one CLI - <code>grails shell</code>.
+In Grails 6, a new CLI was introduced <code>grails forge</code> that was meant to replace <code>grails shell</code>.
+Unfortunately, IntelliJ&#8217;s Grails plugin relies on the legacy shell to provide functions for the IDE.
+For this reason, the decision was made to restore publishing of the <code>grails-shell</code> in later versions of Grails 6. The other problem is to customize application generation, <code>grails forge</code> would need to be forked, customized, published, and hosted somewhere.
+The process of building and hosting a custom version of <code>grails-forge</code> was found to be cumbersome for some people because the previous shell allowed for customization by providing a directory that laid out a skeleton of what to create.
+Worse, some critical plugins, such as the database migration plugin had custom commands that cannot be easily imported into the forge cli.</p>
 </div>
 <div class="paragraph">
-<p>The best way to install Grails on *nix systems is with <a href="https://sdkman.io">SDKMAN</a> which greatly simplifies installing and managing multiple Grails versions.</p>
+<p>For this reason, Grails 7 adds the following commands to any Grails install:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><code>grails-forge-cli</code> - the forge cli that was shipped as <code>grails</code> initially in Grails 6. This CLI has both interactive completion &amp; bash autocompletion.
+Long term, we intend to fold the legacy shell functions into it - including the ability to create custom commands &amp; supporting a custom layout.</p>
+</li>
+<li>
+<p><code>grails-shell-cli</code> - the legacy shell cli that IntelliJ uses.
+This CLI has only interactive completion.
+Historically, this shell has not had autocompletion.</p>
+</li>
+<li>
+<p><code>grails</code> - a new, delegating shell application that will call either <code>grails-shell-cli</code> or <code>grails-forge-cli</code>.
+A specific version can be forced by passing the <code>-t</code> or <code>--type</code> argument with a value of <code>shell</code> or <code>forge</code>.</p>
+</li>
+</ol>
+</div>
 </div>
 <div class="sect2">
 <h3 id="_install_with_sdkman">Install with SDKMAN</h3>
@@ -1039,7 +1095,8 @@ On Windows you would have to configure these environment variables in <code>My C
 </div>
 </div>
 <div class="paragraph">
-<p>You can find more information about SDKMAN usage on the <a href="https://sdkman.io/usage">SDKMAN Docs</a></p>
+<p>You can find more information about SDKMAN usage on the <a href="https://sdkman.io/usage">SDKMAN Docs</a>.
+After installing, all three CLI commands should be available.</p>
 </div>
 </div>
 <div class="sect2">
@@ -1050,29 +1107,23 @@ On Windows you would have to configure these environment variables in <code>My C
 <div class="ulist">
 <ul>
 <li>
-<p><a href="https://github.com/apache/grails-core/releases">Download</a> a binary distribution of Grails and extract the resulting zip file to a location of your choice</p>
-</li>
-<li>
-<p>Set the GRAILS_HOME environment variable to the location where you extracted the zip</p>
+<p><a href="https://github.com/apache/grails-forge/releases">Download</a> a binary distribution of Grails and extract the resulting zip file to a location of your choice.
+Then add the bin directory to your system path.</p>
 </li>
 </ul>
 </div>
-</div>
-<div class="sect2">
-<h3 id="_unixlinux">Unix/Linux</h3>
+<div class="sect3">
+<h4 id="_unixlinux">Unix/Linux</h4>
 <div class="ulist">
 <ul>
 <li>
-<p>This is typically a matter of adding something like the following <code>export GRAILS_HOME=/path/to/grails</code> to your profile</p>
-</li>
-<li>
-<p>This can be done by adding <code>export PATH="$PATH:$GRAILS_HOME/bin"</code> to your profile</p>
+<p>This can be done by adding <code>export PATH="$PATH:/path/to/grails/bin"</code> to your profile</p>
 </li>
 </ul>
 </div>
 </div>
-<div class="sect2">
-<h3 id="_windows">Windows</h3>
+<div class="sect3">
+<h4 id="_windows">Windows</h4>
 <div class="ulist">
 <ul>
 <li>
@@ -1114,6 +1165,17 @@ On Windows you would have to configure these environment variables in <code>My C
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="console">Grails Version: 7.0.0-SNAPSHOT</code></pre>
 </div>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_grails_wrapper">Grails Wrapper</h3>
+<div class="paragraph">
+<p>The original CLI binaries can be quite large.
+When installing via SDKMAN or via a download, we include a single shadowJar that contains both shells and the associated scripts to invoke them.
+However, when a project is generated, we also include a wrapper <code>grailsw</code> that can be checked into source control.
+This wrapper will download the CLI&#8217;s to <code>~/.grails/wrapper/myGrailsVersion</code> and invoke them when calling <code>grailsw</code>.
+It is meant to be a light weight option if SDKMAN is not available.</p>
 </div>
 </div>
 
@@ -2015,57 +2077,134 @@ Using interactive mode enhances the development experience by providing auto-com
 <div class="sect2">
 <h3 id="_upgrade_instructions_for_grails_and_related_dependencies">Upgrade Instructions for Grails and Related Dependencies</h3>
 <div class="paragraph">
-<p>To ensure compatibility with Grails 7.0.0-SNAPSHOT, you must update the following versions in your project:</p>
+<p>To ensure compatibility with Grails 7.0.0, please review the following upgrade instructions carefully.
+This guide outlines the necessary steps &amp; warnings to upgrade your Grails project.</p>
 </div>
 <div class="sect3">
 <h4 id="_1_java_17_as_baseline">1. Java 17 as baseline:</h4>
 <div class="paragraph">
-<p>Starting from Grails 7.0.0-SNAPSHOT, Java 17 serves as the baseline requirement for the framework. When upgrading to Grails 7.0.0-SNAPSHOT, ensure that your project is configured to use Java 17. This compatibility with Java 17 allows you to take advantage of the latest features, security enhancements, and performance improvements provided by Java 17.</p>
+<p>Starting from Grails 7.0.0, Java 17 serves as the baseline requirement for the framework.
+When upgrading to Grails 7.0.0, ensure that your project is configured to use Java 17. Updating to Java 17 allows you to take advantage of the latest features, security enhancements, and performance improvements provided by Java 17.</p>
 </div>
 <div class="paragraph">
-<p>Please make sure to update your project&#8217;s Java version to 17 before proceeding with the Grails 7.0.0-SNAPSHOT upgrade. Doing so will ensure a seamless transition to the latest version of Grails and enable you to enjoy all the benefits that Java 17 has to offer.</p>
+<p>Please make sure to update your project&#8217;s Java version to 17 before proceeding with the Grails 7.0.0 upgrade.
+Doing so will ensure a seamless transition to the latest version of Grails and enable you to enjoy all the benefits that Java 17 has to offer.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_2_setting_grails_version_and_grails_gradle_plugin">2. Setting Grails Version and Grails Gradle Plugin:</h4>
+<h4 id="_2_groovy_4_0_27_as_a_baseline">2. Groovy 4.0.27 as a baseline:</h4>
 <div class="paragraph">
-<p>To upgrade to Grails 7.0.0-SNAPSHOT, it&#8217;s important to configure the appropriate versions in the <code>gradle.properties</code> file as shown below:</p>
+<p>Grails 7.0.0 adopts Groovy 4.0.27 as it&#8217;s baseline requirement.
+Several changes in Groovy 4 can affect your application.
+Notable changes include:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><a href="https://issues.apache.org/jira/browse/GROOVY-10621">GROOVY-10621</a> - Primitive booleans will no longer generate the form of isProperty &amp; getProperty.
+They will only generate isProperty().
+For Grails Domain objects, grails sometimes generates these properties.
+It is advisable to switch to the new form of the property.</p>
+</li>
+<li>
+<p><a href="https://issues.apache.org/jira/browse/GROOVY-5169">GROOVY-5169</a> &amp; <a href="https://issues.apache.org/jira/browse/GROOVY-10449">GROOVY-10449</a> - Fields with a public modifier were not returned with MetaClassImpl#getProperties() in groovy 3, but are now.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Some older libraries may include an older version of groovy, but still be compatible with Groovy 4. One example is GPars.
+In your gradle file, you can force a dependency upgrade via this code:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">  configurations.configureEach {
+      resolutionStrategy.eachDependency { DependencyResolveDetails details -&gt;
+          <span class="keyword">if</span> (details.requested.group == <span class="string"><span class="delimiter">'</span><span class="content">org.codehaus.groovy</span><span class="delimiter">'</span></span>) {
+              details.useTarget(<span class="key">group</span>: <span class="string"><span class="delimiter">'</span><span class="content">org.apache.groovy</span><span class="delimiter">'</span></span>, <span class="key">name</span>: details.requested.name, <span class="key">version</span>: <span class="string"><span class="delimiter">'</span><span class="content">4.0.27</span><span class="delimiter">'</span></span>)
+          }
+      }
+  }</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_3_unified_project_version">3. Unified Project Version</h4>
+<div class="paragraph">
+<p>Grails 7.0.0 moved to a mono repository.
+As part of this move, all projects that make up a grails release now have a common version.
+Setting <code>grailsVersion</code> in <code>gradle.properties</code> is the proper way to specify a set of dependencies that are compatible with each other for a given Grails release.
+Please remove older properties such as <code>gormVersion</code> &amp; <code>grailsGradlePluginVersion</code> and exclusively use this property going forward.</p>
 </div>
 <div class="listingblock">
 <div class="title">gradle.properties</div>
 <div class="content">
-<pre>grailsVersion=7.0.0-SNAPSHOT
-grailsGradlePluginVersion=7.0.0-SNAPSHOT</pre>
+<pre>grailsVersion=7.0.0</pre>
 </div>
-</div>
-<div class="paragraph">
-<p>By specifying the above versions, you&#8217;ll gain access to the latest features, improvements, and bug fixes introduced in Grails 7.0.0-SNAPSHOT. Upgrading to this version empowers your application with enhanced performance and improved security. Additionally, it allows you to leverage the latest advancements in the Grails framework for a more efficient and secure development experience.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_4_gorm_version">4. GORM Version</h4>
+<h4 id="_4_unified_bill_of_materials">4. Unified Bill of Materials</h4>
 <div class="paragraph">
-<p>If your project utilizes GORM, ensure to update the version in the <code>gradle.properties</code> file as demonstrated below:</p>
+<p>Previously Grails did not have a single Bill of Materials (BOM).
+Instead it had a <code>micronaut-bom</code> and a <code>spring-bom</code>.
+With the removal of Micronaut from the Grails, the <code>micronaut-bom</code> is no longer needed.
+Instead, we can have a single bom that inherits from the <code>spring-bom</code>.</p>
+</div>
+<div class="paragraph">
+<p>Grails 7.0.0 introduces a BOM that includes all the dependencies required for a Grails application.
+This BOM is available in the <code>org.apache.grails:grails-bom</code> artifact.
+The BOM is automatically applied when a Grails Gradle plugin is applied via the Spring Dependency Management plugin.
+For projects that do not use a Grails Gradle plugin, you can apply the BOM via a <a href="https://docs.gradle.org/current/userguide/java_platform_plugin.html#sec:java_platform_consumption">Gradle Platform</a>:</p>
 </div>
 <div class="listingblock">
-<div class="title">gradle.properties</div>
+<div class="title">build.gradle</div>
 <div class="content">
-<pre>gormVersion=7.0.0-SNAPSHOT</pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
+    implementation platform(<span class="string"><span class="delimiter">&quot;</span><span class="content">org.apache.grails:grails-bom:</span><span class="inline"><span class="inline-delimiter">${</span>grailsVersion<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>)
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>By upgrading to GORM 7.0.0-SNAPSHOT, you will benefit from essential updates and optimizations. This upgrade guarantees seamless interactions with your database and enhances your data management experience. Staying current with GORM allows you to take advantage of the latest database features and improvements, thereby optimizing the performance and functionality of your application.</p>
+<p>Because all Grails projects will apply the Grails Gradle plugin, the BOM is automatically applied.
+You can override a version in the BOM by setting the associated Gradle property.
+The possible gradle properties are generated as part of this documentation.
+Please see <a href="../ref/Versions/Grails BOM.html">Grails BOM Dependencies</a> for a quick reference.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_5_gradle_version">5. Gradle Version:</h4>
+<h4 id="_5_coordinate_changes">5. Coordinate Changes</h4>
 <div class="paragraph">
-<p>Grails 7.0.0-SNAPSHOT uses Gradle 8.14 which offers performance improvements, bug fixes, and new features over previous versions. Upgrading to the latest Gradle version helps accelerate your build processes and ensures compatibility with other dependencies.</p>
+<p>Grails has transitioned to the Apache Software Foundation (ASF).
+As a result, the group ID for Grails artifacts has changed to <code>org.apache.grails</code>.
+This change applies to all Grails packages, including core plugins and core dependencies, maintained by the Grails team.
+When upgrading to Grails 7.0.0, ensure that you update your build configuration to use the new group ID.</p>
+</div>
+<div class="paragraph">
+<p>There is a <a href="https://github.com/apache/grails-core/blob/7.0.x/RENAME.md">RENAME.md</a> in the grails-core repository that maps previous coordinate names to new names.
+Additionally, there is a script to aid in the updating of Grails projects to the new coordinates.
+The script is located in the <code>etc/bin</code> directory of the <a href="https://github.com/apache/grails-core/tree/7.0.x/etc/bin">grails-core</a> repository and can be run as follows:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">  ./rename_gradle_artifacts.sh -l my/project/location</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This script will scan any gradle file and attempt to update both exclusions &amp; dependencies to the new coordinates.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_6_gradle_changes">6. Gradle Changes:</h4>
+<div class="paragraph">
+<p>One of the major changes in Grails 7.0.0 is the modernization of it&#8217;s build system.
+As a side effect of this modernization, the Grails build is fully parallel &amp; <a href="https://docs.gradle.org/current/userguide/task_configuration_avoidance.html">lazy</a>.
+When updating to Grails 7.0.0, there may be required updates to various tasks we distribute since the inputs of those tasks have changed to support lazy configuration.</p>
 </div>
 <div class="sect4">
-<h5 id="_5_1_upgrade_to_gradle_8_14">5.1. Upgrade to Gradle 8.14</h5>
+<h5 id="_6_1_upgrading_gradle">6.1. Upgrading Gradle:</h5>
 <div class="paragraph">
-<p>Run the following command to update the Gradle wrapper to the desired version (e.g., Gradle 8.14):</p>
+<p>It is recommended to set your gradle version to a version of 8.14 or higher:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -2077,9 +2216,10 @@ grailsGradlePluginVersion=7.0.0-SNAPSHOT</pre>
 </div>
 </div>
 <div class="sect4">
-<h5 id="_5_2_check_gradle_version">5.2. Check Gradle Version:</h5>
+<h5 id="_6_2_check_gradle_version">6.2. Check Gradle Version:</h5>
 <div class="paragraph">
-<p>After the command finishes, you can verify that the Gradle version has been updated by checking the <code>gradle-wrapper.properties</code> file located in the <code>gradle/wrapper</code> directory. The <code>distributionUrl</code> in the file should now point to the Gradle 8.14 distribution:</p>
+<p>After the command finishes, you can verify that the Gradle version has been updated by checking the <code>gradle-wrapper.properties</code> file located in the <code>gradle/wrapper</code> directory.
+The <code>distributionUrl</code> in the file should now point to the specified Gradle version&#8217;s distribution:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -2087,10 +2227,69 @@ grailsGradlePluginVersion=7.0.0-SNAPSHOT</pre>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="_5_3_build_the_project">5.3. Build the Project:</h5>
+</div>
+<div class="sect3">
+<h4 id="_7_reproducible_builds">7. Reproducible Builds:</h4>
 <div class="paragraph">
-<p>After updating the Gradle wrapper, you can now build your Grails project using the updated Gradle version:</p>
+<p>The ASF strongly encourages <a href="https://reproducible-builds.org/">reproducible builds</a> as part of it&#8217;s security requirements.
+We have begun making the Grails build reproducible - that is, if you build with the same settings as the GitHub action the produced artifacts should be identical.
+We have starting addressing reproducible builds under the ticket <a href="https://github.com/apache/grails-core/issues/14679">#14679</a>.</p>
+</div>
+<div class="paragraph">
+<p>A side effect of making our builds reproducible is that Grails applications can also now be reproducible.
+The benefits of reproducible builds are well documented, but for Grails applications, some of the side effects include:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Improved build times - since the build is reproducible, Gradle can cache the results of the build and reuse them in future builds.</p>
+</li>
+<li>
+<p>Minimizing rebuilds - if the build is reproducible, Gradle can avoid unnecessary rebuilds of tasks that have not changed.</p>
+</li>
+<li>
+<p>Improved security - reproducible builds can help to ensure that the build process is not tampered with, and that the resulting artifacts are exactly what was intended.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>To make your local build reproducible, you&#8217;ll want to set the environment variable <code>SOURCE_DATE_EPOCH</code> to a fixed date.
+For Grails, we set this value to the last commit in git via the bash command: <code>SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)</code></p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_8_spring_6_2_6">8. Spring 6.2.6:</h4>
+<div class="paragraph">
+<p>Grails 7.0.0 is built on the Spring Framework, version 6.2.6. If your project uses Spring-specific features, refer to the <a href="https://github.com/spring-projects/spring-framework/wiki/Upgrading-to-Spring-Framework-6.x">Upgrading to Spring 6 guide</a>.</p>
+</div>
+<div class="paragraph">
+<p>This update introduces enhancements and fixes to the Spring Framework, providing you with the latest improvements in dependency injection, web frameworks, and other Spring-related functionalities.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_9_spring_boot_3_5_0">9. Spring Boot 3.5.0:</h4>
+<div class="paragraph">
+<p>Grails 6 used Spring Boot 2.7. Grails 7.0.0 updates this to Spring Boot 3.5.0. For more information, consult the release notes for previous Spring Boot releases:
+1. <a href="https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-3.5-Release-Notes">Spring Boot 3.5 Release Notes</a>
+2. <a href="https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-3.4-Release-Notes">Spring Boot 3.4 Release Notes</a>
+3. <a href="https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-3.4-Release-Notes">Spring Boot 3.3 Release Notes</a>
+4. <a href="https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-3.4-Release-Notes">Spring Boot 3.2 Release Notes</a>
+5. <a href="https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-3.4-Release-Notes">Spring Boot 3.1 Release Notes</a>
+6. <a href="https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-3.4-Release-Notes">Spring Boot 3.0 Release Notes</a></p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_10_upgrading_your_project">10. Upgrading Your Project:</h4>
+<div class="paragraph">
+<p>In addition to the coordinate changes, the version updates, and the build updates, to upgrade your project it is advised to use an application generator and compare it to your existing project.
+The preferred app generator for Grails is <a href="https://start.grails.org/">start.grails.org</a>.
+Please note that several previously required gradle configurations have been integrated into the Grails Gradle Plugins as defaults.
+Compare a freshly generated application to your application and apply any associated changes.</p>
+</div>
+<div class="sect4">
+<h5 id="_10_1_building_the_project">10.1 Building the Project:</h5>
+<div class="paragraph">
+<p>After comparing to a generated build &amp; updating your gradle files, you can now build your Grails project using the updated Gradle version:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -2103,44 +2302,61 @@ grailsGradlePluginVersion=7.0.0-SNAPSHOT</pre>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_6_spring_6_2_6">6. Spring 6.2.6:</h4>
+<h4 id="_11_grails_cli">11. Grails CLI</h4>
 <div class="paragraph">
-<p>Grails 7.0.0-SNAPSHOT is built on Spring 6.2.6. If your project uses Spring-specific features, refer to the <a href="https://github.com/spring-projects/spring-framework/wiki/Upgrading-to-Spring-Framework-6.x">Upgrading to Spring 6 guide</a>.</p>
-</div>
-<div class="paragraph">
-<p>Spring 6.2.6 introduces enhancements and fixes to the Spring framework, providing you with the latest improvements in dependency injection, web frameworks, and other Spring-related functionalities.</p>
+<p>Both the legacy <code>grails-shell-cli</code> and <code>grails-forge-cli</code> are now included with Grails 7. Please see the <a href="../guide/gettingStarted.html#downloadingAndInstalling">Downloading &amp; Installing</a> section of this guide for important background on how to use the Grails CLI commands.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_7_spring_boot_3_5_0_rc1">7. Spring Boot 3.5.0-RC1:</h4>
+<h4 id="_12_breaking_changes">12. Breaking changes</h4>
 <div class="paragraph">
-<p>Grails 7.0.0-SNAPSHOT updates to Spring Boot 3.5.0-RC1. For more information, consult the <a href="https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-3.3-Release-Notes">Spring Boot 3 Release Notes</a></p>
+<p>Grails 7.0.0 introduces several breaking changes that may require updates to your application.</p>
 </div>
+<div class="sect4">
+<h5 id="_12_0">12.0</h5>
 <div class="paragraph">
-<p>Spring Boot 3.5.0-RC1 comes with new features, performance enhancements, and compatibility improvements, making it a solid foundation for your Grails application.</p>
+<p>Due to the significant changes in Grails 7, all prior Grails Plugin will need updated to work with Grails 7. For plugins in the <a href="https://github.com/grails-plugins/">Grails Plugins</a> GitHub organization, the Grails Core team is updating them as time permits and when requested.
+If there is a plugin that you require updating, please reach out via <a href="https://github.com/apache/grails-core/issues">ticket</a> to see if we can help.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="_8_breaking_changes">8. Breaking changes</h4>
+<div class="sect4">
+<h5 id="_12_1_javax_jakarta">12.1 javax &#8594; Jakarta</h5>
 <div class="paragraph">
-<p>Grails 7.0.0-SNAPSHOT introduces several breaking changes that may require updates to your application.</p>
+<p>Spring has switched from javax to <a href="https://jakarta.ee/">jakarta</a> packages.
+Please consult the Spring upgrade guides for the impacts of this change.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="_8_1_removed_librariesclasses">8.1. Removed libraries/classes</h4>
+<div class="sect4">
+<h5 id="_12_2_removed_librariesclasses">12.2 Removed libraries/classes</h5>
 <div class="ulist">
 <ul>
 <li>
 <p>The <code>grails-web-fileupload</code> library, including its sole class <code>ContentLengthAwareCommonsMultipartResolver</code>, has been removed. This change was necessitated by the removal of the superclass <code>CommonsMultipartResolver</code> in Spring 6. The <code>ContentLengthAwareCommonsMultipartResolver</code> was originally introduced to address a bug in Safari back in 2007, but it is likely no longer needed. Spring has transitioned away from <code>CommonsMultipartResolver</code> and now recommends using the built-in support for multipart uploads provided by servlet containers. For more information on handling file uploads in Spring Boot, please refer to the relevant sections of the <a href="https://docs.spring.io/spring-boot/how-to/spring-mvc.html#howto.spring-mvc.multipart-file-uploads">Spring Boot documentation</a> and the <a href="https://github.com/spring-projects/spring-framework/wiki/Upgrading-to-Spring-Framework-6.x#web-applications-1">Spring Framework 6 upgrade guide</a>.</p>
 </li>
 <li>
-<p><code>org.grails.spring.beans.factory.OptimizedAutowireCapableBeanFactory</code> was deprecated and is now removed.</p>
+<p><code>org.grails.spring.beans.factory.OptimizedAutowireCapableBeanFactory</code> was previously deprecated and is now removed.</p>
+</li>
+<li>
+<p>The following deprecated classes were removed, please use the suggested replacement:</p>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><code>grails.core.GrailsTagLibClass</code> &#8594; <code>grails.core.gsp.GrailsTagLibClass</code></p>
+</li>
+<li>
+<p><code>org.grails.core.artefact.TagLibArtefactHandler</code> &#8594; <code>org.grails.core.artefact.gsp.TagLibArtefactHandler</code></p>
+</li>
+<li>
+<p><code>org.grails.core.DefaultGrailsTagLibClass</code> &#8594; <code>org.grails.core.gsp.DefaultGrailsTagLibClass</code></p>
+</li>
+</ol>
+</div>
 </li>
 </ul>
 </div>
 </div>
-<div class="sect3">
-<h4 id="_8_2_micronaut_in_grails_is_now_supported_via_the_micronaut_spring_boot_starter">8.2. Micronaut in Grails is now supported via the Micronaut Spring Boot Starter</h4>
+<div class="sect4">
+<h5 id="_12_3_micronaut_in_grails_is_now_supported_via_the_micronaut_spring_boot_starter">12.3 Micronaut in Grails is now supported via the Micronaut Spring Boot Starter</h5>
 <div class="ulist">
 <ul>
 <li>
@@ -2167,8 +2383,8 @@ grailsGradlePluginVersion=7.0.0-SNAPSHOT</pre>
 </ul>
 </div>
 </div>
-<div class="sect3">
-<h4 id="_8_3_hibernate_ehcache">8.3 hibernate-ehcache</h4>
+<div class="sect4">
+<h5 id="_12_4_hibernate_ehcache">12.4 hibernate-ehcache</h5>
 <div class="paragraph">
 <p>The <code>org.hibernate:hibernate-ehcache</code> library is no longer provided by the <code>org.apache.grails:grails-hibernate5</code> plugin. If
 your application depends on <code>hibernate-ehcache</code>, you must now add it explicitly to your project dependencies.</p>
@@ -2189,6 +2405,28 @@ recommended to exclude <code>hibernate-core</code> from the <code>hibernate-ehca
         <span class="comment">// required for hibernate-ehcache to work with javax variant of hibernate-core excluded</span>
     }
 }</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_12_5_h2">12.5 H2</h5>
+<div class="paragraph">
+<p>The test database H2 is stricter about reserved keywords.
+If you use H2 in your application, please take a look at this <a href="https://github.com/grails/grails-data-hibernate5/pull/910/commits/c8de45df204966ccc228b46b94beeb2142ae0f59">pull request</a> for examples of these new restrictions.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_12_6_removal_of_test_dependencies_from_production_classpath">12.6 Removal of Test Dependencies from Production Classpath</h5>
+<div class="paragraph">
+<p>Prior versions of Grails included test dependencies on the production classpath.
+These are now removed in Grails 7. If you still need them, you can add them to your <code>implementation</code> configuration in your build.gradle file.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_12_7_jar_artifact_name_changes">12.7 Jar Artifact name changes</h5>
+<div class="paragraph">
+<p>Jar artifacts produced by Grails Plugins will no longer have the suffix <code>-plain</code>.
+Please see ticket <a href="https://github.com/apache/grails-gradle-plugin/pull/347">#347</a> for details.</p>
 </div>
 </div>
 </div>
@@ -3543,10 +3781,6 @@ startup failed:script14738267015581837265078.groovy: 13: unable to resolve class
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">userHome</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Location of the home directory for the account that is running the Grails application.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">grailsHome</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Location of the directory where you installed Grails. If the <code>GRAILS_HOME</code> environment variable is set, it is used.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">appName</p></td>
@@ -6749,13 +6983,14 @@ mongodb, neo4j.</p></td>
 
 
 <div class="paragraph">
-<p>Since Grails 3.1 the <a href="http://gradle.org">Gradle Build System</a> is used for build related tasks such as compilation, runnings tests and producing binary distributions of your project. It is recommended to use Gradle 2.2 or above with Grails 3.1 (and higher).</p>
+<p>The <a href="http://gradle.org">Gradle Build System</a> is used for build related tasks such as compilation, running tests and producing binary distributions of your Grails project.
+It is recommended to use Gradle 8.14 or above with Grails.</p>
 </div>
 <div class="paragraph">
 <p>The build is defined by the <code>build.gradle</code> file which specifies the version of your project, the dependencies of the project and the repositories where to find those dependencies (amongst other things).</p>
 </div>
 <div class="paragraph">
-<p>When you invoke the <code>grails</code> command the version of Gradle that ships with Grails 3.1 (currently 2.9) is invoked by the <code>grails</code> process via the <a href="http://www.gradle.org/docs/current/userguide/embedding.html">Gradle Tooling API</a>:</p>
+<p>When you invoke the <code>grails</code> command the version of Gradle that ships with Grails (currently 8.14) is invoked by the <code>grails</code> process via the <a href="http://www.gradle.org/docs/current/userguide/embedding.html">Gradle Tooling API</a>:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -15973,7 +16208,7 @@ The new testing trait, like the testing framework, requires Spock.
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">buildscript {
     repositories {
-        maven { url "https://repo.grails.org/grails/core" }
+        maven { url "https://repo.grails.org/grails/restricted" }
     }
     dependencies {
         classpath "org.grails.plugins:views-gradle:7.0.0-SNAPSHOT"
@@ -15985,7 +16220,7 @@ import grails.views.gradle.json.*
 apply plugin:"java"
 
 repositories {
-    maven { url "https://repo.grails.org/grails/core" }
+    maven { url "https://repo.grails.org/grails/restricted" }
 }
 
 dependencies {
