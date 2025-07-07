@@ -2267,12 +2267,35 @@ The script is located in the <code>etc/bin</code> directory of the <a href="http
 <div class="sect3">
 <h4 id="_6_gradle_changes">6. Gradle Changes:</h4>
 <div class="paragraph">
-<p>One of the major changes in Grails 7.0.0 is the modernization of it&#8217;s build system.
-As a side effect of this modernization, the Grails build is fully parallel &amp; <a href="https://docs.gradle.org/current/userguide/task_configuration_avoidance.html">lazy</a>.
-When updating to Grails 7.0.0, there may be required updates to various tasks we distribute since the inputs of those tasks have changed to support lazy configuration.</p>
+<p>One of the major changes in Grails 7.0.0 is the modernization of it&#8217;s build system. As a side effect of this modernization, the Grails build is fully parallel &amp; <a href="https://docs.gradle.org/current/userguide/task_configuration_avoidance.html">lazy</a>. Moreover, most tasks have been enhanced to be cacheable. When updating to Grails 7.0.0, there may be required updates to various tasks we distribute since the inputs of those tasks have changed to support lazy configuration.</p>
 </div>
 <div class="sect4">
-<h5 id="_6_1_upgrading_gradle">6.1. Upgrading Gradle:</h5>
+<h5 id="_6_1_gradle_plugin_changes">6.1. Gradle Plugin Changes</h5>
+<div class="paragraph">
+<p>As part of the cacheable task changes, some tasks have slightly new behaviors:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>FindMainTask can now fail for non-plugins: If an Application class is not found &amp; the project has a Grails gradle plugin applied, the FindMainTask will now fail.</p>
+</li>
+<li>
+<p>FindMainTask is now cacheable - restarting with bootRun should not force a recompile of the application if no changes have been made.</p>
+</li>
+<li>
+<p>Configuration tasks have been added to customize compileGroovy tasks. These tasks allow for proper metadata being passed to the Groovy compiler to ensure the AST transformations know if code is a Grails Plugin or a Grails Application. In the event these tasks do not run or are caching incorrectly, you may observe incorrect UrlMapping resolution. Please report any instances of this happening so it can be addressed.</p>
+</li>
+<li>
+<p><code>groovyVersion</code> is now <code>groovy.version</code> to match upstream Spring BOM property names. If you still define groovyVersion to override the groovy version &amp; use the Spring Dependency Management plugin, you will need to change this property to <code>groovy.version</code> in your <code>gradle.properties</code> file.</p>
+</li>
+<li>
+<p>While the Spring Dependency Management plugin is still used by default, it can now be disabled by setting the property <code>springDependencyManagement</code> on the <code>grails</code> extension.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_6_2_upgrading_gradle">6.2. Upgrading Gradle:</h5>
 <div class="paragraph">
 <p>It is recommended to set your gradle version to a version of 8.14 or higher:</p>
 </div>
@@ -2286,7 +2309,7 @@ When updating to Grails 7.0.0, there may be required updates to various tasks we
 </div>
 </div>
 <div class="sect4">
-<h5 id="_6_2_check_gradle_version">6.2. Check Gradle Version:</h5>
+<h5 id="_6_3_check_gradle_version">6.3. Check Gradle Version:</h5>
 <div class="paragraph">
 <p>After the command finishes, you can verify that the Gradle version has been updated by checking the <code>gradle-wrapper.properties</code> file located in the <code>gradle/wrapper</code> directory.
 The <code>distributionUrl</code> in the file should now point to the specified Gradle version&#8217;s distribution:</p>
