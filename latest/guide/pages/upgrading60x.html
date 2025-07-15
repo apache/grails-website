@@ -2,26 +2,34 @@
                       "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
 <head>
-    <!-- Global site tag (gtag.js) - Google Analytics -->
-    <script src="/cdn-cgi/apps/head/3cOPSgo5Omz84ycX7CvigfX4cpw.js"></script><script async src="https://www.googletagmanager.com/gtag/js?id=UA-82213539-2"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-
-        gtag('config', 'UA-82213539-2');
-    </script>
-    <title>3.1 Upgrading from Grails 6 to Grails 7 7.0.0-M4</title>
+    <title>3.1 Upgrading from Grails 6 to Grails 7 7.0.0-M5</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
     <link rel="stylesheet" href="../css/pdf.css" type="text/css" media="print" title="PDF" charset="utf-8"/>
     <script type="text/javascript">
-function addJsClass() {
-    var classes = document.body.className.split(" ");
-    classes.push("js");
-    document.body.className = classes.join(" ");
-}
+        function addJsClass() {
+            var classes = document.body.className.split(" ");
+            classes.push("js");
+            document.body.className = classes.join(" ");
+        }
     </script>
+    <!-- Matomo -->
+    <script>
+        var _paq = window._paq = window._paq || [];
+        /* tracker methods like "setCustomDimension" should be called before "trackPageView" */
+        _paq.push(["setDoNotTrack", true]);
+        _paq.push(["disableCookies"]);
+        _paq.push(['trackPageView']);
+        _paq.push(['enableLinkTracking']);
+        (function() {
+            var u="https://analytics.apache.org/";
+            _paq.push(['setTrackerUrl', u+'matomo.php']);
+            _paq.push(['setSiteId', '79']);
+            var d=document, g=d.createElement('script'), s=d.getElementsByTagName('script')[0];
+            g.async=true; g.src=u+'matomo.js'; s.parentNode.insertBefore(g,s);
+        })();
+    </script>
+    <!-- End Matomo Code -->
 </head>
 
 <body class="body" onload="addJsClass();">
@@ -138,7 +146,7 @@ function addJsClass() {
                 <div class="project">
                     <h1>3.1 Upgrading from Grails 6 to Grails 7</h1>
 
-                    <p><strong>Version:</strong> 7.0.0-M4</p>
+                    <p><strong>Version:</strong> 7.0.0-M5</p>
                 </div>
 
                 
@@ -277,12 +285,35 @@ The script is located in the <code>etc/bin</code> directory of the <a href="http
 <div class="sect3">
 <h4 id="_6_gradle_changes">6. Gradle Changes:</h4>
 <div class="paragraph">
-<p>One of the major changes in Grails 7.0.0 is the modernization of it&#8217;s build system.
-As a side effect of this modernization, the Grails build is fully parallel &amp; <a href="https://docs.gradle.org/current/userguide/task_configuration_avoidance.html">lazy</a>.
-When updating to Grails 7.0.0, there may be required updates to various tasks we distribute since the inputs of those tasks have changed to support lazy configuration.</p>
+<p>One of the major changes in Grails 7.0.0 is the modernization of it&#8217;s build system. As a side effect of this modernization, the Grails build is fully parallel &amp; <a href="https://docs.gradle.org/current/userguide/task_configuration_avoidance.html">lazy</a>. Moreover, most tasks have been enhanced to be cacheable. When updating to Grails 7.0.0, there may be required updates to various tasks we distribute since the inputs of those tasks have changed to support lazy configuration.</p>
 </div>
 <div class="sect4">
-<h5 id="_6_1_upgrading_gradle">6.1. Upgrading Gradle:</h5>
+<h5 id="_6_1_gradle_plugin_changes">6.1. Gradle Plugin Changes</h5>
+<div class="paragraph">
+<p>As part of the cacheable task changes, some tasks have slightly new behaviors:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>FindMainTask can now fail for non-plugins: If an Application class is not found &amp; the project has a Grails gradle plugin applied, the FindMainTask will now fail.</p>
+</li>
+<li>
+<p>FindMainTask is now cacheable - restarting with bootRun should not force a recompile of the application if no changes have been made.</p>
+</li>
+<li>
+<p>Configuration tasks have been added to customize compileGroovy tasks. These tasks allow for proper metadata being passed to the Groovy compiler to ensure the AST transformations know if code is a Grails Plugin or a Grails Application. In the event these tasks do not run or are caching incorrectly, you may observe incorrect UrlMapping resolution. Please report any instances of this happening so it can be addressed.</p>
+</li>
+<li>
+<p><code>groovyVersion</code> is now <code>groovy.version</code> to match upstream Spring BOM property names. If you still define groovyVersion to override the groovy version &amp; use the Spring Dependency Management plugin, you will need to change this property to <code>groovy.version</code> in your <code>gradle.properties</code> file.</p>
+</li>
+<li>
+<p>While the Spring Dependency Management plugin is still used by default, it can now be disabled by setting the property <code>springDependencyManagement</code> on the <code>grails</code> extension.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_6_2_upgrading_gradle">6.2. Upgrading Gradle:</h5>
 <div class="paragraph">
 <p>It is recommended to set your gradle version to a version of 8.14 or higher:</p>
 </div>
@@ -296,7 +327,7 @@ When updating to Grails 7.0.0, there may be required updates to various tasks we
 </div>
 </div>
 <div class="sect4">
-<h5 id="_6_2_check_gradle_version">6.2. Check Gradle Version:</h5>
+<h5 id="_6_3_check_gradle_version">6.3. Check Gradle Version:</h5>
 <div class="paragraph">
 <p>After the command finishes, you can verify that the Gradle version has been updated by checking the <code>gradle-wrapper.properties</code> file located in the <code>gradle/wrapper</code> directory.
 The <code>distributionUrl</code> in the file should now point to the specified Gradle version&#8217;s distribution:</p>
@@ -305,6 +336,12 @@ The <code>distributionUrl</code> in the file should now point to the specified G
 <div class="content">
 <pre>distributionUrl=https\://services.gradle.org/distributions/gradle-8.14-bin.zip</pre>
 </div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_6_4_removed_gradle_plugins">6.4. Removed Gradle Plugins</h5>
+<div class="paragraph">
+<p>The <code>grails-doc</code> plugin has been removed. If you wish to continue to generate the guide documentation, you can use the PublishGuideTask offered by <code>grails-docs-core</code>.</p>
 </div>
 </div>
 </div>
@@ -393,14 +430,14 @@ Compare a freshly generated application to your application and apply any associ
 <p>Grails 7.0.0 introduces several breaking changes that may require updates to your application.</p>
 </div>
 <div class="sect4">
-<h5 id="_12_0">12.0</h5>
+<h5 id="_12_1">12.1</h5>
 <div class="paragraph">
-<p>Due to the significant changes in Grails 7, all prior Grails Plugin will need updated to work with Grails 7. For plugins in the <a href="https://github.com/grails-plugins/">Grails Plugins</a> GitHub organization, the Grails Core team is updating them as time permits and when requested.
+<p>Due to the significant changes in Grails 7, all prior Grails Plugins will need updated to work with Grails 7. For plugins in the <a href="https://github.com/grails-plugins/">Grails Plugins</a> GitHub organization, the Grails Core team is updating them as time permits and when requested.
 If there is a plugin that you require updating, please reach out via <a href="https://github.com/apache/grails-core/issues">ticket</a> to see if we can help.</p>
 </div>
 </div>
 <div class="sect4">
-<h5 id="_12_1_javax_jakarta">12.1 javax &#8594; Jakarta</h5>
+<h5 id="_12_2_javax_jakarta">12.2 javax &#8594; Jakarta</h5>
 <div class="paragraph">
 <p>Spring has switched from javax to <a href="https://jakarta.ee/">jakarta</a> packages.
 Please consult the Spring upgrade guides for the impacts of this change.</p>
@@ -425,7 +462,7 @@ jakartaeeMigration {
 </div>
 </div>
 <div class="sect4">
-<h5 id="_12_2_removed_librariesclasses">12.2 Removed libraries/classes</h5>
+<h5 id="_12_3_removed_librariesclasses">12.3 Removed libraries/classes</h5>
 <div class="ulist">
 <ul>
 <li>
@@ -457,7 +494,7 @@ jakartaeeMigration {
 </div>
 </div>
 <div class="sect4">
-<h5 id="_12_3_micronaut_in_grails_is_now_supported_via_the_micronaut_spring_boot_starter">12.3 Micronaut in Grails is now supported via the Micronaut Spring Boot Starter</h5>
+<h5 id="_12_4_micronaut_in_grails_is_now_supported_via_the_micronaut_spring_boot_starter">12.4 Micronaut in Grails is now supported via the Micronaut Spring Boot Starter</h5>
 <div class="ulist">
 <ul>
 <li>
@@ -485,7 +522,7 @@ jakartaeeMigration {
 </div>
 </div>
 <div class="sect4">
-<h5 id="_12_4_hibernate_ehcache">12.4 hibernate-ehcache</h5>
+<h5 id="_12_5_hibernate_ehcache">12.5 hibernate-ehcache</h5>
 <div class="paragraph">
 <p>The <code>org.hibernate:hibernate-ehcache</code> library is no longer provided by the <code>org.apache.grails:grails-hibernate5</code> plugin. If
 your application depends on <code>hibernate-ehcache</code>, you must now add it explicitly to your project dependencies.</p>
@@ -510,30 +547,151 @@ recommended to exclude <code>hibernate-core</code> from the <code>hibernate-ehca
 </div>
 </div>
 <div class="sect4">
-<h5 id="_12_5_h2">12.5 H2</h5>
+<h5 id="_12_6_h2">12.6 H2</h5>
 <div class="paragraph">
 <p>The test database H2 is stricter about reserved keywords.
 If you use H2 in your application, please take a look at this <a href="https://github.com/grails/grails-data-hibernate5/pull/910/commits/c8de45df204966ccc228b46b94beeb2142ae0f59">pull request</a> for examples of these new restrictions.</p>
 </div>
 </div>
 <div class="sect4">
-<h5 id="_12_6_removal_of_test_dependencies_from_production_classpath">12.6 Removal of Test Dependencies from Production Classpath</h5>
+<h5 id="_12_7_removal_of_test_dependencies_from_production_classpath">12.7 Removal of Test Dependencies from Production Classpath</h5>
 <div class="paragraph">
 <p>Prior versions of Grails included test dependencies on the production classpath.
 These are now removed in Grails 7. If you still need them, you can add them to your <code>implementation</code> configuration in your build.gradle file.</p>
 </div>
 </div>
 <div class="sect4">
-<h5 id="_12_7_jar_artifact_name_changes">12.7 Jar Artifact name changes</h5>
+<h5 id="_12_8_jar_artifact_name_changes">12.8 Jar Artifact name changes</h5>
 <div class="paragraph">
 <p>Jar artifacts produced by Grails Plugins will no longer have the suffix <code>-plain</code>.
 Please see ticket <a href="https://github.com/apache/grails-gradle-plugin/pull/347">#347</a> for details.</p>
 </div>
 </div>
 <div class="sect4">
-<h5 id="_12_8_java_20_date_formatting_changes">12.8 Java 20+ Date Formatting Changes</h5>
+<h5 id="_12_9_java_20_date_formatting_changes">12.9 Java 20+ Date Formatting Changes</h5>
 <div class="paragraph">
 <p>In Java 20+, <a href="https://cldr.unicode.org/downloads/cldr-42">Unicode CLDR42</a> was implemented which changed the space character preceding the period (AM or PM) in formatted date/time text from a standard space (" ") to a narrow non-breaking space (NNBSP: "\u202F"). Additionally, when using the LONG or FULL timeStyle with dateStyle, the date and time separator has changed from ' at ' to ', '. IE. January 5, 1941, 8:00:00 AM UTC vs. January 5, 1941 at 8:00:00 AM UTC</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_12_10_container_runtime_environment_is_now_required_for_standard_geb_functional_and_integration_tests">12.10 Container runtime environment is now required for standard Geb functional and integration tests</h5>
+<div class="paragraph">
+<p>The <a href="https://github.com/apache/grails-core/tree/HEAD/grails-geb#readme">Grails Geb Plugin</a> has received a significant update, introducing test fixtures that enable ubiquitous containerized browser testing.</p>
+</div>
+<div class="paragraph">
+<p>This new approach is now the recommended way to write functional tests in Grails, but it <strong>requires a container runtime environment</strong>.</p>
+</div>
+<div class="paragraph">
+<p>The previous method using WebDriver binaries remains supported for backward compatibility, although matching driver and browser versions can be challenging.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_12_11_asset_pipeline">12.11 Asset Pipeline</h5>
+<div class="paragraph">
+<p>The asset pipeline has a new <a href="https://github.com/wondrify/asset-pipeline">home</a>. Version 5.0.12 and forward is compatible with Grails 7.x.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_12_12_api_changes">12.12 API Changes</h5>
+<div class="paragraph">
+<p>As part of any major release, APIs can change.  For Grails 7.0, the list of renamed APIs follows:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>GrailsClassUtils#isMatchBetweenPrimativeAndWrapperTypes &#8594; GrailsClassUtils#isMatchBetweenPrimitiveAndWrapperTypes</p>
+</li>
+</ul>
+</div>
+<div class="sect5">
+<h6 id="_12_13_layout_configuration">12.13 Layout Configuration</h6>
+<div class="paragraph">
+<p>There are several changes related to layout related configuration:</p>
+</div>
+<div class="paragraph">
+<p>Package Changes:
+* grails.web.sitemesh &#8594; org.apache.grails.web.layout
+* org.grails.web.sitemesh &#8594; org.apache.grails.views.gsp.layout</p>
+</div>
+<div class="paragraph">
+<p>Notable Class Moves:
+* org.grails.web.servlet.view.GrailsLayoutViewResolver &#8594; org.grails.web.servlet.view.EmbeddedGrailsLayoutViewResolver
+* org.grails.web.servlet.view.SitemeshLayoutViewResolver &#8594; org.grails.web.servlet.view.GrailsLayoutViewResolver
+* org.grails.web.sitemesh.GrailsLayoutView &#8594; org.apache.grails.web.layout.EmbeddedGrailsLayoutView
+* org.grails.web.sitemesh.SitemeshLayoutView &#8594; org.apache.grails.web.layout.GrailsLayoutView</p>
+</div>
+<div class="paragraph">
+<p>Property Changes:
+* grails.sitemesh.default.layout &#8594; grails.views.layout.default
+* grails.sitemesh.enable.nongsp &#8594; grails.views.layout.enable.nongsp</p>
+</div>
+<div class="paragraph">
+<p>Tag namespace changes:
+* sitemesh &#8594; grailsLayout</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="_key_features">Key Features</h6>
+<div class="paragraph">
+<p>By extending your test classes with <code>ContainerGebSpec</code>, your tests will automatically leverage a containerized browser provided by <a href="https://www.testcontainers.org">Testcontainers</a>. This setup eliminates the need for managing browser versions and ensures consistent test environments.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="_requirements">Requirements</h6>
+<div class="paragraph">
+<p>To use <code>ContainerGebSpec</code>, ensure that you have a compatible container runtime installed. Supported options include:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Docker Desktop</strong></p>
+</li>
+<li>
+<p><strong>OrbStack</strong> (macOS only)</p>
+</li>
+<li>
+<p><strong>Rancher Desktop</strong></p>
+</li>
+<li>
+<p><strong>Podman Desktop</strong></p>
+</li>
+<li>
+<p><strong>Colima</strong> (macOS and Linux)</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect5">
+<h6 id="_how_it_works">How It Works</h6>
+<div class="paragraph">
+<p>Once a compatible container runtime is installed, no additional configuration is needed. Simply extend your test classes with <code>ContainerGebSpec</code> (instead of <code>GebSpec</code>), and the following will happen:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>A container will be started automatically when you run your integration tests.</p>
+</li>
+<li>
+<p>The container will be configured to launch a browser capable of accessing your application under test.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>With this setup, you gain the benefits of containerized testing, such as isolation, reproducibility, and reduced setup complexity.</p>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_12_10_tomcat_10_1_42_introduced_limits_for_part_count_and_header_size_in_multipartform_data_requests">12.10 Tomcat 10.1.42 introduced limits for part count and header size in multipart/form-data requests</h5>
+<div class="paragraph">
+<p>These limits can be customized using <code>server.tomcat.max-part-count</code> and <code>server.tomcat.max-part-header-size</code> respectively.</p>
+</div>
+<div class="paragraph">
+<p><code>server.tomcat.max-part-count</code> default is 10
+<code>server.tomcat.max-part-header-size</code> defalt is 512B</p>
+</div>
+<div class="paragraph">
+<p><a href="https://docs.spring.io/spring-boot/appendix/application-properties/index.html#application-properties.server.server.tomcat.max-part-count">Spring Boot Common Application Properties</a></p>
 </div>
 </div>
 </div>
@@ -641,9 +799,6 @@ Please see ticket <a href="https://github.com/apache/grails-gradle-plugin/pull/3
                             </div>
                             
                             <div class="menu-item"><a href="../../ref/Command%20Line/dependency-report.html">dependency-report</a>
-                            </div>
-                            
-                            <div class="menu-item"><a href="../../ref/Command%20Line/docs.html">docs</a>
                             </div>
                             
                             <div class="menu-item"><a href="../../ref/Command%20Line/generate-all.html">generate-all</a>
