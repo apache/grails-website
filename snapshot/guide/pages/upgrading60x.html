@@ -873,6 +873,74 @@ apply <span class="key">plugin</span>: <span class="string"><span class="delimit
 <p>Alternatively, you can define the hibernate-ehcache dependency explicitly and adjust it to exclude <code>hibernate-core</code> and add the <code>jboss-transaction-api_1.3_spec</code> see <a href="upgrading.html#_12_5_hibernate_ehcache">Hibernate-ehcache</a></p>
 </div>
 </div>
+<div class="sect4">
+<h5 id="_12_20_a_grails_project_cannot_be_both_a_plugin_an_application">12.20 A Grails project cannot be both a plugin &amp; an Application</h5>
+<div class="paragraph">
+<p>In previous versions of Grails, it was possible to apply both the <code>grails-plugin</code> and <code>grails-web</code> Gradle plugins in <code>build.gradle</code>.
+This would force the project to be both a Grails Plugin and a Grails Application.
+This scenario is not supported and can lead to unexpected behavior due to the AST transforms.</p>
+</div>
+<div class="paragraph">
+<p>Starting with Grails 7, a validation error will trigger if both a Grails Application Gradle Plugin &amp; a Grails Plugin Gradle Plugin are configured in <code>build.gradle</code> for the same Gradle Project.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_12_21_exploded_is_supported_again_to_enable_multi_project_reloading">12.21 <code>exploded</code> is supported again to enable multi-project reloading</h5>
+<div class="paragraph">
+<p>Earlier versions of Grails supported an <code>exploded</code> Gradle configuration that forced defined plugins to use class and resource files, instead of jar files, on the Grails Application runtime classpath if several conditions were true:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>the property <code>grails.run.active</code> was set</p>
+</li>
+<li>
+<p>the plugin project had the property <code>exploded</code> set to <code>true</code> prior to the application of the <code>grails-plugin</code> Gradle plugin</p>
+</li>
+<li>
+<p>plugins were added to the Grails Application project via the <code>plugins</code> block inside of the <code>grails</code> extension in <code>build.gradle</code> instead of the <code>dependencies</code> block</p>
+</li>
+<li>
+<p>the property <code>exploded</code> was set on the <code>grails</code> extension in <code>build.gradle</code> of the Grails Application project</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The <code>exploded</code> setup facilitates better class reloading behavior.
+For Grails 7, it has been simplified to the following:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>In the plugin project, apply the gradle plugin <code>org.apache.grails.gradle.grails-exploded</code></p>
+</li>
+<li>
+<p>In the application project, define plugins inside of the <code>plugins</code> block of the <code>grails</code> extension in <code>build.gradle</code>:</p>
+</li>
+</ol>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails {
+   plugins {
+        implementation project(<span class="string"><span class="delimiter">&quot;</span><span class="content">:my-plugin</span><span class="delimiter">&quot;</span></span>)
+   }
+}</code></pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Expanded class files &amp; resource files will only be used over the jar file if the plugin applies the gradle plugin <code>org.apache.grails.gradle.grails-exploded</code> &amp; the plugin is a subproject of your Gradle build.
+</td>
+</tr>
+</table>
+</div>
+</div>
 </div>
 </div>
 

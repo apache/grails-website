@@ -162,10 +162,10 @@
 </div>
 
 
-<div class="sect3">
-<h4 id="_creating_plugins">Creating Plugins</h4>
+<div class="sect2">
+<h3 id="_creating_plugins">Creating Plugins</h3>
 <div class="paragraph">
-<p>Creating a Grails plugin is a simple matter of running the command:</p>
+<p>Creating a Grails plugin is a simple matter of running one of the supported plugin generators:</p>
 </div>
 <div class="paragraph">
 <p>Grails Shell CLI</p>
@@ -312,7 +312,6 @@ Plugin projects don&#8217;t provide an index.gsp by default since most plugins d
     <span class="keyword">def</span> scm = [ <span class="key">url</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">https://github.com/apache/grails-quartz</span><span class="delimiter">&quot;</span></span> ]
 
     Closure doWithSpring()......</code></pre>
-</div>
 </div>
 </div>
 <div class="sect3">
@@ -512,16 +511,33 @@ In Grails 2.x plugins were packaged as ZIP files, however from Grails 3.x+ plugi
 <i class="fa icon-note" title="Note"></i>
 </td>
 <td class="content">
-You can also declare the dependency within the <code>dependencies</code> block, however you will not get subproject reloading if you do this!
+You can also declare the dependency within the <code>dependencies</code> block, however reloading will not work correctly if defined this way.
 </td>
 </tr>
 </table>
 </div>
 <div class="paragraph">
-<p><strong>Step 4: Configure the plugin to enable reloading</strong></p>
+<p>*Step 4: (Optional) Configure the plugin for reloading</p>
 </div>
 <div class="paragraph">
-<p>In the plugin directory, add or modify the <code>gradle.properties</code> file. A new property <code>exploded=true</code> needs to be set in order for the plugin to add the exploded directories to the classpath.</p>
+<p>Within the <code>build.gradle</code> of the plugin, apply the gradle plugin <code>org.apache.grails.gradle.grails-exploded</code> to allow for proper reloading of the plugin:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">apply <span class="key">plugin</span>: <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails.gradle.grails-exploded</span><span class="delimiter">'</span></span></code></pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+This plugin ensures that development commands such as <code>bootRun</code> use the exploded classes and resources of the plugin rather than the packaged JAR file.
+</td>
+</tr>
+</table>
 </div>
 <div class="paragraph">
 <p><strong>Step 5: Run the application</strong></p>
@@ -649,8 +665,24 @@ Grails application running at <span class="key">http</span>:<span class="comment
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">implementation project(<span class="string"><span class="delimiter">'</span><span class="content">:myplugin</span><span class="delimiter">'</span></span>)</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">grails {
+    plugins {
+        implementation project(<span class="string"><span class="delimiter">'</span><span class="content">:myplugin</span><span class="delimiter">'</span></span>)
+    }
+}</code></pre>
 </div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+You can also declare the dependency within the <code>dependencies</code> block, however your subproject will not reload correctly.
+</td>
+</tr>
+</table>
 </div>
 <div class="paragraph">
 <p>Using this technique you have achieved the equivalent of inline plugins from Grails 2.x.</p>
@@ -787,8 +819,9 @@ Plugin projects don&#8217;t provide an index.gsp by default since most plugins d
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="_plugin_configuration_2">Plugin Configuration</h4>
+</div>
+<div class="sect2">
+<h3 id="_plugin_configuration_2">Plugin Configuration</h3>
 <div class="paragraph">
 <p>Instead of directly accessing Grails configuration as <code>grailsApplication.config.getProperty('mail.hostName', String)</code>, use a Spring Boot configuration bean (or a POJO) annotated with <a href="https://docs.spring.io/spring-boot/3.5.5/api/java/org/springframework/boot/context/properties/ConfigurationProperties.html">ConfigurationProperties</a> annotation. Here is an example plugin configuration:</p>
 </div>
@@ -829,284 +862,6 @@ Plugin projects don&#8217;t provide an index.gsp by default since most plugins d
 </div>
 <div class="paragraph">
 <p>Please read the <a href="https://docs.spring.io/spring-boot/3.5.5/reference/features/external-config.html">Spring Boot Externalized Configuration</a> section for more information.</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_installing_local_plugins_2">Installing Local Plugins</h4>
-<div class="paragraph">
-<p>In order to install the Grails plugin to your local Maven, you could use Gradle <a href="https://docs.gradle.org/current/userguide/publishing_maven.html">Maven Publish</a> plugin. You may also need to configure the publishing extension as:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">publishing {
-    publications {
-        maven(MavenPublication) {
-            versionMapping {
-                usage(<span class="string"><span class="delimiter">'</span><span class="content">java-api</span><span class="delimiter">'</span></span>) {
-                    fromResolutionOf(<span class="string"><span class="delimiter">'</span><span class="content">runtimeClasspath</span><span class="delimiter">'</span></span>)
-                }
-                usage(<span class="string"><span class="delimiter">'</span><span class="content">java-runtime</span><span class="delimiter">'</span></span>) {
-                    fromResolutionResult()
-                }
-            }
-            from components.java
-        }
-    }
-}</code></pre>
-</div>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-Please refer to the Gradle Maven Publish plugin documentation for up-to-date information.
-</td>
-</tr>
-</table>
-</div>
-<div class="paragraph">
-<p>To make your plugin available for use in a Grails application run the <code>./gradlew publishToMavenLocal</code> command:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="bash">./gradlew publishToMavenLocal</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>This will install the plugin into your local Maven cache. Then to use the plugin within an application declare a dependency on the plugin in your <code>build.gradle</code> file and include <code>mavenLocal()</code> in your repositories hash:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">...
-repositories {
-    ...
-    mavenLocal()
-}
-...
-implementation <span class="string"><span class="delimiter">&quot;</span><span class="content">org.apache.grails:grails-quartz:0.1</span><span class="delimiter">&quot;</span></span></code></pre>
-</div>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-In Grails 2.x plugins were packaged as ZIP files, however from Grails 3.x+ plugins are simple JAR files that can be added to the classpath of the IDE.
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_plugins_and_multi_project_builds_2">Plugins and Multi-Project Builds</h4>
-<div class="paragraph">
-<p>If you wish to setup a plugin as part of a multi project build then follow these steps.</p>
-</div>
-<div class="paragraph">
-<p><strong>Step 1: Create the application and the plugin</strong></p>
-</div>
-<div class="paragraph">
-<p>Using the <code>grails</code> command create an application and a plugin:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="error">$</span> grails create-app myapp
-<span class="error">$</span> grails create-plugin myplugin</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p><strong>Step 2: Create a settings.gradle file</strong></p>
-</div>
-<div class="paragraph">
-<p>In the same directory create a <code>settings.gradle</code> file with the following contents:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">include <span class="string"><span class="delimiter">&quot;</span><span class="content">myapp</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">myplugin</span><span class="delimiter">&quot;</span></span></code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The directory structure should be as follows:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">PROJECT_DIR
-  - settings.gradle
-  - myapp
-    - build.gradle
-  - myplugin
-    - build.gradle</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p><strong>Step 3: Declare a project dependency on the plugin</strong></p>
-</div>
-<div class="paragraph">
-<p>Within the <code>build.gradle</code> of the application declare a dependency on the plugin within the <code>plugins</code> block:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">grails {
-    plugins {
-        implementation project(<span class="string"><span class="delimiter">'</span><span class="content">:myplugin</span><span class="delimiter">'</span></span>)
-    }
-}</code></pre>
-</div>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-You can also declare the dependency within the <code>dependencies</code> block, however you will not get subproject reloading if you do this!
-</td>
-</tr>
-</table>
-</div>
-<div class="paragraph">
-<p><strong>Step 4: Configure the plugin to enable reloading</strong></p>
-</div>
-<div class="paragraph">
-<p>In the plugin directory, add or modify the <code>gradle.properties</code> file. A new property <code>exploded=true</code> needs to be set in order for the plugin to add the exploded directories to the classpath.</p>
-</div>
-<div class="paragraph">
-<p><strong>Step 5: Run the application</strong></p>
-</div>
-<div class="paragraph">
-<p>Now run the application using the <code>./gradlew bootRun</code> command from the root of the application directory, you can use the <code>verbose</code> flag to see the Gradle output:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="error">$</span> cd myapp
-<span class="error">$</span> .<span class="regexp"><span class="delimiter">/</span><span class="content">gradlew bootRun --verbose</span></span></code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>You will notice from the Gradle output that plugins sources are built and placed on the classpath of your application:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">:<span class="key">myplugin</span>:compileAstJava UP-TO-DATE
-:<span class="key">myplugin</span>:compileAstGroovy UP-TO-DATE
-:<span class="key">myplugin</span>:processAstResources UP-TO-DATE
-:<span class="key">myplugin</span>:astClasses UP-TO-DATE
-:<span class="key">myplugin</span>:compileJava UP-TO-DATE
-:<span class="key">myplugin</span>:configScript UP-TO-DATE
-:<span class="key">myplugin</span>:compileGroovy
-:<span class="key">myplugin</span>:copyAssets UP-TO-DATE
-:<span class="key">myplugin</span>:copyCommands UP-TO-DATE
-:<span class="key">myplugin</span>:copyTemplates UP-TO-DATE
-:<span class="key">myplugin</span>:processResources
-:<span class="key">myapp</span>:compileJava UP-TO-DATE
-:<span class="key">myapp</span>:compileGroovy
-:<span class="key">myapp</span>:processResources UP-TO-DATE
-:<span class="key">myapp</span>:classes
-:<span class="key">myapp</span>:findMainClass
-:<span class="key">myapp</span>:bootRun
-Grails application running at <span class="key">http</span>:<span class="comment">//localhost:8080 in environment: development</span></code></pre>
-</div>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_notes_on_excluded_artefacts">Notes on excluded Artefacts</h4>
-<div class="paragraph">
-<p>Although the <a href="../ref/Command%20Line/create-plugin.html">create-plugin</a> command creates certain files for you so that the plugin can be run as a Grails application, not all of these files are included when packaging a plugin. The following is a list of artefacts created, but not included by <a href="../ref/Command%20Line/package-plugin.html">package-plugin</a>:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><code>grails-app/build.gradle</code> (although it is used to generate <code>dependencies.groovy</code>)</p>
-</li>
-<li>
-<p><code>grails-app/conf/logback.xml</code></p>
-</li>
-<li>
-<p><code>grails-app/conf/logback-spring.xml</code></p>
-</li>
-<li>
-<p><code>grails-app/conf/application.yml</code></p>
-</li>
-<li>
-<p><code>grails-app/conf/application.groovy</code></p>
-</li>
-<li>
-<p><code>grails-app/conf/spring/resources.groovy</code></p>
-</li>
-<li>
-<p>Everything within <code>/src/test/*\*</code></p>
-</li>
-<li>
-<p>SCM management files within <code>*\*/.svn/*\*</code> and <code>*\*/CVS/*\*</code></p>
-</li>
-</ul>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_customizing_the_plugin_contents_2">Customizing the plugin contents</h4>
-<div class="paragraph">
-<p>When developing a plugin you may create test classes and sources that are used during the development and testing of the plugin but should not be exported to the application.</p>
-</div>
-<div class="paragraph">
-<p>To exclude test sources you need to modify the <code>pluginExcludes</code> property of the plugin descriptor AND exclude the resources inside your <code>build.gradle</code> file. For example say you have some classes under the <code>com.demo</code> package that are in your plugin source tree but should not be packaged in the application. In your plugin descriptor you should exclude these:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">// resources that should be loaded by the plugin once installed in the application</span>
-  <span class="keyword">def</span> pluginExcludes = [
-    <span class="string"><span class="delimiter">'</span><span class="content">**/com/demo/**</span><span class="delimiter">'</span></span>
-  ]</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>And in your <code>build.gradle</code> you should exclude the compiled classes from the JAR file:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">jar {
-  exclude <span class="string"><span class="delimiter">&quot;</span><span class="content">com/demo/**/**</span><span class="delimiter">&quot;</span></span>
-}</code></pre>
-</div>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_inline_plugins_in_grails_2">Inline Plugins in Grails</h4>
-<div class="paragraph">
-<p>In Grails 2.x it was possible to specify inline plugins in <code>BuildConfig</code>, from Grails 3.x+ this functionality has been replaced by Gradle&#8217;s multi-project build feature.</p>
-</div>
-<div class="paragraph">
-<p>To set up a multi project build create an appliation and a plugin in a parent directory:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="error">$</span> grails create-app myapp
-<span class="error">$</span> grails create-plugin myplugin</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Then create a <code>settings.gradle</code> file in the parent directory specifying the location of your application and plugin:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">include <span class="string"><span class="delimiter">'</span><span class="content">myapp</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">myplugin</span><span class="delimiter">'</span></span></code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Finally add a dependency in your application&#8217;s <code>build.gradle</code> on the plugin:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">implementation project(<span class="string"><span class="delimiter">'</span><span class="content">:myplugin</span><span class="delimiter">'</span></span>)</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Using this technique you have achieved the equivalent of inline plugins from Grails 2.x.</p>
 </div>
 </div>
 
