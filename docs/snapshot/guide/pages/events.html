@@ -297,7 +297,11 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.events.annotation.*</span>
 ...
-Unresolved directive <span class="keyword">in</span> &lt;stdin&gt; - <span class="key">include</span>::<span class="regexp"><span class="delimiter">/</span><span class="content">home</span><span class="delimiter">/</span></span>runner/work/grails-core/grails-core/grails-events/transform/src/test/groovy/grails/events/annotation/PubSubSpec.groovy[tags=publisher]</code></pre>
+class SumService {
+
+    <span class="annotation">@Publisher</span>
+    <span class="type">int</span> sum(<span class="type">int</span> a, <span class="type">int</span> b) { a + b }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -319,7 +323,14 @@ Unresolved directive <span class="keyword">in</span> &lt;stdin&gt; - <span class
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.events.*</span>
 ...
-Unresolved directive <span class="keyword">in</span> &lt;stdin&gt; - <span class="key">include</span>::<span class="regexp"><span class="delimiter">/</span><span class="content">home</span><span class="delimiter">/</span></span>runner/work/grails-core/grails-core/grails-events/transform/src/test/groovy/grails/events/ManualPubSubSpec.groovy[tags=publisher]</code></pre>
+class SumService <span class="directive">implements</span> EventPublisher {
+
+    <span class="type">int</span> sum(<span class="type">int</span> a, <span class="type">int</span> b) {
+        <span class="type">int</span> result = a + b
+        notify(<span class="string"><span class="delimiter">'</span><span class="content">sum</span><span class="delimiter">'</span></span>, result)
+        <span class="keyword">return</span> result
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -350,7 +361,13 @@ Unresolved directive <span class="keyword">in</span> &lt;stdin&gt; - <span class
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.events.annotation.*</span>
 ...
-Unresolved directive <span class="keyword">in</span> &lt;stdin&gt; - <span class="key">include</span>::<span class="regexp"><span class="delimiter">/</span><span class="content">home</span><span class="delimiter">/</span></span>runner/work/grails-core/grails-core/grails-events/transform/src/test/groovy/grails/events/annotation/PubSubSpec.groovy[tags=subscriber]</code></pre>
+class TotalService {
+
+    <span class="predefined-type">AtomicInteger</span> total = <span class="keyword">new</span> <span class="predefined-type">AtomicInteger</span>(<span class="integer">0</span>)
+
+    <span class="annotation">@Subscriber</span>
+    <span class="type">void</span> onSum(<span class="type">int</span> num) { total.addAndGet(num) }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -373,7 +390,17 @@ Unresolved directive <span class="keyword">in</span> &lt;stdin&gt; - <span class
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.events.bus.EventBusAware</span>
 <span class="keyword">import</span> <span class="include">jakarta.annotation.PostConstruct</span>
 ...
-Unresolved directive <span class="keyword">in</span> &lt;stdin&gt; - <span class="key">include</span>::<span class="regexp"><span class="delimiter">/</span><span class="content">home</span><span class="delimiter">/</span></span>runner/work/grails-core/grails-core/grails-events/transform/src/test/groovy/grails/events/ManualPubSubSpec.groovy[tags=subscriber]</code></pre>
+class TotalService <span class="directive">implements</span> EventBusAware {
+
+    <span class="predefined-type">AtomicInteger</span> total = <span class="keyword">new</span> <span class="predefined-type">AtomicInteger</span>(<span class="integer">0</span>)
+
+    <span class="annotation">@PostConstruct</span>
+    <span class="type">void</span> init() {
+        eventBus.subscribe(<span class="string"><span class="delimiter">'</span><span class="content">sum</span><span class="delimiter">'</span></span>) { <span class="type">int</span> num -&gt;
+            total.addAndGet(num)
+        }
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
