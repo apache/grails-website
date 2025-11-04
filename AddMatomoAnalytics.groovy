@@ -1,3 +1,7 @@
+@Grab(group='org.codehaus.gpars', module='gpars', version='1.2.1')
+import groovyx.gpars.GParsPool
+import java.util.concurrent.atomic.AtomicInteger
+
 // Define the Matomo tracking code to insert
 def matomoCode = '''    <!-- Matomo -->
     <script>
@@ -31,32 +35,62 @@ currentDir.eachFileRecurse { file ->
 
 println "Found ${htmlFiles.size()} HTML files"
 
-// Process each file
-htmlFiles.each { file ->
-    def content = file.text
+// Thread-safe counters
+def updatedCount = new AtomicInteger(0)
+def skippedCount = new AtomicInteger(0)
 
-    // Check if Matomo code already exists
-    if (content.contains('<!-- Matomo -->') || content.contains('matomo.js')) {
-        println "Skipping ${file.name} - Matomo code already present"
-        return
+// Get number of available processors
+def numThreads = Runtime.runtime.availableProcessors()
+println "Processing files using ${numThreads} threads with GPars..."
+
+// Process files in parallel using GPars
+GParsPool.withPool(numThreads) {
+    htmlFiles.eachParallel { file ->
+        try {
+            def content = file.text
+
+            // Check if Matomo code already exists
+            if (content.contains('<!-- Matomo -->') || content.contains('matomo.js')) {
+                synchronized(System.out) {
+                    println "Skipping ${file.absolutePath} - Matomo code already present"
+                }
+                skippedCount.incrementAndGet()
+                return
+            }
+
+            def updatedContent
+
+            // Check if file has a closing </head> tag
+            // Insert Matomo code before </head>
+            if (content.contains('</head>')) {
+                updatedContent = content.replaceFirst('</head>', "${matomoCode}\n</head>")
+            } else if (content.contains('</HEAD>')) {
+                updatedContent = content.replaceFirst('</HEAD>', "${matomoCode}\n</HEAD>")
+            } else if (content.contains('<body class="center">')) {
+                updatedContent = content.replaceFirst('<body class="center">', "${matomoCode}\n<body class=\"center\">")
+            } else {
+                synchronized(System.out) {
+                    println "Skipping ${file.absolutePath} - No </head> tag found"
+                }
+                skippedCount.incrementAndGet()
+                return
+            }
+
+            // Write the updated content back to the file
+            file.write(updatedContent)
+            synchronized(System.out) {
+                println "Updated ${file.absolutePath}"
+            }
+            updatedCount.incrementAndGet()
+        } catch (Exception e) {
+            synchronized(System.out) {
+                println "Error processing ${file.absolutePath}: ${e.message}"
+            }
+        }
     }
-
-    def updatedContent
-
-    // Check if file has a closing </head> tag
-    // Insert Matomo code before </head>
-    if (content.contains('</head>')) {
-        updatedContent = content.replaceFirst('</head>', "${matomoCode}\n</head>")
-    } else if (content.contains('</HEAD>')) {
-        updatedContent = content.replaceFirst('</HEAD>', "${matomoCode}\n</HEAD>")
-    } else {
-        println "Skipping ${file.name} - No </head> tag found"
-        return
-    }
-
-    // Write the updated content back to the file
-    file.write(updatedContent)
-    println "Updated ${file.name}"
 }
 
-println "Processing complete!"
+println "\nProcessing complete!"
+println "Files updated: ${updatedCount.get()}"
+println "Files skipped: ${skippedCount.get()}"
+println "Total files processed: ${htmlFiles.size()}"
