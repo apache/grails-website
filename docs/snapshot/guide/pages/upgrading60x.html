@@ -1200,6 +1200,104 @@ tasks.withType(JavaExec).configureEach {
 </div>
 </div>
 </div>
+<div class="sect4">
+<h5 id="_12_26_enum_jsonxml_serialization">12.26 Enum JSON/XML Serialization</h5>
+<div class="paragraph">
+<p>As of Grails 7.0.2, enum serialization has been enhanced to support round-trip compatibility between JSON/XML serialization and deserialization. The legacy enum marshaller, which produced verbose output with type metadata, has been deprecated in favor of a simpler format that matches how enums are expected on input.</p>
+</div>
+<div class="sect5">
+<h6 id="_legacy_behavior_deprecated">Legacy Behavior (Deprecated)</h6>
+<div class="paragraph">
+<p>Previously, enums were serialized with metadata:</p>
+</div>
+<div class="paragraph">
+<p><strong>JSON:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="json">{
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">stage</span><span class="delimiter">&quot;</span></span>: {
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">enumType</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">com.example.ChallengeStage</span><span class="delimiter">&quot;</span></span>,
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">name</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">SUBMIT</span><span class="delimiter">&quot;</span></span>
+  }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><strong>XML:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="xml"><span class="tag">&lt;stage</span> <span class="attribute-name">enumType</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">com.example.ChallengeStage</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>SUBMIT<span class="tag">&lt;/stage&gt;</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This format is <strong>asymmetric</strong> - when POSTing data, you send <code>"stage":"SUBMIT"</code>, but when GETting data, you receive the verbose object structure.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="_new_behavior_recommended">New Behavior (Recommended)</h6>
+<div class="paragraph">
+<p>The new <code>SimpleEnumMarshaller</code> serializes enums as simple string values, providing <strong>round-trip compatibility</strong>:</p>
+</div>
+<div class="paragraph">
+<p><strong>JSON:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="json">{
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">stage</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">SUBMIT</span><span class="delimiter">&quot;</span></span>
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><strong>XML:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="xml"><span class="tag">&lt;stage&gt;</span>SUBMIT<span class="tag">&lt;/stage&gt;</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Now the format you POST is the same format you GET back.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="_migration">Migration</h6>
+<div class="paragraph">
+<p>To opt-in to the new behavior, add the following to your <code>application.yml</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yml"><span class="key">grails</span>:
+  <span class="key">converters</span>:
+    <span class="key">json</span>:
+      <span class="key">enum</span>:
+        <span class="key">format</span>: <span class="string"><span class="content">simple</span></span>
+    <span class="key">xml</span>:
+      <span class="key">enum</span>:
+        <span class="key">format</span>: <span class="string"><span class="content">simple</span></span></code></pre>
+</div>
+</div>
+</div>
+<div class="sect5">
+<h6 id="_deprecation_timeline">Deprecation Timeline</h6>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>7.0.2</strong>: Legacy <code>EnumMarshaller</code> deprecated (default), <code>SimpleEnumMarshaller</code> available via config</p>
+</li>
+<li>
+<p><strong>8.0</strong>: <code>SimpleEnumMarshaller</code> will become the default</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The legacy <code>org.grails.web.converters.marshaller.json.EnumMarshaller</code> and <code>org.grails.web.converters.marshaller.xml.EnumMarshaller</code> classes are marked as <code>@Deprecated(forRemoval = true, since = "7.0.2")</code> and will be removed in Grails 8.0.</p>
+</div>
+</div>
+</div>
 </div>
 </div>
 
