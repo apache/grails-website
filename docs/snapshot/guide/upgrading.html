@@ -1544,6 +1544,342 @@ tasks.withType(JavaExec).configureEach {
 </div>
 </div>
 </div>
+<div class="sect4">
+<h5 id="_12_29_enhanced_audit_metadata_support">12.29 Enhanced Audit Metadata Support</h5>
+<div class="paragraph">
+<p>Grails 7.1 introduces comprehensive audit metadata support with new annotations for tracking both temporal information (when changes occurred) and auditor information (who made changes). This aligns with Spring Data&#8217;s auditing model while maintaining GORM&#8217;s flexibility.</p>
+</div>
+<div class="sect5">
+<h6 id="_new_annotations">New Annotations</h6>
+<div class="paragraph">
+<p>Four new annotations have been added to simplify audit tracking:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>@CreatedDate</code> - Automatically populated with the creation timestamp on insert</p>
+</li>
+<li>
+<p><code>@LastModifiedDate</code> - Automatically populated with the modification timestamp on insert and update</p>
+</li>
+<li>
+<p><code>@CreatedBy</code> - Automatically populated with the current auditor on insert</p>
+</li>
+<li>
+<p><code>@LastModifiedBy</code> - Automatically populated with the current auditor on insert and update</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>These annotations work with various temporal types including <code>Date</code>, <code>LocalDateTime</code>, <code>Instant</code>, <code>OffsetDateTime</code>, and <code>ZonedDateTime</code>.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="_example_domain_class">Example Domain Class</h6>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.gorm.annotation.CreatedBy</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.annotation.CreatedDate</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.annotation.LastModifiedBy</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.annotation.LastModifiedDate</span>
+<span class="keyword">import</span> <span class="include">java.time.LocalDateTime</span>
+
+<span class="type">class</span> <span class="class">Book</span> {
+    <span class="predefined-type">String</span> title
+    <span class="predefined-type">String</span> author
+
+    <span class="annotation">@CreatedDate</span>
+    LocalDateTime created
+
+    <span class="annotation">@LastModifiedDate</span>
+    LocalDateTime modified
+
+    <span class="annotation">@CreatedBy</span>
+    <span class="predefined-type">String</span> createdBy
+
+    <span class="annotation">@LastModifiedBy</span>
+    <span class="predefined-type">String</span> modifiedBy
+
+    <span class="directive">static</span> constraints = {
+        title <span class="key">blank</span>: <span class="predefined-constant">false</span>
+        author <span class="key">blank</span>: <span class="predefined-constant">false</span>
+        <span class="comment">// Auditor fields should be nullable for anonymous operations</span>
+        createdBy <span class="key">nullable</span>: <span class="predefined-constant">true</span>
+        modifiedBy <span class="key">nullable</span>: <span class="predefined-constant">true</span>
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect5">
+<h6 id="_configuring_auditoraware">Configuring AuditorAware</h6>
+<div class="paragraph">
+<p>To populate <code>@CreatedBy</code> and <code>@LastModifiedBy</code> fields, you need to provide an <code>AuditorAware</code> bean that returns the current auditor:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/main/groovy/com/example/SpringSecurityAuditorAware.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> com.example
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.gorm.timestamp.AuditorAware</span>
+<span class="keyword">import</span> <span class="include">org.springframework.security.core.Authentication</span>
+<span class="keyword">import</span> <span class="include">org.springframework.security.core.context.SecurityContextHolder</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">SpringSecurityAuditorAware</span> <span class="directive">implements</span> AuditorAware&lt;<span class="predefined-type">String</span>&gt; {
+
+    <span class="annotation">@Override</span>
+    Optional&lt;<span class="predefined-type">String</span>&gt; getCurrentAuditor() {
+        Authentication authentication = SecurityContextHolder.getContext()
+                                                              .getAuthentication()
+
+        <span class="keyword">if</span> (authentication == <span class="predefined-constant">null</span> || !authentication.isAuthenticated()) {
+            <span class="keyword">return</span> Optional.empty()
+        }
+
+        <span class="predefined-type">String</span> username = authentication.getName()
+
+        <span class="comment">// Don't set auditor for anonymous users</span>
+        <span class="keyword">if</span> (username == <span class="string"><span class="delimiter">'</span><span class="content">anonymousUser</span><span class="delimiter">'</span></span>) {
+            <span class="keyword">return</span> Optional.empty()
+        }
+
+        <span class="keyword">return</span> Optional.of(username)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Register the bean in your <code>Application.groovy</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/init/com/example/Application.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">org.grails.datastore.gorm.timestamp.AuditorAware</span>
+<span class="keyword">import</span> <span class="include">org.springframework.context.annotation.Bean</span>
+
+<span class="type">class</span> <span class="class">Application</span> <span class="directive">extends</span> GrailsAutoConfiguration {
+    <span class="directive">static</span> <span class="type">void</span> main(<span class="predefined-type">String</span><span class="type">[]</span> args) {
+        GrailsApp.run(Application, args)
+    }
+
+    <span class="annotation">@Bean</span>
+    AuditorAware&lt;<span class="predefined-type">String</span>&gt; auditorAware() {
+        <span class="keyword">return</span> <span class="keyword">new</span> SpringSecurityAuditorAware()
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect5">
+<h6 id="_auditor_field_types">Auditor Field Types</h6>
+<div class="paragraph">
+<p>Auditor fields can be different types depending on your needs:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>String</code> - for username strings</p>
+</li>
+<li>
+<p><code>Long</code> - for user ID references</p>
+</li>
+<li>
+<p>Custom types - for embedding user objects</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Example with different auditor types:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">Document</span> {
+    <span class="predefined-type">String</span> title
+
+    <span class="annotation">@CreatedDate</span>
+    LocalDateTime created
+
+    <span class="annotation">@CreatedBy</span>
+    <span class="predefined-type">String</span> createdByUsername  <span class="comment">// Store username as String</span>
+
+    <span class="annotation">@LastModifiedBy</span>
+    <span class="predefined-type">Long</span> lastModifiedById     <span class="comment">// Store user ID as Long</span>
+
+    <span class="directive">static</span> constraints = {
+        createdByUsername <span class="key">nullable</span>: <span class="predefined-constant">true</span>
+        lastModifiedById <span class="key">nullable</span>: <span class="predefined-constant">true</span>
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect5">
+<h6 id="_constraints_on_auditor_fields">Constraints on Auditor Fields</h6>
+<div class="paragraph">
+<p>Unlike timestamp fields, auditor fields can have constraints applied to them. This is useful for:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Setting <code>maxSize</code> on String auditors to match database column definitions</p>
+</li>
+<li>
+<p>Applying validation rules</p>
+</li>
+<li>
+<p>Customizing database mapping</p>
+</li>
+</ul>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">Task</span> {
+    <span class="predefined-type">String</span> name
+
+    <span class="annotation">@CreatedBy</span>
+    <span class="predefined-type">String</span> createdBy
+
+    <span class="annotation">@LastModifiedBy</span>
+    <span class="predefined-type">String</span> modifiedBy
+
+    <span class="directive">static</span> constraints = {
+        name <span class="key">blank</span>: <span class="predefined-constant">false</span>
+        <span class="comment">// Apply constraints to auditor fields</span>
+        createdBy <span class="key">nullable</span>: <span class="predefined-constant">true</span>, <span class="key">maxSize</span>: <span class="integer">100</span>
+        modifiedBy <span class="key">nullable</span>: <span class="predefined-constant">true</span>, <span class="key">maxSize</span>: <span class="integer">100</span>
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect5">
+<h6 id="_deprecation_of_autotimestamp">Deprecation of @AutoTimestamp</h6>
+<div class="paragraph">
+<p>The <code>@AutoTimestamp</code> annotation is now deprecated in favor of the more explicit <code>@CreatedDate</code> and <code>@LastModifiedDate</code> annotations:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">// Old (deprecated)</span>
+<span class="annotation">@AutoTimestamp</span>(AutoTimestamp.EventType.CREATED)
+LocalDateTime created
+
+<span class="annotation">@AutoTimestamp</span>
+LocalDateTime modified
+
+<span class="comment">// New (recommended)</span>
+<span class="annotation">@CreatedDate</span>
+LocalDateTime created
+
+<span class="annotation">@LastModifiedDate</span>
+LocalDateTime modified</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The <code>@AutoTimestamp</code> annotation is marked with <code>@Deprecated(forRemoval = true)</code> and will be removed in Grails 8.0.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="_migration_guide">Migration Guide</h6>
+<div class="paragraph">
+<p>To migrate from <code>@AutoTimestamp</code> to the new annotations:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Replace <code>@AutoTimestamp(AutoTimestamp.EventType.CREATED)</code> with <code>@CreatedDate</code></p>
+</li>
+<li>
+<p>Replace <code>@AutoTimestamp</code> (or <code>@AutoTimestamp(EventType.UPDATED)</code>) with <code>@LastModifiedDate</code></p>
+</li>
+<li>
+<p>Optionally add <code>@CreatedBy</code> and <code>@LastModifiedBy</code> fields for auditor tracking</p>
+</li>
+<li>
+<p>Implement and register an <code>AuditorAware</code> bean if using auditor fields</p>
+</li>
+<li>
+<p>Remove <code>nullable: true</code> constraints from timestamp fields (no longer needed)</p>
+</li>
+<li>
+<p>Keep <code>nullable: true</code> on auditor fields (required for anonymous operations)</p>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect5">
+<h6 id="_automatic_imports_for_annotations">Automatic Imports for Annotations</h6>
+<div class="paragraph">
+<p>To reduce boilerplate when using audit annotations, you can enable automatic imports for common Grails annotations in your <code>build.gradle</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails {
+    importGrailsCommonAnnotations = <span class="predefined-constant">true</span>
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>When enabled, this automatically imports:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>jakarta.validation.constraints.*</code> - Jakarta validation annotations</p>
+</li>
+<li>
+<p><code>grails.gorm.annotation.*</code> - All GORM annotations including <code>@CreatedDate</code>, <code>@LastModifiedDate</code>, <code>@CreatedBy</code>, <code>@LastModifiedBy</code></p>
+</li>
+<li>
+<p><code>grails.plugin.scaffolding.annotation.*</code> - Scaffolding annotations (if grails-scaffolding is in classpath)</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>With this setting, you can use the annotations without explicit imports:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">// No import statements needed!</span>
+<span class="type">class</span> <span class="class">Book</span> {
+    <span class="predefined-type">String</span> title
+
+    <span class="annotation">@CreatedDate</span>      <span class="comment">// Automatically imported</span>
+    LocalDateTime created
+
+    <span class="annotation">@LastModifiedDate</span> <span class="comment">// Automatically imported</span>
+    LocalDateTime modified
+
+    <span class="annotation">@CreatedBy</span>        <span class="comment">// Automatically imported</span>
+    <span class="predefined-type">String</span> createdBy
+
+    <span class="annotation">@NotBlank</span>         <span class="comment">// jakarta.validation.constraints.NotBlank imported</span>
+    <span class="annotation">@Size</span>(max = <span class="integer">255</span>)  <span class="comment">// jakarta.validation.constraints.Size imported</span>
+    <span class="predefined-type">String</span> author
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect5">
+<h6 id="_custom_star_imports">Custom Star Imports</h6>
+<div class="paragraph">
+<p>You can also configure custom star imports for your own packages independently:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails {
+    starImports = [<span class="string"><span class="delimiter">'</span><span class="content">java.util.concurrent</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">groovy.transform</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">com.myapp.annotations</span><span class="delimiter">'</span></span>]
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This allows you to use classes from these packages without explicit imports throughout your Groovy code. The <code>starImports</code> configuration works independently and will be combined with any imports from <code>importGrailsCommonAnnotations</code> or <code>importJavaTime</code> flags if those are also enabled.</p>
+</div>
+</div>
+</div>
 </div>
 </div>
 
