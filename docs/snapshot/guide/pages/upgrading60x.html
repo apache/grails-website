@@ -1851,6 +1851,146 @@ LocalDateTime modified</code></pre>
 </div>
 </div>
 </div>
+<div class="sect4">
+<h5 id="_12_30_scaffolding_namespace_view_defaults">12.30 Scaffolding Namespace View Defaults</h5>
+<div class="paragraph">
+<p>Grails 7.1 introduces an opt-in feature for scaffolding that allows namespace-specific scaffolded templates to take priority over non-namespaced view fallbacks.</p>
+</div>
+<div class="sect5">
+<h6 id="_background">Background</h6>
+<div class="paragraph">
+<p>Previously, when a namespace controller requested a view, the scaffolding plugin would only generate a scaffolded view if no view existed at all. This meant that if you had:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>A namespace controller (e.g., <code>namespace = 'admin'</code>)</p>
+</li>
+<li>
+<p>A non-namespaced view in <code>grails-app/views/event/index.gsp</code></p>
+</li>
+<li>
+<p>A namespace-specific scaffolded template in <code>src/main/templates/scaffolding/admin/index.gsp</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The non-namespaced view would always be used, and the namespace-specific scaffolded template would be ignored.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="_new_behavior">New Behavior</h6>
+<div class="paragraph">
+<p>With the new <code>enableNamespaceViewDefaults</code> configuration, namespace-specific scaffolded templates can now override non-namespaced view fallbacks. This provides better support for namespace-specific customization of scaffolded views.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="_configuration">Configuration</h6>
+<div class="paragraph">
+<p>To enable this feature, add the following to your <code>application.yml</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yml"><span class="key">grails</span>:
+    <span class="key">scaffolding</span>:
+        <span class="key">enableNamespaceViewDefaults</span>: <span class="string"><span class="content">true</span></span></code></pre>
+</div>
+</div>
+</div>
+<div class="sect5">
+<h6 id="_view_resolution_priority">View Resolution Priority</h6>
+<div class="paragraph">
+<p>When <code>enableNamespaceViewDefaults</code> is enabled, the view resolution priority for namespace controllers is:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>Namespace-specific view</strong> (e.g., <code>grails-app/views/admin/event/index.gsp</code>)</p>
+<div class="ulist">
+<ul>
+<li>
+<p>If exists → used (highest priority)</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Namespace-specific scaffolded template</strong> (e.g., <code>src/main/templates/scaffolding/admin/index.gsp</code>)</p>
+<div class="ulist">
+<ul>
+<li>
+<p>If exists and no namespace view → used (overrides fallback)</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Non-namespaced view fallback</strong> (e.g., <code>grails-app/views/event/index.gsp</code>)</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Used if no namespace view or scaffolded template exists</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Non-namespaced scaffolded template</strong> (e.g., <code>src/main/templates/scaffolding/index.gsp</code>)</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Used if no views exist at all</p>
+</li>
+</ul>
+</div>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect5">
+<h6 id="_example_use_case">Example Use Case</h6>
+<div class="paragraph">
+<p>This feature is useful when you want different scaffolded views for different namespaces:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">// Regular event controller</span>
+<span class="annotation">@Scaffold</span>(RestfulServiceController&lt;<span class="predefined-type">Event</span>&gt;)
+<span class="type">class</span> <span class="class">EventController</span> {
+}
+
+<span class="comment">// Admin event controller with namespace</span>
+<span class="annotation">@Scaffold</span>(RestfulServiceController&lt;<span class="predefined-type">Event</span>&gt;)
+<span class="type">class</span> <span class="class">EventController</span> {
+    <span class="directive">static</span> namespace = <span class="string"><span class="delimiter">'</span><span class="content">admin</span><span class="delimiter">'</span></span>
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>With <code>enableNamespaceViewDefaults: true</code>, you can provide:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>src/main/templates/scaffolding/index.gsp</code> - Default scaffolded template</p>
+</li>
+<li>
+<p><code>src/main/templates/scaffolding/admin/index.gsp</code> - Admin-specific scaffolded template</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The admin controller will use the admin-specific template even if a non-namespaced view exists.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="_backward_compatibility_2">Backward Compatibility</h6>
+<div class="paragraph">
+<p>This feature is <strong>disabled by default</strong> (<code>false</code>), ensuring complete backward compatibility. Existing applications will continue to work without any changes. Enable the feature only when you need namespace-specific scaffolded template support.</p>
+</div>
+</div>
+</div>
 </div>
 </div>
 
