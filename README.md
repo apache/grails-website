@@ -15,10 +15,14 @@ https://grails.apache.org/
 
 It contains:
 
-- Current and legacy documentation
-- Guides and learning resources
-- Grails Forge–related content
-- Website source code and configuration
+- The Apache Grails Website
+- Current documentation
+- Legacy (pre-asf) documentation
+
+It will also eventually contain the following, once they are migrated from the historical gh-pages grails.org subdomains:
+
+- Grails Guides
+- Grails Forge
 
 Content from multiple Grails repositories is aggregated here and published to  
 https://grails.apache.org/ using the `publish` process defined in `.asf.yml`.
@@ -32,8 +36,6 @@ For information about using the Grails framework itself, please refer to the
 
 The `grails-website` repository is responsible for:
 
-- Maintaining the official Apache Grails website
-- Managing documentation and guides
 - Aggregating website content from different repositories
 - Publishing the site using Apache infrastructure
 
@@ -48,66 +50,11 @@ understand how it is organised:
 
 ```text
 grails-website/
-├── src/                # Website source code
-├── content/            # Documentation and guides
-├── assets/             # Static assets (CSS, JavaScript, images)
-├── config/             # Website configuration
+├── docs-legacy-*/                     # Histoical Grails documentation prior to the move to ASF
+├── docs/                              # Grails documentation including groovydocs - published from https://github.com/apache/grails-core/tree/HEAD/grails-doc
+├── AddMatomoAnalytics.groovy          # Adds missing Apache Analytics Tracking run as `groovy AddMatomoAnalytics.groovy`
 ├── .asf.yml            # Apache site publishing configuration
-├── build.gradle        # Build configuration
 └── README.md           # Project documentation
 ```
 
-You do not need to understand every directory to get started—this overview
-is provided to help you get oriented.
-
-## Prerequisites
-To work on the Apache Grails website locally, you will need:
-- Java Development Kit (JDK)
-- Git
-- Gradle
-
-
-## Getting Started (Local Setup)
-Follow the steps below to run the Grails website locally.
-
-1. Clone the repository
-   `git clone https://github.com/apache/grails-website.git
-cd grails-website`
-
-2. Build the project
-   `./gradlew build
-`
-
-3. Run the website locally
-   `./gradlew bootRun
-`
-
-4. Open the website
-   `http://localhost:8080
-`
-
-## Optional: Installing Grails Using SDKMAN!
-If you prefer managing Grails versions locally, you can install Grails using
-[https://sdkman.io/](SDKMAN!)
-
-Install SDKMAN!
-`curl -s https://get.sdkman.io | bash`
-
-Initialise SDKMAN!:
-`source "$HOME/.sdkman/bin/sdkman-init.sh"`
-
-Verify installation:
-`sdk version`
-
-Install Grails
-`sdk install grails`
-
-Verify Grails installation:
-`grails --version`
-
-|Note: Installing Grails is optional for working on the website itself, but may
-be useful when contributing to Grails-related tools or documentation.|
-
-
-
-
+The remaining directories are all generated and published from https://github.com/apache/grails-static-website
