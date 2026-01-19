@@ -209,8 +209,8 @@ Doing so will ensure a seamless transition to the latest version of Grails and e
 Several changes in <a href="https://groovy-lang.org/releasenotes/groovy-4.0.html">Groovy 4</a> can affect your application.
 Changes that may affect a Grails Application or Plugin include:</p>
 </div>
-<div class="olist arabic">
-<ol class="arabic">
+<div class="ulist">
+<ul>
 <li>
 <p><a href="https://issues.apache.org/jira/browse/GROOVY-10621">GROOVY-10621</a> - Primitive booleans will no longer generate the form of isProperty &amp; getProperty.
 They will only generate isProperty().
@@ -229,11 +229,11 @@ In Groovy 4, the order is now Delegate&#8217;s invokeMethod, Delegate&#8217;s in
 <p>Closures defined in a parent class that reference its private properties or methods may no longer have access to them in subclasses.
 See <a href="https://issues.apache.org/jira/browse/GROOVY-11568">GROOVY-11568</a> for more details.</p>
 </li>
-</ol>
-</div>
-<div class="paragraph">
+<li>
 <p>Some older libraries may include an older version of groovy, but still be compatible with Groovy 4. One example is GPars.
 In your gradle file, you can force a dependency upgrade via this code:</p>
+</li>
+</ul>
 </div>
 <div class="listingblock">
 <div class="title">build.gradle</div>
@@ -247,12 +247,12 @@ In your gradle file, you can force a dependency upgrade via this code:</p>
   }</code></pre>
 </div>
 </div>
-<div class="olist arabic">
-<ol class="arabic">
+<div class="ulist">
+<ul>
 <li>
 <p>By default, Groovy 4 switches away from callsite optimizations and uses invokedynamic instead. This can result in performance regressions compared to Grails 6. Groovy 5 will remove the ability to disable invokedynamic, but to disable it for Groovy 4, modify your <code>build.gradle</code> to include the following:</p>
 </li>
-</ol>
+</ul>
 </div>
 <div class="listingblock">
 <div class="title">build.gradle</div>
@@ -299,6 +299,146 @@ Please remove older properties such as <code>gormVersion</code> &amp; <code>grai
 You can override a version in the BOM by setting the associated Gradle property.
 The possible gradle properties are generated as part of this documentation.
 Please see link:../ref/Versions/Grails BOM.html[Grails BOM Dependencies] for a quick reference.</p>
+</div>
+<div class="sect4">
+<h5 id="_4_1_bom_property_changes">4.1 BOM Property Changes</h5>
+<div class="paragraph">
+<p>The initial Grails 7.0.0 release had an issue where properties in the bom were not correctly populated. The 7.0.4 release restored properties, but the naming was inconsistent and duplicated. Later versions of Grails 7 reworked the properties for the following reasons:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>to follow previous naming strategies used by Grails 6 and earlier.</p>
+</li>
+<li>
+<p>to remove duplicate properties.</p>
+</li>
+<li>
+<p>to clearly delineate between profile dependencies.</p>
+</li>
+<li>
+<p>to remove non-published projects.</p>
+</li>
+<li>
+<p>to fix invalid versions for properties used by asciidoctor &amp; rxjava.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Detailed differences follow in subsequent sections.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_4_2_property_name_standardization">4.2 Property Name Standardization</h5>
+<div class="paragraph">
+<p>In the prior 7.0.0 Grails versions, there were numerous duplicated properties for third-party dependencies, with one variant using hyphens (e.g., byte-buddy.version) and an identical one using dots (e.g., byte.buddy.version), both set to the same value. This applies to properties like:</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>asset-pipeline-gradle.version / asset.pipeline.gradle.version
+byte-buddy.version / byte.buddy.version
+commons-text.version / commons.text.version
+directory-watcher.version / directory.watcher.version
+grails-publish-plugin.version / grails.publish.version (though this is slightly inconsistent in naming)
+javaparser-core.version / javaparser.core.version
+bootstrap-icons.version / bootstrap.icons.version (literal duplicate entries)
+commons-codec.version / commons.codec.version
+geb-spock.version / geb.spock.version
+asset-pipeline-bom.version / asset.pipeline.bom.version
+spock.version / spock.bom.version (values match but names differ slightly)
+jackson.version / jackson.bom.version
+groovy.version / groovy.bom.version
+selenium.version / selenium.bom.version</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>To resolve this duplication and standardize naming conventions, the Grails team has consolidated these properties. All dotted variants have been removed. Only the hyphenated forms are retained (e.g., byte-buddy.version, asset-pipeline-gradle.version).</p>
+</div>
+<div class="paragraph">
+<p>Additionally, Grails-specific properties in earlier Grails 7 versions used dots in their names (e.g., grails.async.version, grails.data.hibernate5.version). These have been refactored to use hyphens instead (e.g., grails-async.version, grails-data-hibernate5.version). This aligns them with the third-party property naming convention.</p>
+</div>
+<div class="paragraph">
+<p>These changes eliminate redundancy and enforce consistency across the Grails bom &amp; the boms it inherits.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_4_3_profile_properties_are_renamed">4.3 Profile Properties are renamed</h5>
+<div class="paragraph">
+<p>In previous Grails 7 versions, profile-specific properties were not prefixed with <code>grails-profile</code>.  These have been corrected as follows:</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>base.version - grails-profile-base.version
+plugin.version - grails-profile-plugin.version
+profile.version - grails-profile-profile.version
+rest.api.version - grails-profile-rest-api.version
+rest.api.plugin.version - grails-profile-rest-api-plugin.version
+web.version - grails-profile-web.version
+web.plugin.version - grails-profile-web-plugin.version</pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_4_4_removal_of_redundant_or_unused_properties">4.4 Removal of Redundant or Unused Properties</h5>
+<div class="paragraph">
+<p>Several groups of related properties have been consolidated or removed in later Grails 7 versions:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Liquibase: (liquibase-hibernate5.version, liquibase.version, liquibase.cdi.version, liquibase.core.version, liquibase5.hibernate.version) have been replaced by <code>liquibase-hibernate5.version</code></p>
+</li>
+<li>
+<p>MongoDB: (mongodb.version, bson.version, mongodb.driver.core.version, mongodb.driver.sync.version, bson.record.codec.version) have been replaced by <code>mongodb.version</code></p>
+</li>
+<li>
+<p>Sitemesh: (starter-sitemesh.version, spring.boot.starter.sitemesh.version) have been consolidated to <code>starter-sitemesh.version</code></p>
+</li>
+<li>
+<p>Ant: (ant.version and ant.junit.version) have been consolidated to <code>ant.version</code></p>
+</li>
+<li>
+<p>Spring Boot sub-components: (spring.boot.cli.version and spring.boot.gradle.plugin.version) have been consolidated to use <code>spring-boot.version</code></p>
+</li>
+<li>
+<p>Asciidoctor Gradle: asciidoctor.gradle.jvm.version was renamed to <code>asciidoctor-gradle-jvm.version</code></p>
+</li>
+<li>
+<p>Spring Boot dependencies: <code>spring.boot.dependencies.version</code> was renamed to <code>spring-boot.version</code></p>
+</li>
+<li>
+<p>Liquibase Hibernate: liquibase.hibernate5.version &amp; liquibase-hibernate5.version were consolidated to liquibase-hibernate5.version</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_4_5_specific_property_value_changes">4.5 Specific Property Value Changes</h5>
+<div class="paragraph">
+<p>rxjava properties were incorrect previously, they are now fixed per the below:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>rxjava.version</code> (for RxJava 1.x, groupId io.reactivex) was set to 3.1.11 instead of 1.3.8</p>
+</li>
+<li>
+<p><code>rxjava2.version</code> (for RxJava 2.x, groupId io.reactivex.rxjava2) was set to 3.1.11 instead of 2.2.21</p>
+</li>
+<li>
+<p><code>rxjava3.version</code> (for RxJava 3.x, groupId io.reactivex.rxjava3) was set to 3.1.11 and remains 3.1.11</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_4_6_additions_and_refinements_in_dependencymanagement">4.6 Additions and Refinements in &lt;dependencyManagement&gt;</h5>
+<div class="paragraph">
+<p>Several boms are imported and previously used customized property names for them. They now align with a single property name.  Most importantly, <code>spring-boot-dependencies</code> now uses <code>${spring-boot.version}</code> (aligning with the removal of spring.boot.dependencies.version).</p>
+</div>
+<div class="paragraph">
+<p>All published Grails projects continue to have separate properties to allow for overriding their versions individually.</p>
+</div>
 </div>
 </div>
 <div class="sect3">
