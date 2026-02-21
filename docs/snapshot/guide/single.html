@@ -2944,6 +2944,46 @@ jakartaeeMigration {
 <pre class="CodeRay highlight"><code data-lang="properties">micronautPlatformVersion=4.9.2</code></pre>
 </div>
 </div>
+<div class="paragraph">
+<p>Please note that, due to <a href="https://github.com/micronaut-projects/micronaut-spring/issues/769">this issue</a>, Spring Boot DevTools does not work with the Micronaut integration.</p>
+</div>
+<div class="paragraph">
+<p>The Grails Gradle Plugin automatically configures Groovy-based Micronaut bean registration via AST transforms (<code>micronaut-inject-groovy</code> on <code>compileOnlyApi</code>). Groovy classes annotated with <code>@Singleton</code>, <code>@Factory</code>, <code>@ConfigurationProperties</code>, etc. are processed automatically.</p>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+If your project contains <strong>Java source files</strong> with Micronaut annotations (e.g. <code>@Singleton</code>, <code>@Factory</code>), you must manually add the Micronaut annotation processor to your <code>build.gradle</code>. The annotation processor is not configured automatically because it is incompatible with Groovy incremental compilation (see <a href="https://github.com/apache/grails-core/issues/15211">#15211</a>). For projects that mix Java and Groovy Micronaut beans, consider splitting them into separate source sets or modules to avoid incremental compilation issues.
+</td>
+</tr>
+</table>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle - Adding annotation processor for Java Micronaut beans</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
+    annotationProcessor platform(<span class="string"><span class="delimiter">&quot;</span><span class="content">io.micronaut.platform:micronaut-platform:</span><span class="inline"><span class="inline-delimiter">$</span>micronautPlatformVersion</span><span class="delimiter">&quot;</span></span>)
+    annotationProcessor <span class="string"><span class="delimiter">'</span><span class="content">io.micronaut:micronaut-inject-java</span><span class="delimiter">'</span></span>
+    annotationProcessor <span class="string"><span class="delimiter">'</span><span class="content">jakarta.annotation:jakarta.annotation-api</span><span class="delimiter">'</span></span>
+}</code></pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The Grails Gradle Plugin automatically configures the Spring Boot <code>bootJar</code> and <code>bootWar</code> tasks to use the <code>CLASSIC</code> loader implementation when <code>grails-micronaut</code> is detected. This is required for <code>java -jar</code> execution to work correctly with the Micronaut-Spring integration (see <a href="https://github.com/apache/grails-core/issues/15207">#15207</a>). If you have explicitly set <code>loaderImplementation</code> in your <code>build.gradle</code>, you can remove it as the plugin now handles this automatically.
+</td>
+</tr>
+</table>
+</div>
 </div>
 <div class="sect4">
 <h5 id="_12_5_hibernate_ehcache">12.5 hibernate-ehcache</h5>
