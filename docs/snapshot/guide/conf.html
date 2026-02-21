@@ -1704,7 +1704,7 @@ environments {
 <p>It&#8217;s tempting to switch to <code>update</code> so you retain existing data and only update the schema when your code changes, but Hibernate&#8217;s update support is very conservative. It won&#8217;t make any changes that could result in data loss, and doesn&#8217;t detect renamed columns or tables, so you&#8217;ll be left with the old one and will also have the new one.</p>
 </div>
 <div class="paragraph">
-<p>Grails supports migrations with Liquibase plugin.</p>
+<p>Grails supports migrations with the Liquibase-based Database Migration plugin.</p>
 </div>
 <div class="ulist">
 <ul>
@@ -1712,6 +1712,23 @@ environments {
 <p><a href="../grails-data/hibernate5/manual/#databaseMigration">Database Migration</a></p>
 </li>
 </ul>
+</div>
+<div class="sect3">
+<h4 id="_automatic_liquibaseautoconfiguration_exclusion">Automatic LiquibaseAutoConfiguration Exclusion</h4>
+<div class="paragraph">
+<p>When the Database Migration plugin is on the classpath, Grails automatically excludes Spring Boot&#8217;s <code>LiquibaseAutoConfiguration</code> to prevent conflicts. The plugin manages Liquibase through its own lifecycle, and Spring Boot&#8217;s auto-configuration would create duplicate <code>SpringLiquibase</code> beans that cause lock contention and startup failures.</p>
+</div>
+<div class="paragraph">
+<p>This exclusion is applied at compile time via the <code>@EnableAutoConfiguration(excludeName=&#8230;&#8203;)</code> annotation on your <code>Application</code> class. You no longer need to manually add <code>spring.liquibase.enabled: false</code> to your <code>application.yml</code>.</p>
+</div>
+<div class="paragraph">
+<p>To disable the automatic exclusion, add the following to your project&#8217;s <code>gradle.properties</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="properties">systemProp.grails.autoconfigure.exclude.liquibase=false</code></pre>
+</div>
+</div>
 </div>
 
 <a name="3.3.4 Transaction-aware DataSource Proxy"><!-- Legacy link --></a>
