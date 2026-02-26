@@ -530,7 +530,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <div id="header">
 <h1>GORM for Hibernate</h1>
 <div class="details">
-<span id="revnumber">version 7.0.8-SNAPSHOT</span>
+<span id="revnumber">version 7.1.0-SNAPSHOT</span>
 </div>
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
@@ -615,8 +615,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#_query_joins">10.3. Query Joins</a></li>
 <li><a href="#_data_service_write_operations">10.4. Data Service Write Operations</a></li>
 <li><a href="#_validating_data_services">10.5. Validating Data Services</a></li>
-<li><a href="#dataServicesMultipleDataSources">10.6. Data Services and Multiple Datasources</a></li>
-<li><a href="#_rxjava_support">10.7. RxJava Support</a></li>
+<li><a href="#_rxjava_support">10.6. RxJava Support</a></li>
 </ul>
 </li>
 <li><a href="#multipleDataSources">11. Multiple Data Sources</a>
@@ -624,8 +623,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#_configuring_multiple_data_sources">11.1. Configuring Multiple Data Sources</a></li>
 <li><a href="#_mapping_domain_classes_to_data_sources">11.2. Mapping Domain Classes to Data Sources</a></li>
 <li><a href="#_data_source_namespaces">11.3. Data Source Namespaces</a></li>
-<li><a href="#_using_data_services_with_multiple_datasources">11.4. Using Data Services with Multiple Datasources</a></li>
-<li><a href="#connectionSources">11.5. The ConnectionSources API</a></li>
+<li><a href="#connectionSources">11.4. The ConnectionSources API</a></li>
 </ul>
 </li>
 <li><a href="#multiTenancy">12. Multi-Tenancy</a>
@@ -914,12 +912,12 @@ abstract class BookService {
 <h2 id="gettingStarted">2. Getting Started</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>To use GORM 7.0.8-SNAPSHOT for Hibernate in Grails 7 you can specify the following configuration in <code>build.gradle</code>:</p>
+<p>To use GORM 7.1.0-SNAPSHOT for Hibernate in Grails 7 you can specify the following configuration in <code>build.gradle</code>:</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
-    implementation "org.grails.plugins:hibernate5:7.0.8-SNAPSHOT"
+    implementation "org.grails.plugins:hibernate5:7.1.0-SNAPSHOT"
     runtimeOnly 'org.hibernate:hibernate-ehcache:5.6.15.Final', {
     // exclude javax variant of hibernate-core
     exclude group: 'org.hibernate', module: 'hibernate-core'
@@ -935,7 +933,7 @@ abstract class BookService {
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="properties">gormVersion=7.0.8-SNAPSHOT</code></pre>
+<pre class="CodeRay highlight"><code data-lang="properties">gormVersion=7.1.0-SNAPSHOT</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -948,7 +946,7 @@ abstract class BookService {
     resolutionStrategy.eachDependency { DependencyResolveDetails details ->
         if( details.requested.group == 'org.grails' &&
             details.requested.name.startsWith('grails-datastore')) {
-            details.useVersion("7.0.8-SNAPSHOT")
+            details.useVersion("7.1.0-SNAPSHOT")
         }
     }
 }
@@ -974,7 +972,7 @@ dependencies {
 <div class="sect2">
 <h3 id="hibernateVersions">2.2. Configuring Different Hibernate Versions</h3>
 <div class="paragraph">
-<p>There are various changes you have to make to your build depending on the version of Grails when using GORM 7.0.8-SNAPSHOT.</p>
+<p>There are various changes you have to make to your build depending on the version of Grails when using GORM 7.1.0-SNAPSHOT.</p>
 </div>
 <div class="sect3">
 <h4 id="_grails_7_0_0_and_above_with_hibernate_5_6_x">2.2.1. Grails 7.0.0 and above with Hibernate 5.6.x</h4>
@@ -1062,7 +1060,7 @@ configurations.all {
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">implementation 'org.grails:gorm-hibernate5-spring-boot:7.0.8-SNAPSHOT'</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">implementation 'org.grails:gorm-hibernate5-spring-boot:7.1.0-SNAPSHOT'</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1181,7 +1179,7 @@ If your GORM entities are in a different package, specify the package name as th
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">implementation platform("org.apache.grails:grails-bom:7.0.8-SNAPSHOT")
+<pre class="CodeRay highlight"><code data-lang="groovy">implementation platform("org.apache.grails:grails-bom:7.1.0-SNAPSHOT")
 implementation "org.apache.grails.data:grails-data-hibernate5-core"
 runtimeOnly "com.h2database"
 runtimeOnly "org.apache.tomcat:tomcat-jdbc"
@@ -7899,321 +7897,7 @@ If a property exists on the interface but not on the domain class you will recei
 </div>
 </div>
 <div class="sect2">
-<h3 id="dataServicesMultipleDataSources">10.6. Data Services and Multiple Datasources</h3>
-<div class="paragraph">
-<p>When using Data Services with <a href="#multipleDataSources">multiple datasources</a>, the service must declare which connection to use via the <code>connection</code> parameter of <code>@Transactional</code>.</p>
-</div>
-<div class="sect3">
-<h4 id="_routing_to_a_secondary_datasource">10.6.1. Routing to a Secondary Datasource</h4>
-<div class="paragraph">
-<p>Given a domain class mapped to a secondary datasource:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">Book</span> {
-
-    <span class="predefined-type">String</span> title
-    <span class="predefined-type">String</span> author
-
-    <span class="directive">static</span> mapping = {
-        datasource <span class="string"><span class="delimiter">'</span><span class="content">books</span><span class="delimiter">'</span></span>
-    }
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Define an interface for your data access methods and an abstract class that declares the connection:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.gorm.services.Service</span>
-
-<span class="type">interface</span> BookDataService {
-
-    <span class="predefined-type">Book</span> get(<span class="predefined-type">Serializable</span> id)
-
-    <span class="predefined-type">Book</span> save(<span class="predefined-type">Book</span> book)
-
-    <span class="type">void</span> delete(<span class="predefined-type">Serializable</span> id)
-
-    <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; findAllByAuthor(<span class="predefined-type">String</span> author)
-
-    <span class="predefined-type">Long</span> count()
-}</code></pre>
-</div>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.gorm.services.Service</span>
-<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
-<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
-
-<span class="annotation">@CompileStatic</span>
-<span class="annotation">@Service</span>(<span class="predefined-type">Book</span>)
-<span class="annotation">@Transactional</span>(connection = <span class="string"><span class="delimiter">'</span><span class="content">books</span><span class="delimiter">'</span></span>)
-<span class="directive">abstract</span> <span class="type">class</span> <span class="class">BookService</span> <span class="directive">implements</span> BookDataService {
-    <span class="comment">// All interface methods are auto-implemented by GORM</span>
-    <span class="comment">// and route to the 'books' datasource automatically.</span>
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The <code>@Transactional(connection = 'books')</code> annotation on the abstract class ensures that all auto-implemented methods (<code>get</code>, <code>save</code>, <code>delete</code>, <code>findBy*</code>, <code>countBy*</code>, etc.) route to the <code>books</code> datasource. Without this annotation, queries silently route to the default datasource.</p>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-The <code>@Service(Book)</code> annotation identifies the domain class but does not determine which datasource to use. Even if <code>Book</code> declares <code>datasource 'books'</code> in its mapping block, you must specify <code>@Transactional(connection = 'books')</code> on the abstract class to route operations to the correct datasource.
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_how_connection_routing_works">10.6.2. How Connection Routing Works</h4>
-<div class="paragraph">
-<p>When GORM compiles a <code>@Service</code> abstract class, the <code>ServiceTransformation</code> AST transform:</p>
-</div>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Copies the <code>@Transactional(connection = 'books')</code> annotation from the abstract class to the generated implementation class</p>
-</li>
-<li>
-<p>For each auto-implemented method, resolves the connection identifier via <code>findConnectionId()</code></p>
-</li>
-<li>
-<p>Generates method bodies that use the appropriate connection, routing CRUD operations and <code>DetachedCriteria</code>-based finder queries to the specified datasource</p>
-</li>
-</ol>
-</div>
-<div class="paragraph">
-<p>This means auto-implemented methods like <code>get()</code>, <code>save()</code>, <code>delete()</code>, <code>findBy*()</code>, <code>countBy*()</code>, <code>@Where</code>-annotated methods, <code>@Query</code>-annotated methods, and <code>DetachedCriteria</code>-based queries all respect the connection parameter without requiring manual implementations.</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_complex_queries_using_domain_static_methods">10.6.3. Complex Queries Using Domain Static Methods</h4>
-<div class="paragraph">
-<p>Auto-implemented Data Service methods cover most query patterns, including dynamic finders with comparators, pagination, and property projections. For queries that require HQL, criteria builders, or aggregate functions, call domain static methods directly. When a domain class declares a non-default datasource in its mapping block, GORM registers its static API under that datasource. Methods like <code>Book.executeQuery()</code>, <code>Book.createCriteria()</code>, and <code>Book.withCriteria()</code> automatically route to the correct datasource:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
-<span class="keyword">import</span> <span class="include">grails.gorm.services.Service</span>
-<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
-
-<span class="annotation">@CompileStatic</span>
-<span class="annotation">@Service</span>(<span class="predefined-type">Book</span>)
-<span class="annotation">@Transactional</span>(connection = <span class="string"><span class="delimiter">'</span><span class="content">books</span><span class="delimiter">'</span></span>)
-<span class="directive">abstract</span> <span class="type">class</span> <span class="class">BookService</span> <span class="directive">implements</span> BookDataService {
-
-    <span class="comment">// Auto-implemented methods from interface are inherited</span>
-    <span class="comment">// and route to 'books' datasource automatically.</span>
-
-    <span class="predefined-type">List</span> getTopAuthors(<span class="type">int</span> limit) {
-        <span class="predefined-type">Book</span>.executeQuery(<span class="string"><span class="delimiter">'''</span><span class="content">
-            SELECT b.author, COUNT(b) as bookCount
-            FROM Book b
-            GROUP BY b.author
-            ORDER BY bookCount DESC
-        </span><span class="delimiter">'''</span></span>, <span class="predefined-type">Collections</span>.emptyMap(), [<span class="key">max</span>: limit])
-    }
-
-    <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; searchWithCriteria(<span class="predefined-type">String</span> titlePattern, <span class="predefined-type">String</span> author) {
-        <span class="predefined-type">Book</span>.createCriteria().list {
-            like(<span class="string"><span class="delimiter">'</span><span class="content">title</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">%</span><span class="inline"><span class="inline-delimiter">${</span>titlePattern<span class="inline-delimiter">}</span></span><span class="content">%</span><span class="delimiter">&quot;</span></span>)
-            eq(<span class="string"><span class="delimiter">'</span><span class="content">author</span><span class="delimiter">'</span></span>, author)
-            order(<span class="string"><span class="delimiter">'</span><span class="content">title</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">asc</span><span class="delimiter">'</span></span>)
-        } <span class="keyword">as</span> <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt;
-    }
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>These domain static methods all route to the datasource declared in the domain&#8217;s mapping block:</p>
-</div>
-<table class="tableblock frame-all grid-all stretch">
-<colgroup>
-<col style="width: 33.3333%;">
-<col style="width: 66.6667%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Method</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Book.executeQuery(String hql, Map params)</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">HQL/JPQL queries</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Book.executeUpdate(String hql, Map params)</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Bulk UPDATE/DELETE statements</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Book.withCriteria(Closure criteria)</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Criteria query</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Book.createCriteria()</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Criteria builder for complex queries</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Book.where(Closure query)</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Where query</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Book.withTransaction(Closure action)</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Manual transaction management</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Book.withNewSession(Closure action)</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Obtain a new session for the domain&#8217;s datasource</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Book.count()</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Total record count</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Book.get(Serializable id)</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Find by primary key</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Book.list(Map params)</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Paginated list</p></td>
-</tr>
-</tbody>
-</table>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-Domain static methods work under <code>@CompileStatic</code> and route to the correct datasource automatically. The <a href="#dataSourceNamespaces">namespace syntax</a> (e.g., <code>Book.books.get(42)</code>) is only needed when a domain is mapped to multiple datasources and you need to target a specific one.
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_consuming_multi_datasource_data_services">10.6.4. Consuming Multi-Datasource Data Services</h4>
-<div class="paragraph">
-<p>Other services inject the Data Service interface type. Spring resolves the abstract class bean automatically:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
-
-<span class="annotation">@CompileStatic</span>
-<span class="type">class</span> <span class="class">LibraryService</span> {
-
-    BookDataService bookDataService  <span class="comment">// injected automatically</span>
-
-    <span class="predefined-type">Map</span> getLibraryStats() {
-        <span class="predefined-type">Long</span> totalBooks = bookDataService.count()
-        <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; recentBooks = bookDataService.findAllByAuthor(<span class="string"><span class="delimiter">'</span><span class="content">Tolkien</span><span class="delimiter">'</span></span>)
-        [<span class="key">total</span>: totalBooks, <span class="key">tolkienBooks</span>: recentBooks.size()]
-    }
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The consuming service does not need <code>@Transactional(connection = 'books')</code>. The Data Service handles datasource routing internally.</p>
-</div>
-<div class="paragraph">
-<p>Data Services can also inject other Data Services. <code>@CompileStatic</code> works on <code>@Service</code> abstract classes that declare <code>@Service</code>-typed properties:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.gorm.services.Service</span>
-
-<span class="type">interface</span> AuthorDataService {
-
-    Author get(<span class="predefined-type">Serializable</span> id)
-
-    Author save(Author author)
-}</code></pre>
-</div>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
-<span class="keyword">import</span> <span class="include">grails.gorm.services.Service</span>
-<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
-
-<span class="annotation">@CompileStatic</span>
-<span class="annotation">@Service</span>(Author)
-<span class="annotation">@Transactional</span>(connection = <span class="string"><span class="delimiter">'</span><span class="content">books</span><span class="delimiter">'</span></span>)
-<span class="directive">abstract</span> <span class="type">class</span> <span class="class">AuthorService</span> <span class="directive">implements</span> AuthorDataService {
-
-    BookDataService bookDataService  <span class="comment">// injected @Service property</span>
-
-    <span class="predefined-type">Map</span> getAuthorWithBooks(<span class="predefined-type">Serializable</span> authorId) {
-        Author author = get(authorId)
-        <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; books = bookDataService.findAllByAuthor(author.name)
-        [<span class="key">author</span>: author, <span class="key">books</span>: books]
-    }
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>When the Spring context initializes the generated implementation class, it autowires all <code>@Service</code>-typed properties by type. By the time any user code runs, injected Data Services are fully available.</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_multi_tenancy_with_multiple_datasources">10.6.5. Multi-Tenancy with Multiple Datasources</h4>
-<div class="paragraph">
-<p>Domain classes that use the <code>MultiTenant</code> trait and declare an explicit non-default datasource (e.g., <code>datasource 'analytics'</code>) route correctly through Data Services. GORM preserves explicit datasource qualifiers for multi-tenant entities, so Data Services using <code>@Transactional(connection = 'analytics')</code> work the same way as for non-tenant domain classes:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.gorm.MultiTenant</span>
-
-<span class="type">class</span> <span class="class">Metric</span> <span class="directive">implements</span> MultiTenant&lt;Metric&gt; {
-
-    <span class="predefined-type">String</span> name
-    <span class="predefined-type">BigDecimal</span> value
-
-    <span class="directive">static</span> mapping = {
-        datasource <span class="string"><span class="delimiter">'</span><span class="content">analytics</span><span class="delimiter">'</span></span>
-    }
-}</code></pre>
-</div>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.gorm.services.Service</span>
-<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
-<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
-
-<span class="annotation">@CompileStatic</span>
-<span class="annotation">@Service</span>(Metric)
-<span class="annotation">@Transactional</span>(connection = <span class="string"><span class="delimiter">'</span><span class="content">analytics</span><span class="delimiter">'</span></span>)
-<span class="directive">abstract</span> <span class="type">class</span> <span class="class">MetricService</span> {
-
-    <span class="directive">abstract</span> Metric get(<span class="predefined-type">Serializable</span> id)
-
-    <span class="directive">abstract</span> Metric save(Metric metric)
-
-    <span class="directive">abstract</span> <span class="predefined-type">List</span>&lt;Metric&gt; list()
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The <code>connection</code> parameter on the abstract class routes all auto-implemented operations - including <code>save()</code>, <code>get()</code>, and <code>delete()</code> - to the <code>analytics</code> datasource, regardless of multi-tenancy mode (DATABASE or DISCRIMINATOR).</p>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_rxjava_support">10.7. RxJava Support</h3>
+<h3 id="_rxjava_support">10.6. RxJava Support</h3>
 <div class="paragraph">
 <p>GORM Data Services also support returning RxJava 1.x <a href="https://reactivex.io/RxJava/1.x/javadoc/rx/Observable.html">rx.Observable</a> or <a href="https://reactivex.io/RxJava/1.x/javadoc/rx/Single.html">rx.Single</a> types.</p>
 </div>
@@ -8235,7 +7919,7 @@ RxJava 2.x support is planned for a future release
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.grails:grails-datastore-gorm-rx:7.0.8-SNAPSHOT"</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.grails:grails-datastore-gorm-rx:7.1.0-SNAPSHOT"</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -8463,27 +8147,9 @@ zipCode.auditing.save()</code></pre>
 }</code></pre>
 </div>
 </div>
-<div class="admonitionblock tip">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-tip" title="Tip"></i>
-</td>
-<td class="content">
-The namespace syntax (e.g., <code>ZipCode.auditing.get(42)</code>) is only needed when a domain is mapped to multiple datasources and you need to target a specific one. For domains mapped to a single non-default datasource, static methods like <code>ZipCode.get(42)</code> route to the correct datasource automatically and work under <code>@CompileStatic</code>. You can also use a Data Service with <code>@Transactional(connection = 'auditing')</code> for automatic routing of auto-implemented methods. See the <a href="#dataServicesMultipleDataSources">Data Services and Multiple Datasources</a> section for the full pattern.
-</td>
-</tr>
-</table>
-</div>
 </div>
 <div class="sect2">
-<h3 id="_using_data_services_with_multiple_datasources">11.4. Using Data Services with Multiple Datasources</h3>
-<div class="paragraph">
-<p>GORM Data Services support multi-datasource routing via <code>@Transactional(connection = 'connectionName')</code> on the abstract class. All auto-implemented methods - <code>get()</code>, <code>save()</code>, <code>delete()</code>, <code>findBy*()</code>, <code>countBy*()</code> - route to the specified datasource automatically. For complex queries, domain static methods like <code>Book.executeQuery()</code> and <code>Book.createCriteria()</code> also route to the correct datasource. This works with <code>@CompileStatic</code>, injected <code>@Service</code> properties, and <code>MultiTenant</code> domain classes. See the <a href="#dataServicesMultipleDataSources">Data Services and Multiple Datasources</a> section for the full pattern.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="connectionSources">11.5. The ConnectionSources API</h3>
+<h3 id="connectionSources">11.4. The ConnectionSources API</h3>
 <div class="paragraph">
 <p>Introduced in GORM 6.0, the <a href="../api/org/grails/datastore/mapping/core/connections/ConnectionSources.html">ConnectionSources</a> API allows you to introspect the data sources configured for the application:</p>
 </div>
@@ -8725,7 +8391,7 @@ SessionFactory sessionFactory = hibernateDatastore
 <i class="fa icon-tip" title="Tip"></i>
 </td>
 <td class="content">
-If you are interested in more examples, an <a href="https://github.com/apache/grails-core/blob/7.0.8-SNAPSHOT/grails-data-mongodb/core/src/main/groovy/org/grails/datastore/mapping/mongo/connections/MongoConnectionSources.groovy">implementation exists for MongoDB</a> that reads connection sources from a MongoDB collection. However, it doesn&#8217;t implement support for provision MongoDB instances at runtime.
+If you are interested in more examples, an <a href="https://github.com/apache/grails-core/blob/7.1.0-SNAPSHOT/grails-data-mongodb/core/src/main/groovy/org/grails/datastore/mapping/mongo/connections/MongoConnectionSources.groovy">implementation exists for MongoDB</a> that reads connection sources from a MongoDB collection. However, it doesn&#8217;t implement support for provision MongoDB instances at runtime.
 </td>
 </tr>
 </table>
@@ -8999,7 +8665,7 @@ sessionFactory.openSession()</code></pre>
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.grails:grails-datastore-web:7.0.8-SNAPSHOT"</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.grails:grails-datastore-web:7.1.0-SNAPSHOT"</code></pre>
 </div>
 </div>
 </div>
@@ -9805,13 +9471,13 @@ JUnit doesn&#8217;t have anything like Spock&#8217;s <code>AutoCleanup</code> so
 <pre class="CodeRay highlight"><code data-lang="groovy">buildscript {
    dependencies {
       ...
-      classpath 'org.apache.grails:grails-data-hibernate5-dbmigration:7.0.8-SNAPSHOT'
+      classpath 'org.apache.grails:grails-data-hibernate5-dbmigration:7.1.0-SNAPSHOT'
    }
 }
 
 dependencies {
    ...
-     implementation 'org.apache.grails:grails-data-hibernate5-dbmigration:7.0.8-SNAPSHOT'
+     implementation 'org.apache.grails:grails-data-hibernate5-dbmigration:7.1.0-SNAPSHOT'
 }</code></pre>
 </div>
 </div>
@@ -12968,7 +12634,7 @@ For the <code>dataSource</code> parameter, if the data source is configured as <
 </div>
 <div id="footer">
 <div id="footer-text">
-Version 7.0.8-SNAPSHOT<br>
+Version 7.1.0-SNAPSHOT<br>
 </div>
 </div>
 </body>
