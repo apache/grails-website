@@ -29013,6 +29013,65 @@ This has the downside that you cannot implement it differently for different cas
 <div class="paragraph">
 <p>If no names are specified, all datasources in the application context are cleaned.</p>
 </div>
+</div>
+<div class="sect4">
+<h5 id="_deferred_cleanup_cleanupafterspec">Deferred Cleanup (cleanupAfterSpec)</h5>
+<div class="paragraph">
+<p>By default, <code>@DatabaseCleanup</code> truncates tables after each individual test method. If you prefer to defer cleanup until after the entire spec finishes, set <code>cleanupAfterSpec = true</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="annotation">@Integration</span>
+<span class="annotation">@DatabaseCleanup</span>(cleanupAfterSpec = <span class="predefined-constant">true</span>)
+<span class="annotation">@Stepwise</span>
+<span class="type">class</span> <span class="class">SharedDataSpec</span> <span class="directive">extends</span> Specification {
+
+    <span class="annotation">@Transactional</span>
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">test 1 - create data</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Grails in Action</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">then</span>:
+        <span class="predefined-type">Book</span>.count() == <span class="integer">1</span>
+    }
+
+    <span class="annotation">@Transactional</span>
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">test 2 - data from test 1 is still available</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">expect</span>: <span class="string"><span class="delimiter">'</span><span class="content">data persists across tests</span><span class="delimiter">'</span></span>
+        <span class="predefined-type">Book</span>.count() == <span class="integer">1</span>
+    }
+
+    <span class="comment">// Database is cleaned once after both tests complete</span>
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This is useful when test methods build on each other&#8217;s data, or when per-test cleanup is too expensive and a single cleanup at the end of the spec is sufficient.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<code>cleanupAfterSpec</code> is only valid on class-level <code>@DatabaseCleanup</code> annotations. Using it on a method-level annotation will throw an <code>IllegalStateException</code>.
+</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+If individual methods within a <code>cleanupAfterSpec = true</code> spec also have their own <code>@DatabaseCleanup</code> annotation, those methods will still be cleaned up immediately after execution.
+</td>
+</tr>
+</table>
+</div>
 <div class="admonitionblock warning">
 <table>
 <tr>
