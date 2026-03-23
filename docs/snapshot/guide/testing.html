@@ -2577,6 +2577,343 @@ If individual methods within a <code>cleanupAfterSpec = true</code> spec also ha
 </div>
 </div>
 <div class="sect3">
+<h4 id="httpClientTestingSupport">HTTP Client Testing Support</h4>
+<div class="paragraph">
+<p>For integration and functional tests that need to interact with live HTTP endpoints, Grails provides the
+<code>grails-testing-support-http-client</code> module.</p>
+</div>
+<div class="paragraph">
+<p>Add the dependency to your integration test configuration:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
+    integrationTestImplementation <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-testing-support-http-client</span><span class="delimiter">'</span></span>
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>You can then implement the <code>HttpClientSupport</code> trait in your Spock specification and use helper methods for
+request building and response assertions:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">java.net.http.HttpClient</span>
+<span class="keyword">import</span> <span class="include">java.net.http.HttpTimeoutException</span>
+<span class="keyword">import</span> <span class="include">java.time.Duration</span>
+
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">org.apache.grails.testing.http.client.HttpClientSupport</span>
+<span class="keyword">import</span> <span class="include">org.apache.grails.testing.http.client.MultipartBody</span>
+
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">DemoSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> HttpClientSupport {
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">simple GET with status and body assertions</span><span class="delimiter">'</span></span>() {
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">invoking a GET request to the /health endpoint</span><span class="delimiter">'</span></span>
+        <span class="keyword">def</span> response = http(<span class="string"><span class="delimiter">'</span><span class="content">/health</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">verifies status, headers and body contents via fluent API</span><span class="delimiter">'</span></span>
+        response.assertStatus(<span class="integer">200</span>)
+                .assertHeaders(<span class="string"><span class="delimiter">'</span><span class="content">Content-Type</span><span class="delimiter">'</span></span>: <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+                .assertContains(<span class="string"><span class="delimiter">'</span><span class="content">UP</span><span class="delimiter">'</span></span>)
+
+
+        <span class="key">and</span>: <span class="string"><span class="delimiter">'</span><span class="content">can also verify all these under the hood in one go</span><span class="delimiter">'</span></span>
+        response.assertContains(<span class="integer">200</span>, <span class="string"><span class="delimiter">'</span><span class="content">Content-Type</span><span class="delimiter">'</span></span>: <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">UP</span><span class="delimiter">'</span></span>)
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">GET with headers and header assertions</span><span class="delimiter">'</span></span>() {
+        <span class="key">when</span>:
+        <span class="keyword">def</span> response = http(<span class="string"><span class="delimiter">'</span><span class="content">/api/info</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Accept</span><span class="delimiter">'</span></span>: <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>:
+        response.assertHeadersIgnoreCase(<span class="integer">200</span>, <span class="string"><span class="delimiter">'</span><span class="content">content-type</span><span class="delimiter">'</span></span>: <span class="string"><span class="delimiter">'</span><span class="content">application/json;charset=UTF-8</span><span class="delimiter">'</span></span>)
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">Posting and verifying JSON</span><span class="delimiter">'</span></span>() {
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">you post a map it is turned into a JSON payload</span><span class="delimiter">'</span></span>
+        <span class="keyword">def</span> response = httpPostJson(<span class="string"><span class="delimiter">'</span><span class="content">/api/books</span><span class="delimiter">'</span></span>, [<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Grails in Action</span><span class="delimiter">'</span></span>, <span class="key">pages</span>: <span class="integer">500</span>])
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">you can also verify JSON response bodies with maps</span><span class="delimiter">'</span></span>
+        response.assertJson(<span class="integer">201</span>, [<span class="key">id</span>: <span class="integer">1</span>, <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Grails in Action</span><span class="delimiter">'</span></span>, <span class="key">pages</span>: <span class="integer">500</span>])
+
+        <span class="key">and</span>: <span class="string"><span class="delimiter">'</span><span class="content">you can also verify against a JSON string</span><span class="delimiter">'</span></span>
+        response.assertJson(<span class="string"><span class="delimiter">'''</span><span class="content">
+            {
+                &quot;id&quot;: 1,
+                &quot;title&quot;: &quot;Grails in Action&quot;,
+                &quot;pages&quot;: 500
+            }
+        </span><span class="delimiter">'''</span></span>)
+
+        <span class="key">and</span>: <span class="string"><span class="delimiter">'</span><span class="content">the canonicalized JSON tree structure is compared, not strings</span><span class="delimiter">'</span></span>
+        response.assertJson(<span class="string"><span class="delimiter">'</span><span class="content">{ &quot;pages&quot;: 500, &quot;id&quot;: 1, &quot;title&quot;: &quot;Grails in Action&quot; }</span><span class="delimiter">'</span></span>)
+
+        <span class="key">and</span>: <span class="string"><span class="delimiter">'</span><span class="content">if you want to compare strings, use assertContains/assertNotContains</span><span class="delimiter">'</span></span>
+        response.assertNotContains(<span class="string"><span class="delimiter">'</span><span class="content">{ &quot;id&quot;: 1, &quot;title&quot;: &quot;Grails in Action&quot;, &quot;pages&quot;: 500 }</span><span class="delimiter">'</span></span>)
+
+        <span class="key">and</span>: <span class="string"><span class="delimiter">'</span><span class="content">you can also use assertJsonContains to verify sub trees in the response json</span><span class="delimiter">'</span></span>
+        response.assertJsonContains([<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Grails in Action</span><span class="delimiter">'</span></span>])
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">Posting and verifying XML</span><span class="delimiter">'</span></span>() {
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">you can post XML using a builder</span><span class="delimiter">'</span></span>
+        <span class="keyword">def</span> response = httpPostXml(<span class="string"><span class="delimiter">'</span><span class="content">/api/books</span><span class="delimiter">'</span></span>) {
+            book {
+                title(<span class="string"><span class="delimiter">'</span><span class="content">Grails in Action</span><span class="delimiter">'</span></span>)
+                pages(<span class="integer">500</span>)
+            }
+        }
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">and you can verify XML responses with assertions on GPathResult</span><span class="delimiter">'</span></span>
+        with(response.xml()) {
+            title.text() == <span class="string"><span class="delimiter">'</span><span class="content">Grails in Action</span><span class="delimiter">'</span></span>
+            pages.text().toInteger() == <span class="integer">500</span>
+        }
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">custom request and custom client configuration</span><span class="delimiter">'</span></span>() {
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">you need a custom configured client</span><span class="delimiter">'</span></span>
+        <span class="keyword">def</span> noRedirectClient = newHttpClientWith {
+            followRedirects(HttpClient.Redirect.NEVER)
+        }
+
+        <span class="key">and</span>: <span class="string"><span class="delimiter">'</span><span class="content">or a custom configured request</span><span class="delimiter">'</span></span>
+        <span class="keyword">def</span> request = newHttpRequestWith(<span class="string"><span class="delimiter">'</span><span class="content">/api/slow</span><span class="delimiter">'</span></span>) {
+            timeout(<span class="predefined-type">Duration</span>.ofSeconds(<span class="integer">1</span>))
+        }
+
+        <span class="key">when</span>:
+        sendHttpRequest(request, noRedirectClient)
+
+        <span class="key">then</span>:
+        thrown(HttpTimeoutException)
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">multipart upload</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        <span class="keyword">def</span> body = MultipartBody.builder()
+                .addPart(<span class="string"><span class="delimiter">'</span><span class="content">description</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">test file</span><span class="delimiter">'</span></span>)
+                .addPart(<span class="string"><span class="delimiter">'</span><span class="content">file</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">hello.txt</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">text/plain</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">hello world</span><span class="delimiter">'</span></span>)
+                .build()
+
+        <span class="key">when</span>:
+        <span class="keyword">def</span> response = httpPostMultipart(<span class="string"><span class="delimiter">'</span><span class="content">/api/upload</span><span class="delimiter">'</span></span>, body)
+
+        <span class="key">then</span>:
+        response.assertStatus(<span class="integer">200</span>)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>HttpClientSupport</code> uses the JDK <code>HttpClient</code> under the hood and applies default request and connect timeouts of
+60 seconds and a redirect policy of always following redirects. You can use helpers <code>newHttpRequestWith(Closure configurer)</code>
+and <code>newHttpClientWith(Closure configurer)</code> to customize your own client and requests starting from the defaults.</p>
+</div>
+<div class="paragraph">
+<p>Additional request helper methods available include <code>httpDelete()</code>, <code>httpHead()</code>, <code>httpOptions()</code>, <code>httpPatch()</code>,
+<code>httpPut()</code>, <code>httpTrace()</code>, and many assertion methods on responses.</p>
+</div>
+<div class="sect4">
+<h5 id="_custom_json_parsing">Custom JSON Parsing</h5>
+<div class="paragraph">
+<p>When response JSON needs non-default <code>JsonSlurper</code> behavior, configure it fluently on the response wrapper:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">groovy.json.JsonParserType</span>
+
+<span class="key">given</span>:
+<span class="keyword">def</span> response = http(<span class="string"><span class="delimiter">'</span><span class="content">/config</span><span class="delimiter">'</span></span>)
+
+<span class="key">expect</span>:
+response
+    .withJsonSlurper(<span class="key">parserType</span>: JsonParserType.LAX, <span class="key">checkDates</span>: <span class="predefined-constant">true</span>)
+    .assertJsonContains(<span class="string"><span class="delimiter">'</span><span class="content">{featureFlag:true}</span><span class="delimiter">'</span></span>)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Supported named options mirror the <code>JsonSlurper</code> settings exposed by <code>JsonUtils.SlurperConfig</code>, including
+<code>parserType</code>, <code>checkDates</code>, <code>chop</code>, <code>lazyChop</code>, and <code>maxSizeForInMemory</code>.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_custom_xml_parsing">Custom XML Parsing</h5>
+<div class="paragraph">
+<p>Response XML parsing uses a secure default <code>XmlSlurper</code> configuration. It is namespace-aware, non-validating,
+allows inline <code>DOCTYPE</code> declarations, and disables external entity expansion plus external DTD loading.</p>
+</div>
+<div class="paragraph">
+<p>When a test needs different XML parsing behavior, override it fluently on the response wrapper:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">groovy.xml.XmlSlurper</span>
+
+<span class="key">given</span>:
+<span class="keyword">def</span> response = http(<span class="string"><span class="delimiter">'</span><span class="content">/feed</span><span class="delimiter">'</span></span>)
+
+<span class="key">when</span>:
+<span class="keyword">def</span> xml = response.withXmlSlurper(<span class="key">factory</span>: { <span class="keyword">new</span> XmlSlurper(<span class="predefined-constant">false</span>, <span class="predefined-constant">false</span>) }).xml()
+
+<span class="key">then</span>:
+xml.channel.item.size() == <span class="integer">10</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>withXmlSlurper(&#8230;&#8203;)</code> accepts an <code>XmlUtils.SlurperConfig</code>. The default configuration is secure; the
+<code>factory</code> hook is available for tests that need a fully custom parser instance.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_json_payload_formatting">JSON payload formatting</h5>
+<div class="paragraph">
+<p>JSON request bodies can be sent in three ways depending on how much formatting control you need.</p>
+</div>
+<div class="paragraph">
+<p>For exact control over the payload text, pass a pre-rendered JSON string to the request helper:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">httpPostJson(<span class="string"><span class="delimiter">'</span><span class="content">/products</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">{&quot;name&quot;:&quot;Widget&quot;,&quot;tags&quot;:[&quot;new&quot;,&quot;sale&quot;]}</span><span class="delimiter">'</span></span>)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>For the common case, use the <code>http[Post|Put|Patch]Json</code> helpers with a <code>Map</code>. They serialize the payload with
+Groovy&#8217;s default <code>JsonOutput.toJson(&#8230;&#8203;)</code> behavior:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">httpPostJson(<span class="string"><span class="delimiter">'</span><span class="content">/products</span><span class="delimiter">'</span></span>, [<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Widget</span><span class="delimiter">'</span></span>, <span class="key">qty</span>: <span class="integer">2</span>])</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>When you want custom JSON formatting, pass a <code>JsonGenerator</code> alongside the <code>Map</code> payload. This lets you control
+rendering details such as null handling, field exclusions, converters, and date formatting:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">groovy.json.JsonGenerator</span>
+
+<span class="keyword">def</span> jsonGenerator = <span class="keyword">new</span> JsonGenerator.Options()
+    .excludeNulls()
+    .dateFormat(<span class="string"><span class="delimiter">'</span><span class="content">yyyy-MM-dd</span><span class="delimiter">'</span></span>)
+    .build()
+
+httpPutJson(<span class="string"><span class="delimiter">'</span><span class="content">/products/1</span><span class="delimiter">'</span></span>, jsonGenerator, [
+    <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Widget</span><span class="delimiter">'</span></span>,
+    <span class="key">discontinuedAt</span>: <span class="predefined-constant">null</span>,
+    <span class="key">releaseDate</span>: <span class="keyword">new</span> <span class="predefined-type">Date</span>()
+])</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The same <code>JsonGenerator</code> overload pattern is available on <code>httpPostJson(&#8230;&#8203;)</code>, <code>httpPutJson(&#8230;&#8203;)</code>, and
+<code>httpPatchJson(&#8230;&#8203;)</code>, including the variants that accept request headers and an explicit <code>HttpClient</code>.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_xml_formatting">XML formatting</h5>
+<div class="paragraph">
+<p>XML request bodies can be generated with Groovy MarkupBuilder DSL. For the <code>http[Post|Patch|Put]Xml</code> methods,
+<code>HttpClientSupport</code> accepts an optional <code>XmlUtils.Format</code> instance, which constructor takes named params to
+configure the format:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">org.apache.grails.testing.http.client.utils.XmlUtils</span>
+
+<span class="key">when</span>:
+<span class="keyword">def</span> response = httpPostXml(<span class="string"><span class="delimiter">'</span><span class="content">/products</span><span class="delimiter">'</span></span>, <span class="keyword">new</span> XmlUtils.Format(
+    <span class="key">omitDeclaration</span>: <span class="predefined-constant">false</span>,
+    <span class="key">prettyPrint</span>: <span class="predefined-constant">true</span>,
+    <span class="key">indent</span>: <span class="string"><span class="delimiter">'</span><span class="content">  </span><span class="delimiter">'</span></span>,
+    <span class="key">lineSeparator</span>: <span class="string"><span class="delimiter">'</span><span class="content">\n</span><span class="delimiter">'</span></span>,
+    <span class="key">doctype</span>: <span class="string"><span class="delimiter">'</span><span class="content">&lt;!DOCTYPE product SYSTEM &quot;product.dtd&quot;&gt;</span><span class="delimiter">'</span></span>,
+    <span class="key">omitNullAttributes</span>: <span class="predefined-constant">true</span>,
+    <span class="key">omitEmptyAttributes</span>: <span class="predefined-constant">true</span>,
+    <span class="key">spaceInEmptyElements</span>: <span class="predefined-constant">false</span>,
+    <span class="key">escapeAttributes</span>: <span class="predefined-constant">true</span>
+)) {
+    product(<span class="key">id</span>: <span class="string"><span class="delimiter">'</span><span class="content">1</span><span class="delimiter">'</span></span>, <span class="key">description</span>: <span class="predefined-constant">null</span>, <span class="key">sku</span>: <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>) {
+        name(<span class="string"><span class="delimiter">'</span><span class="content">Widget</span><span class="delimiter">'</span></span>)
+        empty()
+    }
+}
+
+<span class="key">then</span>:
+response.assertStatus(<span class="integer">201</span>)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>When you need the same formatting control for other request helpers, render the XML first and then pass the
+result to <code>httpPost</code>, <code>httpPut</code>, or <code>httpPatch</code> with <code>application/xml</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">org.apache.grails.testing.http.client.utils.XmlUtils</span>
+
+<span class="keyword">def</span> payload = XmlUtils.toXml(
+    <span class="key">omitDeclaration</span>: <span class="predefined-constant">false</span>,
+    <span class="key">prettyPrint</span>: <span class="predefined-constant">true</span>,
+    <span class="key">indent</span>: <span class="string"><span class="delimiter">'</span><span class="content">    </span><span class="delimiter">'</span></span>,
+    <span class="key">lineSeparator</span>: <span class="string"><span class="delimiter">'</span><span class="content">\n</span><span class="delimiter">'</span></span>,
+    <span class="key">doctype</span>: <span class="string"><span class="delimiter">'</span><span class="content">&lt;!DOCTYPE product SYSTEM &quot;product.dtd&quot;&gt;</span><span class="delimiter">'</span></span>,
+    <span class="key">omitNullAttributes</span>: <span class="predefined-constant">true</span>,
+    <span class="key">omitEmptyAttributes</span>: <span class="predefined-constant">true</span>,
+    <span class="key">spaceInEmptyElements</span>: <span class="predefined-constant">false</span>,
+    <span class="key">escapeAttributes</span>: <span class="predefined-constant">true</span>
+) {
+    product(<span class="key">id</span>: <span class="string"><span class="delimiter">'</span><span class="content">1</span><span class="delimiter">'</span></span>, <span class="key">description</span>: <span class="predefined-constant">null</span>, <span class="key">sku</span>: <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>) {
+        name(<span class="string"><span class="delimiter">'</span><span class="content">Widget</span><span class="delimiter">'</span></span>)
+        empty()
+    }
+}
+
+httpPut(<span class="string"><span class="delimiter">'</span><span class="content">/products/1</span><span class="delimiter">'</span></span>, payload, <span class="string"><span class="delimiter">'</span><span class="content">application/xml</span><span class="delimiter">'</span></span>)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Supported <code>XmlUtils.Format</code> options include:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Declaration and document metadata: <code>omitDeclaration</code>, <code>xmlVersion</code>, <code>charset</code>, <code>doubleQuotes</code>, <code>doctype</code></p>
+</li>
+<li>
+<p>Pretty-printing layout: <code>prettyPrint</code>, <code>indent</code>, <code>lineSeparator</code></p>
+</li>
+<li>
+<p>Empty elements and attribute handling: <code>expandEmptyElements</code>, <code>spaceInEmptyElements</code>,
+<code>omitEmptyAttributes</code>, <code>omitNullAttributes</code></p>
+</li>
+<li>
+<p>Attribute escaping: <code>escapeAttributes</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><code>XmlUtils.toXml(&#8230;&#8203;)</code> also supports inline named options, so shorter cases can be written as:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> payload = XmlUtils.toXml(<span class="key">omitNullAttributes</span>: <span class="predefined-constant">true</span>, <span class="key">spaceInEmptyElements</span>: <span class="predefined-constant">false</span>) {
+    product(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Widget</span><span class="delimiter">'</span></span>, <span class="key">description</span>: <span class="predefined-constant">null</span>) {
+        empty()
+    }
+}
+
+httpPost(<span class="string"><span class="delimiter">'</span><span class="content">/products</span><span class="delimiter">'</span></span>, payload, <span class="string"><span class="delimiter">'</span><span class="content">application/xml</span><span class="delimiter">'</span></span>)</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect3">
 <h4 id="_autowiring">Autowiring</h4>
 <div class="paragraph">
 <p>To obtain a reference to a bean you can use the <a href="https://docs.spring.io/spring-framework/docs/6.2.16/javadoc-api/org/springframework/beans/factory/annotation/Autowired.html">Autowired</a> annotation. For example:</p>
