@@ -1170,6 +1170,58 @@ grails generate-scaffold-all Book</code></pre>
 </div>
 </div>
 </div>
+<div class="sect4">
+<h5 id="_2_8_url_mapping_group_defaults">2.8 URL Mapping Group Defaults</h5>
+<div class="paragraph">
+<p>The <code>group</code> method in URL mappings now accepts default parameters that are inherited by all child mappings:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">group <span class="string"><span class="delimiter">&quot;</span><span class="content">/api</span><span class="delimiter">&quot;</span></span>, <span class="key">namespace</span>: <span class="string"><span class="delimiter">'</span><span class="content">api</span><span class="delimiter">'</span></span>, <span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">resource</span><span class="delimiter">'</span></span>, {
+    <span class="string"><span class="delimiter">&quot;</span><span class="content">/list</span><span class="delimiter">&quot;</span></span>(<span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">list</span><span class="delimiter">'</span></span>)    <span class="comment">// inherits namespace and controller</span>
+    <span class="string"><span class="delimiter">&quot;</span><span class="content">/show</span><span class="delimiter">&quot;</span></span>(<span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">show</span><span class="delimiter">'</span></span>)    <span class="comment">// inherits namespace and controller</span>
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Nested groups merge defaults — inner groups inherit and can extend or override outer group defaults. Child mappings can override any default explicitly. This is a new additive feature and does not affect existing URL mappings.</p>
+</div>
+<div class="paragraph">
+<p>For full details, see the <a href="../../guide/theWebLayer/urlmappings/mappingToControllersAndActions.html#_group_defaults">Group Defaults</a> documentation.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_2_9_url_mapping_wildcard_validation">2.9 URL Mapping Wildcard Validation</h5>
+<div class="paragraph">
+<p>Grails now validates wildcard-captured URL mapping variables (<code>$controller</code>, <code>$action</code>, <code>$namespace</code>) against registered controller artefacts at request time. When a captured value does not match a registered artefact, the mapping is skipped and the next mapping is tried.</p>
+</div>
+<div class="paragraph">
+<p>This is a new behavior that is <strong>enabled by default</strong>. It allows patterns like:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">group <span class="string"><span class="delimiter">&quot;</span><span class="content">/topics</span><span class="delimiter">&quot;</span></span>, {
+    <span class="string"><span class="delimiter">&quot;</span><span class="content">/</span><span class="inline"><span class="inline-delimiter">$</span>action</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">topic</span><span class="delimiter">'</span></span>)    <span class="comment">// tried first — only matches real actions</span>
+    <span class="string"><span class="delimiter">&quot;</span><span class="content">/</span><span class="inline"><span class="inline-delimiter">$</span>id</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">topic</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">show</span><span class="delimiter">'</span></span>)  <span class="comment">// fallback for non-action values</span>
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Hardcoded controller/action values in mappings are not affected — only wildcard-captured values are validated.</p>
+</div>
+<div class="paragraph">
+<p>If this causes issues with existing URL mappings, you can disable it in <code>application.yml</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">web</span>:
+        <span class="key">url</span>:
+            <span class="key">mapping</span>:
+                <span class="key">validateWildcards</span>: <span class="string"><span class="content">false</span></span></code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 
@@ -2772,9 +2824,6 @@ grailsGradlePluginVersion=6.0.0</code></pre>
 </div>
 <div class="paragraph">
 <p>Micronaut for Spring 4.5.1 provides seamless integration between Micronaut and Spring, allowing you to leverage the strengths of both frameworks in your Grails project.</p>
-</div>
-<div class="paragraph">
-<p>For full details, see the <a href="../../guide/scaffolding.html">Scaffolding</a> documentation.</p>
 </div>
 </div>
 <div class="sect3">

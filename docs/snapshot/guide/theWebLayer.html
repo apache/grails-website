@@ -9651,6 +9651,56 @@ them it is necessary to add the parameter <code>keepParamsWhenRedirect: true</co
 <div class="paragraph">
 <p>Here the name of the controller, action and id are implicitly obtained from the variables <code>controller</code>, <code>action</code> and <code>id</code> embedded within the URL.</p>
 </div>
+<div class="sect4">
+<h5 id="_wildcard_artefact_validation">Wildcard Artefact Validation</h5>
+<div class="paragraph">
+<p>By default, when URL mappings use wildcard variables like <code>$controller</code>, <code>$action</code>, or <code>$namespace</code>, Grails validates the captured values against registered controller artefacts. If a captured value does not correspond to a real controller, action, or namespace, the mapping is skipped and the next mapping is tried.</p>
+</div>
+<div class="paragraph">
+<p>This enables patterns where a <code>$action</code> wildcard is followed by a fallback mapping:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">group <span class="string"><span class="delimiter">&quot;</span><span class="content">/topics</span><span class="delimiter">&quot;</span></span>, {
+    <span class="string"><span class="delimiter">&quot;</span><span class="content">/</span><span class="inline"><span class="inline-delimiter">$</span>action</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">topic</span><span class="delimiter">'</span></span>)
+    <span class="string"><span class="delimiter">&quot;</span><span class="content">/</span><span class="inline"><span class="inline-delimiter">$</span>id</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">topic</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">show</span><span class="delimiter">'</span></span>)
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>With this configuration:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>/topics/gallery</code> — "gallery" is validated as a real action on <code>TopicController</code>, so the <code>$action</code> mapping is used.</p>
+</li>
+<li>
+<p><code>/topics/42</code> — "42" is not a valid action, so the <code>$action</code> mapping is skipped and the <code>$id</code> mapping handles the request, routing to the <code>show</code> action.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>This validation applies to <code>$controller</code>, <code>$action</code>, and <code>$namespace</code> wildcards. Hardcoded values in mappings (e.g., <code>controller: 'topic'</code>) are never filtered — only wildcard-captured values are validated.</p>
+</div>
+<div class="paragraph">
+<p>When a wildcard-captured action matches a real action on the controller, it takes priority over less-specific fallback mappings where the action is hardcoded. This means a <code>$action</code> mapping that resolves to a valid action will be preferred over a catch-all mapping such as <code>$id</code> with a hardcoded action, even if the fallback mapping sorts ahead of it.</p>
+</div>
+<div class="paragraph">
+<p>More-specific mappings still win. Literal paths such as <code>/community</code> and explicit method-specific mappings such as <code>post "/invites"</code> are not displaced by wildcard controller/action matches.</p>
+</div>
+<div class="paragraph">
+<p>To disable this behavior, set in <code>application.yml</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">web</span>:
+        <span class="key">url</span>:
+            <span class="key">mapping</span>:
+                <span class="key">validateWildcards</span>: <span class="string"><span class="content">false</span></span></code></pre>
+</div>
+</div>
 <div class="paragraph">
 <p>You can also resolve the controller name and action name to execute dynamically using a closure:</p>
 </div>
@@ -9661,6 +9711,7 @@ them it is necessary to add the parameter <code>keepParamsWhenRedirect: true</co
         action = { params.goHere }
     }
 }</code></pre>
+</div>
 </div>
 </div>
 </div>
