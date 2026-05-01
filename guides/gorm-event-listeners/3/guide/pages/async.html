@@ -113,7 +113,57 @@ A Grails service is not required in order to write an event listener. You could 
 <div class="listingblock">
 <div class="title">grails-app/services/demo/AuditListenerService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/AuditListenerService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.events.annotation.Subscriber</span>
+<span class="keyword">import</span> <span class="include">grails.events.annotation.gorm.Listener</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.mapping.engine.event.AbstractPersistenceEvent</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.mapping.engine.event.PostDeleteEvent</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.mapping.engine.event.PostInsertEvent</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.mapping.engine.event.PostUpdateEvent</span>
+
+<span class="annotation">@Slf4j</span>
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">AuditListenerService</span> {
+
+    AuditDataService auditDataService
+
+    <span class="predefined-type">Long</span> bookId(AbstractPersistenceEvent event) {
+        <span class="keyword">if</span> ( event.entityObject <span class="keyword">instanceof</span> <span class="predefined-type">Book</span> ) {
+            <span class="keyword">return</span> ((<span class="predefined-type">Book</span>) event.entityObject).id <i class="conum" data-value="2"></i><b>(2)</b>
+        }
+        <span class="predefined-constant">null</span>
+    }
+
+    <span class="annotation">@Subscriber</span> <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="type">void</span> afterInsert(PostInsertEvent event) {
+        <span class="predefined-type">Long</span> bookId = bookId(event)
+        <span class="keyword">if</span> ( bookId ) {
+            log.info <span class="string"><span class="delimiter">'</span><span class="content">After book save...</span><span class="delimiter">'</span></span>
+            auditDataService.save(<span class="string"><span class="delimiter">'</span><span class="content">Book saved</span><span class="delimiter">'</span></span>, bookId)
+        }
+    }
+
+    <span class="annotation">@Subscriber</span> <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="type">void</span> afterUpdate(PostUpdateEvent event) { <i class="conum" data-value="3"></i><b>(3)</b>
+        <span class="predefined-type">Long</span> bookId = bookId(event)
+        <span class="keyword">if</span> ( bookId ) {
+            log.info <span class="string"><span class="delimiter">&quot;</span><span class="content">After book update...</span><span class="delimiter">&quot;</span></span>
+            auditDataService.save(<span class="string"><span class="delimiter">'</span><span class="content">Book updated</span><span class="delimiter">'</span></span>, bookId)
+        }
+    }
+
+    <span class="annotation">@Subscriber</span> <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="type">void</span> afterDelete(PostDeleteEvent event) {
+        <span class="predefined-type">Long</span> bookId = bookId(event)
+        <span class="keyword">if</span> ( bookId ) {
+            log.info <span class="string"><span class="delimiter">'</span><span class="content">After book delete ...</span><span class="delimiter">'</span></span>
+            auditDataService.save(<span class="string"><span class="delimiter">'</span><span class="content">Book deleted</span><span class="delimiter">'</span></span>, bookId)
+        }
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -150,7 +200,69 @@ Keep in mind that the method <code>bookId</code> will return null for any classe
 <div class="listingblock">
 <div class="title">src/test/groovy/demo/AuditListenerServiceSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/test/groovy/demo/AuditListenerServiceSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.testing.gorm.DataTest</span>
+<span class="keyword">import</span> <span class="include">grails.testing.services.ServiceUnitTest</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.mapping.engine.event.PostDeleteEvent</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.mapping.engine.event.PostInsertEvent</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.mapping.engine.event.PostUpdateEvent</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="type">class</span> <span class="class">AuditListenerServiceSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> ServiceUnitTest&lt;AuditListenerService&gt;, DataTest { <i class="conum" data-value="1"></i><b>(1)</b>
+
+    <span class="type">void</span> setupSpec() {
+        mockDomains <span class="predefined-type">Book</span> <i class="conum" data-value="2"></i><b>(2)</b>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">Book.PostInsertEvent triggers auditDataService.save</span><span class="delimiter">&quot;</span></span>(){
+        <span class="key">given</span>:
+        service.auditDataService = Mock(AuditDataService)
+
+        <span class="predefined-type">Book</span> book = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Practical Grails 3</span><span class="delimiter">'</span></span>,
+                <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Eric Helgeson</span><span class="delimiter">'</span></span>,
+                <span class="key">pages</span>: <span class="integer">1</span>).save() <i class="conum" data-value="3"></i><b>(3)</b>
+        PostInsertEvent event = <span class="keyword">new</span> PostInsertEvent(dataStore, book) <i class="conum" data-value="4"></i><b>(4)</b>
+
+        <span class="key">when</span>:
+        service.afterInsert(event) <i class="conum" data-value="5"></i><b>(5)</b>
+
+        <span class="key">then</span>:
+        <span class="integer">1</span> * service.auditDataService.save(_, _) <i class="conum" data-value="6"></i><b>(6)</b>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">Book.PostUpdateEvent triggers auditDataService.save</span><span class="delimiter">&quot;</span></span>(){
+        <span class="key">given</span>:
+        service.auditDataService = Mock(AuditDataService)
+
+        <span class="predefined-type">Book</span> book = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Practical Grails 3</span><span class="delimiter">'</span></span>,
+                <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Eric Helgeson</span><span class="delimiter">'</span></span>,
+                <span class="key">pages</span>: <span class="integer">1</span>).save() <i class="conum" data-value="3"></i><b>(3)</b>
+        PostUpdateEvent event = <span class="keyword">new</span> PostUpdateEvent(dataStore, book) <i class="conum" data-value="4"></i><b>(4)</b>
+
+        <span class="key">when</span>:
+        service.afterUpdate(event) <i class="conum" data-value="5"></i><b>(5)</b>
+
+        <span class="key">then</span>:
+        <span class="integer">1</span> * service.auditDataService.save(_, _) <i class="conum" data-value="6"></i><b>(6)</b>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">Book.PostDeleteEvent triggers auditDataService.save</span><span class="delimiter">&quot;</span></span>(){
+        <span class="key">given</span>:
+        service.auditDataService = Mock(AuditDataService)
+
+        <span class="predefined-type">Book</span> book = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Practical Grails 3</span><span class="delimiter">'</span></span>,
+                <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Eric Helgeson</span><span class="delimiter">'</span></span>,
+                <span class="key">pages</span>: <span class="integer">1</span>).save() <i class="conum" data-value="3"></i><b>(3)</b>
+        PostDeleteEvent event = <span class="keyword">new</span> PostDeleteEvent(dataStore, book) <i class="conum" data-value="4"></i><b>(4)</b>
+
+        <span class="key">when</span>:
+        service.afterDelete(event) <i class="conum" data-value="5"></i><b>(5)</b>
+
+        <span class="key">then</span>:
+        <span class="integer">1</span> * service.auditDataService.save(_, _) <i class="conum" data-value="6"></i><b>(6)</b>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -187,7 +299,79 @@ Keep in mind that the method <code>bookId</code> will return null for any classe
 <div class="listingblock">
 <div class="title">src/integration-test/groovy/demo/AuditListenerServiceIntegrationSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/integration-test/groovy/demo/AuditListenerServiceIntegrationSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">grails.transaction.Rollback</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+<span class="keyword">import</span> <span class="include">spock.util.concurrent.PollingConditions</span>
+
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">AuditListenerServiceIntegrationSpec</span> <span class="directive">extends</span> Specification {
+
+    BookDataService bookDataService
+    AuditDataService auditDataService
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">saving a Book causes an Audit instance to be saved</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        <span class="keyword">def</span> conditions = <span class="keyword">new</span> PollingConditions(<span class="key">timeout</span>: <span class="integer">30</span>)
+
+        <span class="predefined-type">Book</span> book = bookDataService.save(<span class="string"><span class="delimiter">'</span><span class="content">Practical Grails 3</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Eric Helgeson</span><span class="delimiter">'</span></span>, <span class="integer">1</span>)
+
+        <span class="key">then</span>:
+        book
+        book.id
+        conditions.eventually {
+            <span class="keyword">assert</span> auditDataService.count() == old(auditDataService.count()) + <span class="integer">1</span>
+        }
+
+        <span class="key">when</span>:
+        Audit lastAudit = <span class="local-variable">this</span>.lastAudit()
+
+        <span class="key">then</span>:
+        lastAudit.event == <span class="string"><span class="delimiter">&quot;</span><span class="content">Book saved</span><span class="delimiter">&quot;</span></span>
+        lastAudit.bookId == book.id
+
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">A books is updated</span><span class="delimiter">'</span></span>
+        book = bookDataService.update(book.id, <span class="string"><span class="delimiter">'</span><span class="content">Grails 3</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">a new audit instance is created</span><span class="delimiter">'</span></span>
+        conditions.eventually {
+            <span class="keyword">assert</span> auditDataService.count() == old(auditDataService.count()) + <span class="integer">1</span>
+        }
+
+        <span class="key">when</span>:
+        lastAudit = <span class="local-variable">this</span>.lastAudit()
+
+        <span class="key">then</span>:
+        book.title == <span class="string"><span class="delimiter">'</span><span class="content">Grails 3</span><span class="delimiter">'</span></span>
+        lastAudit.event == <span class="string"><span class="delimiter">'</span><span class="content">Book updated</span><span class="delimiter">'</span></span>
+        lastAudit.bookId == book.id
+
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">A book is deleted</span><span class="delimiter">'</span></span>
+        bookDataService.delete(book.id)
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">a new audit instance is created</span><span class="delimiter">'</span></span>
+        conditions.eventually {
+            <span class="keyword">assert</span> auditDataService.count() == old(auditDataService.count()) + <span class="integer">1</span>
+        }
+
+        <span class="key">when</span>:
+        lastAudit = <span class="local-variable">this</span>.lastAudit()
+
+        <span class="key">then</span>:
+        lastAudit.event == <span class="string"><span class="delimiter">'</span><span class="content">Book deleted</span><span class="delimiter">'</span></span>
+        lastAudit.bookId == book.id
+
+        <span class="key">cleanup</span>:
+        auditDataService.deleteByBookId(book.id)
+    }
+
+    Audit lastAudit() {
+        <span class="type">int</span> offset = <span class="predefined-type">Math</span>.max(((auditDataService.count() <span class="keyword">as</span> <span class="type">int</span>) - <span class="integer">1</span>), <span class="integer">0</span>)
+        auditDataService.findAll([<span class="key">max</span>: <span class="integer">1</span>, <span class="key">offset</span>: offset]).first()
+    }
+}</code></pre>
 </div>
 </div>
 

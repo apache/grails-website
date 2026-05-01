@@ -87,7 +87,58 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/controllers/demo/BookController.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/controllers/demo/BookController.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">org.springframework.context.MessageSource</span>
+<span class="keyword">import</span> <span class="include">org.springframework.context.i18n.LocaleContextHolder</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">BookController</span> {
+
+    <span class="directive">static</span> allowedMethods = [
+            <span class="key">index</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>,
+            <span class="key">show</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>,
+            <span class="key">delete</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>,
+            <span class="key">undoDelete</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>,
+    ]
+
+    BookDataService bookDataService
+    MessageSource messageSource
+
+    <span class="keyword">def</span> <span class="function">index</span>() {
+        [
+                <span class="key">total</span>: bookDataService.count(),
+                <span class="key">bookList</span>: bookDataService.findAll(),
+                <span class="key">undoId</span>: params.long(<span class="string"><span class="delimiter">'</span><span class="content">undoId</span><span class="delimiter">'</span></span>)
+        ]
+    }
+
+    <span class="keyword">def</span> <span class="function">show</span>(<span class="predefined-type">Long</span> id) {
+        [<span class="key">bookInstance</span>: bookDataService.findById(id)]
+    }
+
+    <span class="keyword">def</span> <span class="function">delete</span>(<span class="predefined-type">Long</span> id) {
+        bookDataService.delete(id)
+        flash.message = messageSource.getMessage(<span class="string"><span class="delimiter">'</span><span class="content">book.delete.undo</span><span class="delimiter">'</span></span>,
+                [id] <span class="keyword">as</span> <span class="predefined-type">Object</span><span class="type">[]</span>,
+                <span class="string"><span class="delimiter">'</span><span class="content">Book deleted</span><span class="delimiter">'</span></span>,
+                LocaleContextHolder.locale
+        )
+        redirect(<span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">index</span><span class="delimiter">'</span></span>, <span class="key">params</span>: [<span class="key">undoId</span>: id])
+    }
+
+    <span class="keyword">def</span> <span class="function">undoDelete</span>(<span class="predefined-type">Long</span> id) {
+        bookDataService.unDelete(id)
+        flash.message = messageSource.getMessage(<span class="string"><span class="delimiter">'</span><span class="content">book.unDelete</span><span class="delimiter">'</span></span>,
+                <span class="type">[]</span> <span class="keyword">as</span> <span class="predefined-type">Object</span><span class="type">[]</span>,
+                <span class="string"><span class="delimiter">'</span><span class="content">Book restored</span><span class="delimiter">'</span></span>,
+                LocaleContextHolder.locale
+        )
+        redirect(<span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">index</span><span class="delimiter">'</span></span>)
+    }
+
+}</code></pre>
 </div>
 </div>
 

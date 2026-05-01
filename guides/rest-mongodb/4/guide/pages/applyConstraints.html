@@ -88,7 +88,10 @@ on properties defined in a GORM domain class, you can do so using the <code>cons
 <div class="listingblock">
 <div class="title">grails-app/domain/demo/Product.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/domain/demo/Product.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="directive">static</span> constraints = {
+    name <span class="key">blank</span>: <span class="predefined-constant">false</span>
+    price <span class="key">range</span>: <span class="float">0.0</span>..<span class="float">1000.00</span>
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -119,9 +122,47 @@ tests including having spaces in the test name.</p>
 <div class="listingblock">
 <div class="title">src/test/groovy/demo/ProductSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/test/groovy/demo/ProductSpec.groovy[role=include]
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.test.mongodb.MongoSpec</span>
+<span class="keyword">import</span> <span class="include">grails.testing.gorm.DomainUnitTest</span>
+<span class="keyword">import</span> <span class="include">com.github.fakemongo.Fongo</span>
+<span class="keyword">import</span> <span class="include">com.mongodb.MongoClient</span>
 
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/test/groovy/demo/ProductSpec.groovy[role=include]</code></pre>
+<span class="type">class</span> <span class="class">ProductSpec</span> <span class="directive">extends</span> MongoSpec <i class="conum" data-value="3"></i><b>(3)</b>
+        <span class="directive">implements</span> DomainUnitTest&lt;Product&gt; {  <i class="conum" data-value="4"></i><b>(4)</b>
+
+    <span class="annotation">@Override</span>
+    MongoClient createMongoClient() {  <i class="conum" data-value="2"></i><b>(2)</b>
+        <span class="keyword">new</span> Fongo(getClass().name).mongo
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">a negative value is not a valid price</span><span class="delimiter">'</span></span>() { <i class="conum" data-value="1"></i><b>(1)</b>
+        <span class="key">given</span>:
+        domain.price = -<span class="float">2.0d</span>
+
+        <span class="key">expect</span>:
+        !domain.validate([<span class="string"><span class="delimiter">'</span><span class="content">price</span><span class="delimiter">'</span></span>])
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">a blank name is not save</span><span class="delimiter">'</span></span>() { <i class="conum" data-value="1"></i><b>(1)</b>
+        <span class="key">given</span>:
+        domain.name = <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>
+
+        <span class="key">expect</span>:
+        !domain.validate([<span class="string"><span class="delimiter">'</span><span class="content">name</span><span class="delimiter">'</span></span>])
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">A valid domain is saved</span><span class="delimiter">'</span></span>() {  <i class="conum" data-value="1"></i><b>(1)</b>
+        <span class="key">given</span>:
+        domain.name = <span class="string"><span class="delimiter">'</span><span class="content">Banana</span><span class="delimiter">'</span></span>
+        domain.price = <span class="float">2.15d</span>
+
+        <span class="key">when</span>:
+        domain.save()
+
+        <span class="key">then</span>:
+        Product.count() == old(Product.count()) + <span class="integer">1</span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -150,7 +191,7 @@ tests including having spaces in the test name.</p>
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>build.gradle[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">    testCompile <span class="string"><span class="delimiter">'</span><span class="content">com.github.fakemongo:fongo:2.1.0</span><span class="delimiter">'</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">

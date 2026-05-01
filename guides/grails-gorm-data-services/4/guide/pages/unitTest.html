@@ -99,13 +99,48 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">src/test/groovy/example/grails/PersonDataServiceSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/test/groovy/example/grails/PersonDataServiceWithoutHibernateSpec.groovy[role=include]
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
 
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/test/groovy/example/grails/PersonDataServiceWithoutHibernateSpec.groovy[role=include]
+<span class="keyword">import</span> <span class="include">org.grails.orm.hibernate.HibernateDatastore</span>
+<span class="keyword">import</span> <span class="include">org.springframework.test.annotation.Rollback</span>
+<span class="keyword">import</span> <span class="include">org.springframework.transaction.PlatformTransactionManager</span>
+<span class="keyword">import</span> <span class="include">spock.lang.AutoCleanup</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Shared</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
 
 <span class="type">class</span> <span class="class">PersonDataServiceSpec</span> <span class="directive">extends</span> Specification { <i class="conum" data-value="1"></i><b>(1)</b>
 
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/test/groovy/example/grails/PersonDataServiceWithoutHibernateSpec.groovy[role=include]
+    <span class="annotation">@Shared</span> <i class="conum" data-value="2"></i><b>(2)</b>
+    PersonDataService personDataService
+
+    <span class="annotation">@Shared</span> <i class="conum" data-value="2"></i><b>(2)</b>
+    <span class="annotation">@AutoCleanup</span> <i class="conum" data-value="3"></i><b>(3)</b>
+    HibernateDatastore hibernateDatastore
+
+    <span class="annotation">@Shared</span> <i class="conum" data-value="2"></i><b>(2)</b>
+    PlatformTransactionManager transactionManager
+
+    <span class="type">void</span> setupSpec() {
+        hibernateDatastore = <span class="keyword">new</span> HibernateDatastore(Person) <i class="conum" data-value="4"></i><b>(4)</b>
+        transactionManager = hibernateDatastore.getTransactionManager() <i class="conum" data-value="5"></i><b>(5)</b>
+        personDataService = <span class="local-variable">this</span>.hibernateDatastore.getService(PersonDataService)
+    }
+
+    <span class="annotation">@Rollback</span> <i class="conum" data-value="5"></i><b>(5)</b>
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">test find person by name</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        Person p = personDataService.save(<span class="string"><span class="delimiter">&quot;</span><span class="content">Nirav</span><span class="delimiter">&quot;</span></span>, <span class="integer">39</span>)
+
+        <span class="key">when</span>:
+        Person person = personDataService.findByName(<span class="string"><span class="delimiter">&quot;</span><span class="content">Nirav</span><span class="delimiter">&quot;</span></span>)
+
+        <span class="key">then</span>:
+        person.name == <span class="string"><span class="delimiter">&quot;</span><span class="content">Nirav</span><span class="delimiter">&quot;</span></span>
+        person.age == <span class="integer">39</span>
+
+        <span class="key">cleanup</span>:
+        personDataService.delete(p.id) <i class="conum" data-value="6"></i><b>(6)</b>
+    }
 }</code></pre>
 </div>
 </div>
@@ -148,7 +183,34 @@ the previous unit test:</p>
 <div class="listingblock">
 <div class="title">src/test/groovy/example/grails/PersonDataServiceSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/test/groovy/example/grails/PersonDataServiceSpec.groovy[role=include]
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">grails.test.hibernate.HibernateSpec</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Shared</span>
+
+<span class="type">class</span> <span class="class">PersonDataServiceSpec</span> <span class="directive">extends</span> HibernateSpec {
+
+    <span class="annotation">@Shared</span>
+    PersonDataService personDataService
+
+    <span class="keyword">def</span> <span class="function">setup</span>() {
+        personDataService = hibernateDatastore.getService(PersonDataService)
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">test find person by name</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        personDataService.save(<span class="string"><span class="delimiter">&quot;</span><span class="content">Nirav</span><span class="delimiter">&quot;</span></span>, <span class="integer">39</span>)
+
+        <span class="key">when</span>:
+        Person person = personDataService.findByName(<span class="string"><span class="delimiter">&quot;</span><span class="content">Nirav</span><span class="delimiter">&quot;</span></span>)
+
+        <span class="key">then</span>:
+        person.name == <span class="string"><span class="delimiter">&quot;</span><span class="content">Nirav</span><span class="delimiter">&quot;</span></span>
+        person.age == <span class="integer">39</span>
+
+        <span class="key">cleanup</span>:
+        personDataService.delete(person.id)
+    }
 }</code></pre>
 </div>
 </div>

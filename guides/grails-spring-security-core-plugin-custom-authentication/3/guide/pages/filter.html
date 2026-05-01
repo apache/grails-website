@@ -124,19 +124,76 @@ and overriding the <code>authenticationDetailsSource</code> bean used by that fi
 <div class="listingblock">
 <div class="title">/grails-app/conf/spring/resources.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/spring/resources.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">authenticationDetailsSource(TwoFactorAuthenticationDetailsSource)</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">/src/main/groovy/demo/TwoFactorAuthenticationDetailsSource.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/main/groovy/demo/TwoFactorAuthenticationDetailsSource.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">org.springframework.security.web.authentication.WebAuthenticationDetails</span>
+<span class="keyword">import</span> <span class="include">org.springframework.security.web.authentication.WebAuthenticationDetailsSource</span>
+
+<span class="keyword">import</span> <span class="include">javax.servlet.http.HttpServletRequest</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">TwoFactorAuthenticationDetailsSource</span> <span class="directive">extends</span> WebAuthenticationDetailsSource {
+
+    <span class="annotation">@Override</span>
+    WebAuthenticationDetails buildDetails(HttpServletRequest context) {
+        <span class="keyword">def</span> details = <span class="keyword">new</span> TwoFactorAuthenticationDetails(context)
+
+        <span class="predefined-type">String</span> position = obtainCoordinatePosition(context)
+        details.coordinatePosition = position
+
+        <span class="predefined-type">String</span> value = obtainCoordinateValue(context)
+        details.coordinateValue = value
+        details
+    }
+
+    <span class="comment">/**
+     * Get the Coordinate Position from the request.
+     * @param request
+     * @return
+     */</span>
+    <span class="directive">private</span> <span class="directive">static</span> <span class="predefined-type">String</span> obtainCoordinatePosition(HttpServletRequest request) {
+        <span class="keyword">return</span> request.getParameter(<span class="string"><span class="delimiter">'</span><span class="content">coordinatePosition</span><span class="delimiter">'</span></span>)
+    }
+
+    <span class="comment">/**
+     * Get the Coordinate Value from the request.
+     * @param request
+     * @return
+     */</span>
+    <span class="directive">private</span> <span class="directive">static</span> <span class="predefined-type">String</span> obtainCoordinateValue(HttpServletRequest request) {
+        <span class="keyword">return</span> request.getParameter(<span class="string"><span class="delimiter">'</span><span class="content">coordinateValue</span><span class="delimiter">'</span></span>)
+    }
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">/src/main/groovy/demo/TwoFactorAuthenticationDetails.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/main/groovy/demo/TwoFactorAuthenticationDetails.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">groovy.transform.Canonical</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">org.springframework.security.web.authentication.WebAuthenticationDetails</span>
+
+<span class="keyword">import</span> <span class="include">javax.servlet.http.HttpServletRequest</span>
+
+<span class="annotation">@Canonical</span>
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">TwoFactorAuthenticationDetails</span> <span class="directive">extends</span> WebAuthenticationDetails {
+    <span class="predefined-type">String</span> coordinatePosition
+    <span class="predefined-type">String</span> coordinateValue
+
+    TwoFactorAuthenticationDetails(HttpServletRequest request) {
+        <span class="local-variable">super</span>(request)
+    }
+}</code></pre>
 </div>
 </div>
 

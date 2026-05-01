@@ -110,7 +110,42 @@ dependency into the <code>build.gradle</code>.</p>
 <div class="listingblock">
 <div class="title">src/integration-test/groovy/demo/StudentControllerIntSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/integration-test/groovy/demo/StudentControllerIntSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.plugins.rest.client.RestBuilder</span>
+<span class="keyword">import</span> <span class="include">grails.plugins.rest.client.RestResponse</span>
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Shared</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="keyword">import</span> <span class="include">grails.transaction.Rollback</span>
+
+<span class="annotation">@Integration</span>
+<span class="annotation">@Rollback</span>
+<span class="type">class</span> <span class="class">StudentControllerIntSpec</span> <span class="directive">extends</span> Specification {
+
+    <span class="annotation">@Shared</span> RestBuilder rest = <span class="keyword">new</span> RestBuilder()
+
+    <span class="keyword">def</span> <span class="function">setup</span>() {
+        Student.saveAll(
+                <span class="keyword">new</span> Student(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Nirav</span><span class="delimiter">'</span></span>, <span class="key">grade</span>: <span class="integer">100</span>),
+                <span class="keyword">new</span> Student(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Jeff</span><span class="delimiter">'</span></span>, <span class="key">grade</span>: <span class="integer">95</span>),
+                <span class="keyword">new</span> Student(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Sergio</span><span class="delimiter">'</span></span>, <span class="key">grade</span>: <span class="integer">90</span>),
+        )
+    }
+
+    <span class="keyword">def</span> <span class="string"><span class="delimiter">'</span><span class="content">test json in URI to return students</span><span class="delimiter">'</span></span>() {
+        <span class="key">when</span>:
+        RestResponse resp = rest.get(<span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/student.json</span><span class="delimiter">&quot;</span></span>)  <i class="conum" data-value="1"></i><b>(1)</b> <i class="conum" data-value="2"></i><b>(2)</b>
+
+        <span class="key">then</span>:
+        resp.status == <span class="integer">200</span> <i class="conum" data-value="3"></i><b>(3)</b>
+        resp.json.size() == <span class="integer">3</span>
+        resp.json.find { <span class="local-variable">it</span>.grade == <span class="integer">100</span> &amp;&amp; <span class="local-variable">it</span>.name == <span class="string"><span class="delimiter">'</span><span class="content">Nirav</span><span class="delimiter">'</span></span> }
+        resp.json.find { <span class="local-variable">it</span>.grade == <span class="integer">95</span> &amp;&amp;  <span class="local-variable">it</span>.name == <span class="string"><span class="delimiter">'</span><span class="content">Jeff</span><span class="delimiter">'</span></span> }
+        resp.json.find { <span class="local-variable">it</span>.grade == <span class="integer">90</span> &amp;&amp;  <span class="local-variable">it</span>.name == <span class="string"><span class="delimiter">'</span><span class="content">Sergio</span><span class="delimiter">'</span></span> }
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">

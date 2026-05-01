@@ -96,7 +96,16 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/views/order/_product.gson</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/views/order/_product.gson[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">com.example.Product</span>
+
+model {
+  Product product
+}
+json {
+  hal.links(product)
+
+  id product.id
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -105,7 +114,28 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/views/order/show_v3.gson</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/views/order/show_v3.gson[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">com.example.Order</span>
+
+model {
+    Order order
+}
+json {
+    hal.links(<span class="key">self</span>: order, <span class="key">customer</span>: order.customer)
+
+    id order.orderId
+    shippingCost order.shippingCost
+    date order.orderPlaced.format(<span class="string"><span class="delimiter">'</span><span class="content">M-dd-yyy</span><span class="delimiter">'</span></span>)
+
+    shippingAddress {
+        street order.shippingAddress.street
+        street2 order.shippingAddress.street2
+        city order.shippingAddress.city
+        state order.shippingAddress.state
+        zip order.shippingAddress.zip
+    }
+
+    products tmpl.product(order.products) <i class="conum" data-value="1"></i><b>(1)</b>
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -133,7 +163,62 @@ For more information on using templates in JSON views, see the <a href="http://v
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/integration-test/groovy/com/example/OrderShowV3IntegrationSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">{
+    <span class="key">_links</span>: {
+        <span class="key">self</span>: {
+            <span class="key">href</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/api/orders?id=1</span><span class="delimiter">&quot;</span></span>,
+            <span class="key">hreflang</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">en</span><span class="delimiter">&quot;</span></span>,
+            <span class="key">type</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">application/hal+json</span><span class="delimiter">&quot;</span></span>
+        },
+        <span class="key">customer</span>: {
+            <span class="key">href</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/api/customers?id=1</span><span class="delimiter">&quot;</span></span>,
+            <span class="key">hreflang</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">en</span><span class="delimiter">&quot;</span></span>,
+            <span class="key">type</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">application/hal+json</span><span class="delimiter">&quot;</span></span>
+        }
+    },
+    <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">0A12321</span><span class="delimiter">&quot;</span></span>,
+    <span class="key">shippingCost</span>: <span class="float">13.54</span>,
+    <span class="key">date</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">2-08-2017</span><span class="delimiter">&quot;</span></span>,
+    <span class="key">shippingAddress</span>: {
+        <span class="key">street</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">321 Arrow Ln</span><span class="delimiter">&quot;</span></span>,
+        <span class="key">street2</span>: <span class="predefined-constant">null</span>,
+        <span class="key">city</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Chicago</span><span class="delimiter">&quot;</span></span>,
+        <span class="key">state</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">IL</span><span class="delimiter">&quot;</span></span>,
+        <span class="key">zip</span>: <span class="integer">646465</span>
+    },
+    <span class="key">products</span>: [
+        {
+            <span class="key">_links</span>: {
+                <span class="key">self</span>: {
+                    <span class="key">href</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/api/products/11</span><span class="delimiter">&quot;</span></span>,
+                    <span class="key">hreflang</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">en</span><span class="delimiter">&quot;</span></span>,
+                    <span class="key">type</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">application/hal+json</span><span class="delimiter">&quot;</span></span>
+                }
+            },
+            <span class="key">id</span>: <span class="integer">11</span>
+        },
+        {
+            <span class="key">_links</span>: {
+                <span class="key">self</span>: {
+                    <span class="key">href</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/api/products/6</span><span class="delimiter">&quot;</span></span>,
+                    <span class="key">hreflang</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">en</span><span class="delimiter">&quot;</span></span>,
+                    <span class="key">type</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">application/hal+json</span><span class="delimiter">&quot;</span></span>
+                }
+            },
+            <span class="key">id</span>: <span class="integer">6</span>
+        },
+        {
+            <span class="key">_links</span>: {
+                <span class="key">self</span>: {
+                    <span class="key">href</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/api/products/1</span><span class="delimiter">&quot;</span></span>,
+                    <span class="key">hreflang</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">en</span><span class="delimiter">&quot;</span></span>,
+                    <span class="key">type</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">application/hal+json</span><span class="delimiter">&quot;</span></span>
+                }
+            },
+            <span class="key">id</span>: <span class="integer">1</span>
+        }
+    ]
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -142,7 +227,16 @@ For more information on using templates in JSON views, see the <a href="http://v
 <div class="listingblock">
 <div class="title">grails-app/views/customer/_order.gson</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/views/customer/_order.gson[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">com.example.Order</span>
+
+model {
+    Order order
+}
+json {
+    hal.links(order)
+
+    id order.id
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -154,7 +248,27 @@ For more information on using templates in JSON views, see the <a href="http://v
 <div class="listingblock">
 <div class="title">grails-app/views/customer/show.gson</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/views/customer/show.gson[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">com.example.Customer</span>
+
+model {
+    Customer customer
+}
+json {
+    id customer.id
+    firstName customer.firstName
+    lastName customer.lastName
+    fullName <span class="string"><span class="delimiter">&quot;</span><span class="inline"><span class="inline-delimiter">${</span>customer.firstName<span class="inline-delimiter">}</span></span><span class="content"> </span><span class="inline"><span class="inline-delimiter">${</span>customer.lastName<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>
+
+    address {
+        street customer.address.street
+        street2 customer.address.street2
+        city customer.address.city
+        state customer.address.state
+        zip customer.address.zip
+    }
+
+    orders tmpl.order(customer.orders)
+}</code></pre>
 </div>
 </div>
 

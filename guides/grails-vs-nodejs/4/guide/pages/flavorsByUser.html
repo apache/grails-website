@@ -98,7 +98,7 @@ We are going to map this with Grails.</p>
 <div class="listingblock">
 <div class="title">/server/grails-app/controllers/demo/UrlMappings.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/controllers/demo/UrlMappings.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">        get <span class="string"><span class="delimiter">&quot;</span><span class="content">/ice-cream/</span><span class="inline"><span class="inline-delimiter">$</span>username</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">iceCream</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">index</span><span class="delimiter">'</span></span>)</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -107,12 +107,38 @@ We are going to map this with Grails.</p>
 <div class="listingblock">
 <div class="title">/server/grails-app/controllers/demo/IceCreamController.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/controllers/demo/IceCreamController.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/controllers/demo/IceCreamController.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/controllers/demo/IceCreamController.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/controllers/demo/IceCreamController.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/controllers/demo/IceCreamController.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/controllers/demo/IceCreamController.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.SpringSecurityService</span>
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.annotation.Secured</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileDynamic</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="annotation">@CompileStatic</span>
+<span class="annotation">@Secured</span>([<span class="string"><span class="delimiter">'</span><span class="content">ROLE_USER</span><span class="delimiter">'</span></span>]) <i class="conum" data-value="1"></i><b>(1)</b>
+<span class="type">class</span> <span class="class">IceCreamController</span> {
+    <span class="directive">static</span> responseFormats = [<span class="string"><span class="delimiter">'</span><span class="content">json</span><span class="delimiter">'</span></span>]
+
+    <span class="directive">static</span> allowedMethods = [<span class="key">index</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>, <span class="key">save</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>, <span class="key">delete</span>: <span class="string"><span class="delimiter">'</span><span class="content">DELETE</span><span class="delimiter">'</span></span>,]
+    IceCreamService iceCreamService
+
+    UserIceCreamService userIceCreamService
+
+    SpringSecurityService springSecurityService
+
+    <span class="keyword">def</span> <span class="function">index</span>(<span class="predefined-type">Integer</span> max) {
+        <span class="predefined-type">String</span> username = loggedUsername()
+        <span class="keyword">if</span> ( !username ) {
+            render <span class="key">status</span>: <span class="integer">404</span>
+            <span class="keyword">return</span>
+        }
+        params.max = <span class="predefined-type">Math</span>.min(max ?: <span class="integer">10</span>, <span class="integer">100</span>) <i class="conum" data-value="2"></i><b>(2)</b>
+
+        <span class="predefined-type">List</span>&lt;IceCream&gt; iceCreams = userIceCreamService.findAllIceCreamsByUsername(username)
+        [<span class="key">iceCreams</span>: iceCreams] <i class="conum" data-value="3"></i><b>(3)</b>
+    }
+    <span class="annotation">@CompileDynamic</span>
+    <span class="directive">protected</span> <span class="predefined-type">String</span> loggedUsername() {
+        springSecurityService.principal?.username <span class="keyword">as</span> <span class="predefined-type">String</span>
+    }</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -129,10 +155,22 @@ We are going to map this with Grails.</p>
 <div class="listingblock">
 <div class="title">/server/grails-app/services/demo/UserIceCreamService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/UserIceCreamService.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/UserIceCreamService.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/UserIceCreamService.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/UserIceCreamService.groovy[role=include]
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.ReadOnly</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
+<span class="keyword">import</span> <span class="include">org.springframework.validation.ObjectError</span>
+<span class="annotation">@Slf4j</span>
+<span class="annotation">@Transactional</span>
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">UserIceCreamService</span> {
+    <span class="annotation">@ReadOnly</span>
+    <span class="predefined-type">List</span>&lt;IceCream&gt; findAllIceCreamsByUsername(<span class="predefined-type">String</span> loggedUsername) {
+        UserIceCream.where {
+            user.username == loggedUsername
+        }.list()*.iceCream <span class="keyword">as</span> <span class="predefined-type">List</span>&lt;IceCream&gt;
+    }
 }</code></pre>
 </div>
 </div>
@@ -142,13 +180,19 @@ We are going to map this with Grails.</p>
 <div class="listingblock">
 <div class="title">/server/grails-app/views/iceCream/index.gson</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/views/iceCream/index.gson[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">demo.IceCream</span>
+
+model {
+    <span class="predefined-type">Iterable</span>&lt;IceCream&gt; iceCreams
+}
+
+json tmpl.icecream(iceCreams)</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">/server/grails-app/views/iceCream/_iceCream.gson</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/views/iceCream/_iceCream.gson[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">// missing snippet: server/grails-app/views/iceCream/_iceCream.gson</span></code></pre>
 </div>
 </div>
 

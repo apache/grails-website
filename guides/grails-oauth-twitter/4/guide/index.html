@@ -419,7 +419,8 @@ OAuth2 over REST through Twitter.</p>
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>build.gradle[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">compile <span class="string"><span class="delimiter">'</span><span class="content">org.grails.plugins:spring-security-core:3.2.1</span><span class="delimiter">'</span></span>
+compile <span class="string"><span class="delimiter">'</span><span class="content">org.grails.plugins:spring-security-rest:2.0.0.RC1</span><span class="delimiter">'</span></span></code></pre>
 </div>
 </div>
 
@@ -442,7 +443,40 @@ OAuth2 over REST through Twitter.</p>
 <div class="listingblock">
 <div class="title">src/main/groovy/demo/JwtCookieTokenReader.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/main/groovy/demo/JwtCookieTokenReader.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.rest.token.AccessToken</span>
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.rest.token.reader.TokenReader</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
+
+<span class="keyword">import</span> <span class="include">javax.servlet.http.Cookie</span>
+<span class="keyword">import</span> <span class="include">javax.servlet.http.HttpServletRequest</span>
+
+<span class="annotation">@Slf4j</span>
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">JwtCookieTokenReader</span> <span class="directive">implements</span> TokenReader {
+
+    <span class="directive">final</span> <span class="directive">static</span> <span class="predefined-type">String</span> DEFAULT_COOKIE_NAME = <span class="string"><span class="delimiter">'</span><span class="content">JWT</span><span class="delimiter">'</span></span>
+
+    <span class="predefined-type">String</span> cookieName = DEFAULT_COOKIE_NAME
+
+    <span class="annotation">@Override</span>
+    AccessToken findToken(HttpServletRequest request) {
+
+        log.debug <span class="string"><span class="delimiter">&quot;</span><span class="content">Looking for jwt token in a cookie named {}</span><span class="delimiter">&quot;</span></span>, cookieName
+        <span class="predefined-type">String</span> tokenValue = <span class="predefined-constant">null</span>
+        Cookie cookie = request.getCookies()?.find { Cookie cookie -&gt; cookie.name.equalsIgnoreCase(cookieName) }
+
+        <span class="keyword">if</span> ( cookie ) {
+            tokenValue = cookie.value
+        }
+
+        log.debug <span class="string"><span class="delimiter">&quot;</span><span class="content">Token: </span><span class="inline"><span class="inline-delimiter">${</span>tokenValue<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>
+        <span class="keyword">return</span> tokenValue ? <span class="keyword">new</span> AccessToken(tokenValue) : <span class="predefined-constant">null</span>
+
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -451,9 +485,11 @@ OAuth2 over REST through Twitter.</p>
 <div class="listingblock">
 <div class="title">grails-app/conf/spring/resources.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/spring/resources.groovy[role=include]
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">demo.JwtCookieTokenReader</span>
 beans {
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/spring/resources.groovy[role=include]
+    tokenReader(JwtCookieTokenReader) {
+        cookieName = <span class="string"><span class="delimiter">'</span><span class="content">jwt</span><span class="delimiter">'</span></span>
+    }
 ...
 ..
 .
@@ -480,7 +516,18 @@ beans {
 <div class="listingblock">
 <div class="title">grails-app/conf/application.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/application.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.controllerAnnotations.staticRules = [
+        [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/</span><span class="delimiter">'</span></span>,               <span class="key">access</span>: [<span class="string"><span class="delimiter">'</span><span class="content">permitAll</span><span class="delimiter">'</span></span>]],
+        [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/error</span><span class="delimiter">'</span></span>,          <span class="key">access</span>: [<span class="string"><span class="delimiter">'</span><span class="content">permitAll</span><span class="delimiter">'</span></span>]],
+        [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/index</span><span class="delimiter">'</span></span>,          <span class="key">access</span>: [<span class="string"><span class="delimiter">'</span><span class="content">permitAll</span><span class="delimiter">'</span></span>]],
+        [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/index.gsp</span><span class="delimiter">'</span></span>,      <span class="key">access</span>: [<span class="string"><span class="delimiter">'</span><span class="content">permitAll</span><span class="delimiter">'</span></span>]],
+        [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/shutdown</span><span class="delimiter">'</span></span>,       <span class="key">access</span>: [<span class="string"><span class="delimiter">'</span><span class="content">permitAll</span><span class="delimiter">'</span></span>]],
+        [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/assets/**</span><span class="delimiter">'</span></span>,      <span class="key">access</span>: [<span class="string"><span class="delimiter">'</span><span class="content">permitAll</span><span class="delimiter">'</span></span>]],
+        [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/**/js/**</span><span class="delimiter">'</span></span>,       <span class="key">access</span>: [<span class="string"><span class="delimiter">'</span><span class="content">permitAll</span><span class="delimiter">'</span></span>]],
+        [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/**/css/**</span><span class="delimiter">'</span></span>,      <span class="key">access</span>: [<span class="string"><span class="delimiter">'</span><span class="content">permitAll</span><span class="delimiter">'</span></span>]],
+        [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/**/images/**</span><span class="delimiter">'</span></span>,   <span class="key">access</span>: [<span class="string"><span class="delimiter">'</span><span class="content">permitAll</span><span class="delimiter">'</span></span>]],
+        [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/**/favicon.ico</span><span class="delimiter">'</span></span>, <span class="key">access</span>: [<span class="string"><span class="delimiter">'</span><span class="content">permitAll</span><span class="delimiter">'</span></span>]]
+]</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -489,7 +536,35 @@ beans {
 <div class="listingblock">
 <div class="title">grails-app/conf/application.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/application.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">grails {
+        plugin {
+                springsecurity {
+                        rest {
+                                token {
+                                        validation {
+                                                useBearerToken = <span class="predefined-constant">false</span> <i class="conum" data-value="1"></i><b>(1)</b>
+                                                enableAnonymousAccess = <span class="predefined-constant">true</span> <i class="conum" data-value="2"></i><b>(2)</b>
+                                        }
+                                        storage {
+                                                jwt {
+                                                        secret = <span class="string"><span class="delimiter">'</span><span class="content">foobar123</span><span class="delimiter">'</span></span>*<span class="integer">4</span> <i class="conum" data-value="3"></i><b>(3)</b>
+                                                }
+                                        }
+                                }
+                                oauth {
+                                        frontendCallbackUrl = { <span class="predefined-type">String</span> tokenValue -&gt; <span class="string"><span class="delimiter">&quot;</span><span class="content">http://127.0.0.1:8080/auth/success?token=</span><span class="inline"><span class="inline-delimiter">${</span>tokenValue<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span> } <i class="conum" data-value="4"></i><b>(4)</b>
+                                        twitter {
+                                                client = org.pac4j.oauth.client.TwitterClient <i class="conum" data-value="5"></i><b>(5)</b>
+                                                key = <span class="string"><span class="delimiter">'</span><span class="content">${TWITTER_KEY}</span><span class="delimiter">'</span></span> <i class="conum" data-value="6"></i><b>(6)</b>
+                                                secret = <span class="string"><span class="delimiter">'</span><span class="content">${TWITTER_SECRET}</span><span class="delimiter">'</span></span> <i class="conum" data-value="7"></i><b>(7)</b>
+                                                defaultRoles = <span class="type">[]</span> <i class="conum" data-value="8"></i><b>(8)</b>
+                                        }
+                                }
+                        }
+                        providerNames = [<span class="string"><span class="delimiter">'</span><span class="content">anonymousAuthenticationProvider</span><span class="delimiter">'</span></span>] <i class="conum" data-value="9"></i><b>(9)</b>
+                }
+        }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -544,7 +619,22 @@ beans {
 <div class="listingblock">
 <div class="title">grails-app/conf/application.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/application.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="predefined-type">String</span> ANONYMOUS_FILTERS = <span class="string"><span class="delimiter">'</span><span class="content">anonymousAuthenticationFilter,restTokenValidationFilter,restExceptionTranslationFilter,filterInvocationInterceptor</span><span class="delimiter">'</span></span> <i class="conum" data-value="1"></i><b>(1)</b>
+grails.plugin.springsecurity.filterChain.chainMap = [
+                [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/dbconsole/**</span><span class="delimiter">'</span></span>,      <span class="key">filters</span>: <span class="string"><span class="delimiter">'</span><span class="content">none</span><span class="delimiter">'</span></span>],
+                [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/assets/**</span><span class="delimiter">'</span></span>,      <span class="key">filters</span>: <span class="string"><span class="delimiter">'</span><span class="content">none</span><span class="delimiter">'</span></span>],
+                [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/**/js/**</span><span class="delimiter">'</span></span>,       <span class="key">filters</span>: <span class="string"><span class="delimiter">'</span><span class="content">none</span><span class="delimiter">'</span></span>],
+                [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/**/css/**</span><span class="delimiter">'</span></span>,      <span class="key">filters</span>: <span class="string"><span class="delimiter">'</span><span class="content">none</span><span class="delimiter">'</span></span>],
+                [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/**/images/**</span><span class="delimiter">'</span></span>,   <span class="key">filters</span>: <span class="string"><span class="delimiter">'</span><span class="content">none</span><span class="delimiter">'</span></span>],
+                [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/**/favicon.ico</span><span class="delimiter">'</span></span>, <span class="key">filters</span>: <span class="string"><span class="delimiter">'</span><span class="content">none</span><span class="delimiter">'</span></span>],
+                [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/</span><span class="delimiter">'</span></span>, <span class="key">filters</span>: ANONYMOUS_FILTERS], <i class="conum" data-value="1"></i><b>(1)</b>
+                [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/book/show/*</span><span class="delimiter">'</span></span>, <span class="key">filters</span>: ANONYMOUS_FILTERS],  <i class="conum" data-value="1"></i><b>(1)</b>
+                [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/bookFavourite/index</span><span class="delimiter">'</span></span>, <span class="key">filters</span>: ANONYMOUS_FILTERS], <i class="conum" data-value="1"></i><b>(1)</b>
+                [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/auth/success</span><span class="delimiter">'</span></span>, <span class="key">filters</span>: ANONYMOUS_FILTERS], <i class="conum" data-value="1"></i><b>(1)</b>
+                [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/oauth/authenticate/twitter</span><span class="delimiter">'</span></span>, <span class="key">filters</span>: ANONYMOUS_FILTERS], <i class="conum" data-value="1"></i><b>(1)</b>
+                [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/oauth/callback/twitter</span><span class="delimiter">'</span></span>, <span class="key">filters</span>: ANONYMOUS_FILTERS], <i class="conum" data-value="1"></i><b>(1)</b>
+                [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/**</span><span class="delimiter">'</span></span>, <span class="key">filters</span>: <span class="string"><span class="delimiter">'</span><span class="content">JOINED_FILTERS,-anonymousAuthenticationFilter,-exceptionTranslationFilter,-authenticationProcessingFilter,-securityContextPersistenceFilter,-rememberMeAuthenticationFilter</span><span class="delimiter">'</span></span>],  <i class="conum" data-value="1"></i><b>(1)</b>
+]</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -577,7 +667,23 @@ We are not persisting User information in the database. You may have noticed we 
 <div class="listingblock">
 <div class="title">grails-app/views/login/auth.gsp</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/views/login/auth.gsp[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">&lt;html&gt;
+&lt;head&gt;
+    &lt;meta name=<span class="string"><span class="delimiter">&quot;</span><span class="content">layout</span><span class="delimiter">&quot;</span></span> content=<span class="string"><span class="delimiter">&quot;</span><span class="inline"><span class="inline-delimiter">${</span>gspLayout ?: <span class="string"><span class="delimiter">'</span><span class="content">main</span><span class="delimiter">'</span></span><span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>/&gt;
+    &lt;title&gt;&lt;<span class="key">g</span>:message code=<span class="string"><span class="delimiter">'</span><span class="content">springSecurity.login.title</span><span class="delimiter">'</span></span>/&gt;&lt;<span class="regexp"><span class="delimiter">/</span><span class="content">title&gt;</span></span><span class="error">
+</span>&lt;<span class="regexp"><span class="delimiter">/</span><span class="content">head&gt;</span></span><span class="error">
+</span>
+&lt;body&gt;
+&lt;div id=<span class="string"><span class="delimiter">&quot;</span><span class="content">login</span><span class="delimiter">&quot;</span></span>&gt;
+    &lt;div <span class="type">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">inner centered</span><span class="delimiter">&quot;</span></span> &gt;
+        &lt;<span class="class">div</span> <span class="type">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">fheader</span><span class="delimiter">&quot;</span></span>&gt;&lt;<span class="class">g</span>:message code=<span class="string"><span class="delimiter">'</span><span class="content">springSecurity.login.header</span><span class="delimiter">'</span></span>/&gt;&lt;<span class="regexp"><span class="delimiter">/</span><span class="content">div&gt;</span></span><span class="error">
+</span>        &lt;<span class="key">g</span>:<span class="keyword">if</span> test=<span class="string"><span class="delimiter">'</span><span class="content">${flash.message}</span><span class="delimiter">'</span></span>&gt;
+            &lt;div <span class="type">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">login_message</span><span class="delimiter">&quot;</span></span>&gt;<span class="error">$</span>{flash.message}&lt;<span class="regexp"><span class="delimiter">/</span><span class="content">div&gt;</span></span><span class="error">
+</span>        &lt;<span class="regexp"><span class="delimiter">/</span><span class="content">g:if&gt;</span></span><span class="error">
+</span>    &lt;<span class="regexp"><span class="delimiter">/</span><span class="content">div&gt;</span></span><span class="error">
+</span>&lt;<span class="regexp"><span class="delimiter">/</span><span class="content">div&gt;</span></span><span class="error">
+</span>&lt;<span class="regexp"><span class="delimiter">/</span><span class="content">body&gt;</span></span><span class="error">
+</span>&lt;<span class="regexp"><span class="delimiter">/</span><span class="content">html&gt;</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -604,12 +710,12 @@ Register a new logout handler to clear the JWT cookie. We reuse <code>CookieClea
 <div class="listingblock">
 <div class="title">grails-app/conf/spring/resources.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/spring/resources.groovy[role=include]
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">org.springframework.security.web.authentication.logout.CookieClearingLogoutHandler</span>
 beans {
 ...
 ..
 .
-link:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/spring/resources.groovy[role=include]
+    cookieClearingLogoutHandler(CookieClearingLogoutHandler, [<span class="string"><span class="delimiter">'</span><span class="content">jwt</span><span class="delimiter">'</span></span>])
 }</code></pre>
 </div>
 </div>
@@ -619,7 +725,7 @@ link:..<span class="regexp"><span class="delimiter">/</span><span class="content
 <div class="listingblock">
 <div class="title">grails-app/conf/application.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/application.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.logout.handlerNames = [<span class="string"><span class="delimiter">'</span><span class="content">rememberMeServices</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">securityContextLogoutHandler</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">cookieClearingLogoutHandler</span><span class="delimiter">'</span></span>]</code></pre>
 </div>
 </div>
 
@@ -651,7 +757,68 @@ The path to <code>AuthController.success</code> is used in <code>frontendCallbac
 <div class="listingblock">
 <div class="title">grails-app/controllers/demo/AuthController.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/controllers/demo/AuthController.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.config.Config</span>
+<span class="keyword">import</span> <span class="include">grails.core.support.GrailsConfigurationAware</span>
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.annotation.Secured</span>
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.rest.token.reader.TokenReader</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
+
+<span class="keyword">import</span> <span class="include">javax.servlet.http.Cookie</span>
+
+<span class="annotation">@Slf4j</span>
+<span class="type">class</span> <span class="class">AuthController</span> <span class="directive">implements</span> GrailsConfigurationAware {
+
+    TokenReader tokenReader
+
+    <span class="type">int</span> jwtExpiration
+
+    <span class="predefined-type">String</span> grailsServerUrl
+
+    <span class="directive">static</span> allowedMethods = [
+            <span class="key">success</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>,
+            <span class="key">logout</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>
+    ]
+
+    <span class="annotation">@Secured</span>(<span class="string"><span class="delimiter">'</span><span class="content">permitAll</span><span class="delimiter">'</span></span>)
+    <span class="keyword">def</span> <span class="function">success</span>(<span class="predefined-type">String</span> token) {
+        log.debug(<span class="string"><span class="delimiter">'</span><span class="content">token value {}</span><span class="delimiter">'</span></span>, token)
+        <span class="keyword">if</span> (token) {
+            Cookie cookie = jwtCookie(token)
+            response.addCookie(cookie) <i class="conum" data-value="1"></i><b>(1)</b>
+        }
+        [<span class="key">grailsServerUrl</span>: grailsServerUrl]
+    }
+
+    <span class="directive">protected</span> Cookie jwtCookie(<span class="predefined-type">String</span> tokenValue) {
+        Cookie jwtCookie = <span class="keyword">new</span> Cookie( cookieName(), tokenValue )
+        jwtCookie.maxAge = jwtExpiration <i class="conum" data-value="5"></i><b>(5)</b>
+        jwtCookie.path = <span class="string"><span class="delimiter">'</span><span class="content">/</span><span class="delimiter">'</span></span>
+        jwtCookie.setHttpOnly(httpOnly()) <i class="conum" data-value="3"></i><b>(3)</b>
+        <span class="keyword">if</span> ( httpOnly() ) {
+            jwtCookie.setSecure(<span class="predefined-constant">true</span>) <i class="conum" data-value="4"></i><b>(4)</b>
+        }
+        jwtCookie
+    }
+
+    <span class="annotation">@Override</span>
+    <span class="type">void</span> setConfiguration(Config co) {
+        jwtExpiration = co.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">grails.plugin.springsecurity.rest.token.storage.memcached.expiration</span><span class="delimiter">'</span></span>, <span class="predefined-type">Integer</span>, <span class="integer">3600</span>) <i class="conum" data-value="5"></i><b>(5)</b>
+        grailsServerUrl = co.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">grails.serverURL</span><span class="delimiter">'</span></span>, <span class="predefined-type">String</span>)
+    }
+
+    <span class="directive">protected</span> <span class="type">boolean</span> httpOnly() {
+        grailsServerUrl?.startsWith(<span class="string"><span class="delimiter">'</span><span class="content">https</span><span class="delimiter">'</span></span>)
+    }
+
+    <span class="directive">protected</span> <span class="predefined-type">String</span> cookieName() {
+        <span class="keyword">if</span> ( tokenReader <span class="keyword">instanceof</span> JwtCookieTokenReader ) {
+            <span class="keyword">return</span> ((JwtCookieTokenReader) tokenReader).cookieName  <i class="conum" data-value="6"></i><b>(6)</b>
+        }
+        <span class="keyword">return</span> <span class="string"><span class="delimiter">'</span><span class="content">jwt</span><span class="delimiter">'</span></span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -701,7 +868,12 @@ client side to ensure the cookie is correctly set.</p>
 <div class="listingblock">
 <div class="title">grails-app/views/auth/success.gsp</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/views/auth/success.gsp[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">&lt;html&gt;
+    &lt;head&gt;
+        &lt;meta http-equiv=<span class="string"><span class="delimiter">&quot;</span><span class="content">refresh</span><span class="delimiter">&quot;</span></span> content=<span class="string"><span class="delimiter">&quot;</span><span class="content">0; url=</span><span class="inline"><span class="inline-delimiter">${</span>grailsServerUrl ?: <span class="string"><span class="delimiter">'</span><span class="content">http://localhost:8080</span><span class="delimiter">'</span></span><span class="inline-delimiter">}</span></span><span class="content">/</span><span class="delimiter">&quot;</span></span> /&gt;
+        &lt;<span class="regexp"><span class="delimiter">/</span><span class="content">head&gt;</span></span><span class="error">
+</span>        &lt;body&gt;&lt;<span class="key">g</span>:message code=<span class="string"><span class="delimiter">&quot;</span><span class="content">redirecting</span><span class="delimiter">&quot;</span></span> <span class="keyword">default</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">Redirecting...</span><span class="delimiter">&quot;</span></span>/&gt;&lt;<span class="regexp"><span class="delimiter">/</span><span class="content">body&gt;</span></span><span class="error">
+</span>&lt;<span class="regexp"><span class="delimiter">/</span><span class="content">html&gt;</span></span></code></pre>
 </div>
 </div>
 
@@ -759,13 +931,45 @@ available once we have logged in using Twitter.</p>
 <div class="listingblock">
 <div class="title">grails-app/domain/demo/Book.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/domain/demo/<span class="predefined-type">Book</span>.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.compiler.GrailsCompileStatic</span>
+
+<span class="annotation">@GrailsCompileStatic</span>
+<span class="type">class</span> <span class="class">Book</span> {
+    <span class="predefined-type">String</span> image
+    <span class="predefined-type">String</span> title
+    <span class="predefined-type">String</span> author
+    <span class="predefined-type">String</span> about
+    <span class="predefined-type">String</span> href
+    <span class="directive">static</span> mapping = {
+        image <span class="key">nullable</span>: <span class="predefined-constant">false</span>
+        title <span class="key">nullable</span>: <span class="predefined-constant">false</span>
+        author <span class="key">nullable</span>: <span class="predefined-constant">false</span>
+        about <span class="key">nullable</span>: <span class="predefined-constant">false</span>
+        href <span class="key">nullable</span>: <span class="predefined-constant">false</span>
+        about <span class="key">type</span>: <span class="string"><span class="delimiter">'</span><span class="content">text</span><span class="delimiter">'</span></span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">grails-app/domain/demo/BookFavourite.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/domain/demo/BookFavourite.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.compiler.GrailsCompileStatic</span>
+
+<span class="annotation">@GrailsCompileStatic</span>
+<span class="type">class</span> <span class="class">BookFavourite</span> {
+    <span class="predefined-type">Long</span> bookId
+    <span class="predefined-type">String</span> username
+
+    <span class="directive">static</span> constraints = {
+        bookId <span class="key">nullable</span>: <span class="predefined-constant">false</span>
+        username <span class="key">nullable</span>: <span class="predefined-constant">false</span>
+    }
+}</code></pre>
 </div>
 </div>
 
@@ -798,7 +1002,121 @@ The required image resources are already added to the initial project for you.
 <div class="listingblock">
 <div class="title">grails-app/init/demo/BootStrap.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/init/demo/BootStrap.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">BootStrap</span> {
+
+    <span class="directive">public</span> <span class="directive">final</span> <span class="directive">static</span> <span class="predefined-type">List</span>&lt; <span class="predefined-type">Map</span>&lt;<span class="predefined-type">String</span>, <span class="predefined-type">String</span>&gt; &gt; GRAILS_BOOKS = [
+            [
+                    title : <span class="string"><span class="delimiter">'</span><span class="content">Grails 3 - Step by Step</span><span class="delimiter">'</span></span>,
+                    <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Cristian Olaru</span><span class="delimiter">'</span></span>,
+                    <span class="key">href</span>: <span class="string"><span class="delimiter">'</span><span class="content">https://grailsthreebook.com/</span><span class="delimiter">'</span></span>,
+                    about : <span class="string"><span class="delimiter">'</span><span class="content">Learn how a complete greenfield application can be implemented quickly and efficiently with Grails 3 using profiles and plugins. Use the sample application that accompanies the book as an example.</span><span class="delimiter">'</span></span>,
+                    <span class="key">image</span>: <span class="string"><span class="delimiter">'</span><span class="content">grails_3_step_by_step.png</span><span class="delimiter">'</span></span>,
+            ],
+            [
+                    title : <span class="string"><span class="delimiter">'</span><span class="content">Practical Grails 3</span><span class="delimiter">'</span></span>,
+                    <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content"> Eric Helgeson</span><span class="delimiter">'</span></span>,
+                    href  : <span class="string"><span class="delimiter">'</span><span class="content">https://www.grails3book.com/</span><span class="delimiter">'</span></span>,
+                    about : <span class="string"><span class="delimiter">'</span><span class="content">Learn the fundamental concepts behind building Grails applications with the first book dedicated to Grails 3. Real, up-to-date code examples are provided, so you can easily follow along.</span><span class="delimiter">'</span></span>,
+                    <span class="key">image</span>: <span class="string"><span class="delimiter">'</span><span class="content">pratical-grails-3-book-cover.png</span><span class="delimiter">'</span></span>,
+            ],
+            [
+                    title : <span class="string"><span class="delimiter">'</span><span class="content">Falando de Grails</span><span class="delimiter">'</span></span>,
+                    <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Henrique Lobo Weissmann</span><span class="delimiter">'</span></span>,
+                    href  : <span class="string"><span class="delimiter">'</span><span class="content">http://www.casadocodigo.com.br/products/livro-grails</span><span class="delimiter">'</span></span>,
+                    about : <span class="string"><span class="delimiter">'</span><span class="content">This is the best reference on Grails 2.5 and 3.0 written in Portuguese. It&amp;#39;s a great guide to the framework, dealing with details that many users tend to ignore.</span><span class="delimiter">'</span></span>,
+                    <span class="key">image</span>: <span class="string"><span class="delimiter">'</span><span class="content">grails_weissmann.png</span><span class="delimiter">'</span></span>,
+            ],
+            [
+                    title : <span class="string"><span class="delimiter">'</span><span class="content">Grails Goodness Notebook</span><span class="delimiter">'</span></span>,
+                    <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Hubert A. Klein Ikkink</span><span class="delimiter">'</span></span>,
+                    href  : <span class="string"><span class="delimiter">'</span><span class="content">https://leanpub.com/grails-goodness-notebook</span><span class="delimiter">'</span></span>,
+                    about : <span class="string"><span class="delimiter">'</span><span class="content">Experience the Grails framework through code snippets. Discover (hidden) Grails features through code examples and short articles. The articles and code will get you started quickly and provide deeper insight into Grails.</span><span class="delimiter">'</span></span>,
+                    <span class="key">image</span>: <span class="string"><span class="delimiter">'</span><span class="content">grailsgood.png</span><span class="delimiter">'</span></span>,
+            ],
+            [
+                    title : <span class="string"><span class="delimiter">'</span><span class="content">The Definitive Guide to Grails 2</span><span class="delimiter">'</span></span>,
+                    <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Jeff Scott Brown and Graeme Rocher</span><span class="delimiter">'</span></span>,
+                    href  : <span class="string"><span class="delimiter">'</span><span class="content">http://www.apress.com/9781430243779</span><span class="delimiter">'</span></span>,
+                    about : <span class="string"><span class="delimiter">'</span><span class="content">As the title states, this is the definitive reference on the Grails framework, authored by core members of the development team.</span><span class="delimiter">'</span></span>,
+                    <span class="key">image</span>: <span class="string"><span class="delimiter">'</span><span class="content">grocher_jbrown_cover.jpg</span><span class="delimiter">'</span></span>,
+            ],
+            [
+                    title : <span class="string"><span class="delimiter">'</span><span class="content">Grails in Action</span><span class="delimiter">'</span></span>,
+                    <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Glen Smith and Peter Ledbrook</span><span class="delimiter">'</span></span>,
+                    href  : <span class="string"><span class="delimiter">'</span><span class="content">http://www.manning.com/gsmith2/</span><span class="delimiter">'</span></span>,
+                    about : <span class="string"><span class="delimiter">'</span><span class="content">The second edition of Grails in Action is a comprehensive introduction to Grails 2 focused on helping you become super-productive fast.</span><span class="delimiter">'</span></span>,
+                    <span class="key">image</span>: <span class="string"><span class="delimiter">'</span><span class="content">gsmith2_cover150.jpg</span><span class="delimiter">'</span></span>,
+            ],
+            [
+                    title : <span class="string"><span class="delimiter">'</span><span class="content">Grails 2: A Quick-Start Guide</span><span class="delimiter">'</span></span>,
+                    <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Dave Klein and Ben Klein</span><span class="delimiter">'</span></span>,
+                    href  : <span class="string"><span class="delimiter">'</span><span class="content">http://www.amazon.com/gp/product/1937785777?tag=misa09-20</span><span class="delimiter">'</span></span>,
+                    about : <span class="string"><span class="delimiter">'</span><span class="content">This revised and updated edition shows you how to use Grails by iteratively building a unique, working application.</span><span class="delimiter">'</span></span>,
+                    image : <span class="string"><span class="delimiter">'</span><span class="content">bklein_cover.jpg</span><span class="delimiter">'</span></span>,
+            ],
+            [
+                    title : <span class="string"><span class="delimiter">'</span><span class="content">Programming Grails</span><span class="delimiter">'</span></span>,
+                    <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Burt Beckwith</span><span class="delimiter">'</span></span>,
+                    href  : <span class="string"><span class="delimiter">'</span><span class="content">http://shop.oreilly.com/product/0636920024750.do</span><span class="delimiter">'</span></span>,
+                    about : <span class="string"><span class="delimiter">'</span><span class="content">Dig deeper into Grails architecture and discover how this application framework works its magic.</span><span class="delimiter">'</span></span>,
+                    <span class="key">image</span>: <span class="string"><span class="delimiter">'</span><span class="content">bbeckwith_cover.gif</span><span class="delimiter">'</span></span>
+            ]
+    ] <span class="keyword">as</span> <span class="predefined-type">List</span>&lt; <span class="predefined-type">Map</span>&lt;<span class="predefined-type">String</span>, <span class="predefined-type">String</span>&gt; &gt;
+
+    <span class="directive">public</span> <span class="directive">final</span> <span class="directive">static</span> <span class="predefined-type">List</span>&lt; <span class="predefined-type">Map</span>&lt;<span class="predefined-type">String</span>, <span class="predefined-type">String</span>&gt; &gt; GROOVY_BOOKS = [
+            [
+                    <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Making Java Groovy</span><span class="delimiter">'</span></span>,
+                    <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Ken Kousen</span><span class="delimiter">'</span></span>,
+                    <span class="key">href</span>: <span class="string"><span class="delimiter">'</span><span class="content">http://www.manning.com/kousen/</span><span class="delimiter">'</span></span>,
+                    <span class="key">about</span>: <span class="string"><span class="delimiter">'</span><span class="content">Make Java development easier by adding Groovy. Each chapter focuses on a task Java developers do, like building, testing, or working with databases or restful web services, and shows ways Groovy can make those tasks easier.</span><span class="delimiter">'</span></span>,
+                    <span class="key">image</span>: <span class="string"><span class="delimiter">'</span><span class="content">Kousen-MJG.png</span><span class="delimiter">'</span></span>,
+            ],
+            [
+                    <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Groovy in Action, 2nd Edition</span><span class="delimiter">'</span></span>,
+                    <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Dierk König, Guillaume Laforge, Paul King, Cédric Champeau, Hamlet D</span><span class="char">\'</span><span class="content">Arcy, Erik Pragt, and Jon Skeet</span><span class="delimiter">'</span></span>,
+                    <span class="key">href</span>: <span class="string"><span class="delimiter">'</span><span class="content">http://www.manning.com/koenig2/</span><span class="delimiter">'</span></span>,
+                    <span class="key">about</span>: <span class="string"><span class="delimiter">'</span><span class="content">This is the undisputed, definitive reference on the Groovy language, authored by core members of the development team.</span><span class="delimiter">'</span></span>,
+                    <span class="key">image</span>: <span class="string"><span class="delimiter">'</span><span class="content">regina.png</span><span class="delimiter">'</span></span>,
+            ],
+            [
+                    <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Groovy for Domain-Specific Languages</span><span class="delimiter">'</span></span>,
+                    <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Fergal Dearle</span><span class="delimiter">'</span></span>,
+                    <span class="key">href</span>: <span class="string"><span class="delimiter">'</span><span class="content">http://www.packtpub.com/groovy-for-domain-specific-languages-dsl/book</span><span class="delimiter">'</span></span>,
+                    <span class="key">about</span>: <span class="string"><span class="delimiter">'</span><span class="content">Learn how Groovy can help Java developers easily build domain-specific languages into their applications.</span><span class="delimiter">'</span></span>,
+                    <span class="key">image</span>: <span class="string"><span class="delimiter">'</span><span class="content">gdsl.jpg</span><span class="delimiter">'</span></span>,
+            ],
+            [
+                    <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Groovy 2 Cookbook</span><span class="delimiter">'</span></span>,
+                    <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Andrey Adamovitch, Luciano Fiandeso</span><span class="delimiter">'</span></span>,
+                    <span class="key">href</span>: <span class="string"><span class="delimiter">'</span><span class="content">http://www.packtpub.com/groovy-2-cookbook/book</span><span class="delimiter">'</span></span>,
+                    <span class="key">about</span>: <span class="string"><span class="delimiter">'</span><span class="content">This book contains more than 90 recipes that use the powerful features of Groovy 2 to develop solutions to everyday programming challenges.</span><span class="delimiter">'</span></span>,
+                    <span class="key">image</span>: <span class="string"><span class="delimiter">'</span><span class="content">g2cook.jpg</span><span class="delimiter">'</span></span>,
+            ],
+            [
+                    <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Programming Groovy 2</span><span class="delimiter">'</span></span>,
+                    <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Venkat Subramaniam</span><span class="delimiter">'</span></span>,
+                    <span class="key">href</span>: <span class="string"><span class="delimiter">'</span><span class="content">http://pragprog.com/book/vslg2/programming-groovy-2</span><span class="delimiter">'</span></span>,
+                    <span class="key">about</span>: <span class="string"><span class="delimiter">'</span><span class="content">This book helps experienced Java developers learn to use Groovy 2, from the basics of the language to its latest advances.</span><span class="delimiter">'</span></span>,
+                    <span class="key">image</span>: <span class="string"><span class="delimiter">'</span><span class="content">vslg2.jpg</span><span class="delimiter">'</span></span>
+            ],
+    ] <span class="keyword">as</span> <span class="predefined-type">List</span>&lt; <span class="predefined-type">Map</span>&lt;<span class="predefined-type">String</span>, <span class="predefined-type">String</span>&gt; &gt;
+
+    BookDataService bookDataService
+
+    <span class="keyword">def</span> init = { servletContext -&gt;
+        <span class="keyword">for</span> (<span class="predefined-type">Map</span>&lt;<span class="predefined-type">String</span>, <span class="predefined-type">String</span>&gt; bookInfo : (GRAILS_BOOKS + GROOVY_BOOKS)) {
+            bookDataService.save(bookInfo.title, bookInfo.author, bookInfo.about, bookInfo.href, bookInfo.image)
+        }
+    }
+
+    <span class="keyword">def</span> destroy = {
+    }
+}</code></pre>
 </div>
 </div>
 
@@ -819,7 +1137,50 @@ for our basic functionality.</p>
 <div class="listingblock">
 <div class="title">grails-app/services/demo/BookDataService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/BookDataService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Service</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.ReadOnly</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileDynamic</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.mapping.query.api.BuildableCriteria</span>
+<span class="keyword">import</span> <span class="include">org.hibernate.transform.Transformers</span>
+
+<span class="type">interface</span> IBookDataService {
+    <span class="predefined-type">Book</span> save(<span class="predefined-type">String</span> title, <span class="predefined-type">String</span> author, <span class="predefined-type">String</span> about, <span class="predefined-type">String</span> href, <span class="predefined-type">String</span> image)
+    <span class="predefined-type">Number</span> count()
+    <span class="predefined-type">Book</span> findById(<span class="predefined-type">Long</span> id)
+}
+
+<span class="annotation">@Service</span>(<span class="predefined-type">Book</span>)
+<span class="directive">abstract</span> <span class="type">class</span> <span class="class">BookDataService</span> <span class="directive">implements</span> IBookDataService {
+
+    <span class="annotation">@CompileDynamic</span>
+    <span class="annotation">@ReadOnly</span>
+    <span class="predefined-type">List</span>&lt;BookImage&gt; findAll() {
+        BuildableCriteria c = <span class="predefined-type">Book</span>.createCriteria()
+        c.list {
+            resultTransformer(Transformers.aliasToBean(BookImage))
+            projections {
+                property(<span class="string"><span class="delimiter">'</span><span class="content">id</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">id</span><span class="delimiter">'</span></span>)
+                property(<span class="string"><span class="delimiter">'</span><span class="content">image</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">image</span><span class="delimiter">'</span></span>)
+            }
+        }
+    }
+
+    <span class="annotation">@CompileDynamic</span>
+    <span class="annotation">@ReadOnly</span>
+    <span class="predefined-type">List</span>&lt;BookImage&gt; findAllByIds(<span class="predefined-type">List</span>&lt;<span class="predefined-type">Long</span>&gt; ids) {
+        BuildableCriteria c = <span class="predefined-type">Book</span>.createCriteria()
+        c.list {
+            inList(<span class="string"><span class="delimiter">'</span><span class="content">id</span><span class="delimiter">'</span></span>, ids)
+            resultTransformer(Transformers.aliasToBean(BookImage))
+            projections {
+                property(<span class="string"><span class="delimiter">'</span><span class="content">id</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">id</span><span class="delimiter">'</span></span>)
+                property(<span class="string"><span class="delimiter">'</span><span class="content">image</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">image</span><span class="delimiter">'</span></span>)
+            }
+        }
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -828,7 +1189,23 @@ for our basic functionality.</p>
 <div class="listingblock">
 <div class="title">grails-app/services/demo/BookFavouriteDataService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/BookFavouriteDataService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Query</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Service</span>
+
+<span class="annotation">@Service</span>(BookFavourite)
+<span class="type">interface</span> BookFavouriteDataService {
+
+    BookFavourite save(<span class="predefined-type">Long</span> bookId, <span class="predefined-type">String</span> username)
+
+    <span class="type">void</span> delete(<span class="predefined-type">Long</span> bookId, <span class="predefined-type">String</span> username)
+
+    <span class="annotation">@Query</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">select </span><span class="inline"><span class="inline-delimiter">$</span>b</span><span class="content">.bookId from </span><span class="inline"><span class="inline-delimiter">${</span>BookFavourite b<span class="inline-delimiter">}</span></span><span class="content"> where </span><span class="inline"><span class="inline-delimiter">$</span>b</span><span class="content">.username = </span><span class="inline"><span class="inline-delimiter">$</span>username</span><span class="delimiter">&quot;</span></span>) <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">Long</span>&gt; findBookIdByUsername(<span class="predefined-type">String</span> username)
+
+    BookFavourite findByBookIdAndUsername(<span class="predefined-type">Long</span> bookId, <span class="predefined-type">String</span> username)
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -857,7 +1234,42 @@ controller that can either return a list of all books or show a selected book.</
 <div class="listingblock">
 <div class="title">grails-app/controllers/demo/BookController.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/controllers/demo/BookController.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.SpringSecurityService</span>
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.annotation.Secured</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileDynamic</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@Secured</span>(<span class="string"><span class="delimiter">'</span><span class="content">permitAll</span><span class="delimiter">'</span></span>)
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">BookController</span> {
+
+    <span class="directive">static</span> allowedMethods = [<span class="key">index</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>, <span class="key">show</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>]
+
+    BookDataService bookDataService
+
+    BookFavouriteDataService bookFavouriteDataService
+
+    SpringSecurityService springSecurityService
+
+    <span class="keyword">def</span> <span class="function">index</span>() {
+        [<span class="key">bookList</span>: bookDataService.findAll()]
+    }
+
+    <span class="keyword">def</span> <span class="function">show</span>(<span class="predefined-type">Long</span> id) {
+        [
+                <span class="key">bookInstance</span>: bookDataService.findById(id),
+                <span class="key">bookFavourite</span>: bookFavouriteDataService.findByBookIdAndUsername(id, loggedUsername())
+        ]
+    }
+
+    <span class="annotation">@CompileDynamic</span>
+    <span class="directive">protected</span> <span class="predefined-type">String</span> loggedUsername() {
+        <span class="directive">final</span> <span class="predefined-type">String</span> username = springSecurityService.principal?.username
+        username
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -867,7 +1279,52 @@ desired book.</p>
 <div class="listingblock">
 <div class="title">grails-app/controllers/demo/BookFavouriteController.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/controllers/demo/BookFavouriteController.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.SpringSecurityService</span>
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.annotation.Secured</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileDynamic</span>
+
+<span class="type">class</span> <span class="class">BookFavouriteController</span> {
+
+    <span class="directive">static</span> allowedMethods = [
+            <span class="key">index</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>,
+            <span class="key">favourite</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>,
+            <span class="key">unfavourite</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>,
+    ]
+
+    SpringSecurityService springSecurityService
+    BookFavouriteDataService bookFavouriteDataService
+    BookDataService bookDataService
+
+    <span class="annotation">@Secured</span>(<span class="string"><span class="delimiter">'</span><span class="content">permitAll</span><span class="delimiter">'</span></span>)
+    <span class="keyword">def</span> <span class="function">index</span>() {
+        <span class="predefined-type">String</span> username = loggedUsername()
+        <span class="predefined-type">List</span>&lt;<span class="predefined-type">Long</span>&gt; bookIds = bookFavouriteDataService.findBookIdByUsername(username) <i class="conum" data-value="1"></i><b>(1)</b>
+        <span class="predefined-type">List</span>&lt;BookImage&gt; bookList = bookDataService.findAllByIds(bookIds) <i class="conum" data-value="2"></i><b>(2)</b>
+        render <span class="key">view</span>: <span class="string"><span class="delimiter">'</span><span class="content">/book/index</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">bookList</span>: bookList]
+    }
+
+    <span class="annotation">@Secured</span>(<span class="string"><span class="delimiter">'</span><span class="content">isAuthenticated()</span><span class="delimiter">'</span></span>)
+    <span class="keyword">def</span> <span class="function">favourite</span>(<span class="predefined-type">Long</span> bookId) {
+        <span class="predefined-type">String</span> username = loggedUsername()
+        bookFavouriteDataService.save(bookId, username) <i class="conum" data-value="3"></i><b>(3)</b>
+        redirect(<span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">index</span><span class="delimiter">'</span></span>)
+    }
+
+    <span class="annotation">@Secured</span>(<span class="string"><span class="delimiter">'</span><span class="content">isAuthenticated()</span><span class="delimiter">'</span></span>)
+    <span class="keyword">def</span> <span class="function">unfavourite</span>(<span class="predefined-type">Long</span> bookId) {
+        <span class="predefined-type">String</span> username = loggedUsername()
+        bookFavouriteDataService.delete(bookId, username)
+        redirect(<span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">index</span><span class="delimiter">'</span></span>)
+    }
+
+    <span class="annotation">@CompileDynamic</span>
+    <span class="directive">protected</span> <span class="predefined-type">String</span> loggedUsername() {
+        springSecurityService.principal.username
+    }
+
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -904,7 +1361,23 @@ so we can see a list of them located at <code>views/book</code>.</p>
 <div class="listingblock">
 <div class="title">grails-app/views/book/index.gsp</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="html">link:../snippets/grails-app/views/book/index.gsp[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="html"><span class="tag">&lt;html&gt;</span>
+<span class="tag">&lt;head&gt;</span>
+    <span class="tag">&lt;title&gt;</span>Groovy <span class="error">&amp;</span> Grails Books<span class="tag">&lt;/title&gt;</span>
+    <span class="tag">&lt;meta</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">layout</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">content</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">main</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
+<span class="tag">&lt;/head&gt;</span>
+<span class="tag">&lt;body&gt;</span>
+<span class="tag">&lt;div</span> <span class="attribute-name">id</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">content</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">role</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">main</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;section</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">row colset-2-its</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+        <span class="tag">&lt;g:each</span> <span class="attribute-name">in</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${bookList}</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">var</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${book}</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+            <span class="tag">&lt;g:link</span> <span class="attribute-name">controller</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">book</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">id</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${book.id}</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">action</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">show</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+                <span class="tag">&lt;asset:image</span> <span class="attribute-name">src</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${book.image}</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">width</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">200</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
+            <span class="tag">&lt;/g:link&gt;</span>
+        <span class="tag">&lt;/g:each&gt;</span>
+    <span class="tag">&lt;/section&gt;</span>
+<span class="tag">&lt;/div&gt;</span>
+<span class="tag">&lt;/body&gt;</span>
+<span class="tag">&lt;/html&gt;</span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -913,7 +1386,36 @@ so we can see a list of them located at <code>views/book</code>.</p>
 <div class="listingblock">
 <div class="title">grails-app/views/book/show.gsp</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="html">link:../snippets/grails-app/views/book/show.gsp[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="html"><span class="tag">&lt;html&gt;</span>
+<span class="tag">&lt;head&gt;</span>
+    <span class="tag">&lt;title&gt;</span>${bookInstance?.title}<span class="tag">&lt;/title&gt;</span>
+    <span class="tag">&lt;meta</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">layout</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">content</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">main</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
+<span class="tag">&lt;/head&gt;</span>
+<span class="tag">&lt;body&gt;</span>
+<span class="tag">&lt;div</span> <span class="attribute-name">id</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">content</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">role</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">main</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;section</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">row colset-2-its</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+        <span class="tag">&lt;g:if</span> <span class="attribute-name">test</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${bookInstance}</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+            <span class="tag">&lt;h1&gt;</span><span class="tag">&lt;a</span> <span class="attribute-name">href</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${bookInstance.href}</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>${bookInstance.title}<span class="tag">&lt;/a&gt;</span><span class="tag">&lt;/h1&gt;</span>
+            <span class="tag">&lt;sec:ifLoggedIn&gt;</span>
+                <span class="tag">&lt;g:form</span> <span class="attribute-name">controller</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">bookFavourite</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">action</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${bookFavourite != null ? 'unfavourite' : 'favourite'}</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+                    <span class="tag">&lt;g:hiddenField</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">bookId</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">value</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${bookInstance.id}</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+
+                    <span class="tag">&lt;g:if</span> <span class="attribute-name">test</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${bookFavourite}</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+                        <span class="tag">&lt;input</span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">submit</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">btn btn-default</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">value</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${g.message(code: 'book.unfavourite', default: 'Unfavourite')}</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+                    <span class="tag">&lt;/g:if&gt;</span>
+                    <span class="tag">&lt;g:else&gt;</span>
+                        <span class="tag">&lt;input</span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">submit</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">btn btn-default</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">value</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${g.message(code: 'book.favourite', default: 'Favourite')}</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+                    <span class="tag">&lt;/g:else&gt;</span>
+                <span class="tag">&lt;/g:form&gt;</span>
+            <span class="tag">&lt;/sec:ifLoggedIn&gt;</span>
+            <span class="tag">&lt;p&gt;</span>${bookInstance.about}<span class="tag">&lt;/p&gt;</span>
+            <span class="tag">&lt;h2&gt;</span><span class="tag">&lt;g:message</span> <span class="attribute-name">code</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">book.author</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">args</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">[bookInstance.author]</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">default</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">By {0}</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span><span class="tag">&lt;/h2&gt;</span>
+            <span class="tag">&lt;asset:image</span> <span class="attribute-name">src</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${bookInstance.image}</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">width</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">200</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
+        <span class="tag">&lt;/g:if&gt;</span>
+    <span class="tag">&lt;/section&gt;</span>
+<span class="tag">&lt;/div&gt;</span>
+<span class="tag">&lt;/body&gt;</span>
+<span class="tag">&lt;/html&gt;</span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -926,7 +1428,28 @@ our favourite books, or login / logout. We add this between the navigation div a
 <div class="listingblock">
 <div class="title">grails-app/views/layouts/main.gsp</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="html">link:../snippets/grails-app/views/layouts/main.gsp[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="html"><span class="tag">&lt;div</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">centered</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">style</span>=<span class="string"><span class="delimiter">&quot;</span><span class="key">margin</span>: <span class="float">10px</span> <span class="value">auto</span>;<span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;g:link</span> <span class="attribute-name">controller</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">book</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">action</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">index</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+        <span class="tag">&lt;g:message</span> <span class="attribute-name">code</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">book.all</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">default</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">All</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;/g:link&gt;</span>
+    <span class="tag">&lt;span&gt;</span>|<span class="tag">&lt;/span&gt;</span>
+    <span class="tag">&lt;g:link</span> <span class="attribute-name">controller</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">bookFavourite</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">action</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">index</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+        <span class="tag">&lt;g:message</span> <span class="attribute-name">code</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">book.favourite</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">default</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">Favourites</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;/g:link&gt;</span>
+    <span class="tag">&lt;span&gt;</span>|<span class="tag">&lt;/span&gt;</span>
+    <span class="tag">&lt;sec:ifNotLoggedIn&gt;</span>
+        <span class="tag">&lt;g:render</span> <span class="attribute-name">template</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">/auth/loginWithTwitter</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;/sec:ifNotLoggedIn&gt;</span>
+    <span class="tag">&lt;sec:ifLoggedIn&gt;</span>
+        <span class="tag">&lt;g:form</span> <span class="attribute-name">controller</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">logout</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">style</span>=<span class="string"><span class="delimiter">&quot;</span><span class="key">display</span>: <span class="value">inline</span>;<span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+            <span class="tag">&lt;input</span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">submit</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">value</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${g.message(code: </span><span class="delimiter">&quot;</span></span><span class="attribute-name">logout</span><span class="error">&quot;</span><span class="error">,</span> <span class="attribute-name">default:</span><span class="error">&quot;</span><span class="attribute-name">Logout</span><span class="error">&quot;</span><span class="error">)</span><span class="error">}</span><span class="error">&quot;</span><span class="tag">/&gt;</span>
+        <span class="tag">&lt;/g:form&gt;</span>
+    <span class="tag">&lt;/sec:ifLoggedIn&gt;</span>
+<span class="tag">&lt;/div&gt;</span>
+
+<span class="tag">&lt;g:if</span> <span class="attribute-name">test</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${flash.message}</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;div</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">message</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">style</span>=<span class="string"><span class="delimiter">&quot;</span><span class="key">display</span>: <span class="value">block</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>${flash.message}<span class="tag">&lt;/div&gt;</span>
+<span class="tag">&lt;/g:if&gt;</span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -956,7 +1479,10 @@ link <code>/oauth/authenticate/twitter</code>. This will redirect you to the nor
 <div class="listingblock">
 <div class="title">grails-app/views/auth/_loginWithTwitter.gsp</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="html">link:../snippets/grails-app/views/auth/_loginWithTwitter.gsp[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="html"><span class="tag">&lt;a</span> <span class="attribute-name">href</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">/oauth/authenticate/twitter</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;asset:image</span> <span class="attribute-name">src</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">sign-in-with-twitter-link.png</span><span class="delimiter">&quot;</span></span>
+                 <span class="attribute-name">alt</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${g.message(code: </span><span class="delimiter">&quot;</span></span><span class="attribute-name">login.twitter</span><span class="error">&quot;</span><span class="error">,</span> <span class="attribute-name">default:</span><span class="error">&quot;</span><span class="attribute-name">Login</span> <span class="attribute-name">with</span> <span class="attribute-name">Twitter</span><span class="error">&quot;</span><span class="error">)</span><span class="error">}</span><span class="error">&quot;</span> <span class="attribute-name">height</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">10</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+<span class="tag">&lt;/a&gt;</span></code></pre>
 </div>
 </div>
 <div class="admonitionblock note">

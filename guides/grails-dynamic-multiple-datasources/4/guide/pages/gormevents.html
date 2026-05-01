@@ -90,7 +90,32 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">src/main/groovy/demo/UserInsertedListener.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/main/groovy/demo/UserInsertedListener.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.events.annotation.gorm.Listener</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.mapping.engine.event.PostInsertEvent</span>
+<span class="keyword">import</span> <span class="include">org.grails.orm.hibernate.HibernateDatastore</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Autowired</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="annotation">@Slf4j</span>
+<span class="type">class</span> <span class="class">UserInsertedListener</span> {
+
+    <span class="annotation">@Autowired</span>
+    HibernateDatastore hibernateDatastore
+
+    <span class="annotation">@Autowired</span>
+    DatabaseProvisioningService databaseProvisioningService
+
+    <span class="annotation">@Listener</span>(User) <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="type">void</span> onUserPostInsertEvent(PostInsertEvent event) { <i class="conum" data-value="2"></i><b>(2)</b>
+        <span class="predefined-type">String</span> username = event.getEntityAccess().getPropertyValue(<span class="string"><span class="delimiter">&quot;</span><span class="content">username</span><span class="delimiter">&quot;</span></span>)
+        DatabaseConfiguration databaseConfiguration = databaseProvisioningService.findDatabaseConfigurationByUsername(username) <i class="conum" data-value="3"></i><b>(3)</b>
+        hibernateDatastore.getConnectionSources().addConnectionSource(databaseConfiguration.dataSourceName, databaseConfiguration.configuration) <i class="conum" data-value="4"></i><b>(4)</b>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -120,11 +145,11 @@ function addJsClass() {
 <div class="title">grails-app/conf/spring/resources.groovy</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">...
-link:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/spring/resources.groovy[role=include]
+import demo.UserInsertedListener
 ...
 beans = {
 ...
-link:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/spring/resources.groovy[role=include]
+    userInsertedListener(UserInsertedListener)
 ...
 }</code></pre>
 </div>
@@ -135,13 +160,47 @@ link:..<span class="regexp"><span class="delimiter">/</span><span class="content
 <div class="listingblock">
 <div class="title">src/main/groovy/demo/DatabaseConfiguration.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/main/groovy/demo/DatabaseConfiguration.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">DatabaseConfiguration</span> {
+    <span class="predefined-type">String</span> dataSourceName
+    <span class="predefined-type">Map</span> configuration
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">grails-app/services/demo/DatabaseProvisioningService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/DatabaseProvisioningService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">DatabaseProvisioningService</span> {
+
+    UserRoleService userRoleService
+
+    <span class="predefined-type">List</span>&lt;DatabaseConfiguration&gt; findAllDatabaseConfiguration() {
+        <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; usernames = userRoleService.findAllUsernameByAuthority(VillainService.ROLE_VILLAIN)
+        usernames.collect { findDatabaseConfigurationByUsername(<span class="local-variable">it</span>) }
+    }
+
+    DatabaseConfiguration findDatabaseConfigurationByUsername(<span class="predefined-type">String</span> username) {
+        <span class="keyword">new</span> DatabaseConfiguration(<span class="key">dataSourceName</span>: username, <span class="key">configuration</span>: configurationByUsername(username))
+    }
+
+    <span class="predefined-type">Map</span>&lt;<span class="predefined-type">String</span>, <span class="predefined-type">Object</span>&gt; configurationByUsername(<span class="predefined-type">String</span> username) {
+        [
+                <span class="string"><span class="delimiter">'</span><span class="content">hibernate.hbm2ddl.auto</span><span class="delimiter">'</span></span>:<span class="string"><span class="delimiter">'</span><span class="content">none</span><span class="delimiter">'</span></span>, <i class="conum" data-value="1"></i><b>(1)</b>
+                <span class="string"><span class="delimiter">'</span><span class="content">username</span><span class="delimiter">'</span></span>: <span class="string"><span class="delimiter">'</span><span class="content">root</span><span class="delimiter">'</span></span>, <i class="conum" data-value="2"></i><b>(2)</b>
+                <span class="string"><span class="delimiter">'</span><span class="content">password</span><span class="delimiter">'</span></span>: <span class="string"><span class="delimiter">'</span><span class="content">root</span><span class="delimiter">'</span></span>, <i class="conum" data-value="2"></i><b>(2)</b>
+                <span class="string"><span class="delimiter">'</span><span class="content">url</span><span class="delimiter">'</span></span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc:mysql://127.0.0.1:8889/</span><span class="inline"><span class="inline-delimiter">$</span>username</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="2"></i><b>(2)</b>
+        ] <span class="keyword">as</span> <span class="predefined-type">Map</span>&lt;<span class="predefined-type">String</span>, <span class="predefined-type">Object</span>&gt;
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">

@@ -87,7 +87,19 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/services/demo/BookSearchService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/BookSearchService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.plugins.elasticsearch.ElasticSearchService</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">BookSearchService</span> {
+    ElasticSearchService elasticSearchService
+
+    <span class="predefined-type">Map</span> search(<span class="predefined-type">String</span> query) {
+        elasticSearchService.search(query, [<span class="key">indices</span>: <span class="predefined-type">Book</span>, <span class="key">types</span>: <span class="predefined-type">Book</span>, <span class="key">score</span>: <span class="predefined-constant">true</span>]) <span class="keyword">as</span> <span class="predefined-type">Map</span> <i class="conum" data-value="1"></i><b>(1)</b>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -107,7 +119,25 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">src/test/groovy/demo/BookSearchServiceSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/test/groovy/demo/BookSearchServiceSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.plugins.elasticsearch.ElasticSearchService</span>
+<span class="keyword">import</span> <span class="include">grails.testing.services.ServiceUnitTest</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="type">class</span> <span class="class">BookSearchServiceSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> ServiceUnitTest&lt;BookSearchService&gt; {
+
+    <span class="keyword">def</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">search uses indices and types `Book` and score `true`</span><span class="delimiter">&quot;</span></span>() {
+
+        service.elasticSearchService = Mock(ElasticSearchService)
+
+        <span class="key">when</span>:
+        service.search(<span class="string"><span class="delimiter">'</span><span class="content">Grails</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>:
+        <span class="integer">1</span> * service.elasticSearchService.search(<span class="string"><span class="delimiter">'</span><span class="content">Grails</span><span class="delimiter">'</span></span>, [<span class="key">indices</span>: <span class="predefined-type">Book</span>, <span class="key">types</span>: <span class="predefined-type">Book</span>, <span class="key">score</span>: <span class="predefined-constant">true</span>])
+    }
+}</code></pre>
 </div>
 </div>
 

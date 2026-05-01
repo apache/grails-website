@@ -98,7 +98,17 @@ the data-binded POJO.  This simple and elegant approach cuts down on much of the
 <div class="listingblock">
 <div class="title">src/main/groovy/example/grails/ItunesClient.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/main/groovy/example/grails/ItunesClient.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">io.micronaut.http.annotation.Get</span>
+<span class="keyword">import</span> <span class="include">io.micronaut.http.client.annotation.Client</span>
+
+<span class="annotation">@Client</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">https://itunes.apple.com/</span><span class="delimiter">&quot;</span></span>) <i class="conum" data-value="1"></i><b>(1)</b>
+<span class="type">interface</span> ItunesClient {
+
+    <span class="annotation">@Get</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">/search?limit=25&amp;media=music&amp;entity=album&amp;term={term}</span><span class="delimiter">&quot;</span></span>) <i class="conum" data-value="2"></i><b>(2)</b>
+    <span class="predefined-type">SearchResult</span> search(<span class="predefined-type">String</span> term)
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -120,8 +130,12 @@ the data-binded POJO.  This simple and elegant approach cuts down on much of the
 <div class="title">grails-app/services/example/grails/ItunesSearchService.groovy</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">...
-link:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/ItunesSearchService.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/ItunesSearchService.groovy[role=include]
+    <span class="annotation">@Autowired</span>
+    ItunesClient itunesClient
+    <span class="predefined-type">List</span>&lt;Album&gt; searchWithDeclarativeClient(<span class="predefined-type">String</span> searchTerm) {
+        <span class="predefined-type">SearchResult</span> searchResult = itunesClient.search(searchTerm)
+        searchResult.results
+    }
 ...</code></pre>
 </div>
 </div>
@@ -132,7 +146,12 @@ link:..<span class="regexp"><span class="delimiter">/</span><span class="content
 <div class="title">grails-app/controllers/example/grails/SearchController.groovy</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">...
-link:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/controllers/example/grails/SearchController.groovy[role=include]
+    def searchWithDeclarativeClient(<span class="predefined-type">String</span> searchTerm) {
+        <span class="keyword">if</span>(searchTerm) {
+            <span class="predefined-type">List</span>&lt;Album&gt; albums = itunesSearchService.searchWithDeclarativeClient(searchTerm)
+            respond([<span class="key">searchTerm</span>: searchTerm, <span class="key">albums</span>: albums])
+        }
+    }
 ...</code></pre>
 </div>
 </div>

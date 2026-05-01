@@ -108,14 +108,16 @@ exclude the Logback dependency from the testCompile build phase.</p>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
     ...
-link:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>build.gradle[role=include]
+    testCompile <span class="string"><span class="delimiter">'</span><span class="content">uk.org.lidalia:slf4j-test:1.1.0</span><span class="delimiter">'</span></span>
 }</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>build.gradle[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">configurations {
+    testCompile.exclude <span class="key">group</span>: <span class="string"><span class="delimiter">'</span><span class="content">ch.qos.logback</span><span class="delimiter">'</span></span>, <span class="key">module</span>: <span class="string"><span class="delimiter">'</span><span class="content">logback-classic</span><span class="delimiter">'</span></span>
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -126,7 +128,7 @@ link:..<span class="regexp"><span class="delimiter">/</span><span class="content
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
     ...
-link:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>build.gradle[role=include]
+    testCompile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails:grails-datastore-rest-client</span><span class="delimiter">&quot;</span></span>
 }</code></pre>
 </div>
 </div>
@@ -167,11 +169,46 @@ injected automatically without the worry of mocking. We will use <code>RestBuild
 <div class="listingblock">
 <div class="title">src/integration-test/groovy/example/grails/PersonControllerIntSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/integration-test/groovy/example/grails/PersonControllerIntSpec.groovy[role=include]
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
 
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/integration-test/groovy/example/grails/PersonControllerIntSpec.groovy[role=include]
+<span class="keyword">import</span> <span class="include">com.google.common.collect.ImmutableList</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Rollback</span>
+<span class="keyword">import</span> <span class="include">grails.plugins.rest.client.RestBuilder</span>
+<span class="keyword">import</span> <span class="include">grails.plugins.rest.client.RestResponse</span>
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Shared</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+<span class="keyword">import</span> <span class="include">uk.org.lidalia.slf4jext.Level</span>
+<span class="keyword">import</span> <span class="include">uk.org.lidalia.slf4jtest.LoggingEvent</span>
+<span class="keyword">import</span> <span class="include">uk.org.lidalia.slf4jtest.TestLogger</span>
+<span class="keyword">import</span> <span class="include">uk.org.lidalia.slf4jtest.TestLoggerFactory</span>
 
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/integration-test/groovy/example/grails/PersonControllerIntSpec.groovy[role=include]</code></pre>
+<span class="annotation">@Integration</span>
+<span class="annotation">@Rollback</span>
+<span class="type">class</span> <span class="class">PersonControllerIntSpec</span> <span class="directive">extends</span> Specification {
+
+    <span class="annotation">@Shared</span>
+    TestLogger personControllerLogger = TestLoggerFactory.getTestLogger(<span class="string"><span class="delimiter">&quot;</span><span class="content">example.grails.PersonController</span><span class="delimiter">&quot;</span></span>) <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="annotation">@Shared</span>
+    RestBuilder rest = <span class="keyword">new</span> RestBuilder()
+
+    <span class="keyword">def</span> <span class="function">cleanup</span>() {
+        TestLoggerFactory.clearAll() <i class="conum" data-value="2"></i><b>(2)</b>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">test create person successful logs</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">a person is created</span><span class="delimiter">&quot;</span></span>
+        RestResponse resp = rest.get(<span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/person/createPerson?name=Nirav&amp;age=40</span><span class="delimiter">&quot;</span></span>)
+        ImmutableList&lt;LoggingEvent&gt; loggingEvents = personControllerLogger.getAllLoggingEvents() <i class="conum" data-value="3"></i><b>(3)</b>
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">check the logging events</span><span class="delimiter">&quot;</span></span>
+        resp.status == <span class="integer">200</span>
+        loggingEvents.size() == <span class="integer">1</span> <i class="conum" data-value="4"></i><b>(4)</b>
+        loggingEvents[<span class="integer">0</span>].message == <span class="string"><span class="delimiter">&quot;</span><span class="content">person saved successfully: name: Nirav, age: 40</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="5"></i><b>(5)</b>
+        loggingEvents[<span class="integer">0</span>].level == <span class="predefined-type">Level</span>.INFO
+    }
+
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -215,9 +252,33 @@ injected automatically without the worry of mocking. We will use <code>RestBuild
 <div class="listingblock">
 <div class="title">src/integration-test/groovy/example/grails/PersonControllerIntSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/integration-test/groovy/example/grails/PersonControllerIntSpec.groovy[role=include]
+<pre class="CodeRay highlight"><code data-lang="groovy">    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">test create person unsuccessful logs</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">a person is created, but has a input error</span><span class="delimiter">&quot;</span></span>
+        RestResponse resp = rest.get(<span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/person/createPerson?name=Bob&amp;age=Twenty</span><span class="delimiter">&quot;</span></span>)
+        ImmutableList&lt;LoggingEvent&gt; loggingEvents = personControllerLogger.getAllLoggingEvents()
 
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/integration-test/groovy/example/grails/PersonControllerIntSpec.groovy[role=include]</code></pre>
+        <span class="key">then</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">check the logging events</span><span class="delimiter">&quot;</span></span>
+        resp.status == <span class="integer">200</span>
+        loggingEvents.size() == <span class="integer">1</span>
+        loggingEvents[<span class="integer">0</span>].message == <span class="string"><span class="delimiter">&quot;</span><span class="content">Error occurred on save!</span><span class="delimiter">&quot;</span></span>
+        loggingEvents[<span class="integer">0</span>].level == <span class="predefined-type">Level</span>.ERROR
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">test offerAdvice to old person</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">A person is already created</span><span class="delimiter">&quot;</span></span>
+        RestResponse resp = rest.get(<span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/person/createPerson?name=John&amp;age=35</span><span class="delimiter">&quot;</span></span>)
+        TestLogger ageAdvisorLogger = TestLoggerFactory.getTestLogger(<span class="string"><span class="delimiter">&quot;</span><span class="content">example.grails.AgeAdvisor</span><span class="delimiter">&quot;</span></span>) <i class="conum" data-value="1"></i><b>(1)</b>
+
+        <span class="key">when</span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">we ask for advice</span><span class="delimiter">&quot;</span></span>
+        resp = rest.get(<span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/person/offerAdvice?name=John</span><span class="delimiter">&quot;</span></span>)
+        ImmutableList&lt;LoggingEvent&gt; loggingEvents = ageAdvisorLogger.getAllLoggingEvents()
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">check the logging events</span><span class="delimiter">&quot;</span></span>
+        resp.status == <span class="integer">200</span>
+        loggingEvents.size() == <span class="integer">1</span>
+        loggingEvents[<span class="integer">0</span>].message == <span class="string"><span class="delimiter">&quot;</span><span class="content">It's all downhill from here, sorry.</span><span class="delimiter">&quot;</span></span>
+        loggingEvents[<span class="integer">0</span>].level == <span class="predefined-type">Level</span>.WARN
+    }</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -246,7 +307,54 @@ This does not alter the approach to verifying logs events.</p>
 <div class="listingblock">
 <div class="title">src/test/groovy/example/grails/AgeAdvisorSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/test/groovy/example/grails/AgeAdvisorSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">com.google.common.collect.ImmutableList</span>
+<span class="keyword">import</span> <span class="include">example.grails.AgeAdvisor</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Shared</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+<span class="keyword">import</span> <span class="include">uk.org.lidalia.slf4jext.Level</span>
+<span class="keyword">import</span> <span class="include">uk.org.lidalia.slf4jtest.LoggingEvent</span>
+<span class="keyword">import</span> <span class="include">uk.org.lidalia.slf4jtest.TestLogger</span>
+<span class="keyword">import</span> <span class="include">uk.org.lidalia.slf4jtest.TestLoggerFactory</span>
+
+<span class="type">class</span> <span class="class">AgeAdvisorSpec</span> <span class="directive">extends</span> Specification {
+
+    <span class="annotation">@Shared</span>
+    AgeAdvisor ageAdvisor = <span class="keyword">new</span> AgeAdvisor()
+    <span class="annotation">@Shared</span>
+    TestLogger logger = TestLoggerFactory.getTestLogger(<span class="string"><span class="delimiter">&quot;</span><span class="content">example.grails.AgeAdvisor</span><span class="delimiter">&quot;</span></span>) <i class="conum" data-value="1"></i><b>(1)</b>
+
+    <span class="keyword">def</span> <span class="function">cleanup</span>() {
+        TestLoggerFactory.clear()
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">verify young age logs</span><span class="delimiter">&quot;</span></span>() {
+
+        <span class="key">when</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">method is invoked</span><span class="delimiter">&quot;</span></span>
+        ageAdvisor.offerAgeAdvice(<span class="integer">15</span>)
+        ImmutableList&lt;LoggingEvent&gt; loggingEvents = logger.getLoggingEvents()
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">check the logging events</span><span class="delimiter">&quot;</span></span>
+        loggingEvents.size() == <span class="integer">2</span> <i class="conum" data-value="2"></i><b>(2)</b>
+        loggingEvents[<span class="integer">0</span>].message == <span class="string"><span class="delimiter">&quot;</span><span class="content">You are a young and vibrant!</span><span class="delimiter">&quot;</span></span>
+        loggingEvents[<span class="integer">0</span>].level == <span class="predefined-type">Level</span>.INFO
+        loggingEvents[<span class="integer">1</span>].message == <span class="string"><span class="delimiter">&quot;</span><span class="content">Live life to the fullest.</span><span class="delimiter">&quot;</span></span>
+        loggingEvents[<span class="integer">1</span>].level == <span class="predefined-type">Level</span>.INFO
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">verify old age logs</span><span class="delimiter">&quot;</span></span>() {
+
+        <span class="key">when</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">method is invoked</span><span class="delimiter">&quot;</span></span>
+        ageAdvisor.offerAgeAdvice(<span class="integer">31</span>)
+        ImmutableList&lt;LoggingEvent&gt; loggingEvents = logger.getLoggingEvents()
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">check the logging events</span><span class="delimiter">&quot;</span></span>
+        loggingEvents.size() == <span class="integer">1</span>
+        loggingEvents[<span class="integer">0</span>].message == <span class="string"><span class="delimiter">&quot;</span><span class="content">It's all downhill from here, sorry.</span><span class="delimiter">&quot;</span></span>
+        loggingEvents[<span class="integer">0</span>].level == <span class="predefined-type">Level</span>.WARN
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">

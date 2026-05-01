@@ -102,7 +102,17 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/domain/com/example/Product.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/domain/com/example/Product.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> com.example
+
+<span class="type">class</span> <span class="class">Product</span> {
+
+    <span class="predefined-type">String</span> name
+    <span class="predefined-type">String</span> inventoryId
+
+    <span class="predefined-type">BigDecimal</span> price
+
+    <span class="directive">static</span> belongsTo = [ category : Category ]
+}</code></pre>
 </div>
 </div>
 <div class="admonitionblock tip">
@@ -131,7 +141,36 @@ You&#8217;ll often find when developing a RESTful API that the generated control
 <div class="listingblock">
 <div class="title">grails-app/controllers/com/example/ProductController.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/controllers/com/example/ProductController.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> com.example
+
+<span class="keyword">import</span> <span class="include">grails.rest.RestfulController</span>
+
+<span class="type">class</span> <span class="class">ProductController</span> <span class="directive">extends</span> RestfulController&lt;Product&gt; {
+    <span class="directive">static</span> responseFormats = [<span class="string"><span class="delimiter">'</span><span class="content">json</span><span class="delimiter">'</span></span>]
+
+    ProductController() {
+        <span class="local-variable">super</span>(Product)
+    }
+
+    <span class="annotation">@Override</span>
+    <span class="keyword">def</span> <span class="function">index</span>(<span class="predefined-type">Integer</span> max) {
+        params.max = <span class="predefined-type">Math</span>.min(max ?: <span class="integer">10</span>, <span class="integer">100</span>)
+
+        <span class="keyword">return</span> [
+                productList : listAllResources(params), <i class="conum" data-value="1"></i><b>(1)</b>
+                <span class="key">productCount</span>: countResources(),     <i class="conum" data-value="2"></i><b>(2)</b>
+                max         : params.max,        <i class="conum" data-value="3"></i><b>(3)</b>
+                offset      : params.int(<span class="string"><span class="delimiter">&quot;</span><span class="content">offset</span><span class="delimiter">&quot;</span></span>) ?: <span class="integer">0</span>, <i class="conum" data-value="4"></i><b>(4)</b>
+                sort        : params.sort,  <i class="conum" data-value="5"></i><b>(5)</b>
+                order       : params.order  <i class="conum" data-value="6"></i><b>(6)</b>
+        ]
+    }
+
+    <span class="annotation">@Override</span>
+    <span class="type">boolean</span> getReadOnly() {
+        <span class="keyword">return</span> <span class="predefined-constant">true</span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -168,7 +207,7 @@ You&#8217;ll often find when developing a RESTful API that the generated control
 <div class="listingblock">
 <div class="title">grails-app/controller/com/example/UrlMappings.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/controllers/com/example/UrlMappings.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="string"><span class="delimiter">&quot;</span><span class="content">/api/products</span><span class="delimiter">&quot;</span></span>(<span class="key">resources</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">product</span><span class="delimiter">&quot;</span></span>)</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -177,7 +216,26 @@ You&#8217;ll often find when developing a RESTful API that the generated control
 <div class="listingblock">
 <div class="title">grails-app/views/product/index.gson</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/views/product/index.gson[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">com.example.Product</span>
+
+model {
+    <span class="predefined-type">Iterable</span>&lt;Product&gt; productList <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="predefined-type">Integer</span> productCount <i class="conum" data-value="2"></i><b>(2)</b>
+    <span class="predefined-type">Integer</span> max
+    <span class="predefined-type">Integer</span> offset
+    <span class="predefined-type">String</span> sort
+    <span class="predefined-type">String</span> order
+}
+
+json {
+    hal.paginate(Product, productCount, offset, max, sort, order) <i class="conum" data-value="3"></i><b>(3)</b>
+    products tmpl.product(productList ?: <span class="type">[]</span>)
+    count productCount
+    max max
+    offset offset
+    sort sort
+    order order
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -199,7 +257,19 @@ You&#8217;ll often find when developing a RESTful API that the generated control
 <div class="listingblock">
 <div class="title">grails-app/views/product/_product.gson</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/views/product/_product.gson[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">com.example.Product</span>
+
+model {
+    Product product
+}
+json {
+    hal.links(product)
+
+    name product.name
+    id product.inventoryId
+    price product.price
+    category product.category.name
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -207,7 +277,165 @@ You&#8217;ll often find when developing a RESTful API that the generated control
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/integration-test/groovy/com/example/ProductsListFuncSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="string"><span class="delimiter">&quot;&quot;&quot;</span><span class="content">
+{
+  &quot;_links&quot;: {
+    &quot;self&quot;: {
+      &quot;href&quot;: &quot;http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/api/products?offset=0&amp;max=10&quot;,
+      &quot;hreflang&quot;: &quot;en&quot;,
+      &quot;type&quot;: &quot;application/hal+json&quot;
+    },
+    &quot;first&quot;: {
+      &quot;href&quot;: &quot;http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/api/products?offset=0&amp;max=10&quot;,
+      &quot;hreflang&quot;: &quot;en&quot;
+    },
+    &quot;next&quot;: {
+      &quot;href&quot;: &quot;http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/api/products?offset=10&amp;max=10&quot;,
+      &quot;hreflang&quot;: &quot;en&quot;
+    },
+    &quot;last&quot;: {
+      &quot;href&quot;: &quot;http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/api/products?offset=10&amp;max=10&quot;,
+      &quot;hreflang&quot;: &quot;en&quot;
+    }
+  },
+  &quot;products&quot;: [
+    {
+      &quot;_links&quot;: {
+        &quot;self&quot;: {
+          &quot;href&quot;: &quot;http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/api/products/1&quot;,
+          &quot;hreflang&quot;: &quot;en&quot;,
+          &quot;type&quot;: &quot;application/hal+json&quot;
+        }
+      },
+      &quot;name&quot;: &quot;Cargo Pants&quot;,
+      &quot;id&quot;: &quot;CLOTH001&quot;,
+      &quot;price&quot;: 15.00,
+      &quot;category&quot;: &quot;Clothing&quot;
+    },
+    {
+      &quot;_links&quot;: {
+        &quot;self&quot;: {
+          &quot;href&quot;: &quot;http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/api/products/2&quot;,
+          &quot;hreflang&quot;: &quot;en&quot;,
+          &quot;type&quot;: &quot;application/hal+json&quot;
+        }
+      },
+      &quot;name&quot;: &quot;Sweater&quot;,
+      &quot;id&quot;: &quot;CLOTH002&quot;,
+      &quot;price&quot;: 12.00,
+      &quot;category&quot;: &quot;Clothing&quot;
+    },
+    {
+      &quot;_links&quot;: {
+        &quot;self&quot;: {
+          &quot;href&quot;: &quot;http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/api/products/3&quot;,
+          &quot;hreflang&quot;: &quot;en&quot;,
+          &quot;type&quot;: &quot;application/hal+json&quot;
+        }
+      },
+      &quot;name&quot;: &quot;Jeans&quot;,
+      &quot;id&quot;: &quot;CLOTH003&quot;,
+      &quot;price&quot;: 15.00,
+      &quot;category&quot;: &quot;Clothing&quot;
+    },
+    {
+      &quot;_links&quot;: {
+        &quot;self&quot;: {
+          &quot;href&quot;: &quot;http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/api/products/4&quot;,
+          &quot;hreflang&quot;: &quot;en&quot;,
+          &quot;type&quot;: &quot;application/hal+json&quot;
+        }
+      },
+      &quot;name&quot;: &quot;Blouse&quot;,
+      &quot;id&quot;: &quot;CLOTH004&quot;,
+      &quot;price&quot;: 18.00,
+      &quot;category&quot;: &quot;Clothing&quot;
+    },
+    {
+      &quot;_links&quot;: {
+        &quot;self&quot;: {
+          &quot;href&quot;: &quot;http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/api/products/5&quot;,
+          &quot;hreflang&quot;: &quot;en&quot;,
+          &quot;type&quot;: &quot;application/hal+json&quot;
+        }
+      },
+      &quot;name&quot;: &quot;T-Shirt&quot;,
+      &quot;id&quot;: &quot;CLOTH005&quot;,
+      &quot;price&quot;: 10.00,
+      &quot;category&quot;: &quot;Clothing&quot;
+    },
+    {
+      &quot;_links&quot;: {
+        &quot;self&quot;: {
+          &quot;href&quot;: &quot;http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/api/products/6&quot;,
+          &quot;hreflang&quot;: &quot;en&quot;,
+          &quot;type&quot;: &quot;application/hal+json&quot;
+        }
+      },
+      &quot;name&quot;: &quot;Jacket&quot;,
+      &quot;id&quot;: &quot;CLOTH006&quot;,
+      &quot;price&quot;: 20.00,
+      &quot;category&quot;: &quot;Clothing&quot;
+    },
+    {
+      &quot;_links&quot;: {
+        &quot;self&quot;: {
+          &quot;href&quot;: &quot;http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/api/products/7&quot;,
+          &quot;hreflang&quot;: &quot;en&quot;,
+          &quot;type&quot;: &quot;application/hal+json&quot;
+        }
+      },
+      &quot;name&quot;: &quot;Bookcase&quot;,
+      &quot;id&quot;: &quot;FURN001&quot;,
+      &quot;price&quot;: 40.00,
+      &quot;category&quot;: &quot;Furniture&quot;
+    },
+    {
+      &quot;_links&quot;: {
+        &quot;self&quot;: {
+          &quot;href&quot;: &quot;http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/api/products/8&quot;,
+          &quot;hreflang&quot;: &quot;en&quot;,
+          &quot;type&quot;: &quot;application/hal+json&quot;
+        }
+      },
+      &quot;name&quot;: &quot;Coffee Table&quot;,
+      &quot;id&quot;: &quot;FURN002&quot;,
+      &quot;price&quot;: 50.00,
+      &quot;category&quot;: &quot;Furniture&quot;
+    },
+    {
+      &quot;_links&quot;: {
+        &quot;self&quot;: {
+          &quot;href&quot;: &quot;http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/api/products/9&quot;,
+          &quot;hreflang&quot;: &quot;en&quot;,
+          &quot;type&quot;: &quot;application/hal+json&quot;
+        }
+      },
+      &quot;name&quot;: &quot;Vanity&quot;,
+      &quot;id&quot;: &quot;FURN003&quot;,
+      &quot;price&quot;: 90.00,
+      &quot;category&quot;: &quot;Furniture&quot;
+    },
+    {
+      &quot;_links&quot;: {
+        &quot;self&quot;: {
+          &quot;href&quot;: &quot;http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/api/products/10&quot;,
+          &quot;hreflang&quot;: &quot;en&quot;,
+          &quot;type&quot;: &quot;application/hal+json&quot;
+        }
+      },
+      &quot;name&quot;: &quot;Table Saw&quot;,
+      &quot;id&quot;: &quot;TOOL001&quot;,
+      &quot;price&quot;: 120.00,
+      &quot;category&quot;: &quot;Tools&quot;
+    }
+  ],
+  &quot;count&quot;: 13,
+  &quot;max&quot;: 10,
+  &quot;offset&quot;: 0,
+  &quot;sort&quot;: null,
+  &quot;order&quot;: null
+}</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">

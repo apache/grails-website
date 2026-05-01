@@ -99,7 +99,49 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">client/src/security/auth.js</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="javascript">link:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>client/src/security/auth.js[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="javascript"><span class="reserved">import</span> {SERVER_URL} from <span class="string"><span class="delimiter">'</span><span class="content">./../config</span><span class="delimiter">'</span></span>;
+<span class="reserved">import</span> {checkResponseStatus} from <span class="string"><span class="delimiter">'</span><span class="content">./../handlers/responseHandlers</span><span class="delimiter">'</span></span>;
+<span class="reserved">import</span> headers from <span class="string"><span class="delimiter">'</span><span class="content">./../security/headers</span><span class="delimiter">'</span></span>;
+<span class="reserved">import</span> <span class="string"><span class="delimiter">'</span><span class="content">whatwg-fetch</span><span class="delimiter">'</span></span>;
+<span class="reserved">import</span> qs from <span class="string"><span class="delimiter">'</span><span class="content">qs</span><span class="delimiter">'</span></span>;
+
+<i class="conum" data-value="1"></i><b>(1)</b>
+<span class="reserved">export</span> <span class="keyword">default</span> {
+  logIn(auth) { <i class="conum" data-value="2"></i><b>(2)</b>
+    localStorage.auth = JSON.stringify(auth);
+  },
+
+  logOut() { <i class="conum" data-value="3"></i><b>(3)</b>
+    <span class="keyword">delete</span> localStorage.auth;
+  },
+
+  refreshToken() { <i class="conum" data-value="4"></i><b>(4)</b>
+    <span class="keyword">return</span> fetch(
+      <span class="error">`</span><span class="predefined">$</span>{SERVER_URL}/oauth/access_token<span class="error">`</span>,
+      { <span class="key">method</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>,
+        <span class="key">headers</span>: {
+          <span class="key"><span class="delimiter">'</span><span class="content">Content-Type</span><span class="delimiter">'</span></span>: <span class="string"><span class="delimiter">'</span><span class="content">application/x-www-form-urlencoded;charset=UTF-8</span><span class="delimiter">'</span></span>
+        },
+        <span class="key">body</span>: qs.stringify({ <i class="conum" data-value="5"></i><b>(5)</b>
+          <span class="key">grant_type</span>: <span class="string"><span class="delimiter">'</span><span class="content">refresh_token</span><span class="delimiter">'</span></span>,
+          <span class="key">refresh_token</span>: JSON.parse(localStorage.auth).refresh_token
+        })
+      })
+      .then(checkResponseStatus)
+      .then((a) =&gt; localStorage.auth = JSON.stringify(a))
+      .<span class="keyword">catch</span>(() =&gt; { <span class="keyword">throw</span> <span class="keyword">new</span> Error(<span class="string"><span class="delimiter">&quot;</span><span class="content">Unable to refresh!</span><span class="delimiter">&quot;</span></span>)})
+  },
+
+  loggedIn() {  <i class="conum" data-value="6"></i><b>(6)</b>
+    <span class="keyword">return</span> localStorage.auth &amp;&amp; fetch(
+        <span class="error">`</span><span class="predefined">$</span>{SERVER_URL}/api/vehicle<span class="error">`</span>, <i class="conum" data-value="7"></i><b>(7)</b>
+        {<span class="key">headers</span>: headers()})
+        .then(checkResponseStatus)
+        .then(() =&gt; { <span class="keyword">return</span> <span class="predefined-constant">true</span> })
+        .<span class="keyword">catch</span>(<span class="local-variable">this</span>.refreshToken)
+        .<span class="keyword">catch</span>(() =&gt; { <span class="keyword">return</span> <span class="predefined-constant">false</span> });
+  }
+};</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -158,7 +200,12 @@ The server&#8217;s <code>api/login</code> endpoint responds us with an <code>acc
 <div class="listingblock">
 <div class="title">client/src/security/headers.js</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="javascript">link:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>client/src/security/headers.js[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="javascript"><span class="reserved">export</span> <span class="keyword">default</span> () =&gt; { <i class="conum" data-value="1"></i><b>(1)</b>
+  <span class="keyword">return</span> {
+    <span class="key"><span class="delimiter">'</span><span class="content">Content-Type</span><span class="delimiter">'</span></span>: <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>,
+    <span class="key"><span class="delimiter">'</span><span class="content">Authorization</span><span class="delimiter">'</span></span>: <span class="error">`</span>Bearer <span class="predefined">$</span>{localStorage.auth ? JSON.parse(localStorage.auth).access_token : <span class="predefined-constant">null</span>}<span class="error">`</span>
+  }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -181,7 +228,23 @@ The server&#8217;s <code>api/login</code> endpoint responds us with an <code>acc
 <div class="listingblock">
 <div class="title">client/package.json</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="javascript">link:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>client/<span class="reserved">package</span>.json[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="javascript">{
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">name</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">client</span><span class="delimiter">&quot;</span></span>,
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">version</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">0.1.0</span><span class="delimiter">&quot;</span></span>,
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">private</span><span class="delimiter">&quot;</span></span>: <span class="predefined-constant">true</span>,
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">dependencies</span><span class="delimiter">&quot;</span></span>: {
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">react</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">16.1.1</span><span class="delimiter">&quot;</span></span>,
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">react-bootstrap</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">0.31.5</span><span class="delimiter">&quot;</span></span>,
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">react-dom</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">16.1.1</span><span class="delimiter">&quot;</span></span>,
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">react-scripts</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">1.0.17</span><span class="delimiter">&quot;</span></span>
+  },
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">scripts</span><span class="delimiter">&quot;</span></span>: {
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">start</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">react-scripts start</span><span class="delimiter">&quot;</span></span>,
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">build</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">react-scripts build</span><span class="delimiter">&quot;</span></span>,
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">test</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">react-scripts test --env=jsdom</span><span class="delimiter">&quot;</span></span>,
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">eject</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">react-scripts eject</span><span class="delimiter">&quot;</span></span>
+  }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">

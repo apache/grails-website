@@ -139,7 +139,18 @@ mapped onto an underlying database table. In Grails a domain is a class that liv
 <div class="listingblock">
 <div class="title">/grails-app/domain/demo/Todo.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/domain/demo/Todo.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.rest.Resource</span>
+
+<span class="annotation">@Resource</span>(uri=<span class="string"><span class="delimiter">'</span><span class="content">/todos</span><span class="delimiter">'</span></span>)
+<span class="type">class</span> <span class="class">Todo</span> {
+    <span class="predefined-type">String</span> name
+    <span class="type">boolean</span> completed
+
+    <span class="directive">static</span> constraints = {
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -148,7 +159,27 @@ mapped onto an underlying database table. In Grails a domain is a class that liv
 <div class="listingblock">
 <div class="title">/src/test/groovy/demo/TodoSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/test/groovy/demo/TodoSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+<span class="keyword">import</span> <span class="include">grails.testing.gorm.DomainUnitTest</span>
+
+<span class="type">class</span> <span class="class">TodoSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> DomainUnitTest&lt;Todo&gt; {
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">test name is required</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        <span class="keyword">def</span> todo = <span class="keyword">new</span> Todo(<span class="key">name</span>: name)
+
+        <span class="key">then</span>:
+        !todo.validate()
+        todo.errors[<span class="string"><span class="delimiter">'</span><span class="content">name</span><span class="delimiter">'</span></span>].code == errorCode
+
+        <span class="key">where</span>:
+        name | errorCode
+        <span class="predefined-constant">null</span> | <span class="string"><span class="delimiter">'</span><span class="content">nullable</span><span class="delimiter">'</span></span>
+        <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>   | <span class="string"><span class="delimiter">'</span><span class="content">nullable</span><span class="delimiter">'</span></span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -157,7 +188,24 @@ mapped onto an underlying database table. In Grails a domain is a class that liv
 <div class="listingblock">
 <div class="title">/grails-app/init/demo/BootStrap.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="javascript">link:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span><span class="modifier">g</span></span>rails-app/init/demo/BootStrap.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="javascript"><span class="reserved">package</span> demo
+
+<span class="reserved">class</span> BootStrap {
+
+    def init = { servletContext -&gt;
+
+        def todos = [
+                [name: <span class="string"><span class="delimiter">'</span><span class="content">clean the house</span><span class="delimiter">'</span></span>],
+                [name: <span class="string"><span class="delimiter">'</span><span class="content">water the dog</span><span class="delimiter">'</span></span>],
+                [name: <span class="string"><span class="delimiter">'</span><span class="content">feed the lawn</span><span class="delimiter">'</span></span>],
+                [name: <span class="string"><span class="delimiter">'</span><span class="content">pay dem bills</span><span class="delimiter">'</span></span>],
+                [name: <span class="string"><span class="delimiter">'</span><span class="content">run</span><span class="delimiter">'</span></span>],
+                [name: <span class="string"><span class="delimiter">'</span><span class="content">swim</span><span class="delimiter">'</span></span>]
+        ].each { <span class="keyword">new</span> Todo(name: it.name).save() }
+    }
+    def destroy = {
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -166,7 +214,10 @@ mapped onto an underlying database table. In Grails a domain is a class that liv
 <div class="listingblock">
 <div class="title">/grails-app/domain/demo/Todo.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/domain/demo/Todo.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.rest.Resource</span>
+
+<span class="annotation">@Resource</span>(uri=<span class="string"><span class="delimiter">'</span><span class="content">/todos</span><span class="delimiter">'</span></span>)
+<span class="type">class</span> <span class="class">Todo</span> {</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -254,7 +305,9 @@ The transformation will automatically create a controller called TodoController 
 <div class="listingblock">
 <div class="title">/complete/grails-app/conf/application.yml</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/application.yml[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">grails</span>:
+    <span class="key">cors</span>:
+        <span class="key">enabled</span>: <span class="predefined-constant">true</span></code></pre>
 </div>
 </div>
 

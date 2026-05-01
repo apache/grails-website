@@ -96,7 +96,7 @@ It includes a JSON  Payload containing username and password. We are going to ma
 <div class="listingblock">
 <div class="title">/server/grails-app/controllers/demo/UrlMappings.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/controllers/demo/UrlMappings.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">        post <span class="string"><span class="delimiter">'</span><span class="content">/signup</span><span class="delimiter">'</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">signup</span><span class="delimiter">'</span></span>)</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -105,13 +105,70 @@ It includes a JSON  Payload containing username and password. We are going to ma
 <div class="listingblock">
 <div class="title">/server/grails-app/controllers/demo/SignupCommand.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/controllers/demo/SignupCommand.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.validation.Validateable</span>
+
+<span class="type">class</span> <span class="class">SignupCommand</span> <span class="directive">implements</span> Validateable {
+    <span class="predefined-type">String</span> username
+    <span class="predefined-type">String</span> password
+
+    <span class="directive">static</span> constraints = {
+        username <span class="key">nullable</span>: <span class="predefined-constant">false</span>, <span class="key">blank</span>: <span class="predefined-constant">false</span>
+        password <span class="key">nullable</span>: <span class="predefined-constant">false</span>, <span class="key">blank</span>: <span class="predefined-constant">false</span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">/server/grails-app/controllers/demo/SignupController.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/controllers/demo/SignupController.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.annotation.Secured</span>
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.rest.token.AccessToken</span>
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.rest.token.generation.TokenGenerator</span>
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.rest.token.rendering.AccessTokenJsonRenderer</span>
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.userdetails.GrailsUser</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">org.springframework.http.HttpStatus</span>
+<span class="keyword">import</span> <span class="include">org.springframework.security.core.GrantedAuthority</span>
+<span class="keyword">import</span> <span class="include">org.springframework.security.core.userdetails.UserDetails</span>
+
+<i class="conum" data-value="1"></i><b>(1)</b>
+<span class="annotation">@CompileStatic</span>
+<span class="annotation">@Secured</span>([<span class="string"><span class="delimiter">'</span><span class="content">IS_AUTHENTICATED_ANONYMOUSLY</span><span class="delimiter">'</span></span>])
+<span class="type">class</span> <span class="class">SignupController</span> {
+    <span class="directive">static</span> responseFormats = [<span class="string"><span class="delimiter">'</span><span class="content">json</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">xml</span><span class="delimiter">'</span></span>]
+
+    UserRoleService userRoleService
+    UserService userService
+    RoleService roleService
+    TokenGenerator tokenGenerator
+    AccessTokenJsonRenderer accessTokenJsonRenderer
+
+    <span class="keyword">def</span> <span class="function">signup</span>(SignupCommand cmd) {
+        <i class="conum" data-value="2"></i><b>(2)</b>
+        <span class="keyword">if</span> ( userService.existsUserByUsername(cmd.username) ) {
+            render <span class="key">status</span>: HttpStatus.UNPROCESSABLE_ENTITY.value(), <span class="string"><span class="delimiter">&quot;</span><span class="content">duplicate key</span><span class="delimiter">&quot;</span></span>
+            <span class="keyword">return</span>
+        }
+
+        <span class="predefined-type">Role</span> roleUser = roleService.findByRoleName(<span class="string"><span class="delimiter">'</span><span class="content">ROLE_USER</span><span class="delimiter">'</span></span>)
+        <span class="keyword">if</span> ( !roleUser ) {
+            render <span class="key">status</span>: HttpStatus.UNPROCESSABLE_ENTITY.value(), <span class="string"><span class="delimiter">&quot;</span><span class="content">default role: ROLE_USER does not exist</span><span class="delimiter">&quot;</span></span>
+            <span class="keyword">return</span>
+        }
+        User user = userService.createUser(cmd.username, cmd.password)
+        userRoleService.saveUserRole(user, roleUser)
+
+        <i class="conum" data-value="3"></i><b>(3)</b>
+        UserDetails userDetails = <span class="keyword">new</span> GrailsUser(user.username, user.password, user.enabled, !user.accountExpired,
+                !user.passwordExpired, !user.accountLocked, user.authorities <span class="keyword">as</span> <span class="predefined-type">Collection</span>&lt;GrantedAuthority&gt;, user.id)
+        AccessToken token = tokenGenerator.generateAccessToken(userDetails)
+        render <span class="key">status</span>: HttpStatus.OK.value(), accessTokenJsonRenderer.generateJson(token)
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -136,35 +193,70 @@ It includes a JSON  Payload containing username and password. We are going to ma
 <div class="listingblock">
 <div class="title">/server/grails-app/services/demo/RoleService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/RoleService.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/RoleService.groovy[role=include]
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.ReadOnly</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
 
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/RoleService.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/RoleService.groovy[role=include]
+<span class="annotation">@Slf4j</span>
+<span class="annotation">@Transactional</span>
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">RoleService</span> {
+    <span class="predefined-type">Role</span> findByRoleName(<span class="predefined-type">String</span> roleName) {
+        <span class="predefined-type">Role</span>.where { authority == roleName }.get()
+    }
 }</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">/server/grails-app/services/demo/UserService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/UserService.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/UserService.groovy[role=include]
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+<span class="keyword">import</span> <span class="include">grails.gorm.DetachedCriteria</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.ReadOnly</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
 
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/UserService.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/UserService.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/UserService.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/UserService.groovy[role=include]
+<span class="annotation">@Slf4j</span>
+<span class="annotation">@Transactional</span>
+<span class="type">class</span> <span class="class">UserService</span> {
+    <span class="annotation">@ReadOnly</span>
+    <span class="type">boolean</span> existsUserByUsername(<span class="predefined-type">String</span> username) {
+        findQueryByUsername(username).count()
+    }
+    DetachedCriteria&lt;User&gt; findQueryByUsername(<span class="predefined-type">String</span> name) {
+        User.where { username == name }
+    }
+    User createUser(<span class="predefined-type">String</span> username, <span class="predefined-type">String</span> password, <span class="type">boolean</span> flush = <span class="predefined-constant">false</span>) {
+        User user = <span class="keyword">new</span> User(<span class="key">username</span>: username, <span class="key">password</span>: password)
+        <span class="keyword">if</span> ( !user.save(<span class="key">flush</span>: flush) ) {
+            log.error <span class="string"><span class="delimiter">'</span><span class="content">Unable to save user {}</span><span class="delimiter">'</span></span>, user.errors.toString()
+        }
+        user
+    }
 }</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">/server/grails-app/services/demo/UserRoleService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/UserRoleService.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/UserRoleService.groovy[role=include]
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
 
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/UserRoleService.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/UserRoleService.groovy[role=include]
+<span class="annotation">@Slf4j</span>
+<span class="annotation">@Transactional</span>
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">UserRoleService</span> {
+    UserRole saveUserRole(User user, <span class="predefined-type">Role</span> role, <span class="type">boolean</span> flush = <span class="predefined-constant">false</span>) {
+        UserRole ur = <span class="keyword">new</span> UserRole(<span class="key">user</span>: user, <span class="key">role</span>: role)
+        <span class="keyword">if</span> ( !ur.save(<span class="key">flush</span>: flush) ) {
+            log.error <span class="string"><span class="delimiter">'</span><span class="content">Failure while saving user {}</span><span class="delimiter">'</span></span>, ur.errors.toString()
+        }
+        ur
+    }
 }</code></pre>
 </div>
 </div>

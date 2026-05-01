@@ -149,7 +149,8 @@ The <code>initial</code> project is based on the completed project from the <a h
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/build.gradle[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">compile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails.plugins:spring-security-core:3.2.0</span><span class="delimiter">&quot;</span></span>
+compile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails.plugins:spring-security-rest:2.0.0.M2</span><span class="delimiter">&quot;</span></span></code></pre>
 </div>
 </div>
 <div class="admonitionblock note">
@@ -207,7 +208,77 @@ configuration. The plugin provides a <code>s2-quickstart</code> command that wil
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="yml"><span class="error">link:../snippets/server/grails-app/conf/application.yml[role=include]</span></code></pre>
+<pre class="CodeRay highlight"><code data-lang="yml"><span class="head"><span class="head">---</span></span>
+<span class="key">grails</span>:
+    <span class="key">plugin</span>:
+        <span class="key">springsecurity</span>:
+            <span class="key">userLookup</span>:
+                <span class="key">userDomainClassName</span>: <span class="string"><span class="content">demo.User</span></span>
+                <span class="key">authorityJoinClassName</span>: <span class="string"><span class="content">demo.UserRole</span></span>
+            <span class="key">authority</span>:
+                <span class="key">className</span>: <span class="string"><span class="content">demo.Role</span></span>
+            <span class="key">filterChain</span>:
+                <span class="key">chainMap</span>:
+                    -
+                        <span class="key">pattern</span>: <span class="string"><span class="content">/assets/**</span></span>
+                        <span class="key">filters</span>: <span class="string"><span class="content">none</span></span>
+                    -
+                        <span class="key">pattern</span>: <span class="string"><span class="content">/**/js/**</span></span>
+                        <span class="key">filters</span>: <span class="string"><span class="content">none</span></span>
+                    -
+                        <span class="key">pattern</span>: <span class="string"><span class="content">/**/css/**</span></span>
+                        <span class="key">filters</span>: <span class="string"><span class="content">none</span></span>
+                    -
+                        <span class="key">pattern</span>: <span class="string"><span class="content">/**/images/**</span></span>
+                        <span class="key">filters</span>: <span class="string"><span class="content">none</span></span>
+                    - <span class="comment"># Stateless chain</span>
+                        <span class="key">pattern</span>: <span class="string"><span class="content">/api/**</span></span>
+                        <span class="key">filters</span>: <span class="string"><span class="content">JOINED_FILTERS,-anonymousAuthenticationFilter,-exceptionTranslationFilter,-authenticationProcessingFilter,-securityContextPersistenceFilter,-rememberMeAuthenticationFilter</span></span>
+                    - <span class="comment"># Traditional Chain</span>
+                        <span class="key">pattern</span>: <span class="string"><span class="content">/**</span></span>
+                        <span class="key">filters</span>: <span class="string"><span class="content">JOINED_FILTERS,-restTokenValidationFilter,-restExceptionTranslationFilter</span></span>
+                <span class="key">controllerAnnotations</span>:
+                    <span class="key">staticRules</span>:
+                        -
+                            <span class="key">pattern</span>: <span class="string"><span class="content">/</span></span>
+                            <span class="key">access</span>:
+                                - <span class="string"><span class="content">permitAll</span></span>
+                        -
+                            <span class="key">pattern</span>: <span class="string"><span class="content">/error</span></span>
+                            <span class="key">access</span>:
+                                - <span class="string"><span class="content">permitAll</span></span>
+                        -
+                            <span class="key">pattern</span>: <span class="string"><span class="content">/index</span></span>
+                            <span class="key">access</span>:
+                                - <span class="string"><span class="content">permitAll</span></span>
+                        -
+                            <span class="key">pattern</span>: <span class="string"><span class="content">/index.gsp</span></span>
+                            <span class="key">access</span>:
+                                - <span class="string"><span class="content">permitAll</span></span>
+                        -
+                            <span class="key">pattern</span>: <span class="string"><span class="content">/shutdown</span></span>
+                            <span class="key">access</span>:
+                                - <span class="string"><span class="content">permitAll</span></span>
+                        -
+                            <span class="key">pattern</span>: <span class="string"><span class="content">/assets/**</span></span>
+                            <span class="key">access</span>:
+                                - <span class="string"><span class="content">permitAll</span></span>
+                        -
+                            <span class="key">pattern</span>: <span class="string"><span class="content">/**/js/**</span></span>
+                            <span class="key">access</span>:
+                                - <span class="string"><span class="content">permitAll</span></span>
+                        -
+                            <span class="key">pattern</span>: <span class="string"><span class="content">/**/css/**</span></span>
+                            <span class="key">access</span>:
+                                - <span class="string"><span class="content">permitAll</span></span>
+                        -
+                            <span class="key">pattern</span>: <span class="string"><span class="content">/**/images/**</span></span>
+                            <span class="key">access</span>:
+                                - <span class="string"><span class="content">permitAll</span></span>
+                        -
+                            <span class="key">pattern</span>: <span class="string"><span class="content">/**/favicon.ico/**</span></span>
+                            <span class="key">access</span>:
+                                - <span class="string"><span class="content">permitAll</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -233,7 +304,25 @@ configuration. The plugin provides a <code>s2-quickstart</code> command that wil
 <div class="listingblock">
 <div class="title">server/grails-app/domain/demo/Driver.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/domain/demo/<span class="predefined-type">Driver</span>.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.compiler.GrailsCompileStatic</span>
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.annotation.Secured</span>
+<span class="keyword">import</span> <span class="include">grails.rest.Resource</span>
+
+<span class="annotation">@GrailsCompileStatic</span>
+<span class="annotation">@Secured</span>([<span class="string"><span class="delimiter">'</span><span class="content">ROLE_DRIVER</span><span class="delimiter">'</span></span>])
+<span class="annotation">@Resource</span>(uri = <span class="string"><span class="delimiter">'</span><span class="content">/api/driver</span><span class="delimiter">'</span></span>)
+<span class="type">class</span> <span class="class">Driver</span> <span class="directive">extends</span> User {
+
+    <span class="predefined-type">String</span> name
+
+    <span class="directive">static</span> hasMany = [ <span class="key">vehicles</span>: Vehicle ]
+
+    <span class="directive">static</span> constraints = {
+        vehicles <span class="key">nullable</span>: <span class="predefined-constant">true</span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -248,19 +337,69 @@ configuration. The plugin provides a <code>s2-quickstart</code> command that wil
 <div class="listingblock">
 <div class="title">server/grails-app/domain/demo/Make.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/domain/demo/Make.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.annotation.Secured</span>
+<span class="keyword">import</span> <span class="include">grails.rest.Resource</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="annotation">@Secured</span>([<span class="string"><span class="delimiter">'</span><span class="content">ROLE_DRIVER</span><span class="delimiter">'</span></span>])
+<span class="annotation">@Resource</span>(uri = <span class="string"><span class="delimiter">'</span><span class="content">/api/make</span><span class="delimiter">'</span></span>)
+<span class="type">class</span> <span class="class">Make</span> {
+
+    <span class="predefined-type">String</span> name
+
+    <span class="directive">static</span> constraints = {
+    }
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">server/grails-app/domain/demo/Model.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/domain/demo/Model.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.annotation.Secured</span>
+<span class="keyword">import</span> <span class="include">grails.rest.Resource</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="annotation">@Secured</span>([<span class="string"><span class="delimiter">'</span><span class="content">ROLE_DRIVER</span><span class="delimiter">'</span></span>])
+<span class="annotation">@Resource</span>(uri = <span class="string"><span class="delimiter">'</span><span class="content">/api/model</span><span class="delimiter">'</span></span>)
+<span class="type">class</span> <span class="class">Model</span> {
+
+    <span class="predefined-type">String</span> name
+
+    <span class="directive">static</span> constraints = {
+    }
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">server/grails-app/domain/demo/Vehicle.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/domain/demo/Vehicle.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.annotation.Secured</span>
+<span class="keyword">import</span> <span class="include">grails.rest.Resource</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="annotation">@Secured</span>([<span class="string"><span class="delimiter">'</span><span class="content">ROLE_DRIVER</span><span class="delimiter">'</span></span>])
+<span class="annotation">@Resource</span>(uri = <span class="string"><span class="delimiter">'</span><span class="content">/api/vehicle</span><span class="delimiter">'</span></span>)
+<span class="type">class</span> <span class="class">Vehicle</span> {
+
+    <span class="predefined-type">String</span> name
+
+    Make make
+    Model model
+
+    <span class="directive">static</span> belongsTo = [<span class="key">driver</span>: <span class="predefined-type">Driver</span>]
+
+    <span class="directive">static</span> constraints = {
+    }
+}</code></pre>
 </div>
 </div>
 
@@ -283,7 +422,27 @@ configuration. The plugin provides a <code>s2-quickstart</code> command that wil
 <div class="listingblock">
 <div class="title">server/grails-app/init/demo/BootStrap.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/init/demo/BootStrap.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="annotation">@Slf4j</span>
+<span class="type">class</span> <span class="class">BootStrap</span> {
+
+    <span class="keyword">def</span> init = { servletContext -&gt;
+        log.info <span class="string"><span class="delimiter">&quot;</span><span class="content">Loading database...</span><span class="delimiter">&quot;</span></span>
+        <span class="keyword">def</span> driver1 = <span class="keyword">new</span> <span class="predefined-type">Driver</span>(<span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Susan</span><span class="delimiter">&quot;</span></span>, <span class="key">username</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">susan</span><span class="delimiter">&quot;</span></span>, <span class="key">password</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">password1</span><span class="delimiter">&quot;</span></span>).save() <i class="conum" data-value="1"></i><b>(1)</b>
+        <span class="keyword">def</span> driver2 = <span class="keyword">new</span> <span class="predefined-type">Driver</span>(<span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Pedro</span><span class="delimiter">&quot;</span></span>, <span class="key">username</span>:  <span class="string"><span class="delimiter">&quot;</span><span class="content">pedro</span><span class="delimiter">&quot;</span></span>, <span class="key">password</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">password2</span><span class="delimiter">&quot;</span></span>).save()
+
+        <span class="predefined-type">Role</span> role = <span class="keyword">new</span> <span class="predefined-type">Role</span>(<span class="key">authority</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">ROLE_DRIVER</span><span class="delimiter">&quot;</span></span>).save()  <i class="conum" data-value="2"></i><b>(2)</b>
+
+        UserRole.create(driver1, role, <span class="predefined-constant">true</span>)  <i class="conum" data-value="3"></i><b>(3)</b>
+        UserRole.create(driver2, role, <span class="predefined-constant">true</span>)
+
+        <span class="keyword">def</span> nissan = <span class="keyword">new</span> Make(<span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Nissan</span><span class="delimiter">&quot;</span></span>).save()
+        <span class="keyword">def</span> ford = <span class="keyword">new</span> Make(<span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Ford</span><span class="delimiter">&quot;</span></span>).save()
+
+        <span class="keyword">def</span> titan = <span class="keyword">new</span> Model(<span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Titan</span><span class="delimiter">&quot;</span></span>).save()
+        <span class="keyword">def</span> leaf = <span class="keyword">new</span> Model(<span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Leaf</span><span class="delimiter">&quot;</span></span>).save()
+        <span class="keyword">def</span> windstar = <span class="keyword">new</span> Model(<span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Windstar</span><span class="delimiter">&quot;</span></span>).save()
+
+        <span class="keyword">new</span> Vehicle(<span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Pickup</span><span class="delimiter">&quot;</span></span>, <span class="key">driver</span>: driver1, <span class="key">make</span>: nissan, <span class="key">model</span>: titan).save()</code></pre>
 </div>
 </div>
 <div class="colist arabic">

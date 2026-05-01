@@ -119,7 +119,34 @@ If you&#8217;re familiar with Grails' view resolution, you may be thinking we ne
 <div class="listingblock">
 <div class="title">grails-app/views/order/show.gson</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/views/order/show_v1.gson[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">com.example.Order</span>
+
+<span class="keyword">import</span> <span class="include">java.text.SimpleDateFormat</span>
+
+<span class="predefined-type">SimpleDateFormat</span> simpleDateFormat = <span class="keyword">new</span> <span class="predefined-type">SimpleDateFormat</span>(<span class="string"><span class="delimiter">'</span><span class="content">M-dd-yyy</span><span class="delimiter">'</span></span>)
+
+model {
+    Order order
+}
+json {
+    id order.orderId
+    shippingCost order.shippingCost
+    date simpleDateFormat.format(order.orderPlaced)
+
+    shippingAddress { <i class="conum" data-value="1"></i><b>(1)</b>
+        street order.shippingAddress.street
+        street2 order.shippingAddress.street2
+        city order.shippingAddress.city
+        state order.shippingAddress.state
+        zip order.shippingAddress.zip
+    }
+
+    products order.products.collect { [<span class="key">id</span>: <span class="local-variable">it</span>.id] } <i class="conum" data-value="2"></i><b>(2)</b>
+
+    customer {
+        id order.customer.id
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -144,7 +171,32 @@ If you&#8217;re familiar with Grails' view resolution, you may be thinking we ne
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/test/groovy/com/example/OrderShowV1Spec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">{
+    <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">0A12321</span><span class="delimiter">&quot;</span></span>,
+    <span class="key">shippingCost</span>: <span class="float">13.54</span>,
+    <span class="key">date</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">2-08-2017</span><span class="delimiter">&quot;</span></span>,
+    <span class="key">shippingAddress</span>: {
+        <span class="key">street</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">321 Arrow Ln</span><span class="delimiter">&quot;</span></span>,
+        <span class="key">street2</span>: <span class="predefined-constant">null</span>,
+        <span class="key">city</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Chicago</span><span class="delimiter">&quot;</span></span>,
+        <span class="key">state</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">IL</span><span class="delimiter">&quot;</span></span>,
+        <span class="key">zip</span>: <span class="integer">646465</span>
+    },
+    <span class="key">products</span>: [
+            {
+                <span class="key">id</span>: <span class="integer">11</span>
+            },
+            {
+                <span class="key">id</span>: <span class="integer">1</span>
+            },
+            {
+                <span class="key">id</span>: <span class="integer">6</span>
+            }
+    ],
+    <span class="key">customer</span>: {
+        <span class="key">id</span>: <span class="integer">1</span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -161,7 +213,27 @@ If you&#8217;re familiar with Grails' view resolution, you may be thinking we ne
 <div class="listingblock">
 <div class="title">grails-app/views/customer/show.gson</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/views/customer/show_v1.gson[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">com.example.Customer</span>
+
+model {
+    Customer customer
+}
+json {
+    id customer.id
+    firstName customer.firstName
+    lastName customer.lastName
+    fullName <span class="string"><span class="delimiter">&quot;</span><span class="inline"><span class="inline-delimiter">${</span>customer.firstName<span class="inline-delimiter">}</span></span><span class="content"> </span><span class="inline"><span class="inline-delimiter">${</span>customer.lastName<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>
+
+    address {
+        street customer.address.street
+        street2 customer.address.street2
+        city customer.address.city
+        state customer.address.state
+        zip customer.address.zip
+    }
+
+    orders customer.orders.collect { [<span class="key">id</span>: <span class="local-variable">it</span>.id] }
+}</code></pre>
 </div>
 </div>
 

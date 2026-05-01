@@ -92,7 +92,48 @@ day at 7:00 AM you want to check if any user&#8217;s subscription has expired. I
 <div class="listingblock">
 <div class="title">grails-app/services/demo/GenerateInvoiceJobService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/GenerateInvoiceJobService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">com.agileorbit.schwartz.StatefulSchwartzJob</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">org.quartz.JobExecutionContext</span>
+<span class="keyword">import</span> <span class="include">org.quartz.JobExecutionException</span>
+<span class="keyword">import</span> <span class="include">static</span> <span class="include">org.quartz.DateBuilder.todayAt</span>
+<span class="keyword">import</span> <span class="include">static</span> <span class="include">org.quartz.DateBuilder.tomorrowAt</span>
+
+<span class="type">class</span> <span class="class">GenerateInvoiceJobService</span> <span class="directive">implements</span> StatefulSchwartzJob {
+    <span class="directive">final</span> <span class="type">int</span> HOUR = <span class="integer">7</span>
+    <span class="directive">final</span> <span class="type">int</span> MINUTE = <span class="integer">0</span>
+    <span class="directive">final</span> <span class="type">int</span> SECONDS = <span class="integer">0</span>
+
+    GenerateInvoiceService generateInvoiceService
+
+    <span class="annotation">@Transactional</span> <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="annotation">@Override</span>
+    <span class="type">void</span> execute(JobExecutionContext context) <span class="directive">throws</span> JobExecutionException {
+        generateInvoiceService.generateInvoices()
+    }
+
+    <span class="annotation">@Override</span>
+    <span class="type">void</span> buildTriggers() {
+        <span class="predefined-type">Date</span> startAt = dailyDate()
+        triggers &lt;&lt; factory(<span class="string"><span class="delimiter">'</span><span class="content">Daily email job at 7:00 AM</span><span class="delimiter">'</span></span>)
+                .startAt(startAt)
+                .intervalInDays(<span class="integer">1</span>)
+                .build()
+
+    }
+
+
+    <span class="predefined-type">Date</span> dailyDate() {
+        <span class="predefined-type">Date</span> startAt = todayAt(HOUR, MINUTE, SECONDS)
+        <span class="keyword">if</span> (startAt.before(<span class="keyword">new</span> <span class="predefined-type">Date</span>())) {
+            <span class="keyword">return</span> tomorrowAt(HOUR, MINUTE, SECONDS)
+        }
+        startAt
+    }
+
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -106,7 +147,19 @@ day at 7:00 AM you want to check if any user&#8217;s subscription has expired. I
 <div class="listingblock">
 <div class="title">grails-app/services/demo/GenerateInvoiceService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/GenerateInvoiceService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">GenerateInvoiceService</span> {
+
+    <span class="type">void</span> generateInvoices() {
+        <span class="comment">// Check if users subscription has finished.</span>
+        <span class="comment">// Generate an invoice for a new period and save it in the database</span>
+                <span class="comment">// update user's subscription expiration date</span>
+    }
+}</code></pre>
 </div>
 </div>
 

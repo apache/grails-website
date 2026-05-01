@@ -302,7 +302,45 @@ we will use <code>demo</code>.</p>
 <div class="listingblock">
 <div class="title">/build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>build.gradle[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">plugins {
+        id <span class="string"><span class="delimiter">'</span><span class="content">org.springframework.boot</span><span class="delimiter">'</span></span> version <span class="string"><span class="delimiter">'</span><span class="content">2.2.2.RELEASE</span><span class="delimiter">'</span></span>
+        id <span class="string"><span class="delimiter">'</span><span class="content">io.spring.dependency-management</span><span class="delimiter">'</span></span> version <span class="string"><span class="delimiter">'</span><span class="content">1.0.8.RELEASE</span><span class="delimiter">'</span></span>
+        id <span class="string"><span class="delimiter">'</span><span class="content">groovy</span><span class="delimiter">'</span></span>
+}
+
+group = <span class="string"><span class="delimiter">'</span><span class="content">com.example</span><span class="delimiter">'</span></span>
+version = <span class="string"><span class="delimiter">'</span><span class="content">0.0.1-SNAPSHOT</span><span class="delimiter">'</span></span>
+sourceCompatibility = <span class="string"><span class="delimiter">'</span><span class="content">1.8</span><span class="delimiter">'</span></span>
+
+repositories {
+        mavenCentral()
+        maven { url <span class="string"><span class="delimiter">&quot;</span><span class="content">https://repo.grails.org/grails/core</span><span class="delimiter">&quot;</span></span> } <i class="conum" data-value="1"></i><b>(1)</b>
+}
+
+dependencies {
+        implementation <span class="string"><span class="delimiter">'</span><span class="content">org.springframework.boot:spring-boot-starter-web</span><span class="delimiter">'</span></span>
+        implementation <span class="string"><span class="delimiter">'</span><span class="content">org.codehaus.groovy:groovy</span><span class="delimiter">'</span></span>
+
+        <i class="conum" data-value="2"></i><b>(2)</b>
+        implementation(<span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails:gorm-hibernate5-spring-boot:7.0.1.RELEASE</span><span class="delimiter">&quot;</span></span>)
+        implementation <span class="string"><span class="delimiter">&quot;</span><span class="content">org.hibernate:hibernate-core</span><span class="delimiter">&quot;</span></span>
+        implementation <span class="string"><span class="delimiter">&quot;</span><span class="content">org.hibernate:hibernate-ehcache</span><span class="delimiter">&quot;</span></span>
+
+        <i class="conum" data-value="3"></i><b>(3)</b>
+        runtime <span class="string"><span class="delimiter">&quot;</span><span class="content">org.apache.tomcat:tomcat-jdbc:8.5.0</span><span class="delimiter">&quot;</span></span>
+        runtime <span class="string"><span class="delimiter">&quot;</span><span class="content">org.apache.tomcat.embed:tomcat-embed-logging-log4j:8.5.0</span><span class="delimiter">&quot;</span></span>
+
+        runtimeOnly <span class="string"><span class="delimiter">'</span><span class="content">com.h2database:h2</span><span class="delimiter">'</span></span>
+        testImplementation(<span class="string"><span class="delimiter">'</span><span class="content">org.springframework.boot:spring-boot-starter-test</span><span class="delimiter">'</span></span>) {
+                exclude <span class="key">group</span>: <span class="string"><span class="delimiter">'</span><span class="content">org.junit.vintage</span><span class="delimiter">'</span></span>, <span class="key">module</span>: <span class="string"><span class="delimiter">'</span><span class="content">junit-vintage-engine</span><span class="delimiter">'</span></span>
+        }
+
+        testImplementation <span class="string"><span class="delimiter">&quot;</span><span class="content">org.springframework.boot:spring-boot-starter-webflux</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="4"></i><b>(4)</b>
+}
+
+test {
+        useJUnitPlatform()
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -345,7 +383,16 @@ we will use <code>demo</code>.</p>
 <div class="listingblock">
 <div class="title">src/main/resources/application.yml</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/main/resources/application.yml[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">hibernate</span>:
+    <span class="key">hbm2ddl</span>:
+        <span class="key">auto</span>: update
+    <span class="key">dialect</span>:  org.hibernate.dialect.H2Dialect
+<span class="key">spring</span>:
+    <span class="key">datasource</span>:
+        <span class="key">driverClassName</span>: org.h2.Driver
+        <span class="key">url</span>: <span class="key">jdbc</span>:<span class="key">h2</span>:<span class="key">mem</span>:devDb
+        <span class="key">username</span>: sa
+        <span class="key">password</span>: <span class="string"><span class="delimiter">&quot;</span><span class="delimiter">&quot;</span></span></code></pre>
 </div>
 </div>
 
@@ -418,13 +465,46 @@ $ touch Vehicle.groovy</code></pre>
 <div class="listingblock">
 <div class="title">/src/main/groovy/demo/domain/Manufacturer.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/main/groovy/demo/domain/Manufacturer.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo.domain
+
+<span class="keyword">import</span> <span class="include">grails.gorm.annotation.Entity</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.ToString</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.gorm.GormEntity</span>
+
+<span class="annotation">@ToString</span>
+<span class="annotation">@Entity</span>
+<span class="type">class</span> <span class="class">Manufacturer</span> <span class="directive">implements</span> GormEntity&lt;Manufacturer&gt; {
+
+    <span class="predefined-type">String</span> name
+
+    <span class="directive">static</span> hasMany = [<span class="key">vehicles</span>: Vehicle]
+
+    <span class="directive">static</span> constraints = {
+        name <span class="key">blank</span>: <span class="predefined-constant">false</span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">/src/main/groovy/demo/domain/Vehicle.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/main/groovy/demo/domain/Vehicle.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo.domain
+
+<span class="keyword">import</span> <span class="include">grails.gorm.annotation.Entity</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.gorm.GormEntity</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.ToString</span>
+
+<span class="annotation">@ToString</span>
+<span class="annotation">@Entity</span>
+<span class="type">class</span> <span class="class">Vehicle</span> <span class="directive">implements</span> GormEntity&lt;Vehicle&gt; {
+    <span class="predefined-type">String</span> name
+    <span class="predefined-type">Integer</span> year
+    <span class="directive">static</span> belongsTo = [<span class="key">manufacturer</span>: Manufacturer]
+
+    <span class="directive">static</span> constraints = {
+        name <span class="key">nullable</span>: <span class="predefined-constant">false</span>, <span class="key">blank</span>: <span class="predefined-constant">false</span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -451,7 +531,32 @@ $ touch Vehicle.groovy</code></pre>
 <div class="listingblock">
 <div class="title">/src/main/groovy/demo/Application.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/main/groovy/demo/Application.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">org.springframework.boot.ApplicationArguments</span>
+<span class="keyword">import</span> <span class="include">demo.init.BootStrap</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Autowired</span>
+<span class="keyword">import</span> <span class="include">org.springframework.boot.ApplicationRunner</span>
+<span class="keyword">import</span> <span class="include">org.springframework.boot.SpringApplication</span>
+<span class="keyword">import</span> <span class="include">org.springframework.boot.autoconfigure.SpringBootApplication</span>
+<span class="keyword">import</span> <span class="include">org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="annotation">@SpringBootApplication</span>(exclude = HibernateJpaAutoConfiguration.class) <i class="conum" data-value="1"></i><b>(1)</b>
+<span class="type">class</span> <span class="class">Application</span> <span class="directive">implements</span> ApplicationRunner {
+
+    <span class="annotation">@Autowired</span>
+    BootStrap bootStrap
+
+    <span class="directive">static</span> <span class="type">void</span> main(<span class="predefined-type">String</span><span class="type">[]</span> args) {
+        SpringApplication.run Application, args
+    }
+
+    <span class="type">void</span> run(ApplicationArguments args) <span class="directive">throws</span> <span class="exception">Exception</span> {
+        bootStrap.init()
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -465,7 +570,35 @@ $ touch Vehicle.groovy</code></pre>
 <div class="listingblock">
 <div class="title">/src/main/groovy/demo/init/BootStrap.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/main/groovy/demo/init/BootStrap.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo.init
+
+<span class="keyword">import</span> <span class="include">demo.domain.Manufacturer</span>
+<span class="keyword">import</span> <span class="include">demo.domain.Vehicle</span>
+<span class="keyword">import</span> <span class="include">demo.service.ManufacturerService</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Autowired</span>
+<span class="keyword">import</span> <span class="include">org.springframework.stereotype.Component</span>
+
+<span class="annotation">@Component</span>
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">BootStrap</span> {
+
+    <span class="annotation">@Autowired</span>
+    ManufacturerService manufacturerService
+
+    <span class="annotation">@Transactional</span>
+    <span class="type">void</span> init() {
+        Manufacturer audi = <span class="keyword">new</span> Manufacturer(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">audi</span><span class="delimiter">'</span></span>)
+        audi.addToVehicles(<span class="keyword">new</span> Vehicle(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">A3</span><span class="delimiter">'</span></span>, <span class="key">year</span>: <span class="integer">1996</span>))
+        audi.addToVehicles(<span class="keyword">new</span> Vehicle(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">A4</span><span class="delimiter">'</span></span>, <span class="key">year</span>: <span class="integer">1994</span>))
+        manufacturerService.save(audi)
+
+        Manufacturer ford = <span class="keyword">new</span> Manufacturer(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">ford</span><span class="delimiter">'</span></span>)
+        ford.addToVehicles(<span class="keyword">new</span> Vehicle(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Ford KA</span><span class="delimiter">'</span></span>, <span class="key">year</span>: <span class="integer">1996</span>))
+        manufacturerService.save(ford)
+    }
+}</code></pre>
 </div>
 </div>
 
@@ -502,13 +635,45 @@ $ touch Vehicle.groovy</code></pre>
 <div class="listingblock">
 <div class="title">/src/main/groovy/demo/service/ManufacturerService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/main/groovy/demo/service/ManufacturerService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo.service
+
+<span class="keyword">import</span> <span class="include">demo.domain.Manufacturer</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.ReadOnly</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">org.springframework.stereotype.Service</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="annotation">@grails</span>.gorm.services.Service(Manufacturer)
+<span class="annotation">@Service</span>
+<span class="type">interface</span> ManufacturerService {
+
+    <span class="predefined-type">List</span>&lt;Manufacturer&gt; findAll()
+
+    Manufacturer save(Manufacturer manufacturer)
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">/src/main/groovy/demo/service/VehicleService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/main/groovy/demo/service/VehicleService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo.service
+
+<span class="keyword">import</span> <span class="include">demo.domain.Manufacturer</span>
+<span class="keyword">import</span> <span class="include">demo.domain.Vehicle</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Where</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">org.springframework.stereotype.Service</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="annotation">@grails</span>.gorm.services.Service(Vehicle)
+<span class="annotation">@Service</span>
+<span class="type">interface</span> VehicleService {
+
+    <span class="annotation">@Where</span>({ manufacturer.name == manufacturerName })
+    <span class="predefined-type">List</span>&lt;Vehicle&gt; findAllByManufacturer(<span class="predefined-type">String</span> manufacturerName)
+
+}</code></pre>
 </div>
 </div>
 
@@ -555,7 +720,24 @@ the following annotations</p>
 <div class="listingblock">
 <div class="title">/src/main/groovy/demo/controller/VehicleController.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/main/groovy/demo/controller/VehicleController.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo.controller
+
+<span class="keyword">import</span> <span class="include">demo.service.VehicleService</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Autowired</span>
+<span class="keyword">import</span> <span class="include">org.springframework.web.bind.annotation.PathVariable</span>
+<span class="keyword">import</span> <span class="include">org.springframework.web.bind.annotation.RequestMapping</span>
+<span class="keyword">import</span> <span class="include">org.springframework.web.bind.annotation.RestController</span>
+
+<span class="annotation">@RestController</span>
+<span class="type">class</span> <span class="class">VehicleController</span> {
+
+    <span class="annotation">@Autowired</span> VehicleService vehicleService
+
+    <span class="annotation">@RequestMapping</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">/{manufacturerName}/vehicles</span><span class="delimiter">&quot;</span></span>)
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; vehiclesByManufacturer(<span class="annotation">@PathVariable</span> <span class="predefined-type">String</span> manufacturerName) {
+        vehicleService.findAllByManufacturer(manufacturerName)*.name
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -564,13 +746,47 @@ the following annotations</p>
 <div class="listingblock">
 <div class="title">/src/test/groovy/demo/controller/VehicleControllerTest.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/test/groovy/demo/controller/VehicleControllerTest.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo.controller
+
+<span class="keyword">import</span> <span class="include">org.junit.jupiter.api.Test</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Autowired</span>
+<span class="keyword">import</span> <span class="include">org.springframework.boot.test.context.SpringBootTest</span>
+<span class="keyword">import</span> <span class="include">org.springframework.test.web.reactive.server.WebTestClient</span>
+
+<span class="annotation">@SpringBootTest</span>(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+<span class="type">class</span> <span class="class">VehicleControllerTest</span> {
+
+    <span class="annotation">@Autowired</span>
+    WebTestClient webClient
+
+    <span class="annotation">@Test</span>
+    <span class="type">void</span> fetchAudiVehicles() {
+        <span class="local-variable">this</span>.webClient.get().uri(<span class="string"><span class="delimiter">&quot;</span><span class="content">/audi/vehicles</span><span class="delimiter">&quot;</span></span>).exchange().expectBody(<span class="predefined-type">String</span>).isEqualTo(<span class="string"><span class="delimiter">'</span><span class="content">[&quot;A3&quot;,&quot;A4&quot;]</span><span class="delimiter">'</span></span>)
+    }
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">/src/main/groovy/demo/controller/ManufacturerController.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/main/groovy/demo/controller/ManufacturerController.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo.controller
+
+<span class="keyword">import</span> <span class="include">demo.service.ManufacturerService</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Autowired</span>
+<span class="keyword">import</span> <span class="include">org.springframework.web.bind.annotation.RequestMapping</span>
+<span class="keyword">import</span> <span class="include">org.springframework.web.bind.annotation.RestController</span>
+
+<span class="annotation">@RestController</span>
+<span class="type">class</span> <span class="class">ManufacturerController</span> {
+
+    <span class="annotation">@Autowired</span>
+    ManufacturerService manufacturerService
+
+    <span class="annotation">@RequestMapping</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">/</span><span class="delimiter">&quot;</span></span>)
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; index(){
+        manufacturerService.findAll()*.name
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -579,7 +795,24 @@ the following annotations</p>
 <div class="listingblock">
 <div class="title">/src/test/groovy/demo/controller/ManufacturerControllerTest.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/test/groovy/demo/controller/ManufacturerControllerTest.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo.controller
+
+<span class="keyword">import</span> <span class="include">org.junit.jupiter.api.Test</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Autowired</span>
+<span class="keyword">import</span> <span class="include">org.springframework.boot.test.context.SpringBootTest</span>
+<span class="keyword">import</span> <span class="include">org.springframework.test.web.reactive.server.WebTestClient</span>
+
+<span class="annotation">@SpringBootTest</span>(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+<span class="type">class</span> <span class="class">ManufacturerControllerTest</span> {
+
+    <span class="annotation">@Autowired</span>
+    WebTestClient webClient
+
+    <span class="annotation">@Test</span>
+    <span class="type">void</span> fetchManufacturer() {
+        <span class="local-variable">this</span>.webClient.get().uri(<span class="string"><span class="delimiter">&quot;</span><span class="content">/</span><span class="delimiter">&quot;</span></span>).exchange().expectBody(<span class="predefined-type">String</span>).isEqualTo(<span class="string"><span class="delimiter">'</span><span class="content">[&quot;audi&quot;,&quot;ford&quot;]</span><span class="delimiter">'</span></span>)
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">

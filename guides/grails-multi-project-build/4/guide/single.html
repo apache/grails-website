@@ -379,7 +379,17 @@ multiproject/groovylib$ touch build.gradle</code></pre>
 <div class="listingblock">
 <div class="title">groovylib/build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>groovylib/build.gradle[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">plugins {
+    id <span class="string"><span class="delimiter">'</span><span class="content">groovy</span><span class="delimiter">'</span></span>
+}
+
+repositories {
+    jcenter()
+}
+
+dependencies {
+    implementation <span class="string"><span class="delimiter">'</span><span class="content">org.codehaus.groovy:groovy-all:2.5.8</span><span class="delimiter">'</span></span>
+}</code></pre>
 </div>
 </div>
 </div>
@@ -399,7 +409,9 @@ multiproject$ mv app/gradle .</code></pre>
 <div class="listingblock">
 <div class="title">settings.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>settings.gradle[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">include <span class="string"><span class="delimiter">'</span><span class="content">app</span><span class="delimiter">'</span></span>
+include <span class="string"><span class="delimiter">'</span><span class="content">plugin</span><span class="delimiter">'</span></span>
+include <span class="string"><span class="delimiter">'</span><span class="content">groovylib</span><span class="delimiter">'</span></span></code></pre>
 </div>
 </div>
 </div>
@@ -475,7 +487,11 @@ multiproject$ rm app/.gitignore</code></pre>
 <div class="listingblock">
 <div class="title">app/build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>app/build.gradle[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">grails {
+    plugins {
+        compile project(<span class="string"><span class="delimiter">'</span><span class="content">:plugin</span><span class="delimiter">'</span></span>)
+    }
+}</code></pre>
 </div>
 </div>
 </div>
@@ -491,7 +507,7 @@ multiproject$ rm app/.gitignore</code></pre>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
   ...
-link:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>plugin/build.gradle[role=include]
+    compile project(<span class="string"><span class="delimiter">'</span><span class="content">:groovylib</span><span class="delimiter">'</span></span>)
 }</code></pre>
 </div>
 </div>
@@ -543,19 +559,55 @@ is working.</p>
 <div class="listingblock">
 <div class="title">app/grails-app/controllers/app/PersonController.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>app/grails-app/controllers/app/PersonController.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> app
+
+<span class="keyword">import</span> <span class="include">demo.RandomPersonService</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">PersonController</span> {
+    RandomPersonService randomPersonService
+    <span class="keyword">def</span> <span class="function">index</span>() {
+        render randomPersonService.randomOciPersonName()
+    }
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">plugin/grails-app/services/demo/RandomPersonService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>plugin/grails-app/services/demo/RandomPersonService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">RandomPersonService</span> {
+
+    <span class="predefined-type">String</span> randomOciPersonName() {
+        <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; people = OCI.PEOPLE
+        <span class="predefined-type">Collections</span>.shuffle(people)
+        people.first()
+    }
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">groovylib/src/main/groovy/demo/OCI.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>groovylib/src/main/groovy/demo/OCI.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">OCI</span> {
+    <span class="directive">public</span> <span class="directive">static</span> <span class="directive">final</span> <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; PEOPLE = [
+            <span class="string"><span class="delimiter">'</span><span class="content">Ryan</span><span class="delimiter">'</span></span>,
+            <span class="string"><span class="delimiter">'</span><span class="content">Jeff</span><span class="delimiter">'</span></span>,
+            <span class="string"><span class="delimiter">'</span><span class="content">Paul</span><span class="delimiter">'</span></span>,
+            <span class="string"><span class="delimiter">'</span><span class="content">Søren</span><span class="delimiter">'</span></span>,
+            <span class="string"><span class="delimiter">'</span><span class="content">Sergio</span><span class="delimiter">'</span></span>
+    ]
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -565,13 +617,44 @@ Add the plugin to our <code>app</code> dependencies:</p>
 <div class="listingblock">
 <div class="title">app/build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>app/build.gradle[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">testCompile <span class="string"><span class="delimiter">&quot;</span><span class="content">io.micronaut:micronaut-http-client</span><span class="delimiter">&quot;</span></span></code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">app/src/integration-test/groovy/app/PersonControllerSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>app/src/integration-test/groovy/app/PersonControllerSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> app
+
+<span class="keyword">import</span> <span class="include">demo.OCI</span>
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">grails.testing.spock.OnceBefore</span>
+<span class="keyword">import</span> <span class="include">io.micronaut.http.HttpRequest</span>
+<span class="keyword">import</span> <span class="include">io.micronaut.http.client.HttpClient</span>
+<span class="keyword">import</span> <span class="include">spock.lang.AutoCleanup</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Shared</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">PersonControllerSpec</span> <span class="directive">extends</span> Specification {
+
+    <span class="annotation">@Shared</span>
+    <span class="annotation">@AutoCleanup</span>
+    HttpClient client
+
+    <span class="annotation">@OnceBefore</span>
+    <span class="type">void</span> init() {
+        <span class="predefined-type">String</span> baseUrl = <span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">$</span>serverPort</span><span class="delimiter">&quot;</span></span>
+        <span class="local-variable">this</span>.client = HttpClient.create(<span class="keyword">new</span> <span class="predefined-type">URL</span>(baseUrl))
+    }
+
+    <span class="keyword">def</span> <span class="string"><span class="delimiter">'</span><span class="content">/person endpoints return one of the names</span><span class="delimiter">'</span></span>() {
+        <span class="key">when</span>:
+        <span class="predefined-type">String</span> text = client.toBlocking().retrieve(HttpRequest.GET(<span class="string"><span class="delimiter">'</span><span class="content">/person</span><span class="delimiter">'</span></span>), <span class="predefined-type">String</span>)
+
+        <span class="key">then</span>:
+        OCI.PEOPLE.contains text
+    }
+}</code></pre>
 </div>
 </div>
 
@@ -592,7 +675,148 @@ To remove duplication, we are going to add a ROOT <code>build.gradle</code></p>
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>build.gradle[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">buildscript {
+    repositories {
+        mavenLocal()
+        maven { url <span class="string"><span class="delimiter">&quot;</span><span class="content">https://repo.grails.org/grails/core</span><span class="delimiter">&quot;</span></span> }
+    }
+    dependencies {
+        classpath <span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails:grails-gradle-plugin:</span><span class="inline"><span class="inline-delimiter">$</span>grailsVersion</span><span class="delimiter">&quot;</span></span>
+        classpath <span class="string"><span class="delimiter">&quot;</span><span class="content">com.bertramlabs.plugins:asset-pipeline-gradle:</span><span class="inline"><span class="inline-delimiter">$</span>assetPipelineVersion</span><span class="delimiter">&quot;</span></span>
+        classpath <span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails.plugins:hibernate5:7.0.0</span><span class="delimiter">&quot;</span></span>
+        classpath <span class="string"><span class="delimiter">&quot;</span><span class="content">gradle.plugin.com.github.erdi.webdriver-binaries:webdriver-binaries-gradle-plugin:2.1</span><span class="delimiter">&quot;</span></span>
+
+    }
+}
+
+ext {
+    grailsApps = [<span class="string"><span class="delimiter">'</span><span class="content">app</span><span class="delimiter">'</span></span>]
+    grailsPlugins = [<span class="string"><span class="delimiter">'</span><span class="content">plugin</span><span class="delimiter">'</span></span>]
+}
+
+subprojects { project -&gt;
+    <span class="type">boolean</span> isGrailsApp = grailsApps.contains(project.name)
+    <span class="type">boolean</span> isGrailsPlugin = grailsPlugins.contains(project.name)
+    <span class="type">boolean</span> isGrailsProject = isGrailsApp || isGrailsPlugin
+
+    <span class="keyword">if</span> ( isGrailsProject ) {
+        apply <span class="key">plugin</span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">eclipse</span><span class="delimiter">&quot;</span></span>
+        apply <span class="key">plugin</span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">idea</span><span class="delimiter">&quot;</span></span>
+
+        <span class="keyword">if</span> ( isGrailsApp ) {
+            apply <span class="key">plugin</span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">war</span><span class="delimiter">&quot;</span></span>
+            apply <span class="key">plugin</span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails.grails-web</span><span class="delimiter">&quot;</span></span>
+            apply <span class="key">plugin</span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails.grails-gsp</span><span class="delimiter">&quot;</span></span>
+            apply <span class="key">plugin</span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">com.bertramlabs.asset-pipeline</span><span class="delimiter">&quot;</span></span>
+            apply <span class="key">plugin</span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">com.github.erdi.webdriver-binaries</span><span class="delimiter">&quot;</span></span>
+        }
+
+        <span class="keyword">if</span> ( isGrailsPlugin ) {
+            apply <span class="key">plugin</span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails.grails-plugin</span><span class="delimiter">&quot;</span></span>
+            apply <span class="key">plugin</span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails.grails-plugin-publish</span><span class="delimiter">&quot;</span></span>
+        }
+
+        repositories {
+            mavenLocal()
+            maven { url <span class="string"><span class="delimiter">&quot;</span><span class="content">https://repo.grails.org/grails/core</span><span class="delimiter">&quot;</span></span> }
+            maven {
+                url <span class="string"><span class="delimiter">&quot;</span><span class="content">https://oss.sonatype.org/content/repositories/snapshots/</span><span class="delimiter">&quot;</span></span>
+                content {
+                    includeVersionByRegex(<span class="string"><span class="delimiter">'</span><span class="content">io</span><span class="char">\\</span><span class="content">.micronaut.*</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">.*</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">.*BUILD-SNAPSHOT</span><span class="delimiter">'</span></span>)
+                }
+            }
+
+        }
+
+        dependencies {
+            compile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.springframework.boot:spring-boot-starter-logging</span><span class="delimiter">&quot;</span></span>
+            compile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.springframework.boot:spring-boot-autoconfigure</span><span class="delimiter">&quot;</span></span>
+            compile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails:grails-core</span><span class="delimiter">&quot;</span></span>
+            console <span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails:grails-console</span><span class="delimiter">&quot;</span></span>
+        }
+
+        <span class="keyword">if</span> ( isGrailsApp ) {
+            configurations {
+                developmentOnly
+                runtimeClasspath {
+                    extendsFrom developmentOnly
+                }
+            }
+
+            dependencies {
+                developmentOnly(<span class="string"><span class="delimiter">&quot;</span><span class="content">org.springframework.boot:spring-boot-devtools</span><span class="delimiter">&quot;</span></span>)
+                compile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.springframework.boot:spring-boot-starter-actuator</span><span class="delimiter">&quot;</span></span>
+                compile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.springframework.boot:spring-boot-starter-tomcat</span><span class="delimiter">&quot;</span></span>
+                compile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails:grails-dependencies</span><span class="delimiter">&quot;</span></span>
+                compile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails:grails-web-boot</span><span class="delimiter">&quot;</span></span>
+                compile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails.plugins:cache</span><span class="delimiter">&quot;</span></span>
+                compile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails.plugins:scaffolding</span><span class="delimiter">&quot;</span></span>
+                compile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails.plugins:hibernate5</span><span class="delimiter">&quot;</span></span>
+                compile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.hibernate:hibernate-core:5.4.0.Final</span><span class="delimiter">&quot;</span></span>
+                compile <span class="string"><span class="delimiter">&quot;</span><span class="content">io.micronaut:micronaut-inject-groovy</span><span class="delimiter">&quot;</span></span>
+                profile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails.profiles:web</span><span class="delimiter">&quot;</span></span>
+                runtime <span class="string"><span class="delimiter">&quot;</span><span class="content">org.glassfish.web:el-impl:2.1.2-b03</span><span class="delimiter">&quot;</span></span>
+                runtime <span class="string"><span class="delimiter">&quot;</span><span class="content">com.h2database:h2</span><span class="delimiter">&quot;</span></span>
+                runtime <span class="string"><span class="delimiter">&quot;</span><span class="content">org.apache.tomcat:tomcat-jdbc</span><span class="delimiter">&quot;</span></span>
+                runtime <span class="string"><span class="delimiter">&quot;</span><span class="content">com.bertramlabs.plugins:asset-pipeline-grails:</span><span class="inline"><span class="inline-delimiter">$</span>assetPipelineVersion</span><span class="delimiter">&quot;</span></span>
+                testCompile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails:grails-gorm-testing-support</span><span class="delimiter">&quot;</span></span>
+                testCompile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails:grails-web-testing-support</span><span class="delimiter">&quot;</span></span>
+            }
+            apply <span class="key">from</span>: <span class="string"><span class="delimiter">&quot;</span><span class="inline"><span class="inline-delimiter">${</span>rootProject.projectDir<span class="inline-delimiter">}</span></span><span class="content">/gradle/geb.gradle</span><span class="delimiter">&quot;</span></span>
+        }
+
+        <span class="keyword">if</span> ( isGrailsPlugin ) {
+            dependencies {
+                profile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails.profiles:plugin</span><span class="delimiter">&quot;</span></span>
+                provided <span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails:grails-plugin-services</span><span class="delimiter">&quot;</span></span>
+                provided <span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails:grails-plugin-domain-class</span><span class="delimiter">&quot;</span></span>
+                testCompile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails:grails-gorm-testing-support</span><span class="delimiter">&quot;</span></span>
+            }
+        }
+
+        bootRun {
+            jvmArgs(
+                    <span class="string"><span class="delimiter">'</span><span class="content">-Dspring.output.ansi.enabled=always</span><span class="delimiter">'</span></span>,
+                    <span class="string"><span class="delimiter">'</span><span class="content">-noverify</span><span class="delimiter">'</span></span>,
+                    <span class="string"><span class="delimiter">'</span><span class="content">-XX:TieredStopAtLevel=1</span><span class="delimiter">'</span></span>,
+                    <span class="string"><span class="delimiter">'</span><span class="content">-Xmx1024m</span><span class="delimiter">'</span></span>)
+            sourceResources sourceSets.main
+        }
+
+        <span class="keyword">if</span> (isGrailsApp) {
+            webdriverBinaries {
+                chromedriver <span class="string"><span class="delimiter">&quot;</span><span class="inline"><span class="inline-delimiter">$</span>chromeDriverVersion</span><span class="delimiter">&quot;</span></span>
+                geckodriver <span class="string"><span class="delimiter">&quot;</span><span class="inline"><span class="inline-delimiter">$</span>geckodriverVersion</span><span class="delimiter">&quot;</span></span>
+            }
+
+            tasks.withType(Test) {
+                systemProperty <span class="string"><span class="delimiter">&quot;</span><span class="content">geb.env</span><span class="delimiter">&quot;</span></span>, <span class="predefined-type">System</span>.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">geb.env</span><span class="delimiter">'</span></span>)
+                systemProperty <span class="string"><span class="delimiter">&quot;</span><span class="content">geb.build.reportsDir</span><span class="delimiter">&quot;</span></span>, reporting.file(<span class="string"><span class="delimiter">&quot;</span><span class="content">geb/integrationTest</span><span class="delimiter">&quot;</span></span>)
+                systemProperty <span class="string"><span class="delimiter">&quot;</span><span class="content">webdriver.chrome.driver</span><span class="delimiter">&quot;</span></span>, <span class="predefined-type">System</span>.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">webdriver.chrome.driver</span><span class="delimiter">'</span></span>)
+                systemProperty <span class="string"><span class="delimiter">&quot;</span><span class="content">webdriver.gecko.driver</span><span class="delimiter">&quot;</span></span>, <span class="predefined-type">System</span>.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">webdriver.gecko.driver</span><span class="delimiter">'</span></span>)
+            }
+        }
+
+        <span class="keyword">if</span> ( isGrailsPlugin ) {
+            <span class="comment">// enable if you wish to package this plugin as a standalone application</span>
+            bootJar.enabled = <span class="predefined-constant">false</span>
+            grailsPublish {
+                <span class="comment">// TODO: Provide values here</span>
+                user = <span class="string"><span class="delimiter">'</span><span class="content">user</span><span class="delimiter">'</span></span>
+                key = <span class="string"><span class="delimiter">'</span><span class="content">key</span><span class="delimiter">'</span></span>
+                githubSlug = <span class="string"><span class="delimiter">'</span><span class="content">foo/bar</span><span class="delimiter">'</span></span>
+                license {
+                    name = <span class="string"><span class="delimiter">'</span><span class="content">Apache-2.0</span><span class="delimiter">'</span></span>
+                }
+                title = <span class="string"><span class="delimiter">&quot;</span><span class="content">My Plugin</span><span class="delimiter">&quot;</span></span>
+                desc = <span class="string"><span class="delimiter">&quot;</span><span class="content">Full plugin description</span><span class="delimiter">&quot;</span></span>
+                developers = [<span class="key">johndoe</span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">John Doe</span><span class="delimiter">&quot;</span></span>]
+                portalUser = <span class="string"><span class="delimiter">&quot;</span><span class="delimiter">&quot;</span></span>
+                portalPassword = <span class="string"><span class="delimiter">&quot;</span><span class="delimiter">&quot;</span></span>
+            }
+        }
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -601,19 +825,25 @@ To remove duplication, we are going to add a ROOT <code>build.gradle</code></p>
 <div class="listingblock">
 <div class="title">app/build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>app/build.gradle[role=include]
+<pre class="CodeRay highlight"><code data-lang="groovy">version <span class="string"><span class="delimiter">&quot;</span><span class="content">0.1</span><span class="delimiter">&quot;</span></span>
+group <span class="string"><span class="delimiter">&quot;</span><span class="content">app</span><span class="delimiter">&quot;</span></span>
 dependencies {
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>app/build.gradle[role=include]
+    testCompile <span class="string"><span class="delimiter">&quot;</span><span class="content">io.micronaut:micronaut-http-client</span><span class="delimiter">&quot;</span></span>
 }
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>app/build.gradle[role=include]</code></pre>
+grails {
+    plugins {
+        compile project(<span class="string"><span class="delimiter">'</span><span class="content">:plugin</span><span class="delimiter">'</span></span>)
+    }
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">plugin/build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>plugin/build.gradle[role=include]
+<pre class="CodeRay highlight"><code data-lang="groovy">version <span class="string"><span class="delimiter">&quot;</span><span class="content">0.1</span><span class="delimiter">&quot;</span></span>
+group <span class="string"><span class="delimiter">&quot;</span><span class="content">plugin</span><span class="delimiter">&quot;</span></span>
 dependencies {
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>plugin/build.gradle[role=include]
+    compile project(<span class="string"><span class="delimiter">'</span><span class="content">:groovylib</span><span class="delimiter">'</span></span>)
 }</code></pre>
 </div>
 </div>
@@ -642,7 +872,18 @@ files for different features.</p>
 <div class="listingblock">
 <div class="title">gradle/geb.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>gradle/geb.gradle[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
+
+    testCompile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails.plugins:geb</span><span class="delimiter">&quot;</span></span>
+    testRuntime <span class="string"><span class="delimiter">&quot;</span><span class="content">org.seleniumhq.selenium:selenium-chrome-driver:</span><span class="inline"><span class="inline-delimiter">$</span>seleniumVersion</span><span class="delimiter">&quot;</span></span>
+    testRuntime <span class="string"><span class="delimiter">&quot;</span><span class="content">org.seleniumhq.selenium:selenium-firefox-driver:</span><span class="inline"><span class="inline-delimiter">$</span>seleniumVersion</span><span class="delimiter">&quot;</span></span>
+    testCompile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.seleniumhq.selenium:htmlunit-driver:2.35.1</span><span class="delimiter">&quot;</span></span>
+    testRuntime <span class="string"><span class="delimiter">'</span><span class="content">net.sourceforge.htmlunit:htmlunit:2.35.0</span><span class="delimiter">'</span></span>
+    testCompile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.seleniumhq.selenium:selenium-remote-driver:</span><span class="inline"><span class="inline-delimiter">$</span>seleniumVersion</span><span class="delimiter">&quot;</span></span>
+    testCompile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.seleniumhq.selenium:selenium-api:</span><span class="inline"><span class="inline-delimiter">$</span>seleniumVersion</span><span class="delimiter">&quot;</span></span>
+    testCompile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.seleniumhq.selenium:selenium-support:</span><span class="inline"><span class="inline-delimiter">$</span>seleniumVersion</span><span class="delimiter">&quot;</span></span>
+
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">

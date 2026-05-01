@@ -238,7 +238,8 @@ docker run \
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>build.gradle[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> elasticsearchVersion = <span class="string"><span class="delimiter">'</span><span class="content">5.4.1</span><span class="delimiter">'</span></span> <i class="conum" data-value="1"></i><b>(1)</b>
+ext[<span class="string"><span class="delimiter">'</span><span class="content">elasticsearch.version</span><span class="delimiter">'</span></span>] = elasticsearchVersion</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -258,7 +259,7 @@ docker run \
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>build.gradle[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">compile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails.plugins:elasticsearch:2.4.0</span><span class="delimiter">&quot;</span></span></code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -271,7 +272,15 @@ docker run \
 <div class="listingblock">
 <div class="title">grails-app/conf/application.yml</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/application.yml[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">elasticSearch</span>:
+    <span class="key">datastoreImpl</span>: hibernateDatastore <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="key">client</span>:
+        <span class="key">mode</span>: transport <i class="conum" data-value="2"></i><b>(2)</b>
+        <span class="key">hosts</span>:
+          - {<span class="key">host</span>: <span class="float">192.168</span><span class="float">.99</span><span class="float">.100</span>, <span class="key">port</span>: <span class="integer">9300</span>} <i class="conum" data-value="3"></i><b>(3)</b>
+    cluster.name: elasticsearch <i class="conum" data-value="4"></i><b>(4)</b>
+    <span class="key">disableAutoIndex</span>: <span class="predefined-constant">false</span> <i class="conum" data-value="5"></i><b>(5)</b>
+    <span class="key">bulkIndexOnStartup</span>: <span class="predefined-constant">true</span> <i class="conum" data-value="6"></i><b>(6)</b></code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -319,7 +328,7 @@ docker run \
 <div class="listingblock">
 <div class="title">grails-app/conf/logback.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/logback.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">logger(<span class="string"><span class="delimiter">&quot;</span><span class="content">grails.plugins.elasticsearch</span><span class="delimiter">&quot;</span></span>, DEBUG, [<span class="string"><span class="delimiter">'</span><span class="content">STDOUT</span><span class="delimiter">'</span></span>], <span class="predefined-constant">false</span>)</code></pre>
 </div>
 </div>
 
@@ -339,11 +348,17 @@ docker run \
 <div class="listingblock">
 <div class="title">grails-app/domain/demo/Book.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/domain/demo/<span class="predefined-type">Book</span>.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/domain/demo/<span class="predefined-type">Book</span>.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/domain/demo/<span class="predefined-type">Book</span>.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/domain/demo/<span class="predefined-type">Book</span>.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/domain/demo/<span class="predefined-type">Book</span>.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="type">class</span> <span class="class">Book</span> {
+    <span class="predefined-type">String</span> title
+    <span class="predefined-type">String</span> author
+    <span class="predefined-type">String</span> about
+    <span class="predefined-type">String</span> href
+    <span class="directive">static</span> mapping = {
+        about <span class="key">type</span>: <span class="string"><span class="delimiter">'</span><span class="content">text</span><span class="delimiter">'</span></span>
+    }
+}</code></pre>
 </div>
 </div>
 
@@ -363,7 +378,11 @@ docker run \
 <div class="listingblock">
 <div class="title">grails-app/domain/demo/Book.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/domain/demo/<span class="predefined-type">Book</span>.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">    <span class="directive">static</span> searchable = {
+        title <span class="key">boost</span>: <span class="float">2.0</span>  <i class="conum" data-value="1"></i><b>(1)</b>
+        about <span class="key">boost</span>: <span class="float">1.0</span>  <i class="conum" data-value="2"></i><b>(2)</b>
+        except = [<span class="string"><span class="delimiter">'</span><span class="content">href</span><span class="delimiter">'</span></span>] <i class="conum" data-value="3"></i><b>(3)</b>
+    }</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -430,7 +449,17 @@ docker run \
 <div class="listingblock">
 <div class="title">grails-app/services/demo/BookDataService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/BookDataService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Service</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="annotation">@Service</span>(<span class="predefined-type">Book</span>)
+<span class="type">interface</span> BookDataService {
+    <span class="predefined-type">Book</span> save(<span class="predefined-type">String</span> title, <span class="predefined-type">String</span> author, <span class="predefined-type">String</span> about, <span class="predefined-type">String</span> href)
+    <span class="predefined-type">Number</span> count()
+}</code></pre>
 </div>
 </div>
 
@@ -450,7 +479,105 @@ docker run \
 <div class="listingblock">
 <div class="title">grails-app/init/demo/BootStrap.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/init/demo/BootStrap.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.util.BuildSettings</span>
+<span class="keyword">import</span> <span class="include">grails.util.Environment</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">BootStrap</span> {
+
+    <span class="directive">public</span> <span class="directive">final</span> <span class="directive">static</span> <span class="predefined-type">List</span>&lt; <span class="predefined-type">Map</span>&lt;<span class="predefined-type">String</span>, <span class="predefined-type">String</span>&gt; &gt; GRAILS_BOOKS = [
+            [
+                    title : <span class="string"><span class="delimiter">'</span><span class="content">Grails 3 - Step by Step</span><span class="delimiter">'</span></span>,
+                    <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Cristian Olaru</span><span class="delimiter">'</span></span>,
+                    <span class="key">href</span>: <span class="string"><span class="delimiter">'</span><span class="content">https://grailsthreebook.com/</span><span class="delimiter">'</span></span>,
+                    about : <span class="string"><span class="delimiter">'</span><span class="content">Learn how a complete greenfield application can be implemented quickly and efficiently with Grails 3 using profiles and plugins. Use the sample application that accompanies the book as an example.</span><span class="delimiter">'</span></span>
+            ],
+            [
+                    title : <span class="string"><span class="delimiter">'</span><span class="content">Practical Grails 3</span><span class="delimiter">'</span></span>,
+                    <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content"> Eric Helgeson</span><span class="delimiter">'</span></span>,
+                    href  : <span class="string"><span class="delimiter">'</span><span class="content">https://www.grails3book.com/</span><span class="delimiter">'</span></span>,
+                    about : <span class="string"><span class="delimiter">'</span><span class="content">Learn the fundamental concepts behind building Grails applications with the first book dedicated to Grails 3. Real, up-to-date code examples are provided, so you can easily follow along.</span><span class="delimiter">'</span></span>
+            ],
+            [
+                    title : <span class="string"><span class="delimiter">'</span><span class="content">Falando de Grails</span><span class="delimiter">'</span></span>,
+                    <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Henrique Lobo Weissmann</span><span class="delimiter">'</span></span>,
+                    href  : <span class="string"><span class="delimiter">'</span><span class="content">http://www.casadocodigo.com.br/products/livro-grails</span><span class="delimiter">'</span></span>,
+                    about : <span class="string"><span class="delimiter">'</span><span class="content">This is the best reference on Grails 2.5 and 3.0 written in Portuguese. It&amp;#39;s a great guide to the framework, dealing with details that many users tend to ignore.</span><span class="delimiter">'</span></span>
+            ],
+            [
+                    title : <span class="string"><span class="delimiter">'</span><span class="content">Grails Goodness Notebook</span><span class="delimiter">'</span></span>,
+                    <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Hubert A. Klein Ikkink</span><span class="delimiter">'</span></span>,
+                    href  : <span class="string"><span class="delimiter">'</span><span class="content">https://leanpub.com/grails-goodness-notebook</span><span class="delimiter">'</span></span>,
+                    about : <span class="string"><span class="delimiter">'</span><span class="content">Experience the Grails framework through code snippets. Discover (hidden) Grails features through code examples and short articles. The articles and code will get you started quickly and provide deeper insight into Grails.</span><span class="delimiter">'</span></span>
+            ],
+            [
+                    title : <span class="string"><span class="delimiter">'</span><span class="content">The Definitive Guide to Grails 2</span><span class="delimiter">'</span></span>,
+                    <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Jeff Scott Brown and Graeme Rocher</span><span class="delimiter">'</span></span>,
+                    href  : <span class="string"><span class="delimiter">'</span><span class="content">http://www.apress.com/9781430243779</span><span class="delimiter">'</span></span>,
+                    about : <span class="string"><span class="delimiter">'</span><span class="content">As the title states, this is the definitive reference on the Grails framework, authored by core members of the development team.</span><span class="delimiter">'</span></span>
+            ],
+            [
+                    title : <span class="string"><span class="delimiter">'</span><span class="content">Grails in Action</span><span class="delimiter">'</span></span>,
+                    <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Glen Smith and Peter Ledbrook</span><span class="delimiter">'</span></span>,
+                    href  : <span class="string"><span class="delimiter">'</span><span class="content">http://www.manning.com/gsmith2/</span><span class="delimiter">'</span></span>,
+                    about : <span class="string"><span class="delimiter">'</span><span class="content">The second edition of Grails in Action is a comprehensive introduction to Grails 2 focused on helping you become super-productive fast.</span><span class="delimiter">'</span></span>
+            ],
+            [
+                    title : <span class="string"><span class="delimiter">'</span><span class="content">Grails 2: A Quick-Start Guide</span><span class="delimiter">'</span></span>,
+                    <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Dave Klein and Ben Klein</span><span class="delimiter">'</span></span>,
+                    href  : <span class="string"><span class="delimiter">'</span><span class="content">http://www.amazon.com/gp/product/1937785777?tag=misa09-20</span><span class="delimiter">'</span></span>,
+                    about : <span class="string"><span class="delimiter">'</span><span class="content">This revised and updated edition shows you how to use Grails by iteratively building a unique, working application.</span><span class="delimiter">'</span></span>
+            ],
+            [
+                    title : <span class="string"><span class="delimiter">'</span><span class="content">Programming Grails</span><span class="delimiter">'</span></span>,
+                    <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Burt Beckwith</span><span class="delimiter">'</span></span>,
+                    href  : <span class="string"><span class="delimiter">'</span><span class="content">http://shop.oreilly.com/product/0636920024750.do</span><span class="delimiter">'</span></span>,
+                    about : <span class="string"><span class="delimiter">'</span><span class="content">Dig deeper into Grails architecture and discover how this application framework works its magic.</span><span class="delimiter">'</span></span>
+            ]
+    ] <span class="keyword">as</span> <span class="predefined-type">List</span>&lt; <span class="predefined-type">Map</span>&lt;<span class="predefined-type">String</span>, <span class="predefined-type">String</span>&gt; &gt;
+
+    <span class="directive">public</span> <span class="directive">final</span> <span class="directive">static</span> <span class="predefined-type">List</span>&lt; <span class="predefined-type">Map</span>&lt;<span class="predefined-type">String</span>, <span class="predefined-type">String</span>&gt; &gt; GROOVY_BOOKS = [
+            [
+                    <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Making Java Groovy</span><span class="delimiter">'</span></span>,
+                    <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Ken Kousen</span><span class="delimiter">'</span></span>,
+                    <span class="key">href</span>: <span class="string"><span class="delimiter">'</span><span class="content">http://www.manning.com/kousen/</span><span class="delimiter">'</span></span>,
+                    <span class="key">about</span>: <span class="string"><span class="delimiter">'</span><span class="content">Make Java development easier by adding Groovy. Each chapter focuses on a task Java developers do, like building, testing, or working with databases or restful web services, and shows ways Groovy can make those tasks easier.</span><span class="delimiter">'</span></span>],
+            [
+                    <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Groovy in Action, 2nd Edition</span><span class="delimiter">'</span></span>,
+                    <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Dierk König, Guillaume Laforge, Paul King, Cédric Champeau, Hamlet D</span><span class="char">\'</span><span class="content">Arcy, Erik Pragt, and Jon Skeet</span><span class="delimiter">'</span></span>,
+                    <span class="key">href</span>: <span class="string"><span class="delimiter">'</span><span class="content">http://www.manning.com/koenig2/</span><span class="delimiter">'</span></span>,
+                    <span class="key">about</span>: <span class="string"><span class="delimiter">'</span><span class="content">This is the undisputed, definitive reference on the Groovy language, authored by core members of the development team.</span><span class="delimiter">'</span></span>],
+            [
+                    <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Groovy for Domain-Specific Languages</span><span class="delimiter">'</span></span>,
+                    <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Fergal Dearle</span><span class="delimiter">'</span></span>,
+                    <span class="key">href</span>: <span class="string"><span class="delimiter">'</span><span class="content">http://www.packtpub.com/groovy-for-domain-specific-languages-dsl/book</span><span class="delimiter">'</span></span>,
+                    <span class="key">about</span>: <span class="string"><span class="delimiter">'</span><span class="content">Learn how Groovy can help Java developers easily build domain-specific languages into their applications.</span><span class="delimiter">'</span></span>
+            ],
+            [
+                    <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Groovy 2 Cookbook</span><span class="delimiter">'</span></span>,
+                    <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Andrey Adamovitch, Luciano Fiandeso</span><span class="delimiter">'</span></span>,
+                    <span class="key">href</span>: <span class="string"><span class="delimiter">'</span><span class="content">http://www.packtpub.com/groovy-2-cookbook/book</span><span class="delimiter">'</span></span>,
+                    <span class="key">about</span>: <span class="string"><span class="delimiter">'</span><span class="content">This book contains more than 90 recipes that use the powerful features of Groovy 2 to develop solutions to everyday programming challenges.</span><span class="delimiter">'</span></span>
+            ],
+            [
+                    <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Programming Groovy 2</span><span class="delimiter">'</span></span>,
+                    <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Venkat Subramaniam</span><span class="delimiter">'</span></span>,
+                    <span class="key">href</span>: <span class="string"><span class="delimiter">'</span><span class="content">http://pragprog.com/book/vslg2/programming-groovy-2</span><span class="delimiter">'</span></span>,
+                    <span class="key">about</span>: <span class="string"><span class="delimiter">'</span><span class="content">This book helps experienced Java developers learn to use Groovy 2, from the basics of the language to its latest advances.</span><span class="delimiter">'</span></span>
+            ],
+    ] <span class="keyword">as</span> <span class="predefined-type">List</span>&lt; <span class="predefined-type">Map</span>&lt;<span class="predefined-type">String</span>, <span class="predefined-type">String</span>&gt; &gt;
+
+    BookDataService bookDataService
+
+    <span class="keyword">def</span> init = { servletContext -&gt;
+        <span class="keyword">for</span> (<span class="predefined-type">Map</span>&lt;<span class="predefined-type">String</span>, <span class="predefined-type">String</span>&gt; bookInfo : (GRAILS_BOOKS + GROOVY_BOOKS)) {
+            bookDataService.save(bookInfo.title, bookInfo.author, bookInfo.about, bookInfo.href)
+        }
+    }
+}</code></pre>
 </div>
 </div>
 
@@ -470,7 +597,19 @@ docker run \
 <div class="listingblock">
 <div class="title">grails-app/services/demo/BookSearchService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/BookSearchService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.plugins.elasticsearch.ElasticSearchService</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">BookSearchService</span> {
+    ElasticSearchService elasticSearchService
+
+    <span class="predefined-type">Map</span> search(<span class="predefined-type">String</span> query) {
+        elasticSearchService.search(query, [<span class="key">indices</span>: <span class="predefined-type">Book</span>, <span class="key">types</span>: <span class="predefined-type">Book</span>, <span class="key">score</span>: <span class="predefined-constant">true</span>]) <span class="keyword">as</span> <span class="predefined-type">Map</span> <i class="conum" data-value="1"></i><b>(1)</b>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -490,7 +629,25 @@ docker run \
 <div class="listingblock">
 <div class="title">src/test/groovy/demo/BookSearchServiceSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/test/groovy/demo/BookSearchServiceSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.plugins.elasticsearch.ElasticSearchService</span>
+<span class="keyword">import</span> <span class="include">grails.testing.services.ServiceUnitTest</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="type">class</span> <span class="class">BookSearchServiceSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> ServiceUnitTest&lt;BookSearchService&gt; {
+
+    <span class="keyword">def</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">search uses indices and types `Book` and score `true`</span><span class="delimiter">&quot;</span></span>() {
+
+        service.elasticSearchService = Mock(ElasticSearchService)
+
+        <span class="key">when</span>:
+        service.search(<span class="string"><span class="delimiter">'</span><span class="content">Grails</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>:
+        <span class="integer">1</span> * service.elasticSearchService.search(<span class="string"><span class="delimiter">'</span><span class="content">Grails</span><span class="delimiter">'</span></span>, [<span class="key">indices</span>: <span class="predefined-type">Book</span>, <span class="key">types</span>: <span class="predefined-type">Book</span>, <span class="key">score</span>: <span class="predefined-constant">true</span>])
+    }
+}</code></pre>
 </div>
 </div>
 
@@ -510,7 +667,32 @@ docker run \
 <div class="listingblock">
 <div class="title">grails-app/controllers/demo/BookController.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/controllers/demo/BookController.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.plugins.elasticsearch.ElasticSearchService</span>
+<span class="keyword">import</span> <span class="include">grails.validation.ValidationException</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="keyword">import</span> <span class="include">static</span> <span class="include">org.springframework.http.HttpStatus.*</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">BookController</span> {
+
+    BookSearchService bookSearchService
+
+    <span class="directive">static</span> responseFormats = [<span class="string"><span class="delimiter">'</span><span class="content">json</span><span class="delimiter">'</span></span>]
+    <span class="directive">static</span> allowedMethods = [
+            <span class="key">search</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">GET</span><span class="delimiter">&quot;</span></span>
+    ]
+
+    <span class="keyword">def</span> <span class="function">search</span>(<span class="predefined-type">String</span> q) {
+        <span class="keyword">if</span> ( !q ) {
+            render <span class="key">status</span>: NOT_FOUND <i class="conum" data-value="1"></i><b>(1)</b>
+            <span class="keyword">return</span>
+        }
+        respond bookSearchService.search(q)
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -527,7 +709,38 @@ docker run \
 <div class="listingblock">
 <div class="title">src/test/groovy/demo/BookControllerSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/test/groovy/demo/BookControllerSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.testing.web.controllers.ControllerUnitTest</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Unroll</span>
+<span class="keyword">import</span> <span class="include">static</span> <span class="include">javax.servlet.http.HttpServletResponse.SC_METHOD_NOT_ALLOWED</span>
+<span class="keyword">import</span> <span class="include">static</span> <span class="include">javax.servlet.http.HttpServletResponse.SC_NOT_FOUND</span>
+
+<span class="type">class</span> <span class="class">BookControllerSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> ControllerUnitTest&lt;BookController&gt; {
+
+    <span class="annotation">@Unroll</span>
+    <span class="keyword">def</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">test BookController.search does not accept #method requests</span><span class="delimiter">&quot;</span></span>(<span class="predefined-type">String</span> method) {
+        <span class="key">when</span>:
+        request.method = method
+        controller.search()
+
+        <span class="key">then</span>:
+        response.status == SC_METHOD_NOT_ALLOWED
+
+        <span class="key">where</span>:
+        method &lt;&lt; [<span class="string"><span class="delimiter">'</span><span class="content">PATCH</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">DELETE</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">PUT</span><span class="delimiter">'</span></span>]
+    }
+
+    <span class="keyword">def</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">test BookController.search accepts GET requests</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        request.method = <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>
+        controller.search()
+
+        <span class="key">then</span>:
+        response.status == SC_NOT_FOUND
+    }
+}</code></pre>
 </div>
 </div>
 
@@ -547,7 +760,17 @@ docker run \
 <div class="listingblock">
 <div class="title">grails-app/views/book/search.gson</div>
 <div class="content">
-<pre>link:../snippets/grails-app/views/book/search.gson[role=include]</pre>
+<pre>model {
+    Long total
+    List searchResults
+    Map scores
+}
+
+json {
+    totalCount total
+    results g.render(searchResults)
+    scores g.render(scores)
+}</pre>
 </div>
 </div>
 
@@ -567,7 +790,7 @@ docker run \
 <div class="listingblock">
 <div class="title">grails-app/controllers/demo/UrlMappings.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/controllers/demo/UrlMappings.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">        get <span class="string"><span class="delimiter">&quot;</span><span class="content">/book/search/</span><span class="inline"><span class="inline-delimiter">$</span>q</span><span class="content">?</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">search</span><span class="delimiter">&quot;</span></span>)</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -576,7 +799,24 @@ docker run \
 <div class="listingblock">
 <div class="title">src/test/groovy/demo/UrlMappingsSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/test/groovy/demo/UrlMappingsSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.testing.web.UrlMappingsUnitTest</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="type">class</span> <span class="class">UrlMappingsSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> UrlMappingsUnitTest&lt;UrlMappings&gt; {
+
+    <span class="type">void</span> setup() {
+        mockController(BookController)
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">book/search endpoint mapping includes query term in path</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">expect</span>:
+        verifyForwardUrlMapping(<span class="string"><span class="delimiter">&quot;</span><span class="content">/book/search/grails</span><span class="delimiter">&quot;</span></span>, <span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">search</span><span class="delimiter">'</span></span>) {
+            q = <span class="string"><span class="delimiter">'</span><span class="content">grails</span><span class="delimiter">'</span></span>
+        }
+    }
+}</code></pre>
 </div>
 </div>
 
@@ -611,13 +851,50 @@ The testing framework used by Grails is <a href="http://spockframework.org/">Spo
 <div class="listingblock">
 <div class="title">src/integration-test/groovy/demo/RestSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/integration-test/groovy/demo/RestSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.plugins.rest.client.RequestCustomizer</span>
+<span class="keyword">import</span> <span class="include">grails.plugins.rest.client.RestBuilder</span>
+<span class="keyword">import</span> <span class="include">grails.plugins.rest.client.RestResponse</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="type">class</span> <span class="class">RestSpec</span> <span class="directive">extends</span> Specification {
+
+    RestBuilder rest = <span class="keyword">new</span> RestBuilder()
+
+    RestResponse get(<span class="predefined-type">String</span> path, <span class="annotation">@DelegatesTo</span>(RequestCustomizer) Closure customizer = <span class="predefined-constant">null</span>) {
+        rest.get(<span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="inline"><span class="inline-delimiter">${</span>path<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>, customizer)
+    }
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">src/integration-test/groovy/demo/BookControllerFunctionalSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/integration-test/groovy/demo/BookControllerFunctionalSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.plugins.rest.client.RestResponse</span>
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">spock.lang.IgnoreIf</span>
+
+<span class="annotation">@IgnoreIf</span>( { <span class="predefined-type">System</span>.getenv(<span class="string"><span class="delimiter">'</span><span class="content">TRAVIS</span><span class="delimiter">'</span></span>) <span class="keyword">as</span> <span class="type">boolean</span> } )
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">BookControllerFunctionalSpec</span> <span class="directive">extends</span> RestSpec {
+
+    BookDataService bookDataService
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">Test the search action correctly searches</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">expect</span>:
+        bookDataService.count()
+
+        <span class="key">when</span>:
+        RestResponse rsp = get(<span class="string"><span class="delimiter">&quot;</span><span class="content">/book/search/Beckwith</span><span class="delimiter">&quot;</span></span>)
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">The list is returned with only one instance</span><span class="delimiter">&quot;</span></span>
+        rsp.json.totalCount == <span class="integer">1</span>
+        rsp.json.results.first().author == <span class="string"><span class="delimiter">'</span><span class="content">Burt Beckwith</span><span class="delimiter">'</span></span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="admonitionblock note">

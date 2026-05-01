@@ -92,7 +92,10 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/conf/application.yml</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="yaml"><span class="error">link:../snippets/grails-app/conf/application.yml[role=include]</span></code></pre>
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">endpoints</span>:
+    <span class="key">enabled</span>: <span class="string"><span class="content">true</span></span>
+    <span class="key">jmx</span>:
+        <span class="key">enabled</span>: <span class="string"><span class="content">true</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -103,12 +106,12 @@ function addJsClass() {
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">repositories {
     ..
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>build.gradle[role=include]
+    mavenCentral()
     ..
 }
 dependencies {
     ..
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>build.gradle[role=include]
+    testCompile <span class="string"><span class="delimiter">&quot;</span><span class="content">io.micronaut:micronaut-http-client:</span><span class="inline"><span class="inline-delimiter">$</span>micronautVersion</span><span class="delimiter">&quot;</span></span>
     ..
 }</code></pre>
 </div>
@@ -122,7 +125,39 @@ dependencies {
 <div class="listingblock">
 <div class="title">src/integration-test/groovy/example/grails/HealthSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/integration-test/groovy/example/grails/HealthSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">spock.lang.AutoCleanup</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Shared</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+<span class="keyword">import</span> <span class="include">io.micronaut.http.HttpRequest</span>
+<span class="keyword">import</span> <span class="include">io.micronaut.http.client.HttpClient</span>
+<span class="keyword">import</span> <span class="include">grails.testing.spock.OnceBefore</span>
+
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">HealthSpec</span> <span class="directive">extends</span> Specification {
+
+    <span class="annotation">@Shared</span>
+    <span class="annotation">@AutoCleanup</span>
+    HttpClient client
+
+    <span class="annotation">@OnceBefore</span> <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="type">void</span> init() {
+        <span class="predefined-type">String</span> baseUrl = <span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">$</span>serverPort</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="2"></i><b>(2)</b>
+        client = HttpClient.create(<span class="keyword">new</span> <span class="predefined-type">URL</span>(baseUrl))
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">health responds OK</span><span class="delimiter">&quot;</span></span>()  {
+        <span class="key">when</span>:
+        <span class="predefined-type">Map</span> m = client.toBlocking().retrieve(HttpRequest.GET(<span class="string"><span class="delimiter">&quot;</span><span class="content">/health</span><span class="delimiter">&quot;</span></span>), <span class="predefined-type">Map</span>) <i class="conum" data-value="3"></i><b>(3)</b>
+
+        <span class="key">then</span>:
+        m
+        m.containsKey(<span class="string"><span class="delimiter">&quot;</span><span class="content">status</span><span class="delimiter">&quot;</span></span>)
+        m.get(<span class="string"><span class="delimiter">&quot;</span><span class="content">status</span><span class="delimiter">&quot;</span></span>) ==  <span class="string"><span class="delimiter">&quot;</span><span class="content">UP</span><span class="delimiter">&quot;</span></span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">

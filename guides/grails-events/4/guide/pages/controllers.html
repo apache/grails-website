@@ -84,7 +84,40 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/controllers/demo/RegisterCommand.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/controllers/demo/RegisterCommand.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.validation.Validateable</span>
+
+<span class="type">class</span> <span class="class">RegisterCommand</span> <span class="directive">implements</span> Validateable {
+    <span class="predefined-type">String</span> firstName
+    <span class="predefined-type">String</span> lastName
+    <span class="predefined-type">String</span> email
+
+    <span class="directive">static</span> constraints = {
+        firstName <span class="key">nullable</span>: <span class="predefined-constant">false</span>
+        lastName <span class="key">nullable</span>: <span class="predefined-constant">false</span>
+        email <span class="key">nullable</span>: <span class="predefined-constant">false</span>, <span class="key">email</span>: <span class="predefined-constant">true</span>
+    }
+
+    <span class="predefined-type">Object</span> asType(<span class="predefined-type">Class</span> clazz) {
+        <span class="keyword">if</span> (clazz == User) {
+            <span class="keyword">def</span> user = <span class="keyword">new</span> User()
+            copyProperties(<span class="local-variable">this</span>, user)
+            <span class="keyword">return</span> user
+        }
+        <span class="keyword">else</span> {
+            <span class="local-variable">super</span>.asType(clazz)
+        }
+    }
+
+    <span class="keyword">def</span> <span class="function">copyProperties</span>(source, target) {
+        source.properties.each { key, value -&gt;
+            <span class="keyword">if</span> (target.hasProperty(key) &amp;&amp; !(key <span class="keyword">in</span> [<span class="string"><span class="delimiter">'</span><span class="content">class</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">metaClass</span><span class="delimiter">'</span></span>])) {
+                target[key] = value
+            }
+        }
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -93,7 +126,38 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/controllers/demo/RegisterController.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/controllers/demo/RegisterController.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">RegisterController</span> {
+
+    <span class="directive">static</span> allowedMethods = [<span class="key">index</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>, <span class="key">save</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>]
+
+    RegisterService registerService
+
+    <span class="keyword">def</span> <span class="function">index</span>() {
+        [<span class="key">signUpInstance</span>:  <span class="keyword">new</span> RegisterCommand()]
+    }
+
+    <span class="keyword">def</span> <span class="function">save</span>(RegisterCommand cmd) {
+
+        <span class="keyword">if</span> ( cmd.hasErrors() ) {
+            render <span class="key">view</span>: <span class="string"><span class="delimiter">'</span><span class="content">index</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">signUpInstance</span>: cmd]
+            <span class="keyword">return</span>
+        }
+
+        SaveUserResult result = registerService.register(cmd, request.locale)
+        flash.message = result.message
+        <span class="keyword">if</span> ( result.error ) {
+            flash.error = result.error
+            render <span class="key">view</span>: <span class="string"><span class="delimiter">'</span><span class="content">index</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">signUpInstance</span>: cmd]
+            <span class="keyword">return</span>
+        }
+        redirect <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">index</span><span class="delimiter">'</span></span>
+    }
+}</code></pre>
 </div>
 </div>
 

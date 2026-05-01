@@ -91,7 +91,54 @@ This does not alter the approach to verifying logs events.</p>
 <div class="listingblock">
 <div class="title">src/test/groovy/example/grails/AgeAdvisorSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/test/groovy/example/grails/AgeAdvisorSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">com.google.common.collect.ImmutableList</span>
+<span class="keyword">import</span> <span class="include">example.grails.AgeAdvisor</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Shared</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+<span class="keyword">import</span> <span class="include">uk.org.lidalia.slf4jext.Level</span>
+<span class="keyword">import</span> <span class="include">uk.org.lidalia.slf4jtest.LoggingEvent</span>
+<span class="keyword">import</span> <span class="include">uk.org.lidalia.slf4jtest.TestLogger</span>
+<span class="keyword">import</span> <span class="include">uk.org.lidalia.slf4jtest.TestLoggerFactory</span>
+
+<span class="type">class</span> <span class="class">AgeAdvisorSpec</span> <span class="directive">extends</span> Specification {
+
+    <span class="annotation">@Shared</span>
+    AgeAdvisor ageAdvisor = <span class="keyword">new</span> AgeAdvisor()
+    <span class="annotation">@Shared</span>
+    TestLogger logger = TestLoggerFactory.getTestLogger(<span class="string"><span class="delimiter">&quot;</span><span class="content">example.grails.AgeAdvisor</span><span class="delimiter">&quot;</span></span>) <i class="conum" data-value="1"></i><b>(1)</b>
+
+    <span class="keyword">def</span> <span class="function">cleanup</span>() {
+        TestLoggerFactory.clear()
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">verify young age logs</span><span class="delimiter">&quot;</span></span>() {
+
+        <span class="key">when</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">method is invoked</span><span class="delimiter">&quot;</span></span>
+        ageAdvisor.offerAgeAdvice(<span class="integer">15</span>)
+        ImmutableList&lt;LoggingEvent&gt; loggingEvents = logger.getLoggingEvents()
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">check the logging events</span><span class="delimiter">&quot;</span></span>
+        loggingEvents.size() == <span class="integer">2</span> <i class="conum" data-value="2"></i><b>(2)</b>
+        loggingEvents[<span class="integer">0</span>].message == <span class="string"><span class="delimiter">&quot;</span><span class="content">You are a young and vibrant!</span><span class="delimiter">&quot;</span></span>
+        loggingEvents[<span class="integer">0</span>].level == <span class="predefined-type">Level</span>.INFO
+        loggingEvents[<span class="integer">1</span>].message == <span class="string"><span class="delimiter">&quot;</span><span class="content">Live life to the fullest.</span><span class="delimiter">&quot;</span></span>
+        loggingEvents[<span class="integer">1</span>].level == <span class="predefined-type">Level</span>.INFO
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">verify old age logs</span><span class="delimiter">&quot;</span></span>() {
+
+        <span class="key">when</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">method is invoked</span><span class="delimiter">&quot;</span></span>
+        ageAdvisor.offerAgeAdvice(<span class="integer">31</span>)
+        ImmutableList&lt;LoggingEvent&gt; loggingEvents = logger.getLoggingEvents()
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">check the logging events</span><span class="delimiter">&quot;</span></span>
+        loggingEvents.size() == <span class="integer">1</span>
+        loggingEvents[<span class="integer">0</span>].message == <span class="string"><span class="delimiter">&quot;</span><span class="content">It's all downhill from here, sorry.</span><span class="delimiter">&quot;</span></span>
+        loggingEvents[<span class="integer">0</span>].level == <span class="predefined-type">Level</span>.WARN
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">

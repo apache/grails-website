@@ -111,13 +111,30 @@ named exactly the same as the JSON structure.  The iTunes API will return <code>
 <div class="listingblock">
 <div class="title">src/main/groovy/example/grails/SearchResult.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/main/groovy/example/grails/<span class="predefined-type">SearchResult</span>.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">SearchResult</span> {
+    <span class="type">int</span> resultCount
+    <span class="predefined-type">List</span>&lt;Album&gt; results = <span class="type">[]</span>
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">src/main/groovy/example/grails/Album.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/main/groovy/example/grails/Album.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">Album</span> {
+    <span class="predefined-type">String</span> artistName
+    <span class="predefined-type">String</span> collectionName
+    <span class="predefined-type">String</span> collectionViewUrl
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -126,7 +143,12 @@ named exactly the same as the JSON structure.  The iTunes API will return <code>
 <div class="listingblock">
 <div class="title">grails-app/conf/application.yml</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/application.yml[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">---
+<span class="key">micronaut</span>:
+    <span class="key">codec</span>:
+        <span class="key">json</span>:
+            <span class="key">additionalTypes</span>:
+                - text/javascript</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -138,7 +160,22 @@ map the incoming JSON to the POJOs. Add the following to <code>ItunesSearchServi
 <div class="listingblock">
 <div class="title">grails-app/services/example/grails/ItunesSearchService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/ItunesSearchService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">    <span class="predefined-type">List</span>&lt;Album&gt; searchWithApi(<span class="predefined-type">String</span> searchTerm) {
+        <span class="predefined-type">String</span> baseUrl = <span class="string"><span class="delimiter">&quot;</span><span class="content">https://itunes.apple.com/</span><span class="delimiter">&quot;</span></span>
+        HttpClient client = HttpClient.create(baseUrl.toURL())
+        HttpRequest request = HttpRequest.GET(UriBuilder.of(<span class="string"><span class="delimiter">'</span><span class="content">/search</span><span class="delimiter">'</span></span>)
+                .queryParam(<span class="string"><span class="delimiter">'</span><span class="content">limit</span><span class="delimiter">'</span></span>, <span class="integer">25</span>)
+                .queryParam(<span class="string"><span class="delimiter">'</span><span class="content">media</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">music</span><span class="delimiter">'</span></span>)
+                .queryParam(<span class="string"><span class="delimiter">'</span><span class="content">entity</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">album</span><span class="delimiter">'</span></span>)
+                .queryParam(<span class="string"><span class="delimiter">'</span><span class="content">term</span><span class="delimiter">'</span></span>, searchTerm)
+                .build())
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = client.toBlocking().exchange(request, <span class="predefined-type">String</span>) <i class="conum" data-value="1"></i><b>(1)</b>
+        <span class="predefined-type">String</span> json = resp.body()
+        ObjectMapper objectMapper = <span class="keyword">new</span> ObjectMapper()
+        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, <span class="predefined-constant">false</span>) <i class="conum" data-value="2"></i><b>(2)</b>
+        <span class="predefined-type">SearchResult</span> searchResult = objectMapper.readValue(json, <span class="predefined-type">SearchResult</span>) <i class="conum" data-value="3"></i><b>(3)</b>
+        searchResult.results
+    }</code></pre>
 </div>
 </div>
 <div class="colist arabic">

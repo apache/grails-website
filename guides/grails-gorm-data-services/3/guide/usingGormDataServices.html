@@ -155,18 +155,20 @@ without the disadvantages. E.g. you get type safety since GORM Data services are
 <div class="listingblock">
 <div class="title">grails-app/services/example/grails/PersonDataService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/PersonDataService.groovy[role=include]
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
 
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/PersonDataService.groovy[role=include]
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Query</span>
+
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Service</span>
 
 <span class="annotation">@Service</span>(Person) <i class="conum" data-value="1"></i><b>(1)</b>
 <span class="type">interface</span> PersonDataService {
 
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/PersonDataService.groovy[role=include]
+    Person findByName(<span class="predefined-type">String</span> name) <i class="conum" data-value="1"></i><b>(1)</b>
 
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/PersonDataService.groovy[role=include]
 
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/PersonDataService.groovy[role=include]
+
+    <span class="type">void</span> delete(<span class="predefined-type">Serializable</span> id) <i class="conum" data-value="3"></i><b>(3)</b>
 
 }</code></pre>
 </div>
@@ -204,11 +206,48 @@ without the disadvantages. E.g. you get type safety since GORM Data services are
 <div class="listingblock">
 <div class="title">src/test/groovy/example/grails/PersonDataServiceWithoutHibernateSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/test/groovy/example/grails/PersonDataServiceWithoutHibernateSpec.groovy[role=include]
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
 
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/test/groovy/example/grails/PersonDataServiceWithoutHibernateSpec.groovy[role=include]
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
 
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/test/groovy/example/grails/PersonDataServiceWithoutHibernateSpec.groovy[role=include]
+<span class="keyword">import</span> <span class="include">org.grails.orm.hibernate.HibernateDatastore</span>
+<span class="keyword">import</span> <span class="include">org.springframework.test.annotation.Rollback</span>
+<span class="keyword">import</span> <span class="include">org.springframework.transaction.PlatformTransactionManager</span>
+<span class="keyword">import</span> <span class="include">spock.lang.AutoCleanup</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Shared</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="annotation">@Transactional</span>
+<span class="type">class</span> <span class="class">PersonDataServiceWithoutHibernateSpec</span> <span class="directive">extends</span> Specification {
+
+    <span class="annotation">@Shared</span> <i class="conum" data-value="2"></i><b>(2)</b>
+    PersonDataService personDataService
+
+    <span class="annotation">@Shared</span> <i class="conum" data-value="2"></i><b>(2)</b>
+    <span class="annotation">@AutoCleanup</span> <i class="conum" data-value="3"></i><b>(3)</b>
+    HibernateDatastore hibernateDatastore
+
+    <span class="annotation">@Shared</span> <i class="conum" data-value="2"></i><b>(2)</b>
+    PlatformTransactionManager transactionManager
+
+    <span class="type">void</span> setupSpec() {
+        hibernateDatastore = <span class="keyword">new</span> HibernateDatastore(Person) <i class="conum" data-value="4"></i><b>(4)</b>
+        transactionManager = hibernateDatastore.getTransactionManager() <i class="conum" data-value="5"></i><b>(5)</b>
+        personDataService = <span class="local-variable">this</span>.hibernateDatastore.getService(PersonDataService)
+    }
+
+    <span class="annotation">@Rollback</span> <i class="conum" data-value="6"></i><b>(6)</b>
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">test find person by name</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        Person p = <span class="keyword">new</span> Person(<span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Nirav</span><span class="delimiter">&quot;</span></span>, <span class="key">age</span>: <span class="integer">39</span>).save()
+
+        <span class="key">when</span>:
+        Person person = personDataService.findByName(<span class="string"><span class="delimiter">&quot;</span><span class="content">Nirav</span><span class="delimiter">&quot;</span></span>)
+
+        <span class="key">then</span>:
+        person.name == <span class="string"><span class="delimiter">&quot;</span><span class="content">Nirav</span><span class="delimiter">&quot;</span></span>
+        person.age == <span class="integer">39</span>
+    }
 }</code></pre>
 </div>
 </div>
@@ -247,7 +286,34 @@ the previous unit test:</p>
 <div class="listingblock">
 <div class="title">src/test/groovy/example/grails/PersonDataServiceSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/test/groovy/example/grails/PersonDataServiceSpec.groovy[role=include]
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">grails.test.hibernate.HibernateSpec</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Shared</span>
+
+<span class="type">class</span> <span class="class">PersonDataServiceSpec</span> <span class="directive">extends</span> HibernateSpec {
+
+    <span class="annotation">@Shared</span>
+    PersonDataService personDataService
+
+    <span class="keyword">def</span> <span class="function">setup</span>() {
+        personDataService = hibernateDatastore.getService(PersonDataService)
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">test find person by name</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="keyword">new</span> Person(<span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Nirav</span><span class="delimiter">&quot;</span></span>, <span class="key">age</span>: <span class="integer">39</span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">when</span>:
+        Person person = personDataService.findByName(<span class="string"><span class="delimiter">&quot;</span><span class="content">Nirav</span><span class="delimiter">&quot;</span></span>)
+
+        <span class="key">then</span>:
+        person.name == <span class="string"><span class="delimiter">&quot;</span><span class="content">Nirav</span><span class="delimiter">&quot;</span></span>
+        person.age == <span class="integer">39</span>
+
+        <span class="key">cleanup</span>:
+        personDataService.delete(person.id)
+    }
 }</code></pre>
 </div>
 </div>
@@ -272,7 +338,7 @@ whole object. There are a few ways to implement projections. One way is to is to
 <div class="listingblock">
 <div class="title">grails-app/services/example/grails/PersonDataService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/PersonDataService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">    <span class="predefined-type">Integer</span> findPersonAge(<span class="predefined-type">String</span> name)</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -281,7 +347,19 @@ whole object. There are a few ways to implement projections. One way is to is to
 <div class="listingblock">
 <div class="title">src/test/groovy/example/grails/PersonDataServiceSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/test/groovy/example/grails/PersonDataServiceSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">test find persons age projection</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        Person person = <span class="keyword">new</span> Person(<span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Nirav</span><span class="delimiter">&quot;</span></span>, <span class="key">age</span>: <span class="integer">39</span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">when</span>:
+        <span class="predefined-type">Integer</span> age = personDataService.findPersonAge(<span class="string"><span class="delimiter">&quot;</span><span class="content">Nirav</span><span class="delimiter">&quot;</span></span>)
+
+        <span class="key">then</span>:
+        age == <span class="integer">39</span>
+
+        <span class="key">cleanup</span>:
+        personDataService.delete(person.id)
+    }</code></pre>
 </div>
 </div>
 
@@ -301,7 +379,7 @@ whole object. There are a few ways to implement projections. One way is to is to
 <div class="listingblock">
 <div class="title">grails-app/services/example/grails/PersonDataService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/PersonDataService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">    Person save(<span class="predefined-type">String</span> name, <span class="predefined-type">Integer</span> age)</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -310,7 +388,18 @@ whole object. There are a few ways to implement projections. One way is to is to
 <div class="listingblock">
 <div class="title">src/test/groovy/example/grails/PersonDataServiceSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/test/groovy/example/grails/PersonDataServiceSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">test save person</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        Person person = personDataService.save(<span class="string"><span class="delimiter">&quot;</span><span class="content">Bob</span><span class="delimiter">&quot;</span></span>, <span class="integer">22</span>)
+
+        <span class="key">then</span>:
+        person.name == <span class="string"><span class="delimiter">&quot;</span><span class="content">Bob</span><span class="delimiter">&quot;</span></span>
+        person.age == <span class="integer">22</span>
+        personDataService.count() == old(personDataService.count()) + <span class="integer">1</span> <i class="conum" data-value="1"></i><b>(1)</b>
+
+        <span class="key">cleanup</span>:
+        personDataService.delete(person.id)
+    }</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -356,7 +445,8 @@ many select statements. This can severely hinder performance.</p>
 <div class="listingblock">
 <div class="title">grails-app/services/example/grails/PersonDataService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/PersonDataService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">    <span class="annotation">@Join</span>(<span class="string"><span class="delimiter">'</span><span class="content">addresses</span><span class="delimiter">'</span></span>) <i class="conum" data-value="1"></i><b>(1)</b>
+    Person findEagerly(<span class="predefined-type">String</span> name)</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -367,31 +457,56 @@ A combination of interface and an abstract class implementing the interface with
 <div class="listingblock">
 <div class="title">grails-app/services/example/grails/PersonDataService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/PersonDataService.groovy[role=include]
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
 
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/PersonDataService.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/PersonDataService.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/PersonDataService.groovy[role=include]
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Query</span>
 
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/PersonDataService.groovy[role=include]
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Service</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Join</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
+
+<span class="type">interface</span> IPersonDataService {
 
     Person findByName(<span class="predefined-type">String</span> name)
 
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/PersonDataService.groovy[role=include]
+    <span class="predefined-type">Integer</span> findPersonAge(<span class="predefined-type">String</span> name)
 
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/PersonDataService.groovy[role=include]
+    <span class="predefined-type">Number</span> count()
 
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/PersonDataService.groovy[role=include]
+    <span class="annotation">@Join</span>(<span class="string"><span class="delimiter">'</span><span class="content">addresses</span><span class="delimiter">'</span></span>) <i class="conum" data-value="1"></i><b>(1)</b>
+    Person findEagerly(<span class="predefined-type">String</span> name)
 
     <span class="type">void</span> delete(<span class="predefined-type">Serializable</span> id)
 
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/PersonDataService.groovy[role=include]
+    Person save(Person person)
 
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/PersonDataService.groovy[role=include]
+    Person save(<span class="predefined-type">String</span> name, <span class="predefined-type">Integer</span> age)
 
 }
 
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/PersonDataService.groovy[role=include]</code></pre>
+<span class="annotation">@Service</span>(Person)
+<span class="directive">abstract</span> <span class="type">class</span> <span class="class">PersonDataService</span> <span class="directive">implements</span> IPersonDataService {
+
+    <span class="annotation">@Transactional</span>
+    Person saveWithListOfAddressesMap(<span class="predefined-type">String</span> name, <span class="predefined-type">Integer</span> age, <span class="predefined-type">List</span>&lt;<span class="predefined-type">Map</span>&lt;<span class="predefined-type">String</span>, <span class="predefined-type">Object</span>&gt;&gt; addresses) {
+        saveWithAddresses(name, age, addresses.collect { <span class="predefined-type">Map</span> m -&gt;
+            <span class="keyword">new</span> Address(<span class="key">streetName</span>:  m.streetName <span class="keyword">as</span> <span class="predefined-type">String</span>,
+                <span class="key">city</span>:  m.city <span class="keyword">as</span> <span class="predefined-type">String</span>,
+                <span class="key">state</span>: m.state <span class="keyword">as</span> <span class="predefined-type">String</span>,
+                <span class="key">country</span>: m.country <span class="keyword">as</span> <span class="predefined-type">String</span>)
+        } <span class="keyword">as</span> <span class="predefined-type">List</span>&lt;Address&gt;)
+    }
+
+    <span class="annotation">@Transactional</span>
+    Person saveWithAddresses(<span class="predefined-type">String</span> name, <span class="predefined-type">Integer</span> age, <span class="predefined-type">List</span>&lt;Address&gt; addresses) {
+        Person person = <span class="keyword">new</span> Person(<span class="key">name</span>: name, <span class="key">age</span>: age)
+        addresses.each { Address address -&gt;
+            person.addToAddresses(address)
+        }
+        save(person)
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -400,9 +515,43 @@ A combination of interface and an abstract class implementing the interface with
 <div class="listingblock">
 <div class="title">src/integration-test/groovy/example/grails/PersonDataServiceIntSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/integration-test/groovy/example/grails/PersonDataServiceIntSpec.groovy[role=include]
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
 
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/integration-test/groovy/example/grails/PersonDataServiceIntSpec.groovy[role=include]
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="annotation">@Integration</span> <i class="conum" data-value="1"></i><b>(1)</b>
+<span class="type">class</span> <span class="class">PersonDataServiceIntSpec</span> <span class="directive">extends</span> Specification {
+
+    PersonDataService personDataService <i class="conum" data-value="2"></i><b>(2)</b>
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">test join eager load</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        Person p = personDataService.saveWithListOfAddressesMap(<span class="string"><span class="delimiter">'</span><span class="content">Nirav</span><span class="delimiter">'</span></span>,<span class="integer">39</span>, [
+                [<span class="key">streetName</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">101 Main St</span><span class="delimiter">&quot;</span></span>, <span class="key">city</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Grapevine</span><span class="delimiter">&quot;</span></span>, <span class="key">state</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">TX</span><span class="delimiter">&quot;</span></span>, <span class="key">country</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">USA</span><span class="delimiter">&quot;</span></span>],
+                [<span class="key">streetName</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">2929 Pearl St</span><span class="delimiter">&quot;</span></span>, <span class="key">city</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Austin</span><span class="delimiter">&quot;</span></span>, <span class="key">state</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">TX</span><span class="delimiter">&quot;</span></span>, <span class="key">country</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">USA</span><span class="delimiter">&quot;</span></span>],
+                [<span class="key">streetName</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">21 Sewickly Hills Dr</span><span class="delimiter">&quot;</span></span>, <span class="key">city</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Sewickley</span><span class="delimiter">&quot;</span></span>, <span class="key">state</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">PA</span><span class="delimiter">&quot;</span></span>, <span class="key">country</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">USA</span><span class="delimiter">&quot;</span></span>]
+        ])
+
+        <span class="key">when</span>:
+        Person person = personDataService.findEagerly(<span class="string"><span class="delimiter">&quot;</span><span class="content">Nirav</span><span class="delimiter">&quot;</span></span>)
+
+        <span class="key">then</span>:
+        person.name == <span class="string"><span class="delimiter">&quot;</span><span class="content">Nirav</span><span class="delimiter">&quot;</span></span>
+        person.age == <span class="integer">39</span>
+
+        <span class="key">when</span>:
+        <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; cities = person.addresses*.city
+
+        <span class="key">then</span>:
+        cities.contains(<span class="string"><span class="delimiter">&quot;</span><span class="content">Grapevine</span><span class="delimiter">&quot;</span></span>)
+        cities.contains(<span class="string"><span class="delimiter">&quot;</span><span class="content">Austin</span><span class="delimiter">&quot;</span></span>)
+        cities.contains(<span class="string"><span class="delimiter">&quot;</span><span class="content">Sewickley</span><span class="delimiter">&quot;</span></span>)
+
+        <span class="key">cleanup</span>:
+        personDataService.delete(p.id)
+
+    }
 
 }</code></pre>
 </div>
@@ -428,7 +577,7 @@ A combination of interface and an abstract class implementing the interface with
 <div class="listingblock">
 <div class="title">grails-app/conf/logback.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/logback.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">logger <span class="string"><span class="delimiter">'</span><span class="content">org.hibernate.SQL</span><span class="delimiter">'</span></span>, TRACE, [<span class="string"><span class="delimiter">'</span><span class="content">STDOUT</span><span class="delimiter">'</span></span>], <span class="predefined-constant">false</span></code></pre>
 </div>
 </div>
 <div class="paragraph">

@@ -101,7 +101,14 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/services/neo4j/movies/MovieService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/neo4j/movies/MovieService.groovy[role=include]
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.gorm.services.Service</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileDynamic</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@SuppressWarnings</span>([<span class="string"><span class="delimiter">'</span><span class="content">UnusedVariable</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">SpaceAfterOpeningBrace</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">SpaceBeforeClosingBrace</span><span class="delimiter">'</span></span>])
+<span class="annotation">@CompileStatic</span>
+<span class="annotation">@Service</span>(Movie)
+<span class="directive">abstract</span> <span class="type">class</span> <span class="class">MovieService</span> {
    ...
 }</code></pre>
 </div>
@@ -112,7 +119,8 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/services/neo4j/movies/MovieService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/neo4j/movies/MovieService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="annotation">@Join</span>(<span class="string"><span class="delimiter">'</span><span class="content">cast</span><span class="delimiter">'</span></span>)
+<span class="directive">abstract</span> Movie find(<span class="predefined-type">String</span> title)</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -124,7 +132,7 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/controllers/neo4j/movies/MovieController.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/controllers/neo4j/movies/MovieController.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">MovieService movieService</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -133,7 +141,9 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/controllers/neo4j/movies/MovieController.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/controllers/neo4j/movies/MovieController.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> <span class="function">show</span>(<span class="predefined-type">String</span> title) {
+    respond movieService.find(title)
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -171,7 +181,15 @@ If you wish to debug the Cypher query GORM executed then enable debug logging fo
 <div class="listingblock">
 <div class="title">grails-app/views/movie/_movie.gson</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/views/movie/_movie.gson[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">groovy.transform.Field</span>
+<span class="keyword">import</span> <span class="include">neo4j.movies.Movie</span>
+
+<span class="annotation">@Field</span> Movie movie <i class="conum" data-value="1"></i><b>(1)</b>
+
+json {
+    title movie.title <i class="conum" data-value="2"></i><b>(2)</b>
+    cast tmpl.cast( <span class="string"><span class="delimiter">'</span><span class="content">castMember</span><span class="delimiter">'</span></span>, movie.cast ) <i class="conum" data-value="3"></i><b>(3)</b>
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -196,7 +214,16 @@ If you wish to debug the Cypher query GORM executed then enable debug logging fo
 <div class="listingblock">
 <div class="title">grails-app/views/movie/_cast.gson</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/views/movie/_cast.gson[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">groovy.transform.Field</span>
+<span class="keyword">import</span> <span class="include">neo4j.movies.CastMember</span>
+
+<span class="annotation">@Field</span> CastMember castMember
+
+json {
+    job castMember.type.split(<span class="string"><span class="delimiter">&quot;</span><span class="content">_</span><span class="delimiter">&quot;</span></span>)[<span class="integer">0</span>].toLowerCase()
+    name castMember.from.name
+    role castMember.roles
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">

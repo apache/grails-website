@@ -94,7 +94,42 @@ controller that can either return a list of all books or show a selected book.</
 <div class="listingblock">
 <div class="title">grails-app/controllers/demo/BookController.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/controllers/demo/BookController.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.SpringSecurityService</span>
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.annotation.Secured</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileDynamic</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@Secured</span>(<span class="string"><span class="delimiter">'</span><span class="content">permitAll</span><span class="delimiter">'</span></span>)
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">BookController</span> {
+
+    <span class="directive">static</span> allowedMethods = [<span class="key">index</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>, <span class="key">show</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>]
+
+    BookDataService bookDataService
+
+    BookFavouriteDataService bookFavouriteDataService
+
+    SpringSecurityService springSecurityService
+
+    <span class="keyword">def</span> <span class="function">index</span>() {
+        [<span class="key">bookList</span>: bookDataService.findAll()]
+    }
+
+    <span class="keyword">def</span> <span class="function">show</span>(<span class="predefined-type">Long</span> id) {
+        [
+                <span class="key">bookInstance</span>: bookDataService.findById(id),
+                <span class="key">bookFavourite</span>: bookFavouriteDataService.findByBookIdAndUsername(id, loggedUsername())
+        ]
+    }
+
+    <span class="annotation">@CompileDynamic</span>
+    <span class="directive">protected</span> <span class="predefined-type">String</span> loggedUsername() {
+        <span class="directive">final</span> <span class="predefined-type">String</span> username = springSecurityService.principal?.username
+        username
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -104,7 +139,52 @@ desired book.</p>
 <div class="listingblock">
 <div class="title">grails-app/controllers/demo/BookFavouriteController.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/controllers/demo/BookFavouriteController.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.SpringSecurityService</span>
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.annotation.Secured</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileDynamic</span>
+
+<span class="type">class</span> <span class="class">BookFavouriteController</span> {
+
+    <span class="directive">static</span> allowedMethods = [
+            <span class="key">index</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>,
+            <span class="key">favourite</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>,
+            <span class="key">unfavourite</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>,
+    ]
+
+    SpringSecurityService springSecurityService
+    BookFavouriteDataService bookFavouriteDataService
+    BookDataService bookDataService
+
+    <span class="annotation">@Secured</span>(<span class="string"><span class="delimiter">'</span><span class="content">permitAll</span><span class="delimiter">'</span></span>)
+    <span class="keyword">def</span> <span class="function">index</span>() {
+        <span class="predefined-type">String</span> username = loggedUsername()
+        <span class="predefined-type">List</span>&lt;<span class="predefined-type">Long</span>&gt; bookIds = bookFavouriteDataService.findBookIdByUsername(username) <i class="conum" data-value="1"></i><b>(1)</b>
+        <span class="predefined-type">List</span>&lt;BookImage&gt; bookList = bookDataService.findAllByIds(bookIds) <i class="conum" data-value="2"></i><b>(2)</b>
+        render <span class="key">view</span>: <span class="string"><span class="delimiter">'</span><span class="content">/book/index</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">bookList</span>: bookList]
+    }
+
+    <span class="annotation">@Secured</span>(<span class="string"><span class="delimiter">'</span><span class="content">isAuthenticated()</span><span class="delimiter">'</span></span>)
+    <span class="keyword">def</span> <span class="function">favourite</span>(<span class="predefined-type">Long</span> bookId) {
+        <span class="predefined-type">String</span> username = loggedUsername()
+        bookFavouriteDataService.save(bookId, username) <i class="conum" data-value="3"></i><b>(3)</b>
+        redirect(<span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">index</span><span class="delimiter">'</span></span>)
+    }
+
+    <span class="annotation">@Secured</span>(<span class="string"><span class="delimiter">'</span><span class="content">isAuthenticated()</span><span class="delimiter">'</span></span>)
+    <span class="keyword">def</span> <span class="function">unfavourite</span>(<span class="predefined-type">Long</span> bookId) {
+        <span class="predefined-type">String</span> username = loggedUsername()
+        bookFavouriteDataService.delete(bookId, username)
+        redirect(<span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">index</span><span class="delimiter">'</span></span>)
+    }
+
+    <span class="annotation">@CompileDynamic</span>
+    <span class="directive">protected</span> <span class="predefined-type">String</span> loggedUsername() {
+        springSecurityService.principal.username
+    }
+
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">

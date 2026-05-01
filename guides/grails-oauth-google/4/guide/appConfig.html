@@ -139,7 +139,8 @@ OAuth2 over REST through Google.</p>
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>build.gradle[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">compile <span class="string"><span class="delimiter">'</span><span class="content">org.grails.plugins:spring-security-core:3.2.1</span><span class="delimiter">'</span></span>
+compile <span class="string"><span class="delimiter">'</span><span class="content">org.grails.plugins:spring-security-rest:2.0.0.RC1</span><span class="delimiter">'</span></span></code></pre>
 </div>
 </div>
 
@@ -162,7 +163,40 @@ OAuth2 over REST through Google.</p>
 <div class="listingblock">
 <div class="title">src/main/groovy/demo/JwtCookieTokenReader.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/main/groovy/demo/JwtCookieTokenReader.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.rest.token.AccessToken</span>
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.rest.token.reader.TokenReader</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
+
+<span class="keyword">import</span> <span class="include">javax.servlet.http.Cookie</span>
+<span class="keyword">import</span> <span class="include">javax.servlet.http.HttpServletRequest</span>
+
+<span class="annotation">@Slf4j</span>
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">JwtCookieTokenReader</span> <span class="directive">implements</span> TokenReader {
+
+    <span class="directive">final</span> <span class="directive">static</span> <span class="predefined-type">String</span> DEFAULT_COOKIE_NAME = <span class="string"><span class="delimiter">'</span><span class="content">JWT</span><span class="delimiter">'</span></span>
+
+    <span class="predefined-type">String</span> cookieName = DEFAULT_COOKIE_NAME
+
+    <span class="annotation">@Override</span>
+    AccessToken findToken(HttpServletRequest request) {
+
+        log.debug <span class="string"><span class="delimiter">&quot;</span><span class="content">Looking for jwt token in a cookie named {}</span><span class="delimiter">&quot;</span></span>, cookieName
+        <span class="predefined-type">String</span> tokenValue = <span class="predefined-constant">null</span>
+        Cookie cookie = request.getCookies()?.find { Cookie cookie -&gt; cookie.name.equalsIgnoreCase(cookieName) }
+
+        <span class="keyword">if</span> ( cookie ) {
+            tokenValue = cookie.value
+        }
+
+        log.debug <span class="string"><span class="delimiter">&quot;</span><span class="content">Token: </span><span class="inline"><span class="inline-delimiter">${</span>tokenValue<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>
+        <span class="keyword">return</span> tokenValue ? <span class="keyword">new</span> AccessToken(tokenValue) : <span class="predefined-constant">null</span>
+
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -171,9 +205,11 @@ OAuth2 over REST through Google.</p>
 <div class="listingblock">
 <div class="title">grails-app/conf/spring/resources.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/spring/resources.groovy[role=include]
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">demo.JwtCookieTokenReader</span>
 beans {
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/spring/resources.groovy[role=include]
+    tokenReader(JwtCookieTokenReader) {
+        cookieName = <span class="string"><span class="delimiter">'</span><span class="content">jwt</span><span class="delimiter">'</span></span>
+    }
 ...
 ..
 .
@@ -200,7 +236,18 @@ beans {
 <div class="listingblock">
 <div class="title">grails-app/conf/application.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/application.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.controllerAnnotations.staticRules = [
+        [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/</span><span class="delimiter">'</span></span>,               <span class="key">access</span>: [<span class="string"><span class="delimiter">'</span><span class="content">permitAll</span><span class="delimiter">'</span></span>]],
+        [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/error</span><span class="delimiter">'</span></span>,          <span class="key">access</span>: [<span class="string"><span class="delimiter">'</span><span class="content">permitAll</span><span class="delimiter">'</span></span>]],
+        [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/index</span><span class="delimiter">'</span></span>,          <span class="key">access</span>: [<span class="string"><span class="delimiter">'</span><span class="content">permitAll</span><span class="delimiter">'</span></span>]],
+        [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/index.gsp</span><span class="delimiter">'</span></span>,      <span class="key">access</span>: [<span class="string"><span class="delimiter">'</span><span class="content">permitAll</span><span class="delimiter">'</span></span>]],
+        [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/shutdown</span><span class="delimiter">'</span></span>,       <span class="key">access</span>: [<span class="string"><span class="delimiter">'</span><span class="content">permitAll</span><span class="delimiter">'</span></span>]],
+        [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/assets/**</span><span class="delimiter">'</span></span>,      <span class="key">access</span>: [<span class="string"><span class="delimiter">'</span><span class="content">permitAll</span><span class="delimiter">'</span></span>]],
+        [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/**/js/**</span><span class="delimiter">'</span></span>,       <span class="key">access</span>: [<span class="string"><span class="delimiter">'</span><span class="content">permitAll</span><span class="delimiter">'</span></span>]],
+        [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/**/css/**</span><span class="delimiter">'</span></span>,      <span class="key">access</span>: [<span class="string"><span class="delimiter">'</span><span class="content">permitAll</span><span class="delimiter">'</span></span>]],
+        [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/**/images/**</span><span class="delimiter">'</span></span>,   <span class="key">access</span>: [<span class="string"><span class="delimiter">'</span><span class="content">permitAll</span><span class="delimiter">'</span></span>]],
+        [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/**/favicon.ico</span><span class="delimiter">'</span></span>, <span class="key">access</span>: [<span class="string"><span class="delimiter">'</span><span class="content">permitAll</span><span class="delimiter">'</span></span>]]
+]</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -209,7 +256,36 @@ beans {
 <div class="listingblock">
 <div class="title">grails-app/conf/application.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/application.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">grails {
+        plugin {
+                springsecurity {
+                        rest {
+                                token {
+                                        validation {
+                                                useBearerToken = <span class="predefined-constant">false</span> <i class="conum" data-value="1"></i><b>(1)</b>
+                                                enableAnonymousAccess = <span class="predefined-constant">true</span> <i class="conum" data-value="2"></i><b>(2)</b>
+                                        }
+                                        storage {
+                                                jwt {
+                                                        secret = <span class="string"><span class="delimiter">'</span><span class="content">foobar123</span><span class="delimiter">'</span></span>*<span class="integer">4</span> <i class="conum" data-value="3"></i><b>(3)</b>
+                                                }
+                                        }
+                                }
+                                oauth {
+                                        frontendCallbackUrl = { <span class="predefined-type">String</span> tokenValue -&gt; <span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:8080/auth/success?token=</span><span class="inline"><span class="inline-delimiter">${</span>tokenValue<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span> } <i class="conum" data-value="4"></i><b>(4)</b>
+                                        google {
+                                                client = org.pac4j.oauth.client.Google2Client <i class="conum" data-value="5"></i><b>(5)</b>
+                                                key = <span class="string"><span class="delimiter">'</span><span class="content">${GOOGLE_KEY}</span><span class="delimiter">'</span></span> <i class="conum" data-value="6"></i><b>(6)</b>
+                                                secret = <span class="string"><span class="delimiter">'</span><span class="content">${GOOGLE_SECRET}</span><span class="delimiter">'</span></span> <i class="conum" data-value="7"></i><b>(7)</b>
+                                                scope = org.pac4j.oauth.client.Google2Client.Google2Scope.EMAIL_AND_PROFILE <i class="conum" data-value="8"></i><b>(8)</b>
+                                                defaultRoles = <span class="type">[]</span> <i class="conum" data-value="9"></i><b>(9)</b>
+                                        }
+                                }
+                        }
+                        providerNames = [<span class="string"><span class="delimiter">'</span><span class="content">anonymousAuthenticationProvider</span><span class="delimiter">'</span></span>] <i class="conum" data-value="10"></i><b>(10)</b>
+                }
+        }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -282,7 +358,22 @@ the profile ID as the username, and that is only returned by Google if EMAIL_AND
 <div class="listingblock">
 <div class="title">grails-app/conf/application.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/application.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="predefined-type">String</span> ANONYMOUS_FILTERS = <span class="string"><span class="delimiter">'</span><span class="content">anonymousAuthenticationFilter,restTokenValidationFilter,restExceptionTranslationFilter,filterInvocationInterceptor</span><span class="delimiter">'</span></span> <i class="conum" data-value="1"></i><b>(1)</b>
+grails.plugin.springsecurity.filterChain.chainMap = [
+                [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/dbconsole/**</span><span class="delimiter">'</span></span>,      <span class="key">filters</span>: <span class="string"><span class="delimiter">'</span><span class="content">none</span><span class="delimiter">'</span></span>],
+                [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/assets/**</span><span class="delimiter">'</span></span>,      <span class="key">filters</span>: <span class="string"><span class="delimiter">'</span><span class="content">none</span><span class="delimiter">'</span></span>],
+                [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/**/js/**</span><span class="delimiter">'</span></span>,       <span class="key">filters</span>: <span class="string"><span class="delimiter">'</span><span class="content">none</span><span class="delimiter">'</span></span>],
+                [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/**/css/**</span><span class="delimiter">'</span></span>,      <span class="key">filters</span>: <span class="string"><span class="delimiter">'</span><span class="content">none</span><span class="delimiter">'</span></span>],
+                [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/**/images/**</span><span class="delimiter">'</span></span>,   <span class="key">filters</span>: <span class="string"><span class="delimiter">'</span><span class="content">none</span><span class="delimiter">'</span></span>],
+                [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/**/favicon.ico</span><span class="delimiter">'</span></span>, <span class="key">filters</span>: <span class="string"><span class="delimiter">'</span><span class="content">none</span><span class="delimiter">'</span></span>],
+                [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/</span><span class="delimiter">'</span></span>, <span class="key">filters</span>: ANONYMOUS_FILTERS], <i class="conum" data-value="1"></i><b>(1)</b>
+                [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/book/show/*</span><span class="delimiter">'</span></span>, <span class="key">filters</span>: ANONYMOUS_FILTERS],  <i class="conum" data-value="1"></i><b>(1)</b>
+                [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/bookFavourite/index</span><span class="delimiter">'</span></span>, <span class="key">filters</span>: ANONYMOUS_FILTERS], <i class="conum" data-value="1"></i><b>(1)</b>
+                [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/auth/success</span><span class="delimiter">'</span></span>, <span class="key">filters</span>: ANONYMOUS_FILTERS], <i class="conum" data-value="1"></i><b>(1)</b>
+                [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/oauth/authenticate/google</span><span class="delimiter">'</span></span>, <span class="key">filters</span>: ANONYMOUS_FILTERS], <i class="conum" data-value="1"></i><b>(1)</b>
+                [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/oauth/callback/google</span><span class="delimiter">'</span></span>, <span class="key">filters</span>: ANONYMOUS_FILTERS], <i class="conum" data-value="1"></i><b>(1)</b>
+                [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/**</span><span class="delimiter">'</span></span>, <span class="key">filters</span>: <span class="string"><span class="delimiter">'</span><span class="content">JOINED_FILTERS,-anonymousAuthenticationFilter,-exceptionTranslationFilter,-authenticationProcessingFilter,-securityContextPersistenceFilter,-rememberMeAuthenticationFilter</span><span class="delimiter">'</span></span>],  <i class="conum" data-value="1"></i><b>(1)</b>
+]</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -315,7 +406,23 @@ We are not persisting User information in the database. You may have noticed we 
 <div class="listingblock">
 <div class="title">grails-app/views/login/auth.gsp</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/views/login/auth.gsp[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">&lt;html&gt;
+&lt;head&gt;
+    &lt;meta name=<span class="string"><span class="delimiter">&quot;</span><span class="content">layout</span><span class="delimiter">&quot;</span></span> content=<span class="string"><span class="delimiter">&quot;</span><span class="inline"><span class="inline-delimiter">${</span>gspLayout ?: <span class="string"><span class="delimiter">'</span><span class="content">main</span><span class="delimiter">'</span></span><span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>/&gt;
+    &lt;title&gt;&lt;<span class="key">g</span>:message code=<span class="string"><span class="delimiter">'</span><span class="content">springSecurity.login.title</span><span class="delimiter">'</span></span>/&gt;&lt;<span class="regexp"><span class="delimiter">/</span><span class="content">title&gt;</span></span><span class="error">
+</span>&lt;<span class="regexp"><span class="delimiter">/</span><span class="content">head&gt;</span></span><span class="error">
+</span>
+&lt;body&gt;
+&lt;div id=<span class="string"><span class="delimiter">&quot;</span><span class="content">login</span><span class="delimiter">&quot;</span></span>&gt;
+    &lt;div <span class="type">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">inner centered</span><span class="delimiter">&quot;</span></span> &gt;
+        &lt;<span class="class">div</span> <span class="type">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">fheader</span><span class="delimiter">&quot;</span></span>&gt;&lt;<span class="class">g</span>:message code=<span class="string"><span class="delimiter">'</span><span class="content">springSecurity.login.header</span><span class="delimiter">'</span></span>/&gt;&lt;<span class="regexp"><span class="delimiter">/</span><span class="content">div&gt;</span></span><span class="error">
+</span>        &lt;<span class="key">g</span>:<span class="keyword">if</span> test=<span class="string"><span class="delimiter">'</span><span class="content">${flash.message}</span><span class="delimiter">'</span></span>&gt;
+            &lt;div <span class="type">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">login_message</span><span class="delimiter">&quot;</span></span>&gt;<span class="error">$</span>{flash.message}&lt;<span class="regexp"><span class="delimiter">/</span><span class="content">div&gt;</span></span><span class="error">
+</span>        &lt;<span class="regexp"><span class="delimiter">/</span><span class="content">g:if&gt;</span></span><span class="error">
+</span>    &lt;<span class="regexp"><span class="delimiter">/</span><span class="content">div&gt;</span></span><span class="error">
+</span>&lt;<span class="regexp"><span class="delimiter">/</span><span class="content">div&gt;</span></span><span class="error">
+</span>&lt;<span class="regexp"><span class="delimiter">/</span><span class="content">body&gt;</span></span><span class="error">
+</span>&lt;<span class="regexp"><span class="delimiter">/</span><span class="content">html&gt;</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -342,12 +449,12 @@ Register a new logout handler to clear the JWT cookie. We reuse <code>CookieClea
 <div class="listingblock">
 <div class="title">grails-app/conf/spring/resources.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/spring/resources.groovy[role=include]
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">org.springframework.security.web.authentication.logout.CookieClearingLogoutHandler</span>
 beans {
 ...
 ..
 .
-link:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/spring/resources.groovy[role=include]
+    cookieClearingLogoutHandler(CookieClearingLogoutHandler, [<span class="string"><span class="delimiter">'</span><span class="content">jwt</span><span class="delimiter">'</span></span>])
 }</code></pre>
 </div>
 </div>
@@ -357,7 +464,7 @@ link:..<span class="regexp"><span class="delimiter">/</span><span class="content
 <div class="listingblock">
 <div class="title">grails-app/conf/application.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/application.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.logout.handlerNames = [<span class="string"><span class="delimiter">'</span><span class="content">rememberMeServices</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">securityContextLogoutHandler</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">cookieClearingLogoutHandler</span><span class="delimiter">'</span></span>]</code></pre>
 </div>
 </div>
 
@@ -389,7 +496,68 @@ The path to <code>AuthController.success</code> is used in <code>frontendCallbac
 <div class="listingblock">
 <div class="title">grails-app/controllers/demo/AuthController.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/controllers/demo/AuthController.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.config.Config</span>
+<span class="keyword">import</span> <span class="include">grails.core.support.GrailsConfigurationAware</span>
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.annotation.Secured</span>
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.rest.token.reader.TokenReader</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
+
+<span class="keyword">import</span> <span class="include">javax.servlet.http.Cookie</span>
+
+<span class="annotation">@Slf4j</span>
+<span class="type">class</span> <span class="class">AuthController</span> <span class="directive">implements</span> GrailsConfigurationAware {
+
+    TokenReader tokenReader
+
+    <span class="type">int</span> jwtExpiration
+
+    <span class="predefined-type">String</span> grailsServerUrl
+
+    <span class="directive">static</span> allowedMethods = [
+            <span class="key">success</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>,
+            <span class="key">logout</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>
+    ]
+
+    <span class="annotation">@Secured</span>(<span class="string"><span class="delimiter">'</span><span class="content">permitAll</span><span class="delimiter">'</span></span>)
+    <span class="keyword">def</span> <span class="function">success</span>(<span class="predefined-type">String</span> token) {
+        log.debug(<span class="string"><span class="delimiter">'</span><span class="content">token value {}</span><span class="delimiter">'</span></span>, token)
+        <span class="keyword">if</span> (token) {
+            Cookie cookie = jwtCookie(token)
+            response.addCookie(cookie) <i class="conum" data-value="1"></i><b>(1)</b>
+        }
+        [<span class="key">grailsServerUrl</span>: grailsServerUrl]
+    }
+
+    <span class="directive">protected</span> Cookie jwtCookie(<span class="predefined-type">String</span> tokenValue) {
+        Cookie jwtCookie = <span class="keyword">new</span> Cookie( cookieName(), tokenValue )
+        jwtCookie.maxAge = jwtExpiration <i class="conum" data-value="5"></i><b>(5)</b>
+        jwtCookie.path = <span class="string"><span class="delimiter">'</span><span class="content">/</span><span class="delimiter">'</span></span>
+        jwtCookie.setHttpOnly(<span class="predefined-constant">true</span>) <i class="conum" data-value="3"></i><b>(3)</b>
+        <span class="keyword">if</span> ( httpOnly() ) {
+            jwtCookie.setSecure(<span class="predefined-constant">true</span>) <i class="conum" data-value="4"></i><b>(4)</b>
+        }
+        jwtCookie
+    }
+
+    <span class="annotation">@Override</span>
+    <span class="type">void</span> setConfiguration(Config co) {
+        jwtExpiration = co.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">grails.plugin.springsecurity.rest.token.storage.memcached.expiration</span><span class="delimiter">'</span></span>, <span class="predefined-type">Integer</span>, <span class="integer">3600</span>) <i class="conum" data-value="5"></i><b>(5)</b>
+        grailsServerUrl = co.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">grails.serverURL</span><span class="delimiter">'</span></span>, <span class="predefined-type">String</span>)
+    }
+
+    <span class="directive">protected</span> <span class="type">boolean</span> httpOnly() {
+        grailsServerUrl?.startsWith(<span class="string"><span class="delimiter">'</span><span class="content">https</span><span class="delimiter">'</span></span>)
+    }
+
+    <span class="directive">protected</span> <span class="predefined-type">String</span> cookieName() {
+        <span class="keyword">if</span> ( tokenReader <span class="keyword">instanceof</span> JwtCookieTokenReader ) {
+            <span class="keyword">return</span> ((JwtCookieTokenReader) tokenReader).cookieName  <i class="conum" data-value="6"></i><b>(6)</b>
+        }
+        <span class="keyword">return</span> <span class="string"><span class="delimiter">'</span><span class="content">jwt</span><span class="delimiter">'</span></span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -439,7 +607,12 @@ client side to ensure the cookie is correctly set.</p>
 <div class="listingblock">
 <div class="title">grails-app/views/auth/success.gsp</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/views/auth/success.gsp[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">&lt;html&gt;
+    &lt;head&gt;
+        &lt;meta http-equiv=<span class="string"><span class="delimiter">&quot;</span><span class="content">refresh</span><span class="delimiter">&quot;</span></span> content=<span class="string"><span class="delimiter">&quot;</span><span class="content">0; url=</span><span class="inline"><span class="inline-delimiter">${</span>grailsServerUrl ?: <span class="string"><span class="delimiter">'</span><span class="content">http://localhost:8080</span><span class="delimiter">'</span></span><span class="inline-delimiter">}</span></span><span class="content">/</span><span class="delimiter">&quot;</span></span> /&gt;
+        &lt;<span class="regexp"><span class="delimiter">/</span><span class="content">head&gt;</span></span><span class="error">
+</span>        &lt;body&gt;&lt;<span class="key">g</span>:message code=<span class="string"><span class="delimiter">&quot;</span><span class="content">redirecting</span><span class="delimiter">&quot;</span></span> <span class="keyword">default</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">Redirecting...</span><span class="delimiter">&quot;</span></span>/&gt;&lt;<span class="regexp"><span class="delimiter">/</span><span class="content">body&gt;</span></span><span class="error">
+</span>&lt;<span class="regexp"><span class="delimiter">/</span><span class="content">html&gt;</span></span></code></pre>
 </div>
 </div>
 

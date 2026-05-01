@@ -102,13 +102,50 @@ The testing framework used by Grails is <a href="http://spockframework.org/">Spo
 <div class="listingblock">
 <div class="title">src/integration-test/groovy/demo/RestSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/integration-test/groovy/demo/RestSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.plugins.rest.client.RequestCustomizer</span>
+<span class="keyword">import</span> <span class="include">grails.plugins.rest.client.RestBuilder</span>
+<span class="keyword">import</span> <span class="include">grails.plugins.rest.client.RestResponse</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="type">class</span> <span class="class">RestSpec</span> <span class="directive">extends</span> Specification {
+
+    RestBuilder rest = <span class="keyword">new</span> RestBuilder()
+
+    RestResponse get(<span class="predefined-type">String</span> path, <span class="annotation">@DelegatesTo</span>(RequestCustomizer) Closure customizer = <span class="predefined-constant">null</span>) {
+        rest.get(<span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="inline"><span class="inline-delimiter">${</span>path<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>, customizer)
+    }
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">src/integration-test/groovy/demo/BookControllerFunctionalSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/integration-test/groovy/demo/BookControllerFunctionalSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.plugins.rest.client.RestResponse</span>
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">spock.lang.IgnoreIf</span>
+
+<span class="annotation">@IgnoreIf</span>( { <span class="predefined-type">System</span>.getenv(<span class="string"><span class="delimiter">'</span><span class="content">TRAVIS</span><span class="delimiter">'</span></span>) <span class="keyword">as</span> <span class="type">boolean</span> } )
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">BookControllerFunctionalSpec</span> <span class="directive">extends</span> RestSpec {
+
+    BookDataService bookDataService
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">Test the search action correctly searches</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">expect</span>:
+        bookDataService.count()
+
+        <span class="key">when</span>:
+        RestResponse rsp = get(<span class="string"><span class="delimiter">&quot;</span><span class="content">/book/search/Beckwith</span><span class="delimiter">&quot;</span></span>)
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">The list is returned with only one instance</span><span class="delimiter">&quot;</span></span>
+        rsp.json.totalCount == <span class="integer">1</span>
+        rsp.json.results.first().author == <span class="string"><span class="delimiter">'</span><span class="content">Burt Beckwith</span><span class="delimiter">'</span></span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="admonitionblock note">

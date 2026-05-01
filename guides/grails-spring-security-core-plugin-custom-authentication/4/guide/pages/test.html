@@ -88,13 +88,64 @@ a functional test for our custom login form.</p>
 <div class="listingblock">
 <div class="title">/src/integration-test/groovy/demo/BankControllerSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/integration-test/groovy/demo/BankControllerSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">geb.spock.GebSpec</span>
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">BankControllerSpec</span> <span class="directive">extends</span> GebSpec {
+
+    <span class="keyword">def</span> <span class="string"><span class="delimiter">'</span><span class="content">test bank controller is secured</span><span class="delimiter">'</span></span>() {
+        <span class="key">when</span>:
+        baseUrl = <span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/</span><span class="delimiter">&quot;</span></span>
+        go <span class="string"><span class="delimiter">'</span><span class="content">bank</span><span class="delimiter">'</span></span>
+
+        <span class="key">then</span>:
+        at LoginPage
+
+        <span class="key">when</span>:
+        LoginPage loginPage = browser.page(LoginPage)
+        loginPage.login(<span class="string"><span class="delimiter">'</span><span class="content">sherlock</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">elementary</span><span class="delimiter">'</span></span>, BootStrap.BANKCARD[loginPage.position()])
+
+        <span class="key">then</span>:
+        driver.pageSource.contains(<span class="string"><span class="delimiter">'</span><span class="content">Welcome to your bank</span><span class="delimiter">'</span></span>)
+    }
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">/src/integration-test/groovy/demo/LoginPage.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/integration-test/groovy/demo/LoginPage.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">geb.Page</span>
+
+<span class="type">class</span> <span class="class">LoginPage</span> <span class="directive">extends</span> Page {
+
+    <span class="directive">static</span> url = <span class="string"><span class="delimiter">'</span><span class="content">login/auth</span><span class="delimiter">'</span></span>
+
+    <span class="directive">static</span> at = { title == <span class="string"><span class="delimiter">'</span><span class="content">Login</span><span class="delimiter">'</span></span> }
+
+    <span class="directive">static</span> content = {
+        usernameField { <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">#username</span><span class="delimiter">'</span></span>, <span class="integer">0</span>) }
+        passwordField { <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">#password</span><span class="delimiter">'</span></span>, <span class="integer">0</span>) }
+        positionField { <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">#coordinatePosition</span><span class="delimiter">'</span></span>, <span class="integer">0</span>)}
+        valueField { <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">#coordinateValue</span><span class="delimiter">'</span></span>, <span class="integer">0</span>) }
+        submitField { <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">#submit</span><span class="delimiter">'</span></span>, <span class="integer">0</span>) }
+    }
+
+    <span class="predefined-type">String</span> position() {
+        positionField.getAttribute(<span class="string"><span class="delimiter">'</span><span class="content">value</span><span class="delimiter">'</span></span>)
+    }
+
+    <span class="type">void</span> login(<span class="predefined-type">String</span> username, <span class="predefined-type">String</span> password, <span class="predefined-type">String</span> value) {
+        usernameField &lt;&lt; username
+        passwordField &lt;&lt; password
+        valueField &lt;&lt; value
+        submitField.click()
+    }
+}</code></pre>
 </div>
 </div>
 

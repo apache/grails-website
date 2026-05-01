@@ -294,7 +294,13 @@ You can go right to the <strong>completed example</strong> if you <code>cd</code
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>build.gradle[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
+    compile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails:grails-datastore-gorm-hibernate5:6.1.6.RELEASE</span><span class="delimiter">&quot;</span></span>
+    runtime <span class="string"><span class="delimiter">&quot;</span><span class="content">com.h2database:h2:1.4.192</span><span class="delimiter">&quot;</span></span>
+    runtime <span class="string"><span class="delimiter">&quot;</span><span class="content">org.apache.tomcat:tomcat-jdbc:8.5.0</span><span class="delimiter">&quot;</span></span>
+    runtime <span class="string"><span class="delimiter">&quot;</span><span class="content">org.apache.tomcat.embed:tomcat-embed-logging-log4j:8.5.0</span><span class="delimiter">&quot;</span></span>
+    runtime <span class="string"><span class="delimiter">&quot;</span><span class="content">org.slf4j:slf4j-api:1.7.10</span><span class="delimiter">&quot;</span></span>
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -324,7 +330,29 @@ You can go right to the <strong>completed example</strong> if you <code>cd</code
 <div class="listingblock">
 <div class="title">src/main/groovy/demo/GormModule.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/main/groovy/demo/GormModule.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">com.google.inject.AbstractModule</span>
+<span class="keyword">import</span> <span class="include">com.google.inject.Provides</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">org.grails.orm.hibernate.HibernateDatastore</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">GormModule</span> <span class="directive">extends</span> AbstractModule {
+
+    <span class="annotation">@Override</span>
+    <span class="directive">protected</span> <span class="type">void</span> configure() {}
+
+    <span class="annotation">@Provides</span>
+    HibernateDatastore hibernateDatastore() {
+        <span class="predefined-type">Map</span>&lt;<span class="predefined-type">String</span>, <span class="predefined-type">Object</span>&gt; configuration = [
+            <span class="string"><span class="delimiter">'</span><span class="content">hibernate.hbm2ddl.auto</span><span class="delimiter">'</span></span>:<span class="string"><span class="delimiter">'</span><span class="content">create-drop</span><span class="delimiter">'</span></span>,
+            <span class="string"><span class="delimiter">'</span><span class="content">dataSource.url</span><span class="delimiter">'</span></span>:<span class="string"><span class="delimiter">'</span><span class="content">jdbc:h2:mem:myDB</span><span class="delimiter">'</span></span>
+        ] <span class="keyword">as</span> <span class="predefined-type">Map</span>&lt;<span class="predefined-type">String</span>, <span class="predefined-type">Object</span>&gt;
+
+        <span class="keyword">new</span> HibernateDatastore(configuration, getClass().getPackage())
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -370,13 +398,46 @@ $ touch Vehicle.groovy</code></pre>
 <div class="listingblock">
 <div class="title">src/main/groovy/demo/Manufacturer.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/main/groovy/demo/Manufacturer.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.annotation.Entity</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.ToString</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.gorm.GormEntity</span>
+
+<span class="annotation">@ToString</span>
+<span class="annotation">@Entity</span>
+<span class="type">class</span> <span class="class">Manufacturer</span> <span class="directive">implements</span> GormEntity&lt;Manufacturer&gt; {
+
+    <span class="predefined-type">String</span> name
+
+    <span class="directive">static</span> hasMany = [<span class="key">vehicles</span>: Vehicle]
+
+    <span class="directive">static</span> constraints = {
+        name <span class="key">blank</span>: <span class="predefined-constant">false</span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">src/main/groovy/demo/domain/Vehicle.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/main/groovy/demo/Vehicle.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.annotation.Entity</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.gorm.GormEntity</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.ToString</span>
+
+<span class="annotation">@ToString</span>
+<span class="annotation">@Entity</span>
+<span class="type">class</span> <span class="class">Vehicle</span> <span class="directive">implements</span> GormEntity&lt;Vehicle&gt; {
+    <span class="predefined-type">String</span> name
+    <span class="predefined-type">Integer</span> year
+    <span class="directive">static</span> belongsTo = [<span class="key">manufacturer</span>: Manufacturer]
+
+    <span class="directive">static</span> constraints = {
+        name <span class="key">nullable</span>: <span class="predefined-constant">false</span>, <span class="key">blank</span>: <span class="predefined-constant">false</span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -402,7 +463,36 @@ $ touch Vehicle.groovy</code></pre>
 <div class="listingblock">
 <div class="title">/src/main/groovy/demo/BootStrapService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/main/groovy/demo/BootStrapService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">org.grails.orm.hibernate.HibernateDatastore</span>
+<span class="keyword">import</span> <span class="include">ratpack.exec.Blocking</span>
+<span class="keyword">import</span> <span class="include">ratpack.service.Service</span>
+<span class="keyword">import</span> <span class="include">ratpack.service.StartEvent</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">BootStrapService</span> <span class="directive">implements</span> Service {
+    <span class="type">void</span> onStart(StartEvent e) <span class="directive">throws</span> <span class="exception">Exception</span> {
+        e.getRegistry().get(HibernateDatastore)
+        Blocking.exec {
+            populateWithSampleData()
+        }
+    }
+
+    <span class="annotation">@Transactional</span>
+    <span class="type">void</span> populateWithSampleData() {
+        Manufacturer audi = <span class="keyword">new</span> Manufacturer(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">audi</span><span class="delimiter">'</span></span>)
+        audi.addToVehicles(<span class="keyword">new</span> Vehicle(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">A3</span><span class="delimiter">'</span></span>, <span class="key">year</span>: <span class="integer">1996</span>))
+        audi.addToVehicles(<span class="keyword">new</span> Vehicle(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">A4</span><span class="delimiter">'</span></span>, <span class="key">year</span>: <span class="integer">1994</span>))
+        audi.save()
+
+        Manufacturer ford = <span class="keyword">new</span> Manufacturer(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">ford</span><span class="delimiter">'</span></span>)
+        ford.addToVehicles(<span class="keyword">new</span> Vehicle(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Ford KA</span><span class="delimiter">'</span></span>, <span class="key">year</span>: <span class="integer">1996</span>))
+        ford.save()
+    }
+}</code></pre>
 </div>
 </div>
 
@@ -425,7 +515,40 @@ $ touch Vehicle.groovy</code></pre>
 <div class="listingblock">
 <div class="title">src/main/groovy/demo/ManufacturerHandler.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/main/groovy/demo/ManufacturerHandler.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.ReadOnly</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">ratpack.exec.Blocking</span>
+<span class="keyword">import</span> <span class="include">ratpack.groovy.handling.GroovyContext</span>
+<span class="keyword">import</span> <span class="include">ratpack.groovy.handling.GroovyHandler</span>
+<span class="keyword">import</span> <span class="include">static</span> <span class="include">ratpack.jackson.Jackson.json</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">ManufacturerHandler</span> <span class="directive">extends</span> GroovyHandler {
+    <span class="annotation">@Override</span>
+    <span class="directive">protected</span> <span class="type">void</span> handle(GroovyContext context) {
+        <span class="predefined-type">String</span> manufacturerName = context.pathTokens.id
+        Blocking.get {
+            manufacturerName ? findAllVehicleNameByManufacturerName(manufacturerName) : findAllManufacturerName()
+        } then { names -&gt;
+            context.render(json(names))
+        }
+    }
+
+    <span class="annotation">@ReadOnly</span>
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; findAllVehicleNameByManufacturerName(<span class="predefined-type">String</span> manufacturerName) {
+        Vehicle.where { manufacturer.name == manufacturerName }.projections {
+            property(<span class="string"><span class="delimiter">'</span><span class="content">name</span><span class="delimiter">'</span></span>)
+        }.list() <span class="keyword">as</span> <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt;
+    }
+    <span class="annotation">@ReadOnly</span>
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; findAllManufacturerName() {
+        Manufacturer.where {}.projections {
+            property(<span class="string"><span class="delimiter">'</span><span class="content">name</span><span class="delimiter">'</span></span>)
+        }.list() <span class="keyword">as</span> <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt;
+    }
+}</code></pre>
 </div>
 </div>
 
@@ -445,7 +568,23 @@ $ touch Vehicle.groovy</code></pre>
 <div class="listingblock">
 <div class="title">src/ratpack/Ratpack.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/ratpack/Ratpack.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">demo.BootStrapService</span>
+<span class="keyword">import</span> <span class="include">demo.GormModule</span>
+<span class="keyword">import</span> <span class="include">demo.ManufacturerHandler</span>
+
+<span class="keyword">import</span> <span class="include">static</span> <span class="include">ratpack.groovy.Groovy.ratpack</span>
+
+ratpack {
+  bindings {
+    module GormModule
+    bindInstance <span class="keyword">new</span> BootStrapService()
+    add(<span class="keyword">new</span> ManufacturerHandler())
+  }
+  handlers {
+    get(<span class="string"><span class="delimiter">&quot;</span><span class="content">:id/vehicles</span><span class="delimiter">&quot;</span></span>, ManufacturerHandler)
+    get(ManufacturerHandler)
+  }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">

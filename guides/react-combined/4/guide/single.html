@@ -305,7 +305,31 @@ structure, above the <code>client</code> and <code>server</code> sub-projects.</
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>build.gradle[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">task copyClientResources(<span class="key">dependsOn</span>: <span class="string"><span class="delimiter">'</span><span class="content">:client:build</span><span class="delimiter">'</span></span>) { <i class="conum" data-value="1"></i><b>(1)</b>
+    group = <span class="string"><span class="delimiter">'</span><span class="content">build</span><span class="delimiter">'</span></span>
+    description = <span class="string"><span class="delimiter">'</span><span class="content">Copy client resources into server</span><span class="delimiter">'</span></span>
+}
+
+task assembleServerAndClient(<span class="key">dependsOn</span>: [<span class="string"><span class="delimiter">'</span><span class="content">copyClientResources</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">:server:assemble</span><span class="delimiter">'</span></span>]) {  <i class="conum" data-value="2"></i><b>(2)</b>
+    group = <span class="string"><span class="delimiter">'</span><span class="content">build</span><span class="delimiter">'</span></span>
+    description = <span class="string"><span class="delimiter">'</span><span class="content">Build combined server &amp; client JAR</span><span class="delimiter">'</span></span>
+
+    doLast {
+        copy {
+            from fileTree(<span class="key">dir</span>: <span class="string"><span class="delimiter">&quot;</span><span class="inline"><span class="inline-delimiter">${</span>project(<span class="string"><span class="delimiter">'</span><span class="content">:server</span><span class="delimiter">'</span></span>).buildDir<span class="inline-delimiter">}</span></span><span class="content">/libs/</span><span class="delimiter">&quot;</span></span>) <i class="conum" data-value="4"></i><b>(4)</b>
+            into <span class="string"><span class="delimiter">&quot;</span><span class="inline"><span class="inline-delimiter">$</span>rootDir</span><span class="content">/build/</span><span class="delimiter">&quot;</span></span>
+        }
+
+        logger.quiet <span class="string"><span class="delimiter">&quot;</span><span class="content">JAR generated at </span><span class="inline"><span class="inline-delimiter">$</span>rootDir</span><span class="content">/build/. It combines the server and client projects.</span><span class="delimiter">&quot;</span></span>
+    }
+}
+
+copyClientResources.doFirst { <i class="conum" data-value="3"></i><b>(3)</b>
+    copy {
+        from <span class="string"><span class="delimiter">&quot;</span><span class="inline"><span class="inline-delimiter">${</span>project(<span class="string"><span class="delimiter">'</span><span class="content">:client</span><span class="delimiter">'</span></span>).buildDir.absolutePath<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>
+        into <span class="string"><span class="delimiter">&quot;</span><span class="inline"><span class="inline-delimiter">${</span>project(<span class="string"><span class="delimiter">'</span><span class="content">:server</span><span class="delimiter">'</span></span>).buildDir<span class="inline-delimiter">}</span></span><span class="content">/resources/main/public</span><span class="delimiter">&quot;</span></span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -361,7 +385,9 @@ To enable this, edit the <code>server</code> project&#8217;s <code>build.gradle<
 <div class="listingblock">
 <div class="title">server/grails-app/conf/application.yml</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="yml"><span class="error">link:../snippets/server/grails-app/conf/application.yml[role=include]</span></code></pre>
+<pre class="CodeRay highlight"><code data-lang="yml"><span class="key">grails</span>:
+    <span class="key">resources</span>:
+        <span class="key">pattern</span>: <span class="string"><span class="content">/**</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -376,7 +402,16 @@ To enable this, edit the <code>server</code> project&#8217;s <code>build.gradle<
 <div class="listingblock">
 <div class="title">client/src/config.js</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="javascript">link:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>client/src/config.js[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="javascript"><span class="reserved">import</span> pjson from <span class="string"><span class="delimiter">'</span><span class="content">./../package.json</span><span class="delimiter">'</span></span>;
+
+const prod = process.env.NODE_ENV === <span class="string"><span class="delimiter">'</span><span class="content">production</span><span class="delimiter">'</span></span>;  <i class="conum" data-value="1"></i><b>(1)</b>
+
+console.log(<span class="error">`</span>Loading <span class="predefined">$</span>{process.env.NODE_ENV} config...<span class="error">`</span>);
+
+<span class="reserved">export</span> const SERVER_URL = prod ? <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span> : <span class="string"><span class="delimiter">'</span><span class="content">http://localhost:8080</span><span class="delimiter">'</span></span>;
+
+<span class="reserved">export</span> const CLIENT_VERSION = pjson.version;
+<span class="reserved">export</span> const REACT_VERSION = pjson.dependencies.react;</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -407,7 +442,11 @@ To enable this, edit the <code>server</code> project&#8217;s <code>build.gradle<
 <div class="listingblock">
 <div class="title">server/grails-app/controllers/demo/UrlMappings.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/controllers/demo/UrlMappings.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">if</span> ( Environment.current == Environment.PRODUCTION ) { <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="string"><span class="delimiter">'</span><span class="content">/</span><span class="delimiter">'</span></span>(<span class="key">uri</span>: <span class="string"><span class="delimiter">'</span><span class="content">/index.html</span><span class="delimiter">'</span></span>)
+} <span class="keyword">else</span> {
+    <span class="string"><span class="delimiter">'</span><span class="content">/</span><span class="delimiter">'</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">application</span><span class="delimiter">'</span></span>, <span class="key">action</span>:<span class="string"><span class="delimiter">'</span><span class="content">index</span><span class="delimiter">'</span></span>)
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">

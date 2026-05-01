@@ -87,7 +87,7 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>build.gradle[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">compile <span class="string"><span class="delimiter">'</span><span class="content">com.github.groovy-wslite:groovy-wslite:1.1.3</span><span class="delimiter">'</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -96,7 +96,31 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/services/demo/VatService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/VatService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileDynamic</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">wslite.soap.SOAPClient</span>
+<span class="keyword">import</span> <span class="include">wslite.soap.SOAPResponse</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">VatService</span> {
+    <span class="predefined-type">String</span> url = <span class="string"><span class="delimiter">'</span><span class="content">http://ec.europa.eu/taxation_customs/vies/services/checkVatService</span><span class="delimiter">'</span></span>
+    SOAPClient client = <span class="keyword">new</span> SOAPClient(<span class="string"><span class="delimiter">&quot;</span><span class="inline"><span class="inline-delimiter">${</span>url<span class="inline-delimiter">}</span></span><span class="content">.wsdl</span><span class="delimiter">&quot;</span></span>)
+
+    <span class="annotation">@CompileDynamic</span>
+    <span class="predefined-type">Boolean</span> validateVat(<span class="predefined-type">String</span> memberStateCode, <span class="predefined-type">String</span> vatNumberCode) {
+        SOAPResponse response = client.send(<span class="key">SOAPAction</span>: url) {
+            body(<span class="string"><span class="delimiter">'</span><span class="content">xmlns</span><span class="delimiter">'</span></span>: <span class="string"><span class="delimiter">'</span><span class="content">urn:ec.europa.eu:taxud:vies:services:checkVat:types</span><span class="delimiter">'</span></span>) {
+                checkVat {
+                    countryCode(memberStateCode)
+                    vatNumber(vatNumberCode)
+                }
+            }
+        }
+        response.checkVatResponse.valid.text() == <span class="string"><span class="delimiter">'</span><span class="content">true</span><span class="delimiter">'</span></span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -105,7 +129,29 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">src/test/groovy/demo/VatServiceSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/test/groovy/demo/VatServiceSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.testing.services.ServiceUnitTest</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Unroll</span>
+
+<span class="type">class</span> <span class="class">VatServiceSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> ServiceUnitTest&lt;VatService&gt; {
+
+    <span class="annotation">@Unroll</span>
+    <span class="keyword">def</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">#memberState : #vatNumber #unrollDescription</span><span class="delimiter">&quot;</span></span>(<span class="predefined-type">String</span> memberState, <span class="predefined-type">String</span> vatNumber, <span class="predefined-type">Boolean</span> expected, <span class="predefined-type">String</span> unrollDescription) {
+
+        <span class="key">expect</span>:
+        expected == service.validateVat(memberState, vatNumber)
+
+        <span class="key">where</span>:
+        memberState | vatNumber   || expected
+        <span class="string"><span class="delimiter">'</span><span class="content">es</span><span class="delimiter">'</span></span>        | <span class="string"><span class="delimiter">'</span><span class="content">B99286353</span><span class="delimiter">'</span></span> || <span class="predefined-constant">true</span>
+        <span class="string"><span class="delimiter">'</span><span class="content">es</span><span class="delimiter">'</span></span>        | <span class="string"><span class="delimiter">'</span><span class="content">B19280031</span><span class="delimiter">'</span></span> || <span class="predefined-constant">true</span>
+        <span class="string"><span class="delimiter">'</span><span class="content">es</span><span class="delimiter">'</span></span>        | <span class="string"><span class="delimiter">'</span><span class="content">XXXXXXXXX</span><span class="delimiter">'</span></span> || <span class="predefined-constant">false</span>
+
+        unrollDescription = expected ? <span class="string"><span class="delimiter">'</span><span class="content">is valid</span><span class="delimiter">'</span></span> : <span class="string"><span class="delimiter">'</span><span class="content"> is not valid</span><span class="delimiter">'</span></span>
+    }
+}</code></pre>
 </div>
 </div>
 

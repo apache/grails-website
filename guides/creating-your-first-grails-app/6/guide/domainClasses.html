@@ -310,13 +310,39 @@ $ ./grailsw create-domain-class Model
 <div class="listingblock">
 <div class="title">grails-app/domain/org/grails/guides/Make.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/domain/org/grails/guides/Make.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> org.grails.guides
+
+<span class="type">class</span> <span class="class">Make</span> {
+
+    <span class="predefined-type">String</span> name
+
+    <span class="directive">static</span> constraints = {
+    }
+
+    <span class="predefined-type">String</span> toString() {
+        name
+    }
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">grails-app/domain/org/grails/guides/Model.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/domain/org/grails/guides/Model.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> org.grails.guides
+
+<span class="type">class</span> <span class="class">Model</span> {
+
+    <span class="predefined-type">String</span> name
+
+    <span class="directive">static</span> belongsTo = [ <span class="key">make</span>: Make ]
+
+    <span class="directive">static</span> constraints = {
+    }
+
+    <span class="predefined-type">String</span> toString() {
+        name
+    }
+}</code></pre>
 </div>
 </div>
 <div class="admonitionblock note">
@@ -337,7 +363,22 @@ The <code>belongsTo</code> property is one of several properties that GORM uses 
 <div class="listingblock">
 <div class="title">grails-app/domain/org/grails/guides/Vehicle.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/domain/org/grails/guides/Vehicle.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> org.grails.guides
+
+<span class="annotation">@SuppressWarnings</span>(<span class="string"><span class="delimiter">'</span><span class="content">GrailsDomainReservedSqlKeywordName</span><span class="delimiter">'</span></span>)
+<span class="type">class</span> <span class="class">Vehicle</span> {
+
+    <span class="predefined-type">Integer</span> year
+
+    <span class="predefined-type">String</span> name
+    Model model
+    Make make
+
+    <span class="directive">static</span> constraints = {
+        year <span class="key">min</span>: <span class="integer">1900</span>
+        name <span class="key">maxSize</span>: <span class="integer">255</span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -363,7 +404,32 @@ The <code>belongsTo</code> property is one of several properties that GORM uses 
 <div class="listingblock">
 <div class="title">grails-app/init/org/grails/guides/BootStrap.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/init/org/grails/guides/BootStrap.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> org.grails.guides
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">BootStrap</span> {
+
+    MakeService makeService
+    ModelService modelService
+    VehicleService vehicleService
+    <span class="keyword">def</span> init = { servletContext -&gt;
+
+        Make nissan = makeService.save(<span class="string"><span class="delimiter">'</span><span class="content">Nissan</span><span class="delimiter">'</span></span>)
+        Make ford = makeService.save( <span class="string"><span class="delimiter">'</span><span class="content">Ford</span><span class="delimiter">'</span></span>)
+
+        Model titan = modelService.save(<span class="string"><span class="delimiter">'</span><span class="content">Titan</span><span class="delimiter">'</span></span>, nissan)
+        Model leaf = modelService.save(<span class="string"><span class="delimiter">'</span><span class="content">Leaf</span><span class="delimiter">'</span></span>, nissan)
+        Model windstar = modelService.save(<span class="string"><span class="delimiter">'</span><span class="content">Windstar</span><span class="delimiter">'</span></span>, ford)
+
+        vehicleService.save(<span class="string"><span class="delimiter">'</span><span class="content">Pickup</span><span class="delimiter">'</span></span>, nissan, titan, <span class="integer">2012</span>).save()
+        vehicleService.save(<span class="string"><span class="delimiter">'</span><span class="content">Economy</span><span class="delimiter">'</span></span>, nissan, leaf, <span class="integer">2014</span>).save()
+        vehicleService.save(<span class="string"><span class="delimiter">'</span><span class="content">Minivan</span><span class="delimiter">'</span></span>, ford, windstar, <span class="integer">1990</span>).save()
+    }
+    <span class="keyword">def</span> destroy = {
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -492,7 +558,23 @@ Be sure to add the dependency to the <code>dependencies</code> section of the <c
 <div class="listingblock">
 <div class="title">docs/console.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>docs/console.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">org.grails.guides.*</span>
+
+<span class="keyword">def</span> vehicles = Vehicle.list()
+
+println vehicles.size()
+
+<span class="keyword">def</span> pickup = Vehicle.findByName(<span class="string"><span class="delimiter">&quot;</span><span class="content">Pickup</span><span class="delimiter">&quot;</span></span>)
+
+println pickup.name
+println pickup.make.name
+println pickup.model.name
+
+<span class="keyword">def</span> nissan = Make.findByName(<span class="string"><span class="delimiter">&quot;</span><span class="content">Nissan</span><span class="delimiter">&quot;</span></span>)
+
+<span class="keyword">def</span> nissans = Vehicle.findAllByMake(nissan)
+
+println nissans.size()</code></pre>
 </div>
 </div>
 

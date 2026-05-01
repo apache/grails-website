@@ -113,19 +113,56 @@ We’ll add a <code>listAll()</code> method to all of the classes. This method w
 <div class="listingblock">
 <div class="title">/grails-app/services/demo/DriverService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/DriverService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.ReadOnly</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="annotation">@ReadOnly</span>
+<span class="type">class</span> <span class="class">DriverService</span> {
+
+    <span class="annotation">@ReadOnly</span>
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">Driver</span>&gt; listAll() {
+        <span class="predefined-type">Driver</span>.where { }.list()
+    }
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">/grails-app/services/demo/MakeService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/MakeService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.ReadOnly</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">MakeService</span> {
+
+    <span class="annotation">@ReadOnly</span>
+    <span class="predefined-type">List</span>&lt;Make&gt; listAll() {
+        Make.where { }.list()
+    }
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">/grails-app/services/demo/ModelService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/ModelService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.ReadOnly</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">ModelService</span> {
+
+    <span class="annotation">@ReadOnly</span>
+    <span class="predefined-type">List</span>&lt;Model&gt; listAll() {
+        Model.where { }.list()
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -134,7 +171,31 @@ We’ll add a <code>listAll()</code> method to all of the classes. This method w
 <div class="listingblock">
 <div class="title">/grails-app/services/demo/VehicleService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/VehicleService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.ReadOnly</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="annotation">@ReadOnly</span>
+<span class="type">class</span> <span class="class">VehicleService</span> {
+
+    <span class="keyword">def</span> <span class="function">save</span>(<span class="directive">final</span> Vehicle vehicle) {
+        vehicle.save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+    }
+
+    <span class="annotation">@ReadOnly</span>
+    <span class="predefined-type">List</span>&lt;Vehicle&gt; listAll(<span class="type">boolean</span> lazyFetch = <span class="predefined-constant">true</span>) {
+        <span class="keyword">if</span> ( !lazyFetch ) {
+            <span class="keyword">return</span> Vehicle.where {}
+                    .join(<span class="string"><span class="delimiter">'</span><span class="content">make</span><span class="delimiter">'</span></span>)
+                    .join(<span class="string"><span class="delimiter">'</span><span class="content">model</span><span class="delimiter">'</span></span>)
+                    .join(<span class="string"><span class="delimiter">'</span><span class="content">driver</span><span class="delimiter">'</span></span>)
+                    .list()
+        }
+        Vehicle.where { }.list()
+    }
+}</code></pre>
 </div>
 </div>
 

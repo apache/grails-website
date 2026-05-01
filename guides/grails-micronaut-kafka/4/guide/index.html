@@ -348,7 +348,17 @@ We add a separate analytics app that keeps track of the number of times each one
 <div class="listingblock">
 <div class="title">grails-app/domain/example/grails/Book.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/domain/example/grails/<span class="predefined-type">Book</span>.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="type">class</span> <span class="class">Book</span> {
+    <span class="predefined-type">String</span> isbn
+    <span class="predefined-type">String</span> name
+
+    <span class="directive">static</span> constraints = {
+        isbn <span class="key">unique</span>: <span class="predefined-constant">true</span>, <span class="key">blank</span>: <span class="predefined-constant">false</span>, <span class="key">nullable</span>: <span class="predefined-constant">false</span>
+        name <span class="key">blank</span>: <span class="predefined-constant">false</span>, <span class="key">nullable</span>: <span class="predefined-constant">false</span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -357,7 +367,18 @@ We add a separate analytics app that keeps track of the number of times each one
 <div class="listingblock">
 <div class="title">grails-app/services/example/grails/BookGormService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/BookGormService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Service</span>
+
+<span class="annotation">@Service</span>(<span class="predefined-type">Book</span>)
+<span class="type">interface</span> BookGormService {
+    <span class="predefined-type">Book</span> saveBook(<span class="predefined-type">Book</span> book)
+
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; findAll()
+
+    <span class="predefined-type">Book</span> findByIsbn(<span class="predefined-type">String</span> isbn)
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -366,7 +387,27 @@ We add a separate analytics app that keeps track of the number of times each one
 <div class="listingblock">
 <div class="title">grails-app/init/example/grails/Bootstrap.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/init/example/grails/BootStrap.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">BootStrap</span> {
+
+    BookGormService bookGormService
+
+    <span class="keyword">def</span> init = { servletContext -&gt;
+        [
+                <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">1491950358</span><span class="delimiter">'</span></span>, <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Building Microservices</span><span class="delimiter">'</span></span>),
+                <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">1680502395</span><span class="delimiter">'</span></span>, <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Release It!</span><span class="delimiter">'</span></span>),
+                <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">0321601912</span><span class="delimiter">'</span></span>, <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Continuous Delivery</span><span class="delimiter">'</span></span>)
+        ].each {book -&gt;
+            bookGormService.saveBook(book)
+        }
+    }
+    <span class="keyword">def</span> destroy = {
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -375,7 +416,8 @@ We add a separate analytics app that keeps track of the number of times each one
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>build.gradle[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">implementation <span class="string"><span class="delimiter">&quot;</span><span class="content">io.micronaut:micronaut-inject-groovy</span><span class="delimiter">&quot;</span></span>
+implementation(<span class="string"><span class="delimiter">&quot;</span><span class="content">io.micronaut.kafka:micronaut-kafka:3.1.0</span><span class="delimiter">&quot;</span></span>)</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -384,7 +426,9 @@ We add a separate analytics app that keeps track of the number of times each one
 <div class="listingblock">
 <div class="title">grails-app/conf/application.yml</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/application.yml[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">kafka</span>:
+    <span class="key">bootstrap</span>:
+        <span class="key">servers</span>: <span class="key">localhost</span>:<span class="integer">9092</span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -393,7 +437,17 @@ We add a separate analytics app that keeps track of the number of times each one
 <div class="listingblock">
 <div class="title">src/main/groovy/example/grails/AnalyticsClient.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/main/groovy/example/grails/AnalyticsClient.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">io.micronaut.configuration.kafka.annotation.KafkaClient</span>
+<span class="keyword">import</span> <span class="include">io.micronaut.configuration.kafka.annotation.Topic</span>
+
+<span class="annotation">@KafkaClient</span>
+<span class="type">interface</span> AnalyticsClient {
+
+    <span class="annotation">@Topic</span>(<span class="string"><span class="delimiter">'</span><span class="content">analytics</span><span class="delimiter">'</span></span>) <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="predefined-type">Map</span> updateAnalytics(<span class="predefined-type">Map</span> book) <i class="conum" data-value="2"></i><b>(2)</b>
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -414,7 +468,38 @@ We add a separate analytics app that keeps track of the number of times each one
 <div class="listingblock">
 <div class="title">grails-app/controllers/example/grails/BooksController.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/controllers/example/grails/BooksController.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Autowired</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">BooksController</span> {
+
+    BookGormService bookGormService
+
+    <span class="annotation">@Autowired</span>
+    AnalyticsClient analyticsClient
+
+    <span class="directive">static</span> allowedMethods = [
+            <span class="key">index</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>,
+            <span class="key">show</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>
+    ]
+
+    <span class="keyword">def</span> <span class="function">index</span>() {
+        [<span class="key">books</span>: bookGormService.findAll()]
+    }
+
+    <span class="keyword">def</span> <span class="function">show</span>(<span class="predefined-type">String</span> isbn) {
+        <span class="predefined-type">Book</span> book = bookGormService.findByIsbn(isbn)
+        <span class="keyword">if</span> (!book) {
+            response.status = <span class="integer">404</span>
+            <span class="keyword">return</span>
+        }
+        analyticsClient.updateAnalytics([<span class="key">isbn</span>: book.isbn])
+        render(<span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">book</span>: book])
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -423,7 +508,10 @@ We add a separate analytics app that keeps track of the number of times each one
 <div class="listingblock">
 <div class="title">grails-app/controllers/example/grails/UrlMappings.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/controllers/example/grails/UrlMappings.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">        <span class="string"><span class="delimiter">&quot;</span><span class="content">/books/</span><span class="inline"><span class="inline-delimiter">$</span>isbn</span><span class="delimiter">&quot;</span></span> {
+            controller = <span class="string"><span class="delimiter">'</span><span class="content">books</span><span class="delimiter">'</span></span>
+            action = <span class="string"><span class="delimiter">'</span><span class="content">show</span><span class="delimiter">'</span></span>
+        }</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -432,13 +520,25 @@ We add a separate analytics app that keeps track of the number of times each one
 <div class="listingblock">
 <div class="title">grails-app/views/books/_book.gson</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/views/books/_book.gson[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">example.grails.Book</span>
+
+model {
+    <span class="predefined-type">Book</span> book
+}
+json {
+    isbn book.isbn
+    name book.name
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">grails-app/views/books/index.gson</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/views/books/index.gson[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">example.grails.Book</span>
+model {
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; books = <span class="type">[]</span>
+}
+json tmpl.book(books)</code></pre>
 </div>
 </div>
 

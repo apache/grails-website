@@ -84,7 +84,57 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/services/demo/RegisterService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/RegisterService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.events.annotation.Publisher</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">grails.validation.ValidationException</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">org.springframework.context.MessageSource</span>
+<span class="keyword">import</span> <span class="include">org.springframework.dao.DuplicateKeyException</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">RegisterService</span> {
+
+    MessageSource messageSource
+
+    <span class="annotation">@Transactional</span>
+    <span class="annotation">@Publisher</span> <i class="conum" data-value="1"></i><b>(1)</b>
+    User saveUser(User user) {
+        user.save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>) <i class="conum" data-value="2"></i><b>(2)</b>
+        user
+    }
+
+    SaveUserResult register(RegisterCommand cmd, <span class="predefined-type">Locale</span> locale) {
+        User user = cmd <span class="keyword">as</span> User
+        <span class="keyword">try</span> {
+            saveUser(user)
+            <span class="keyword">return</span> <span class="keyword">new</span> SaveUserResult(<span class="key">message</span>: userSavedMessage(cmd.email, locale))
+        } <span class="keyword">catch</span> (ValidationException | DuplicateKeyException validationException) {
+            <span class="keyword">return</span> <span class="keyword">new</span> SaveUserResult(<span class="key">error</span>: userSavedErrorMessage(cmd.email, locale))
+        }
+    }
+
+    <span class="predefined-type">String</span> userSavedErrorMessage(<span class="predefined-type">String</span> email, <span class="predefined-type">Locale</span> locale) {
+        messageSource.getMessage(<span class="string"><span class="delimiter">'</span><span class="content">user.saved.error</span><span class="delimiter">'</span></span>,
+                [email] <span class="keyword">as</span> <span class="predefined-type">Object</span><span class="type">[]</span>,
+                <span class="string"><span class="delimiter">&quot;</span><span class="content">Error while saving user with </span><span class="inline"><span class="inline-delimiter">${</span>email<span class="inline-delimiter">}</span></span><span class="content"> email address</span><span class="delimiter">&quot;</span></span>,
+                locale)
+    }
+
+    <span class="predefined-type">String</span> userSavedMessage(<span class="predefined-type">String</span> email, <span class="predefined-type">Locale</span> locale) {
+        messageSource.getMessage(<span class="string"><span class="delimiter">'</span><span class="content">user.saved</span><span class="delimiter">'</span></span>,
+                [email] <span class="keyword">as</span> <span class="predefined-type">Object</span><span class="type">[]</span>,
+                <span class="string"><span class="delimiter">&quot;</span><span class="content">User saved with </span><span class="inline"><span class="inline-delimiter">${</span>email<span class="inline-delimiter">}</span></span><span class="content"> email address</span><span class="delimiter">&quot;</span></span>,
+                locale)
+    }
+}
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">SaveUserResult</span> {
+    <span class="predefined-type">String</span> message
+    <span class="predefined-type">String</span> error
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -107,7 +157,27 @@ In this guide, we save a <code>Notification</code> in the database.</p>
 <div class="listingblock">
 <div class="title">grails-app/services/demo/WelcomeEmailService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/WelcomeEmailService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.events.annotation.Subscriber</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
+
+<span class="annotation">@Slf4j</span>
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">WelcomeEmailService</span> {
+
+    <span class="annotation">@Transactional</span>
+    <span class="annotation">@Subscriber</span> <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="type">void</span> saveUser(User user) {
+        <span class="predefined-type">Notification</span> notification = <span class="keyword">new</span> <span class="predefined-type">Notification</span>(<span class="key">email</span>: user.email, <span class="key">subject</span>: <span class="string"><span class="delimiter">'</span><span class="content">Welcome to Grails App</span><span class="delimiter">'</span></span>)
+        <span class="comment">// TODO Send Email</span>
+        <span class="keyword">if</span> ( !notification.save() ) {
+            log.error(<span class="string"><span class="delimiter">'</span><span class="content">unable to save notification {}</span><span class="delimiter">'</span></span>, notification.errors.toString())
+        }
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">

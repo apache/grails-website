@@ -324,7 +324,7 @@ the qualifier in <code>build.gradle</code> to <code>compile</code>:</p>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
     ...
-link:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>build.gradle[role=include]
+    implementation <span class="string"><span class="delimiter">&quot;</span><span class="content">io.micronaut:micronaut-http-client</span><span class="delimiter">&quot;</span></span>
 }</code></pre>
 </div>
 </div>
@@ -363,13 +363,30 @@ named exactly the same as the JSON structure.  The iTunes API will return <code>
 <div class="listingblock">
 <div class="title">src/main/groovy/example/grails/SearchResult.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/main/groovy/example/grails/<span class="predefined-type">SearchResult</span>.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">SearchResult</span> {
+    <span class="type">int</span> resultCount
+    <span class="predefined-type">List</span>&lt;Album&gt; results = <span class="type">[]</span>
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">src/main/groovy/example/grails/Album.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/main/groovy/example/grails/Album.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">Album</span> {
+    <span class="predefined-type">String</span> artistName
+    <span class="predefined-type">String</span> collectionName
+    <span class="predefined-type">String</span> collectionViewUrl
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -378,7 +395,12 @@ named exactly the same as the JSON structure.  The iTunes API will return <code>
 <div class="listingblock">
 <div class="title">grails-app/conf/application.yml</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/application.yml[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">---
+<span class="key">micronaut</span>:
+    <span class="key">codec</span>:
+        <span class="key">json</span>:
+            <span class="key">additionalTypes</span>:
+                - text/javascript</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -390,7 +412,22 @@ map the incoming JSON to the POJOs. Add the following to <code>ItunesSearchServi
 <div class="listingblock">
 <div class="title">grails-app/services/example/grails/ItunesSearchService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/ItunesSearchService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">    <span class="predefined-type">List</span>&lt;Album&gt; searchWithApi(<span class="predefined-type">String</span> searchTerm) {
+        <span class="predefined-type">String</span> baseUrl = <span class="string"><span class="delimiter">&quot;</span><span class="content">https://itunes.apple.com/</span><span class="delimiter">&quot;</span></span>
+        HttpClient client = HttpClient.create(baseUrl.toURL())
+        HttpRequest request = HttpRequest.GET(UriBuilder.of(<span class="string"><span class="delimiter">'</span><span class="content">/search</span><span class="delimiter">'</span></span>)
+                .queryParam(<span class="string"><span class="delimiter">'</span><span class="content">limit</span><span class="delimiter">'</span></span>, <span class="integer">25</span>)
+                .queryParam(<span class="string"><span class="delimiter">'</span><span class="content">media</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">music</span><span class="delimiter">'</span></span>)
+                .queryParam(<span class="string"><span class="delimiter">'</span><span class="content">entity</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">album</span><span class="delimiter">'</span></span>)
+                .queryParam(<span class="string"><span class="delimiter">'</span><span class="content">term</span><span class="delimiter">'</span></span>, searchTerm)
+                .build())
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = client.toBlocking().exchange(request, <span class="predefined-type">String</span>) <i class="conum" data-value="1"></i><b>(1)</b>
+        <span class="predefined-type">String</span> json = resp.body()
+        ObjectMapper objectMapper = <span class="keyword">new</span> ObjectMapper()
+        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, <span class="predefined-constant">false</span>) <i class="conum" data-value="2"></i><b>(2)</b>
+        <span class="predefined-type">SearchResult</span> searchResult = objectMapper.readValue(json, <span class="predefined-type">SearchResult</span>) <i class="conum" data-value="3"></i><b>(3)</b>
+        searchResult.results
+    }</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -435,7 +472,17 @@ the data-binded POJO.  This simple and elegant approach cuts down on much of the
 <div class="listingblock">
 <div class="title">src/main/groovy/example/grails/ItunesClient.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/main/groovy/example/grails/ItunesClient.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">io.micronaut.http.annotation.Get</span>
+<span class="keyword">import</span> <span class="include">io.micronaut.http.client.annotation.Client</span>
+
+<span class="annotation">@Client</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">https://itunes.apple.com/</span><span class="delimiter">&quot;</span></span>) <i class="conum" data-value="1"></i><b>(1)</b>
+<span class="type">interface</span> ItunesClient {
+
+    <span class="annotation">@Get</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">/search?limit=25&amp;media=music&amp;entity=album&amp;term={term}</span><span class="delimiter">&quot;</span></span>) <i class="conum" data-value="2"></i><b>(2)</b>
+    <span class="predefined-type">SearchResult</span> search(<span class="predefined-type">String</span> term)
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -457,8 +504,12 @@ the data-binded POJO.  This simple and elegant approach cuts down on much of the
 <div class="title">grails-app/services/example/grails/ItunesSearchService.groovy</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">...
-link:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/ItunesSearchService.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/ItunesSearchService.groovy[role=include]
+    <span class="annotation">@Autowired</span>
+    ItunesClient itunesClient
+    <span class="predefined-type">List</span>&lt;Album&gt; searchWithDeclarativeClient(<span class="predefined-type">String</span> searchTerm) {
+        <span class="predefined-type">SearchResult</span> searchResult = itunesClient.search(searchTerm)
+        searchResult.results
+    }
 ...</code></pre>
 </div>
 </div>
@@ -469,7 +520,12 @@ link:..<span class="regexp"><span class="delimiter">/</span><span class="content
 <div class="title">grails-app/controllers/example/grails/SearchController.groovy</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">...
-link:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/controllers/example/grails/SearchController.groovy[role=include]
+    def searchWithDeclarativeClient(<span class="predefined-type">String</span> searchTerm) {
+        <span class="keyword">if</span>(searchTerm) {
+            <span class="predefined-type">List</span>&lt;Album&gt; albums = itunesSearchService.searchWithDeclarativeClient(searchTerm)
+            respond([<span class="key">searchTerm</span>: searchTerm, <span class="key">albums</span>: albums])
+        }
+    }
 ...</code></pre>
 </div>
 </div>
@@ -498,7 +554,14 @@ record labels. We will use the grails built-in <a href="https://docs.grails.org/
 <div class="listingblock">
 <div class="title">grails-app/domain/example/grails/RecordLabel.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/domain/example/grails/RecordLabel.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">grails.rest.Resource</span>
+
+<span class="annotation">@Resource</span>(uri=<span class="string"><span class="delimiter">'</span><span class="content">/recordlabels</span><span class="delimiter">'</span></span>)
+<span class="type">class</span> <span class="class">RecordLabel</span> {
+    <span class="predefined-type">String</span> name
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -507,13 +570,35 @@ record labels. We will use the grails built-in <a href="https://docs.grails.org/
 <div class="listingblock">
 <div class="title">grails-app/services/example/grails/RecordLabelService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/RecordLabelService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Service</span>
+
+<span class="annotation">@Service</span>(RecordLabel)
+<span class="type">interface</span> RecordLabelService {
+    RecordLabel save(<span class="predefined-type">String</span> name)
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">grails-app/init/example/grails/BootStrap.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/init/example/grails/BootStrap.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">BootStrap</span> {
+
+    RecordLabelService recordLabelService
+
+    <span class="keyword">def</span> init = { servletContext -&gt;
+        recordLabelService.save(<span class="string"><span class="delimiter">&quot;</span><span class="content">Warner</span><span class="delimiter">&quot;</span></span>)
+        recordLabelService.save(<span class="string"><span class="delimiter">&quot;</span><span class="content">Sony</span><span class="delimiter">&quot;</span></span>)
+    }
+    <span class="keyword">def</span> destroy = {
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -523,7 +608,55 @@ also issue a <code>POST</code> to insert one more record label, with a map of da
 <div class="listingblock">
 <div class="title">src/integration-test/groovy/example/grails/RecordLabelControllerSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/integration-test/groovy/example/grails/RecordLabelControllerSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Rollback</span>
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">grails.testing.spock.OnceBefore</span>
+<span class="keyword">import</span> <span class="include">io.micronaut.core.type.Argument</span>
+<span class="keyword">import</span> <span class="include">io.micronaut.http.HttpRequest</span>
+<span class="keyword">import</span> <span class="include">io.micronaut.http.HttpResponse</span>
+<span class="keyword">import</span> <span class="include">io.micronaut.http.HttpStatus</span>
+<span class="keyword">import</span> <span class="include">io.micronaut.http.client.HttpClient</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Shared</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="annotation">@Integration</span>
+<span class="annotation">@Rollback</span>
+<span class="type">class</span> <span class="class">RecordLabelControllerSpec</span> <span class="directive">extends</span> Specification {
+
+    <span class="annotation">@Shared</span>
+    HttpClient client
+
+    <span class="annotation">@OnceBefore</span>
+    <span class="type">void</span> init() { <i class="conum" data-value="1"></i><b>(1)</b>
+        <span class="predefined-type">String</span> baseUrl = <span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">$</span>serverPort</span><span class="delimiter">&quot;</span></span>
+        <span class="local-variable">this</span>.client  = HttpClient.create(baseUrl.toURL())
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">test rest get record labels</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">record labels exist</span><span class="delimiter">&quot;</span></span>
+        HttpResponse&lt;<span class="predefined-type">List</span>&lt;<span class="predefined-type">Map</span>&gt;&gt; resp = client.toBlocking().exchange(HttpRequest.GET(<span class="string"><span class="delimiter">&quot;</span><span class="content">/recordlabels</span><span class="delimiter">&quot;</span></span>), Argument.of(<span class="predefined-type">List</span>, <span class="predefined-type">Map</span>)) <i class="conum" data-value="2"></i><b>(2)</b>
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">client can retrieve them</span><span class="delimiter">&quot;</span></span>
+        resp.status == HttpStatus.OK  <i class="conum" data-value="3"></i><b>(3)</b>
+        resp.body().size() == <span class="integer">2</span>
+        resp.body()[<span class="integer">0</span>].name == <span class="string"><span class="delimiter">&quot;</span><span class="content">Warner</span><span class="delimiter">&quot;</span></span>
+        resp.body()[<span class="integer">1</span>].name == <span class="string"><span class="delimiter">&quot;</span><span class="content">Sony</span><span class="delimiter">&quot;</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">test rest post record labels</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">a post is issued</span><span class="delimiter">&quot;</span></span>
+        HttpResponse&lt;<span class="predefined-type">Map</span>&gt; resp = client.toBlocking().exchange(HttpRequest.POST(<span class="string"><span class="delimiter">&quot;</span><span class="content">/recordlabels</span><span class="delimiter">&quot;</span></span>, [<span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Universal</span><span class="delimiter">&quot;</span></span>]), <span class="predefined-type">Map</span>) <i class="conum" data-value="4"></i><b>(4)</b>
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">element is created</span><span class="delimiter">&quot;</span></span>
+        resp.status == HttpStatus.CREATED <i class="conum" data-value="5"></i><b>(5)</b>
+        resp.body().size() == <span class="integer">2</span>
+        resp.body().id
+        resp.body().name == <span class="string"><span class="delimiter">&quot;</span><span class="content">Universal</span><span class="delimiter">&quot;</span></span>
+
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">

@@ -87,7 +87,40 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">src/main/groovy/demo/ManufacturerHandler.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/main/groovy/demo/ManufacturerHandler.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.ReadOnly</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">ratpack.exec.Blocking</span>
+<span class="keyword">import</span> <span class="include">ratpack.groovy.handling.GroovyContext</span>
+<span class="keyword">import</span> <span class="include">ratpack.groovy.handling.GroovyHandler</span>
+<span class="keyword">import</span> <span class="include">static</span> <span class="include">ratpack.jackson.Jackson.json</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">ManufacturerHandler</span> <span class="directive">extends</span> GroovyHandler {
+    <span class="annotation">@Override</span>
+    <span class="directive">protected</span> <span class="type">void</span> handle(GroovyContext context) {
+        <span class="predefined-type">String</span> manufacturerName = context.pathTokens.id
+        Blocking.get {
+            manufacturerName ? findAllVehicleNameByManufacturerName(manufacturerName) : findAllManufacturerName()
+        } then { names -&gt;
+            context.render(json(names))
+        }
+    }
+
+    <span class="annotation">@ReadOnly</span>
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; findAllVehicleNameByManufacturerName(<span class="predefined-type">String</span> manufacturerName) {
+        Vehicle.where { manufacturer.name == manufacturerName }.projections {
+            property(<span class="string"><span class="delimiter">'</span><span class="content">name</span><span class="delimiter">'</span></span>)
+        }.list() <span class="keyword">as</span> <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt;
+    }
+    <span class="annotation">@ReadOnly</span>
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; findAllManufacturerName() {
+        Manufacturer.where {}.projections {
+            property(<span class="string"><span class="delimiter">'</span><span class="content">name</span><span class="delimiter">'</span></span>)
+        }.list() <span class="keyword">as</span> <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt;
+    }
+}</code></pre>
 </div>
 </div>
 

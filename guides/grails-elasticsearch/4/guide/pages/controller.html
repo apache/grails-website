@@ -87,7 +87,32 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/controllers/demo/BookController.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/controllers/demo/BookController.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.plugins.elasticsearch.ElasticSearchService</span>
+<span class="keyword">import</span> <span class="include">grails.validation.ValidationException</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="keyword">import</span> <span class="include">static</span> <span class="include">org.springframework.http.HttpStatus.*</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">BookController</span> {
+
+    BookSearchService bookSearchService
+
+    <span class="directive">static</span> responseFormats = [<span class="string"><span class="delimiter">'</span><span class="content">json</span><span class="delimiter">'</span></span>]
+    <span class="directive">static</span> allowedMethods = [
+            <span class="key">search</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">GET</span><span class="delimiter">&quot;</span></span>
+    ]
+
+    <span class="keyword">def</span> <span class="function">search</span>(<span class="predefined-type">String</span> q) {
+        <span class="keyword">if</span> ( !q ) {
+            render <span class="key">status</span>: NOT_FOUND <i class="conum" data-value="1"></i><b>(1)</b>
+            <span class="keyword">return</span>
+        }
+        respond bookSearchService.search(q)
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -104,7 +129,38 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">src/test/groovy/demo/BookControllerSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/test/groovy/demo/BookControllerSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.testing.web.controllers.ControllerUnitTest</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Unroll</span>
+<span class="keyword">import</span> <span class="include">static</span> <span class="include">javax.servlet.http.HttpServletResponse.SC_METHOD_NOT_ALLOWED</span>
+<span class="keyword">import</span> <span class="include">static</span> <span class="include">javax.servlet.http.HttpServletResponse.SC_NOT_FOUND</span>
+
+<span class="type">class</span> <span class="class">BookControllerSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> ControllerUnitTest&lt;BookController&gt; {
+
+    <span class="annotation">@Unroll</span>
+    <span class="keyword">def</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">test BookController.search does not accept #method requests</span><span class="delimiter">&quot;</span></span>(<span class="predefined-type">String</span> method) {
+        <span class="key">when</span>:
+        request.method = method
+        controller.search()
+
+        <span class="key">then</span>:
+        response.status == SC_METHOD_NOT_ALLOWED
+
+        <span class="key">where</span>:
+        method &lt;&lt; [<span class="string"><span class="delimiter">'</span><span class="content">PATCH</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">DELETE</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">PUT</span><span class="delimiter">'</span></span>]
+    }
+
+    <span class="keyword">def</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">test BookController.search accepts GET requests</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        request.method = <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>
+        controller.search()
+
+        <span class="key">then</span>:
+        response.status == SC_NOT_FOUND
+    }
+}</code></pre>
 </div>
 </div>
 

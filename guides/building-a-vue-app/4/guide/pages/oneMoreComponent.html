@@ -203,7 +203,19 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">/client/src/components/Garage.vue</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="html">link:../snippets/client/src/components/Garage.vue[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="html"><span class="tag">&lt;template&gt;</span>
+  <span class="tag">&lt;div</span> <span class="attribute-name">id</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">garage</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;app-header&gt;</span><span class="tag">&lt;/app-header&gt;</span>
+    <span class="tag">&lt;vehicle-form</span> <span class="attribute-name">v-model</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">vehicle</span><span class="delimiter">&quot;</span></span>
+                  <span class="attribute-name">:makes</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">makes</span><span class="delimiter">&quot;</span></span>
+                  <span class="attribute-name">:models</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">models</span><span class="delimiter">&quot;</span></span>
+                  <span class="attribute-name">:drivers</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">drivers</span><span class="delimiter">&quot;</span></span>
+                  <span class="error">@</span><span class="attribute-name">submit</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">submitNewVehicle()</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span> <i class="conum" data-value="1"></i><b>(1)</b>
+
+    <span class="tag">&lt;/vehicle-form&gt;</span>
+    <span class="tag">&lt;vehicle-table</span> <span class="attribute-name">:vehicles</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">vehicles</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span><span class="tag">&lt;/vehicle-table&gt;</span> <i class="conum" data-value="2"></i><b>(2)</b>
+  <span class="tag">&lt;/div&gt;</span>
+<span class="tag">&lt;/template&gt;</span></code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -221,7 +233,27 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">/client/src/components/Garage.vue</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="html">link:../snippets/client/src/components/Garage.vue[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="html"><span class="tag">&lt;script&gt;</span>
+<span class="inline"><span class="reserved">import</span> AppHeader from <span class="string"><span class="delimiter">'</span><span class="content">./AppHeader</span><span class="delimiter">'</span></span> <i class="conum" data-value="1"></i><b>(1)</b>
+<span class="reserved">import</span> VehicleForm from <span class="string"><span class="delimiter">'</span><span class="content">./form/VehicleForm</span><span class="delimiter">'</span></span>
+<span class="reserved">import</span> VehicleTable from <span class="string"><span class="delimiter">'</span><span class="content">./table/VehicleTable</span><span class="delimiter">'</span></span>
+
+<span class="reserved">export</span> <span class="keyword">default</span> {
+  <span class="key">components</span>: { <i class="conum" data-value="1"></i><b>(1)</b>
+    AppHeader,
+    VehicleForm,
+    VehicleTable
+  },
+  <span class="function">data</span>: <span class="keyword">function</span> () { <i class="conum" data-value="2"></i><b>(2)</b>
+    <span class="keyword">return</span> {
+      <span class="key">vehicles</span>: [],
+      <span class="key">vehicle</span>: {<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>, <span class="key">make</span>: <span class="predefined-constant">null</span>, <span class="key">model</span>: <span class="predefined-constant">null</span>, <span class="key">driver</span>: <span class="predefined-constant">null</span>},
+      <span class="key">models</span>: [],
+      <span class="key">makes</span>: [],
+      <span class="key">drivers</span>: [],
+      <span class="key">serverURL</span>: process.env.SERVER_URL <i class="conum" data-value="3"></i><b>(3)</b>
+    }
+  },</span></code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -243,7 +275,23 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">/client/src/components/Garage.vue</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="html">link:../snippets/client/src/components/Garage.vue[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="html">  created () { <i class="conum" data-value="1"></i><b>(1)</b>
+    this.fetchData()
+  },
+  methods: {
+    fetchData: async function () { <i class="conum" data-value="2"></i><b>(2)</b>
+      try {
+        Promise.all([<i class="conum" data-value="3"></i><b>(3)</b>
+          this.fetchVehicles(),
+          this.fetchModels(),
+          this.fetchModels(),
+          this.fetchMakes(),
+          this.fetchDrivers()
+        ])
+      } catch (error) {
+        console.log(error)
+      }
+    },</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -265,7 +313,30 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">/client/src/components/Garage.vue</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="html">link:../snippets/client/src/components/Garage.vue[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="html">    fetchVehicles: function () { <i class="conum" data-value="1"></i><b>(1)</b>
+      fetch(`${this.serverURL}/vehicle`)
+        .then(r =<span class="error">&gt;</span> r.json())
+        .then(json =<span class="error">&gt;</span> { this.vehicles = json })
+        .catch(error =<span class="error">&gt;</span> console.error('Error retrieving vehicles: ' + error))
+    },
+    fetchModels: function () {
+      fetch(`${this.serverURL}/model`)
+        .then(r =<span class="error">&gt;</span> r.json())
+        .then(json =<span class="error">&gt;</span> { this.models = json })
+        .catch(error =<span class="error">&gt;</span> console.error('Error retrieving models: ' + error))
+    },
+    fetchMakes: function () {
+      fetch(`${this.serverURL}/make`)
+        .then(r =<span class="error">&gt;</span> r.json())
+        .then(json =<span class="error">&gt;</span> { this.makes = json })
+        .catch(error =<span class="error">&gt;</span> console.error('Error retrieving makes: ' + error))
+    },
+    fetchDrivers: function () {
+      fetch(`${this.serverURL}/driver`)
+        .then(r =<span class="error">&gt;</span> r.json())
+        .then(json =<span class="error">&gt;</span> { this.drivers = json })
+        .catch(error =<span class="error">&gt;</span> console.error('Error retrieving drivers: ' + error))
+    },</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -279,7 +350,22 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">/client/src/components/Garage.vue</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="html">link:../snippets/client/src/components/Garage.vue[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="html">    submitNewVehicle: function () {
+      const vehicle = this.vehicle <i class="conum" data-value="1"></i><b>(1)</b>
+      fetch(`${this.serverURL}/vehicle`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(vehicle)
+      }).then(r =<span class="error">&gt;</span> r.json())
+        .then(json =<span class="error">&gt;</span> {
+          this.vehicles.push(json) <i class="conum" data-value="2"></i><b>(2)</b>
+          this.vehicle = {name: '', make: null, model: null, driver: null} <i class="conum" data-value="3"></i><b>(3)</b>
+        })
+        .catch(ex =<span class="error">&gt;</span> console.error('Unable to save vehicle', ex))
+    }
+  }
+}
+<span class="tag">&lt;/script&gt;</span></code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -301,7 +387,15 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">/client/src/components/Garage.vue</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="html">link:../snippets/client/src/components/Garage.vue[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="html"><span class="comment">&lt;!-- Per Component Custom CSS Rules --&gt;</span>
+<i class="conum" data-value="1"></i><b>(1)</b>
+<span class="tag">&lt;style&gt;</span>
+<span class="inline">  <span class="id">#garage</span> {
+    <span class="key">font-family</span>: <span class="string"><span class="delimiter">'</span><span class="content">Avenir</span><span class="delimiter">'</span></span>, <span class="value">Helvetica</span>, <span class="value">Arial</span>, <span class="value">sans-serif</span>;
+    <span class="key">text-align</span>: <span class="value">center</span>;
+    <span class="key">color</span>: <span class="color">#2c3e50</span>;
+  }</span>
+<span class="tag">&lt;/style&gt;</span></code></pre>
 </div>
 </div>
 <div class="colist arabic">

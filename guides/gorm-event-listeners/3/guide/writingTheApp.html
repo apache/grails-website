@@ -128,13 +128,47 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/domain/demo/Book.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/domain/demo/<span class="predefined-type">Book</span>.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.compiler.GrailsCompileStatic</span>
+
+<span class="annotation">@GrailsCompileStatic</span>
+<span class="type">class</span> <span class="class">Book</span> {
+
+    <span class="predefined-type">String</span> author
+    <span class="predefined-type">String</span> title
+    <span class="predefined-type">String</span> friendlyUrl
+    <span class="predefined-type">Integer</span> pages
+    <span class="predefined-type">String</span> serialNumber
+
+    <span class="directive">static</span> constraints = {
+        serialNumber <span class="key">nullable</span>: <span class="predefined-constant">true</span>
+        friendlyUrl <span class="key">nullable</span>: <span class="predefined-constant">true</span>
+        title <span class="key">nullable</span>: <span class="predefined-constant">false</span>
+        pages <span class="key">min</span>: <span class="integer">0</span>
+        serialNumber <span class="key">nullable</span>: <span class="predefined-constant">true</span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">grails-app/domain/demo/Audit.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/domain/demo/Audit.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.compiler.GrailsCompileStatic</span>
+
+<span class="annotation">@GrailsCompileStatic</span>
+<span class="type">class</span> <span class="class">Audit</span> {
+
+    <span class="predefined-type">String</span> event
+    <span class="predefined-type">Long</span> bookId
+
+    <span class="directive">static</span> constraints = {
+        event <span class="key">nullable</span>: <span class="predefined-constant">false</span>, <span class="key">blank</span>: <span class="predefined-constant">false</span>
+        bookId <span class="key">nullable</span>: <span class="predefined-constant">false</span>
+    }
+}</code></pre>
 </div>
 </div>
 
@@ -181,13 +215,47 @@ Why use Data Services? The primary advantages of GORM Data Services over dynamic
 <div class="listingblock">
 <div class="title">grails-app/services/demo/AuditDataService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/AuditDataService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Service</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Where</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="annotation">@Service</span>(Audit)
+<span class="type">interface</span> AuditDataService {
+
+    Audit save(<span class="predefined-type">String</span> event, <span class="predefined-type">Long</span> bookId)
+
+    <span class="predefined-type">Number</span> count()
+
+    <span class="predefined-type">List</span>&lt;Audit&gt; findAll(<span class="predefined-type">Map</span> args)
+
+    <span class="annotation">@Where</span>({ bookId == id })
+    <span class="type">void</span> deleteByBookId(<span class="predefined-type">Long</span> id)
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">grails-app/services/demo/BookDataService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/BookDataService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Service</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="annotation">@Service</span>(<span class="predefined-type">Book</span>)
+<span class="type">interface</span> BookDataService {
+
+    <span class="predefined-type">Book</span> save(<span class="predefined-type">String</span> title, <span class="predefined-type">String</span> author, <span class="predefined-type">Integer</span> pages)
+
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; findAll()
+
+    <span class="predefined-type">Book</span> update(<span class="predefined-type">Serializable</span> id, <span class="predefined-type">String</span> title)
+
+    <span class="type">void</span> delete(<span class="predefined-type">Serializable</span> id)
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -233,7 +301,57 @@ A Grails service is not required in order to write an event listener. You could 
 <div class="listingblock">
 <div class="title">grails-app/services/demo/AuditListenerService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/AuditListenerService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.events.annotation.Subscriber</span>
+<span class="keyword">import</span> <span class="include">grails.events.annotation.gorm.Listener</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.mapping.engine.event.AbstractPersistenceEvent</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.mapping.engine.event.PostDeleteEvent</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.mapping.engine.event.PostInsertEvent</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.mapping.engine.event.PostUpdateEvent</span>
+
+<span class="annotation">@Slf4j</span>
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">AuditListenerService</span> {
+
+    AuditDataService auditDataService
+
+    <span class="predefined-type">Long</span> bookId(AbstractPersistenceEvent event) {
+        <span class="keyword">if</span> ( event.entityObject <span class="keyword">instanceof</span> <span class="predefined-type">Book</span> ) {
+            <span class="keyword">return</span> ((<span class="predefined-type">Book</span>) event.entityObject).id <i class="conum" data-value="2"></i><b>(2)</b>
+        }
+        <span class="predefined-constant">null</span>
+    }
+
+    <span class="annotation">@Subscriber</span> <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="type">void</span> afterInsert(PostInsertEvent event) {
+        <span class="predefined-type">Long</span> bookId = bookId(event)
+        <span class="keyword">if</span> ( bookId ) {
+            log.info <span class="string"><span class="delimiter">'</span><span class="content">After book save...</span><span class="delimiter">'</span></span>
+            auditDataService.save(<span class="string"><span class="delimiter">'</span><span class="content">Book saved</span><span class="delimiter">'</span></span>, bookId)
+        }
+    }
+
+    <span class="annotation">@Subscriber</span> <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="type">void</span> afterUpdate(PostUpdateEvent event) { <i class="conum" data-value="3"></i><b>(3)</b>
+        <span class="predefined-type">Long</span> bookId = bookId(event)
+        <span class="keyword">if</span> ( bookId ) {
+            log.info <span class="string"><span class="delimiter">&quot;</span><span class="content">After book update...</span><span class="delimiter">&quot;</span></span>
+            auditDataService.save(<span class="string"><span class="delimiter">'</span><span class="content">Book updated</span><span class="delimiter">'</span></span>, bookId)
+        }
+    }
+
+    <span class="annotation">@Subscriber</span> <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="type">void</span> afterDelete(PostDeleteEvent event) {
+        <span class="predefined-type">Long</span> bookId = bookId(event)
+        <span class="keyword">if</span> ( bookId ) {
+            log.info <span class="string"><span class="delimiter">'</span><span class="content">After book delete ...</span><span class="delimiter">'</span></span>
+            auditDataService.save(<span class="string"><span class="delimiter">'</span><span class="content">Book deleted</span><span class="delimiter">'</span></span>, bookId)
+        }
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -270,7 +388,69 @@ Keep in mind that the method <code>bookId</code> will return null for any classe
 <div class="listingblock">
 <div class="title">src/test/groovy/demo/AuditListenerServiceSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/test/groovy/demo/AuditListenerServiceSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.testing.gorm.DataTest</span>
+<span class="keyword">import</span> <span class="include">grails.testing.services.ServiceUnitTest</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.mapping.engine.event.PostDeleteEvent</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.mapping.engine.event.PostInsertEvent</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.mapping.engine.event.PostUpdateEvent</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="type">class</span> <span class="class">AuditListenerServiceSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> ServiceUnitTest&lt;AuditListenerService&gt;, DataTest { <i class="conum" data-value="1"></i><b>(1)</b>
+
+    <span class="type">void</span> setupSpec() {
+        mockDomains <span class="predefined-type">Book</span> <i class="conum" data-value="2"></i><b>(2)</b>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">Book.PostInsertEvent triggers auditDataService.save</span><span class="delimiter">&quot;</span></span>(){
+        <span class="key">given</span>:
+        service.auditDataService = Mock(AuditDataService)
+
+        <span class="predefined-type">Book</span> book = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Practical Grails 3</span><span class="delimiter">'</span></span>,
+                <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Eric Helgeson</span><span class="delimiter">'</span></span>,
+                <span class="key">pages</span>: <span class="integer">1</span>).save() <i class="conum" data-value="3"></i><b>(3)</b>
+        PostInsertEvent event = <span class="keyword">new</span> PostInsertEvent(dataStore, book) <i class="conum" data-value="4"></i><b>(4)</b>
+
+        <span class="key">when</span>:
+        service.afterInsert(event) <i class="conum" data-value="5"></i><b>(5)</b>
+
+        <span class="key">then</span>:
+        <span class="integer">1</span> * service.auditDataService.save(_, _) <i class="conum" data-value="6"></i><b>(6)</b>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">Book.PostUpdateEvent triggers auditDataService.save</span><span class="delimiter">&quot;</span></span>(){
+        <span class="key">given</span>:
+        service.auditDataService = Mock(AuditDataService)
+
+        <span class="predefined-type">Book</span> book = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Practical Grails 3</span><span class="delimiter">'</span></span>,
+                <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Eric Helgeson</span><span class="delimiter">'</span></span>,
+                <span class="key">pages</span>: <span class="integer">1</span>).save() <i class="conum" data-value="3"></i><b>(3)</b>
+        PostUpdateEvent event = <span class="keyword">new</span> PostUpdateEvent(dataStore, book) <i class="conum" data-value="4"></i><b>(4)</b>
+
+        <span class="key">when</span>:
+        service.afterUpdate(event) <i class="conum" data-value="5"></i><b>(5)</b>
+
+        <span class="key">then</span>:
+        <span class="integer">1</span> * service.auditDataService.save(_, _) <i class="conum" data-value="6"></i><b>(6)</b>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">Book.PostDeleteEvent triggers auditDataService.save</span><span class="delimiter">&quot;</span></span>(){
+        <span class="key">given</span>:
+        service.auditDataService = Mock(AuditDataService)
+
+        <span class="predefined-type">Book</span> book = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Practical Grails 3</span><span class="delimiter">'</span></span>,
+                <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Eric Helgeson</span><span class="delimiter">'</span></span>,
+                <span class="key">pages</span>: <span class="integer">1</span>).save() <i class="conum" data-value="3"></i><b>(3)</b>
+        PostDeleteEvent event = <span class="keyword">new</span> PostDeleteEvent(dataStore, book) <i class="conum" data-value="4"></i><b>(4)</b>
+
+        <span class="key">when</span>:
+        service.afterDelete(event) <i class="conum" data-value="5"></i><b>(5)</b>
+
+        <span class="key">then</span>:
+        <span class="integer">1</span> * service.auditDataService.save(_, _) <i class="conum" data-value="6"></i><b>(6)</b>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -307,7 +487,79 @@ Keep in mind that the method <code>bookId</code> will return null for any classe
 <div class="listingblock">
 <div class="title">src/integration-test/groovy/demo/AuditListenerServiceIntegrationSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/integration-test/groovy/demo/AuditListenerServiceIntegrationSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">grails.transaction.Rollback</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+<span class="keyword">import</span> <span class="include">spock.util.concurrent.PollingConditions</span>
+
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">AuditListenerServiceIntegrationSpec</span> <span class="directive">extends</span> Specification {
+
+    BookDataService bookDataService
+    AuditDataService auditDataService
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">saving a Book causes an Audit instance to be saved</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        <span class="keyword">def</span> conditions = <span class="keyword">new</span> PollingConditions(<span class="key">timeout</span>: <span class="integer">30</span>)
+
+        <span class="predefined-type">Book</span> book = bookDataService.save(<span class="string"><span class="delimiter">'</span><span class="content">Practical Grails 3</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Eric Helgeson</span><span class="delimiter">'</span></span>, <span class="integer">1</span>)
+
+        <span class="key">then</span>:
+        book
+        book.id
+        conditions.eventually {
+            <span class="keyword">assert</span> auditDataService.count() == old(auditDataService.count()) + <span class="integer">1</span>
+        }
+
+        <span class="key">when</span>:
+        Audit lastAudit = <span class="local-variable">this</span>.lastAudit()
+
+        <span class="key">then</span>:
+        lastAudit.event == <span class="string"><span class="delimiter">&quot;</span><span class="content">Book saved</span><span class="delimiter">&quot;</span></span>
+        lastAudit.bookId == book.id
+
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">A books is updated</span><span class="delimiter">'</span></span>
+        book = bookDataService.update(book.id, <span class="string"><span class="delimiter">'</span><span class="content">Grails 3</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">a new audit instance is created</span><span class="delimiter">'</span></span>
+        conditions.eventually {
+            <span class="keyword">assert</span> auditDataService.count() == old(auditDataService.count()) + <span class="integer">1</span>
+        }
+
+        <span class="key">when</span>:
+        lastAudit = <span class="local-variable">this</span>.lastAudit()
+
+        <span class="key">then</span>:
+        book.title == <span class="string"><span class="delimiter">'</span><span class="content">Grails 3</span><span class="delimiter">'</span></span>
+        lastAudit.event == <span class="string"><span class="delimiter">'</span><span class="content">Book updated</span><span class="delimiter">'</span></span>
+        lastAudit.bookId == book.id
+
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">A book is deleted</span><span class="delimiter">'</span></span>
+        bookDataService.delete(book.id)
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">a new audit instance is created</span><span class="delimiter">'</span></span>
+        conditions.eventually {
+            <span class="keyword">assert</span> auditDataService.count() == old(auditDataService.count()) + <span class="integer">1</span>
+        }
+
+        <span class="key">when</span>:
+        lastAudit = <span class="local-variable">this</span>.lastAudit()
+
+        <span class="key">then</span>:
+        lastAudit.event == <span class="string"><span class="delimiter">'</span><span class="content">Book deleted</span><span class="delimiter">'</span></span>
+        lastAudit.bookId == book.id
+
+        <span class="key">cleanup</span>:
+        auditDataService.deleteByBookId(book.id)
+    }
+
+    Audit lastAudit() {
+        <span class="type">int</span> offset = <span class="predefined-type">Math</span>.max(((auditDataService.count() <span class="keyword">as</span> <span class="type">int</span>) - <span class="integer">1</span>), <span class="integer">0</span>)
+        auditDataService.findAll([<span class="key">max</span>: <span class="integer">1</span>, <span class="key">offset</span>: offset]).first()
+    }
+}</code></pre>
 </div>
 </div>
 
@@ -341,7 +593,20 @@ Keep in mind that the method <code>bookId</code> will return null for any classe
 <div class="listingblock">
 <div class="title">grails-app/services/demo/SerialNumberGeneratorService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/SerialNumberGeneratorService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">org.apache.commons.lang.RandomStringUtils</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">SerialNumberGeneratorService</span> {
+
+    <span class="predefined-type">String</span> generate(<span class="predefined-type">String</span> bookTitle) {
+        <span class="predefined-type">String</span> randomString = RandomStringUtils.random(<span class="integer">8</span>, <span class="predefined-constant">true</span>, <span class="predefined-constant">false</span>)
+        <span class="predefined-type">String</span> titleChars = <span class="string"><span class="delimiter">&quot;</span><span class="inline"><span class="inline-delimiter">${</span>bookTitle<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>.take(<span class="integer">4</span>) <i class="conum" data-value="1"></i><b>(1)</b>
+        <span class="string"><span class="delimiter">&quot;</span><span class="inline"><span class="inline-delimiter">${</span>titleChars<span class="inline-delimiter">}</span></span><span class="content">-</span><span class="inline"><span class="inline-delimiter">${</span>randomString<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>.toUpperCase()
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -366,7 +631,74 @@ Keep in mind that the method <code>bookId</code> will return null for any classe
 <div class="listingblock">
 <div class="title">grails-app/services/demo/FriendlyUrlService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/FriendlyUrlService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="keyword">import</span> <span class="include">java.text.Normalizer</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">FriendlyUrlService</span> {
+
+    <span class="comment">/**
+     * This method transforms the text passed as an argument to a text without spaces,
+     * html entities, accents, dots and extranges characters (only %,a-z,A-Z,0-9, ,_ and - are allowed).
+     *
+     * Borrowed from Wordpress: file wp-includes/formatting.php, function sanitize_title_with_dashes
+     * http://core.svn.wordpress.org/trunk/wp-includes/formatting.php
+     */</span>
+    <span class="predefined-type">String</span> sanitizeWithDashes(<span class="predefined-type">String</span> text) {
+
+        <span class="keyword">if</span> ( !text ) {
+            <span class="keyword">return</span> <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>
+        }
+
+        <span class="comment">// Preserve escaped octets</span>
+        text = text.replaceAll(<span class="string"><span class="delimiter">'</span><span class="content">%([a-fA-F0-9][a-fA-F0-9])</span><span class="delimiter">'</span></span>,<span class="string"><span class="delimiter">'</span><span class="content">---$1---</span><span class="delimiter">'</span></span>)
+        text = text.replaceAll(<span class="string"><span class="delimiter">'</span><span class="content">%</span><span class="delimiter">'</span></span>,<span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>)
+        text = text.replaceAll(<span class="string"><span class="delimiter">'</span><span class="content">---([a-fA-F0-9][a-fA-F0-9])---</span><span class="delimiter">'</span></span>,<span class="string"><span class="delimiter">'</span><span class="content">%$1</span><span class="delimiter">'</span></span>)
+
+        <span class="comment">// Remove accents</span>
+        text = removeAccents(text)
+
+        <span class="comment">// To lower case</span>
+        text = text.toLowerCase()
+
+        <span class="comment">// Kill entities</span>
+        text = text.replaceAll(<span class="string"><span class="delimiter">'</span><span class="content">&amp;.+?;</span><span class="delimiter">'</span></span>,<span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>)
+
+        <span class="comment">// Dots -&gt; ''</span>
+        text = text.replaceAll(<span class="string"><span class="delimiter">'</span><span class="char">\\</span><span class="content">.</span><span class="delimiter">'</span></span>,<span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>)
+
+        <span class="comment">// Remove any character except %a-zA-Z0-9 _-</span>
+        text = text.replaceAll(<span class="string"><span class="delimiter">'</span><span class="content">[^%a-zA-Z0-9 _-]</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>)
+
+        <span class="comment">// Trim</span>
+        text = text.trim()
+
+        <span class="comment">// Spaces -&gt; dashes</span>
+        text = text.replaceAll(<span class="string"><span class="delimiter">'</span><span class="char">\\</span><span class="content">s+</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">-</span><span class="delimiter">'</span></span>)
+
+        <span class="comment">// Dashes -&gt; dash</span>
+        text = text.replaceAll(<span class="string"><span class="delimiter">'</span><span class="content">-+</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">-</span><span class="delimiter">'</span></span>)
+
+        <span class="comment">// It must end in a letter or digit, otherwise we strip the last char</span>
+        <span class="keyword">if</span> (!text[-<span class="integer">1</span>].charAt(<span class="integer">0</span>).isLetterOrDigit()) text = text[<span class="integer">0</span>..-<span class="integer">2</span>]
+
+        <span class="keyword">return</span> text
+    }
+
+    <span class="comment">/**
+     * Converts all accent characters to ASCII characters.
+     *
+     * If there are no accent characters, then the string given is just returned.
+     *
+     */</span>
+    <span class="directive">private</span> <span class="predefined-type">String</span> removeAccents(<span class="predefined-type">String</span>  text) {
+        Normalizer.normalize(text, Normalizer.Form.NFD)
+                .replaceAll(<span class="string"><span class="delimiter">&quot;</span><span class="char">\\</span><span class="content">p{InCombiningDiacriticalMarks}+</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="delimiter">&quot;</span></span>)
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -375,7 +707,24 @@ Keep in mind that the method <code>bookId</code> will return null for any classe
 <div class="listingblock">
 <div class="title">src/test/groovy/demo/FriendlyUrlServiceSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/test/groovy/demo/FriendlyUrlServiceSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.testing.services.ServiceUnitTest</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Unroll</span>
+
+<span class="type">class</span> <span class="class">FriendlyUrlServiceSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> ServiceUnitTest&lt;FriendlyUrlService&gt; {
+
+    <span class="annotation">@Unroll</span>
+    <span class="keyword">def</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">Friendly Url for #title : #expected</span><span class="delimiter">&quot;</span></span>(<span class="predefined-type">String</span> title, <span class="predefined-type">String</span> expected) {
+        <span class="key">expect</span>:
+        expected == service.sanitizeWithDashes(title)
+
+        <span class="key">where</span>:
+        title                | expected
+        <span class="string"><span class="delimiter">'</span><span class="content">Practical Grails 3</span><span class="delimiter">'</span></span> | <span class="string"><span class="delimiter">'</span><span class="content">practical-grails-3</span><span class="delimiter">'</span></span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -392,7 +741,46 @@ Keep in mind that the method <code>bookId</code> will return null for any classe
 <div class="listingblock">
 <div class="title">grails-app/services/demo/TitleListenerService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/TitleListenerService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.events.annotation.gorm.Listener</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.mapping.engine.event.AbstractPersistenceEvent</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.mapping.engine.event.PreInsertEvent</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.mapping.engine.event.PreUpdateEvent</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">TitleListenerService</span> {
+
+    FriendlyUrlService friendlyUrlService
+    SerialNumberGeneratorService serialNumberGeneratorService
+
+    <span class="annotation">@Listener</span>(<span class="predefined-type">Book</span>) <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="type">void</span> onBookPreInsert(PreInsertEvent event) {
+        populateSerialNumber(event)
+        populateFriendlyUrl(event)
+    }
+
+    <span class="annotation">@Listener</span>(<span class="predefined-type">Book</span>) <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="type">void</span> onBookPreUpdate(PreUpdateEvent event) { <i class="conum" data-value="2"></i><b>(2)</b>
+        <span class="predefined-type">Book</span> book = ((<span class="predefined-type">Book</span>) event.entityObject)
+        <span class="keyword">if</span> ( book.isDirty(<span class="string"><span class="delimiter">'</span><span class="content">title</span><span class="delimiter">'</span></span>) ) { <i class="conum" data-value="3"></i><b>(3)</b>
+            populateFriendlyUrl(event)
+        }
+    }
+
+    <span class="type">void</span> populateSerialNumber(AbstractPersistenceEvent event) {
+        <span class="predefined-type">String</span> title = event.entityAccess.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">title</span><span class="delimiter">'</span></span>) <span class="keyword">as</span> <span class="predefined-type">String</span> <i class="conum" data-value="4"></i><b>(4)</b>
+        <span class="predefined-type">String</span> serialNumber = serialNumberGeneratorService.generate(title)
+        event.entityAccess.setProperty(<span class="string"><span class="delimiter">'</span><span class="content">serialNumber</span><span class="delimiter">'</span></span>, serialNumber) <i class="conum" data-value="5"></i><b>(5)</b>
+    }
+
+    <span class="type">void</span> populateFriendlyUrl(AbstractPersistenceEvent event) {
+        <span class="predefined-type">String</span> title = event.entityAccess.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">title</span><span class="delimiter">'</span></span>) <span class="keyword">as</span> <span class="predefined-type">String</span>
+        <span class="predefined-type">String</span> friendlyUrl = friendlyUrlService.sanitizeWithDashes(title)
+        event.entityAccess.setProperty(<span class="string"><span class="delimiter">'</span><span class="content">friendlyUrl</span><span class="delimiter">'</span></span>, friendlyUrl)
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -437,7 +825,41 @@ You may wonder why couldn&#8217;t simply cast the <code>event.entityObject</code
 <div class="listingblock">
 <div class="title">src/test/groovy/demo/TitleListenerServiceSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/test/groovy/demo/TitleListenerServiceSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.testing.gorm.DataTest</span>
+<span class="keyword">import</span> <span class="include">grails.testing.services.ServiceUnitTest</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.mapping.engine.event.PreInsertEvent</span>
+<span class="keyword">import</span> <span class="include">org.springframework.test.annotation.Rollback</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="type">class</span> <span class="class">TitleListenerServiceSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> ServiceUnitTest&lt;TitleListenerService&gt;, DataTest {
+
+    <span class="keyword">def</span> <span class="function">setupSpec</span>() {
+        mockDomain <span class="predefined-type">Book</span>
+    }
+
+    Closure doWithSpring() {{ -&gt; <i class="conum" data-value="1"></i><b>(1)</b>
+        friendlyUrlService(FriendlyUrlService)
+    }}
+
+    <span class="annotation">@Rollback</span>
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">test serial number generated</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">Book</span> book = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Practical Grails 3</span><span class="delimiter">'</span></span>, <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Eric Helgeson</span><span class="delimiter">'</span></span>, <span class="key">pages</span>: <span class="integer">100</span>)
+
+        <span class="key">when</span>:
+        service.serialNumberGeneratorService = <span class="predefined-type">Stub</span>(SerialNumberGeneratorService) {
+            generate(_ <span class="keyword">as</span> <span class="predefined-type">String</span>) &gt;&gt; <span class="string"><span class="delimiter">'</span><span class="content">XXXX-5125</span><span class="delimiter">'</span></span>
+        }
+
+        service.onBookPreInsert(<span class="keyword">new</span> PreInsertEvent(dataStore, book))
+
+        <span class="key">then</span>:
+        book.serialNumber == <span class="string"><span class="delimiter">'</span><span class="content">XXXX-5125</span><span class="delimiter">'</span></span>
+        book.friendlyUrl == <span class="string"><span class="delimiter">'</span><span class="content">practical-grails-3</span><span class="delimiter">'</span></span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -457,7 +879,44 @@ You may wonder why couldn&#8217;t simply cast the <code>event.entityObject</code
 <div class="listingblock">
 <div class="title">src/integration-test/groovy/demo/TitleListenerServiceIntegrationSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/integration-test/groovy/demo/TitleListenerServiceIntegrationSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">TitleListenerServiceIntegrationSpec</span> <span class="directive">extends</span> Specification {
+
+    BookDataService bookDataService
+    AuditDataService auditDataService
+
+    <span class="keyword">def</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">saving a book, generates automatically a serial number</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        <span class="predefined-type">Book</span> book = bookDataService.save(<span class="string"><span class="delimiter">'</span><span class="content">Practical Grails 3</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Eric Helgeson</span><span class="delimiter">'</span></span>, <span class="integer">100</span>)
+        <span class="predefined-type">String</span> serialNumber = book.serialNumber
+        <span class="predefined-type">String</span> friendlyUrl = book.friendlyUrl
+
+        <span class="key">then</span>:
+        book
+        !book.hasErrors()
+        serialNumber
+        friendlyUrl == <span class="string"><span class="delimiter">'</span><span class="content">practical-grails-3</span><span class="delimiter">'</span></span>
+
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">updating book title</span><span class="delimiter">'</span></span>
+        book = bookDataService.update(book.id, <span class="string"><span class="delimiter">'</span><span class="content">Grails 3</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">serial number stays the same</span><span class="delimiter">'</span></span>
+        serialNumber == book.serialNumber
+
+        <span class="key">and</span>: <span class="string"><span class="delimiter">'</span><span class="content">friendly url changes</span><span class="delimiter">'</span></span>
+        friendlyUrl != book.friendlyUrl
+        book.friendlyUrl == <span class="string"><span class="delimiter">'</span><span class="content">grails-3</span><span class="delimiter">'</span></span>
+
+        <span class="key">cleanup</span>:
+        auditDataService.deleteByBookId(book.id)
+        bookDataService.delete(book.id)
+    }
+}</code></pre>
 </div>
 </div>
 </div>
@@ -474,7 +933,81 @@ You may wonder why couldn&#8217;t simply cast the <code>event.entityObject</code
 <div class="listingblock">
 <div class="title">src/test/groovy/demo/TitleListenerServiceGrailsUnitSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/test/groovy/demo/TitleListenerServiceGrailsUnitSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Rollback</span>
+<span class="keyword">import</span> <span class="include">org.grails.orm.hibernate.HibernateDatastore</span>
+<span class="keyword">import</span> <span class="include">org.grails.testing.GrailsUnitTest</span>
+<span class="keyword">import</span> <span class="include">org.springframework.transaction.PlatformTransactionManager</span>
+<span class="keyword">import</span> <span class="include">spock.lang.AutoCleanup</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Shared</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="type">class</span> <span class="class">TitleListenerServiceGrailsUnitSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> GrailsUnitTest { <i class="conum" data-value="1"></i><b>(1)</b>
+
+    <span class="annotation">@Shared</span>
+    <span class="annotation">@AutoCleanup</span>
+    HibernateDatastore hibernateDatastore <i class="conum" data-value="2"></i><b>(2)</b>
+
+    <span class="annotation">@Shared</span>
+    PlatformTransactionManager transactionManager
+
+    <span class="type">void</span> setupSpec() {
+        hibernateDatastore = applicationContext.getBean(HibernateDatastore) <i class="conum" data-value="2"></i><b>(2)</b>
+        transactionManager = hibernateDatastore.getTransactionManager()
+    }
+
+    <span class="annotation">@Override</span>
+    Closure doWithSpring() { <i class="conum" data-value="3"></i><b>(3)</b>
+        { -&gt;
+            friendlyUrlService(FriendlyUrlService)
+            serialNumberGeneratorService(SerialNumberGeneratorService)
+            titleListenerService(TitleListenerService) {
+                friendlyUrlService = ref(<span class="string"><span class="delimiter">'</span><span class="content">friendlyUrlService</span><span class="delimiter">'</span></span>)
+                serialNumberGeneratorService = ref(<span class="string"><span class="delimiter">'</span><span class="content">serialNumberGeneratorService</span><span class="delimiter">'</span></span>)
+            }
+            datastore(HibernateDatastore, [<span class="predefined-type">Book</span>])
+        }
+    }
+
+    <span class="annotation">@Rollback</span>
+    <span class="keyword">def</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">serialNumber and friendyUrl are populated after book is saved</span><span class="delimiter">&quot;</span></span>() { <i class="conum" data-value="4"></i><b>(4)</b>
+
+        <span class="key">when</span>:
+        <span class="predefined-type">Book</span> book = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Practical Grails 3</span><span class="delimiter">'</span></span>, <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Eric Helgeson</span><span class="delimiter">'</span></span>, <span class="key">pages</span>: <span class="integer">100</span>)
+        book.save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">then</span>:
+        !book.hasErrors()
+
+        <span class="key">when</span>:
+        book = <span class="predefined-type">Book</span>.findByTitle(<span class="string"><span class="delimiter">'</span><span class="content">Practical Grails 3</span><span class="delimiter">'</span></span>)
+
+        <span class="predefined-type">String</span> serialNumber = book.serialNumber
+        <span class="predefined-type">String</span> friendlyUrl = book.friendlyUrl
+
+        <span class="key">then</span>:
+        serialNumber
+        friendlyUrl == <span class="string"><span class="delimiter">'</span><span class="content">practical-grails-3</span><span class="delimiter">'</span></span>
+
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">updating book title</span><span class="delimiter">'</span></span>
+        book.title = <span class="string"><span class="delimiter">'</span><span class="content">Grails 3</span><span class="delimiter">'</span></span>
+        book.save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">then</span>:
+        !book.hasErrors()
+
+        <span class="key">when</span>:
+        book = <span class="predefined-type">Book</span>.findByTitle(<span class="string"><span class="delimiter">'</span><span class="content">Grails 3</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">serial number stays the same</span><span class="delimiter">'</span></span>
+        serialNumber == book.serialNumber
+
+        <span class="key">and</span>: <span class="string"><span class="delimiter">'</span><span class="content">friendly url changes</span><span class="delimiter">'</span></span>
+        friendlyUrl != book.friendlyUrl
+        book.friendlyUrl == <span class="string"><span class="delimiter">'</span><span class="content">grails-3</span><span class="delimiter">'</span></span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">

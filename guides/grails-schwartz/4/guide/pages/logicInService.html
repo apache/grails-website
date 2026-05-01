@@ -87,7 +87,17 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/services/demo/EmailService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/EmailService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">EmailService</span> {
+
+    <span class="type">void</span> send(<span class="predefined-type">String</span> user) {
+        log.info <span class="string"><span class="delimiter">&quot;</span><span class="content">Sending email to </span><span class="inline"><span class="inline-delimiter">${</span>user<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -96,7 +106,22 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/services/demo/DailyEmailJobService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/DailyEmailJobService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="annotation">@CompileStatic</span>
+<span class="annotation">@Slf4j</span>
+<span class="type">class</span> <span class="class">DailyEmailJobService</span> <span class="directive">implements</span> SchwartzJob {
+
+    EmailService emailService <i class="conum" data-value="1"></i><b>(1)</b>
+
+    <span class="type">void</span> execute(JobExecutionContext context) <span class="directive">throws</span> JobExecutionException {
+        emailService.send(<span class="string"><span class="delimiter">'</span><span class="content">john.doe@example.com</span><span class="delimiter">'</span></span>) <i class="conum" data-value="2"></i><b>(2)</b>
+    }
+
+    <span class="type">void</span> buildTriggers() {
+        triggers &lt;&lt; factory(<span class="string"><span class="delimiter">'</span><span class="content">Daily email job</span><span class="delimiter">'</span></span>)
+            .cronSchedule(<span class="string"><span class="delimiter">&quot;</span><span class="content">0 30 4 1/1 * ? *</span><span class="delimiter">&quot;</span></span>) <i class="conum" data-value="3"></i><b>(3)</b>
+            .build()
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -124,7 +149,45 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/services/demo/todayat/DailyEmailJobService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/todayat/DailyEmailJobService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">com.agileorbit.schwartz.SchwartzJob</span>
+<span class="keyword">import</span> <span class="include">demo.EmailService</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
+<span class="keyword">import</span> <span class="include">org.quartz.JobExecutionContext</span>
+<span class="keyword">import</span> <span class="include">org.quartz.JobExecutionException</span>
+<span class="keyword">import</span> <span class="include">static</span> <span class="include">org.quartz.DateBuilder.todayAt</span>
+<span class="keyword">import</span> <span class="include">static</span> <span class="include">org.quartz.DateBuilder.tomorrowAt</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="annotation">@Slf4j</span>
+<span class="type">class</span> <span class="class">DailyEmailJobService</span> <span class="directive">implements</span> SchwartzJob {
+    <span class="directive">final</span> <span class="type">int</span> HOUR = <span class="integer">4</span>
+    <span class="directive">final</span> <span class="type">int</span> MINUTE = <span class="integer">30</span>
+    <span class="directive">final</span> <span class="type">int</span> SECONDS = <span class="integer">0</span>
+
+    EmailService emailService <i class="conum" data-value="1"></i><b>(1)</b>
+
+    <span class="type">void</span> execute(JobExecutionContext context) <span class="directive">throws</span> JobExecutionException {
+        emailService.send(<span class="string"><span class="delimiter">'</span><span class="content">john.doe@example.com</span><span class="delimiter">'</span></span>) <i class="conum" data-value="2"></i><b>(2)</b>
+    }
+
+    <span class="predefined-type">Date</span> dailyDate() {
+        <span class="predefined-type">Date</span> startAt = todayAt(HOUR, MINUTE, SECONDS)
+        <span class="keyword">if</span> (startAt.before(<span class="keyword">new</span> <span class="predefined-type">Date</span>())) {
+            <span class="keyword">return</span> tomorrowAt(HOUR, MINUTE, SECONDS)
+        }
+        startAt
+    }
+
+    <span class="type">void</span> buildTriggers() {
+        <span class="predefined-type">Date</span> startAt = dailyDate()
+        triggers &lt;&lt; factory(<span class="string"><span class="delimiter">'</span><span class="content">Daily email job</span><span class="delimiter">'</span></span>)
+                .startAt(startAt)
+                .intervalInDays(<span class="integer">1</span>)
+                .build()
+
+    }
+}</code></pre>
 </div>
 </div>
 

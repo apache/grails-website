@@ -310,7 +310,8 @@ You can go right to the <strong>completed example</strong> if you <code>cd</code
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="javascript">link:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/build.gradle[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="javascript">compile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails:gorm-graphql:1.0.2</span><span class="delimiter">&quot;</span></span>
+compile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails.plugins:gorm-graphql:1.0.2</span><span class="delimiter">&quot;</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -319,7 +320,20 @@ You can go right to the <strong>completed example</strong> if you <code>cd</code
 <div class="listingblock">
 <div class="title">grails-app/domain/com/objectcomputing/Talk.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="javascript">link:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/domain/com/objectcomputing/Talk.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="javascript"><span class="reserved">package</span> com.objectcomputing
+
+<span class="reserved">import</span> grails.rest.Resource
+
+<span class="error">@</span>Resource(uri=<span class="string"><span class="delimiter">'</span><span class="content">/talk</span><span class="delimiter">'</span></span>)
+<span class="reserved">class</span> Talk {
+
+    String title
+    <span class="reserved">int</span> duration
+
+    <span class="reserved">static</span> graphql = <span class="predefined-constant">true</span> <i class="conum" data-value="1"></i><b>(1)</b>
+
+    <span class="reserved">static</span> belongsTo = [speaker: Speaker]
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -336,7 +350,63 @@ You can go right to the <strong>completed example</strong> if you <code>cd</code
 <div class="listingblock">
 <div class="title">grails-app/domain/com/objectcomputing/Speaker.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="javascript">link:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/domain/com/objectcomputing/Speaker.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="javascript"><span class="reserved">package</span> com.objectcomputing
+
+<span class="reserved">import</span> grails.rest.Resource
+<span class="reserved">import</span> org.grails.gorm.graphql.entity.dsl.GraphQLMapping
+<span class="reserved">import</span> java.time.LocalDate
+<span class="reserved">import</span> java.time.Period
+
+<span class="error">@</span>Resource(uri=<span class="string"><span class="delimiter">'</span><span class="content">/speaker</span><span class="delimiter">'</span></span>)
+<span class="reserved">class</span> Speaker {
+
+    String firstName
+    String lastName
+    String name
+    String email
+    String bio
+    LocalDate birthday
+
+    <span class="reserved">static</span> hasMany = [talks: Talk]
+
+    <span class="reserved">static</span> graphql = GraphQLMapping.build {
+
+        property <span class="string"><span class="delimiter">'</span><span class="content">lastName</span><span class="delimiter">'</span></span>, <span class="key">order</span>: <span class="integer">1</span> <i class="conum" data-value="1"></i><b>(1)</b>
+        property <span class="string"><span class="delimiter">'</span><span class="content">firstName</span><span class="delimiter">'</span></span>, <span class="key">order</span>: <span class="integer">2</span>
+        property <span class="string"><span class="delimiter">'</span><span class="content">email</span><span class="delimiter">'</span></span>, <span class="key">order</span>: <span class="integer">3</span>
+
+        exclude <span class="string"><span class="delimiter">'</span><span class="content">birthday</span><span class="delimiter">'</span></span> <i class="conum" data-value="2"></i><b>(2)</b>
+
+        property <span class="string"><span class="delimiter">'</span><span class="content">name</span><span class="delimiter">'</span></span>, <span class="key">deprecationReason</span>: <span class="string"><span class="delimiter">'</span><span class="content">To be removed August 1st, 2020</span><span class="delimiter">'</span></span> <i class="conum" data-value="3"></i><b>(3)</b>
+
+        property(<span class="string"><span class="delimiter">'</span><span class="content">bio</span><span class="delimiter">'</span></span>) { <i class="conum" data-value="4"></i><b>(4)</b>
+            order <span class="integer">4</span>
+            dataFetcher { Speaker speaker -&gt;
+                speaker.bio ?: <span class="string"><span class="delimiter">&quot;</span><span class="content">No biography provided</span><span class="delimiter">&quot;</span></span>
+            }
+        }
+
+        add(<span class="string"><span class="delimiter">'</span><span class="content">age</span><span class="delimiter">'</span></span>, Integer) { <i class="conum" data-value="5"></i><b>(5)</b>
+            dataFetcher { Speaker speaker -&gt;
+                Period.between(speaker.birthday, LocalDate.now()).years
+            }
+            input <span class="predefined-constant">false</span>
+        }
+    }
+
+    <span class="reserved">static</span> constraints = {
+        email nullable: <span class="predefined-constant">true</span>, <span class="key">email</span>: <span class="predefined-constant">true</span>
+        birthday nullable: <span class="predefined-constant">true</span>
+        bio nullable: <span class="predefined-constant">true</span>
+    }
+
+    <span class="reserved">static</span> mapping = {
+        bio type: <span class="string"><span class="delimiter">'</span><span class="content">text</span><span class="delimiter">'</span></span>
+        name formula: <span class="string"><span class="delimiter">'</span><span class="content">concat(FIRST_NAME,</span><span class="char">\'</span><span class="content"> </span><span class="char">\'</span><span class="content">,LAST_NAME)</span><span class="delimiter">'</span></span>
+        talks sort: <span class="string"><span class="delimiter">'</span><span class="content">id</span><span class="delimiter">'</span></span>
+    }
+
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -523,7 +593,29 @@ mutation {
 <div class="listingblock">
 <div class="title">client/src/index.js</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="javascript">link:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>client/src/index.js[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="javascript"><span class="reserved">import</span> React from <span class="string"><span class="delimiter">'</span><span class="content">react</span><span class="delimiter">'</span></span>;
+<span class="reserved">import</span> ReactDOM from <span class="string"><span class="delimiter">'</span><span class="content">react-dom</span><span class="delimiter">'</span></span>;
+<span class="reserved">import</span> App from <span class="string"><span class="delimiter">'</span><span class="content">./App</span><span class="delimiter">'</span></span>;
+<span class="reserved">import</span> <span class="string"><span class="delimiter">'</span><span class="content">./css/bootstrap.css</span><span class="delimiter">'</span></span>;
+<span class="reserved">import</span> <span class="string"><span class="delimiter">'</span><span class="content">./css/App.css</span><span class="delimiter">'</span></span>;
+<span class="reserved">import</span> <span class="string"><span class="delimiter">'</span><span class="content">./css/grails.css</span><span class="delimiter">'</span></span>;
+<span class="reserved">import</span> <span class="string"><span class="delimiter">'</span><span class="content">./css/main.css</span><span class="delimiter">'</span></span>;
+<span class="reserved">import</span> {ApolloProvider} from <span class="string"><span class="delimiter">'</span><span class="content">react-apollo</span><span class="delimiter">'</span></span>;
+<span class="reserved">import</span> {ApolloClient} from <span class="string"><span class="delimiter">'</span><span class="content">apollo-client</span><span class="delimiter">'</span></span>;
+<span class="reserved">import</span> {createHttpLink} from <span class="string"><span class="delimiter">'</span><span class="content">apollo-link-http</span><span class="delimiter">'</span></span>;
+<span class="reserved">import</span> {InMemoryCache} from <span class="string"><span class="delimiter">'</span><span class="content">apollo-cache-inmemory</span><span class="delimiter">'</span></span>;
+<span class="reserved">import</span> { SERVER_URL} from <span class="string"><span class="delimiter">&quot;</span><span class="content">./config</span><span class="delimiter">&quot;</span></span>;
+
+<i class="conum" data-value="1"></i><b>(1)</b>
+const client = <span class="keyword">new</span> ApolloClient({
+  <span class="key">link</span>: createHttpLink({ <span class="key">uri</span>: <span class="error">`</span><span class="predefined">$</span>{SERVER_URL}/graphql<span class="error">`</span> }), <i class="conum" data-value="2"></i><b>(2)</b>
+  <span class="key">cache</span>: <span class="keyword">new</span> InMemoryCache()
+});
+
+<i class="conum" data-value="3"></i><b>(3)</b>
+ReactDOM.render(&lt; ApolloProvider client={client}&gt;
+  <span class="tag">&lt;App</span> <span class="tag">/&gt;</span>
+&lt;<span class="regexp"><span class="delimiter">/</span><span class="content">ApolloProvider&gt;, document.getElementById('root'));</span></span></code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -748,7 +840,23 @@ speakerList(max: <span class="integer">10</span>) {
 <div class="listingblock">
 <div class="title">/client/src/Speaker.js</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="javascript">link:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>client/src/Speaker.js[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="javascript">const talkCreate = gql<span class="error">`</span>
+    mutation talkCreate(<span class="predefined">$talk</span>: TalkCreate!) {
+        talkCreate(talk: <span class="predefined">$talk</span>) {
+            id
+            title
+            duration
+        }
+    }
+<span class="error">`</span>;
+
+const talkDelete = gql<span class="error">`</span>
+    mutation talkDelete(<span class="predefined">$id</span>: Long!) {
+        talkDelete(id: <span class="predefined">$id</span>) {
+            error
+        }
+    }
+<span class="error">`</span>;</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -772,7 +880,26 @@ import gql from 'graphql-tag'</code></pre>
 <div class="listingblock">
 <div class="title">client/src/Speaker.js</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="javascript">link:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>client/src/Speaker.js[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="javascript">const SpeakerWithMutations = compose(
+  graphql(talkCreate, {
+      <span class="key">props</span>: ({mutate}) =&gt; ({
+          <span class="key">talkCreate</span>: ({talk}) =&gt;
+            mutate({
+                <span class="key">variables</span>: {talk},
+            })
+      })
+  }),
+  graphql(talkDelete, {
+      <span class="key">props</span>: ({mutate}) =&gt; ({
+          <span class="key">talkDelete</span>: ({id}) =&gt;
+            mutate({
+                <span class="key">variables</span>: {id},
+            })
+      })
+  })
+)(Speaker)
+
+<span class="reserved">export</span> <span class="keyword">default</span> SpeakerWithMutations;</code></pre>
 </div>
 </div>
 <div class="admonitionblock note">
@@ -793,7 +920,22 @@ For more information regarding the use of mutations and <code>compose</code>, pl
 <div class="listingblock">
 <div class="title">client/src/Speaker.js</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="javascript">link:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>client/src/Speaker.js[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="javascript">addNewTalk = () =&gt; {
+    const {title, duration} = <span class="local-variable">this</span>.state;
+    const {speaker} = <span class="local-variable">this</span>.props;
+
+    <span class="local-variable">this</span>.setState({<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>, <span class="key">duration</span>: <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>});
+
+    <span class="local-variable">this</span>.props.talkCreate({<span class="key">talk</span>: {title, duration, <span class="key">speaker</span>: {<span class="key">id</span>: speaker.id}}})
+      .then(({data}) =&gt; console.log(<span class="string"><span class="delimiter">'</span><span class="content">create response:</span><span class="delimiter">'</span></span>, data))
+      .<span class="keyword">catch</span>((error) =&gt; console.log(<span class="string"><span class="delimiter">'</span><span class="content">there was an error sending the query</span><span class="delimiter">'</span></span>, error));
+};
+
+deleteTalk = (id) =&gt; {
+    <span class="local-variable">this</span>.props.talkDelete({<span class="key">id</span>: id})
+      .then(({data}) =&gt; console.log(<span class="string"><span class="delimiter">'</span><span class="content">delete response: </span><span class="delimiter">'</span></span>, data))
+      .<span class="keyword">catch</span>((error) =&gt; console.log(<span class="string"><span class="delimiter">'</span><span class="content">there was an error sending the query</span><span class="delimiter">'</span></span>, error));
+};</code></pre>
 </div>
 </div>
 <div class="paragraph">

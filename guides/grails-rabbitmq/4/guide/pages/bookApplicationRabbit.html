@@ -102,7 +102,7 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>build.gradle[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">compile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails.plugins:rabbitmq-native:3.4.4</span><span class="delimiter">&quot;</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -111,7 +111,15 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/conf/application.yml</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="yml"><span class="error">link:../snippets/grails-app/conf/application.yml[role=include]</span></code></pre>
+<pre class="CodeRay highlight"><code data-lang="yml"><span class="key">rabbitmq</span>:
+    <span class="key">connections</span>:
+      - <span class="string"><span class="content">name: main </span></span><i class="conum" data-value="1"></i><b>(1)</b>
+        <span class="key">host</span>: <span class="string"><span class="content">localhost </span></span><i class="conum" data-value="2"></i><b>(2)</b>
+        <span class="key">port</span>: <span class="string"><span class="content">5672</span></span>
+        <span class="key">username</span>: <span class="string"><span class="content">guest  </span></span><i class="conum" data-value="3"></i><b>(3)</b>
+        <span class="key">password</span>: <span class="string"><span class="content">guest  </span></span><i class="conum" data-value="4"></i><b>(4)</b>
+    <span class="key">queues</span>:
+      - <span class="string"><span class="content">name: bookQueue </span></span><i class="conum" data-value="5"></i><b>(5)</b></code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -148,7 +156,29 @@ an <a href="http://docs.grails.org/latest/guide/single.html#interceptors">interc
 <div class="listingblock">
 <div class="title">grails-app/controllers/demo/BookShowInterceptor.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/controllers/demo/BookShowInterceptor.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">com.budjb.rabbitmq.publisher.RabbitMessagePublisher</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">BookShowInterceptor</span> {
+    RabbitMessagePublisher rabbitMessagePublisher  <i class="conum" data-value="1"></i><b>(1)</b>
+
+    BookShowInterceptor() { <i class="conum" data-value="2"></i><b>(2)</b>
+        match(<span class="key">controller</span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">book</span><span class="delimiter">&quot;</span></span>, <span class="key">action</span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">show</span><span class="delimiter">&quot;</span></span>)
+    }
+
+    <span class="type">boolean</span> after() { <i class="conum" data-value="3"></i><b>(3)</b>
+        <span class="directive">final</span> <span class="predefined-type">Book</span> book = (<span class="predefined-type">Book</span>) model.bookInstance <i class="conum" data-value="4"></i><b>(4)</b>
+
+        rabbitMessagePublisher.send { <i class="conum" data-value="5"></i><b>(5)</b>
+            routingKey = <span class="string"><span class="delimiter">&quot;</span><span class="content">bookQueue</span><span class="delimiter">&quot;</span></span>
+            body = [<span class="key">id</span>: book.id, <span class="key">title</span>: book.title]
+        }
+        <span class="predefined-constant">true</span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">

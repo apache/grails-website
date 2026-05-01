@@ -87,7 +87,51 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">src/integration-test/groovy/demo/BooksUndoSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/integration-test/groovy/demo/BooksUndoSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">geb.spock.GebSpec</span>
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">BooksUndoSpec</span> <span class="directive">extends</span> GebSpec {
+
+    BookDataService bookDataService
+
+    <span class="keyword">def</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">verify a book can be deleted and deletion can be undone</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">Map</span> bookInfo = [
+                <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Programming Groovy 2</span><span class="delimiter">'</span></span>,
+                <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Venkat Subramaniam</span><span class="delimiter">'</span></span>,
+                <span class="key">href</span>: <span class="string"><span class="delimiter">'</span><span class="content">http://pragprog.com/book/vslg2/programming-groovy-2</span><span class="delimiter">'</span></span>,
+                <span class="key">about</span>: <span class="string"><span class="delimiter">'</span><span class="content">This book helps experienced Java developers learn to use Groovy 2, from the basics of the language to its latest advances.</span><span class="delimiter">'</span></span>,
+                <span class="key">image</span>: <span class="string"><span class="delimiter">'</span><span class="content">vslg2.jpg</span><span class="delimiter">'</span></span>
+        ]
+        <span class="predefined-type">Book</span> book = bookDataService.save(bookInfo.title, bookInfo.author, bookInfo.about, bookInfo.href, bookInfo.image)
+
+        <span class="key">when</span>:
+        BooksPage booksPage = to BooksPage
+
+        <span class="key">then</span>:
+        booksPage.count()
+
+        <span class="key">when</span>:
+        booksPage.delete(<span class="integer">0</span>)
+
+        <span class="key">then</span>:
+        bookDataService.count() == old(bookDataService.count()) - <span class="integer">1</span>
+        booksPage.count() == (old(booksPage.count()) - <span class="integer">1</span>)
+
+        <span class="key">when</span>:
+        booksPage.undo()
+
+        <span class="key">then</span>:
+        bookDataService.count() == old(bookDataService.count()) + <span class="integer">1</span>
+        booksPage.count() == (old(booksPage.count()) + <span class="integer">1</span>)
+
+        <span class="key">cleanup</span>:
+        bookDataService.delete(book.id)
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -96,13 +140,55 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">src/integration-test/groovy/demo/BookModule.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/integration-test/groovy/demo/BookModule.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">geb.Module</span>
+
+<span class="type">class</span> <span class="class">BookModule</span> <span class="directive">extends</span> Module {
+
+    <span class="directive">static</span> content = {
+        deleteButton { <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">input</span><span class="delimiter">'</span></span>, <span class="key">type</span>: <span class="string"><span class="delimiter">'</span><span class="content">submit</span><span class="delimiter">'</span></span>) }
+    }
+
+    <span class="type">void</span> delete() {
+        deleteButton.click()
+    }
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">src/integration-test/groovy/demo/BooksPage.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/integration-test/groovy/demo/BooksPage.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">geb.Page</span>
+
+<span class="type">class</span> <span class="class">BooksPage</span> <span class="directive">extends</span> Page {
+
+    <span class="directive">static</span> url = <span class="string"><span class="delimiter">'</span><span class="content">/book</span><span class="delimiter">'</span></span>
+
+    <span class="directive">static</span> at = { title == <span class="string"><span class="delimiter">'</span><span class="content">Groovy &amp; Grails Books</span><span class="delimiter">'</span></span>}
+
+    <span class="directive">static</span> content = {
+        totalNumberOfBooks { <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">#totalNumberOfBooks</span><span class="delimiter">'</span></span>, <span class="integer">0</span>) }
+        bookDivs { <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">div.book</span><span class="delimiter">'</span></span>) }
+        bookDiv { <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">div.book</span><span class="delimiter">'</span></span>, <span class="local-variable">it</span>).module(BookModule) }
+        undoButton(<span class="key">required</span>: <span class="predefined-constant">false</span>) { <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">input</span><span class="delimiter">'</span></span>, <span class="key">type</span>: <span class="string"><span class="delimiter">'</span><span class="content">submit</span><span class="delimiter">'</span></span>, <span class="key">value</span>: <span class="string"><span class="delimiter">'</span><span class="content">Undo</span><span class="delimiter">'</span></span>) }
+
+    }
+
+    <span class="type">void</span> delete(<span class="type">int</span> i) {
+        bookDiv(i).delete()
+    }
+
+    <span class="type">void</span> undo() {
+        undoButton.click()
+    }
+
+    <span class="predefined-type">Integer</span> count() {
+        <span class="predefined-type">Integer</span>.valueOf(totalNumberOfBooks.text())
+    }
+}</code></pre>
 </div>
 </div>
 

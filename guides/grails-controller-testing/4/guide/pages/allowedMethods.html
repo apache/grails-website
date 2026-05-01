@@ -98,7 +98,9 @@ the property <code>allowedMethods</code>.</p>
 <div class="listingblock">
 <div class="title">grails-app/controllers/demo/StudentController.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/controllers/demo/StudentController.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">    <span class="directive">static</span> allowedMethods = [<span class="key">save</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>,
+                             <span class="key">update</span>: <span class="string"><span class="delimiter">'</span><span class="content">PUT</span><span class="delimiter">'</span></span>,
+                             <span class="key">delete</span>: <span class="string"><span class="delimiter">'</span><span class="content">DELETE</span><span class="delimiter">'</span></span>,]</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -107,7 +109,39 @@ the property <code>allowedMethods</code>.</p>
 <div class="listingblock">
 <div class="title">src/test/groovy/demo/StudentControllerAllowedMethodsSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/test/groovy/demo/StudentControllerAllowedMethodsSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">static</span> <span class="include">javax.servlet.http.HttpServletResponse.SC_METHOD_NOT_ALLOWED</span>
+<span class="keyword">import</span> <span class="include">static</span> <span class="include">javax.servlet.http.HttpServletResponse.SC_OK</span>
+<span class="keyword">import</span> <span class="include">grails.testing.web.controllers.ControllerUnitTest</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Unroll</span>
+
+<span class="annotation">@SuppressWarnings</span>([<span class="string"><span class="delimiter">'</span><span class="content">JUnitPublicNonTestMethod</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">JUnitPublicProperty</span><span class="delimiter">'</span></span>])
+<span class="type">class</span> <span class="class">StudentControllerAllowedMethodsSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> ControllerUnitTest&lt;StudentController&gt; {
+
+    <span class="annotation">@Unroll</span>
+    <span class="keyword">def</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">StudentController.save does not accept #method requests</span><span class="delimiter">&quot;</span></span>(<span class="predefined-type">String</span> method) {
+        <span class="key">when</span>:
+        request.method = method
+        controller.save()
+
+        <span class="key">then</span>:
+        response.status == SC_METHOD_NOT_ALLOWED
+
+        <span class="key">where</span>:
+        method &lt;&lt; [<span class="string"><span class="delimiter">'</span><span class="content">PATCH</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">DELETE</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">PUT</span><span class="delimiter">'</span></span>]
+    }
+
+    <span class="keyword">def</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">StudentController.save accepts POST requests</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        request.method = <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>
+        controller.save()
+
+        <span class="key">then</span>:
+        response.status == SC_OK
+    }
+}</code></pre>
 </div>
 </div>
 

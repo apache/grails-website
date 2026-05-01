@@ -182,7 +182,36 @@ json {
 <div class="listingblock">
 <div class="title">grails-app/views/order/show.gson</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/views/order/show_v2.gson[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">com.example.Order</span>
+
+<span class="keyword">import</span> <span class="include">java.text.SimpleDateFormat</span>
+
+<span class="predefined-type">SimpleDateFormat</span> simpleDateFormat = <span class="keyword">new</span> <span class="predefined-type">SimpleDateFormat</span>(<span class="string"><span class="delimiter">'</span><span class="content">M-dd-yyy</span><span class="delimiter">'</span></span>)
+
+model {
+    Order order
+}
+json {
+    hal.links(<span class="key">self</span>: order, <span class="key">customer</span>: order.customer) <i class="conum" data-value="1"></i><b>(1)</b>
+
+    id order.orderId
+    shippingCost order.shippingCost
+    date simpleDateFormat.format(order.orderPlaced)
+
+    shippingAddress {
+        street order.shippingAddress.street
+        street2 order.shippingAddress.street2
+        city order.shippingAddress.city
+        state order.shippingAddress.state
+        zip order.shippingAddress.zip
+    }
+
+    products order.products.collect { [<span class="key">id</span>: <span class="local-variable">it</span>.id] }
+
+    customer {
+        id order.customer.id
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -198,7 +227,44 @@ json {
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/integration-test/groovy/com/example/OrderShowV2IntegrationSpec.groovy[role=include]
+<pre class="CodeRay highlight"><code data-lang="groovy">{
+    <span class="key">_links</span>: {
+        <span class="key">self</span>: {
+            <span class="key">href</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/api/orders?id=1</span><span class="delimiter">&quot;</span></span>,
+            <span class="key">hreflang</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">en</span><span class="delimiter">&quot;</span></span>,
+            <span class="key">type</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">application/hal+json</span><span class="delimiter">&quot;</span></span>
+        },
+        <span class="key">customer</span>: {
+            <span class="key">href</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/api/customers?id=1</span><span class="delimiter">&quot;</span></span>,
+            <span class="key">hreflang</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">en</span><span class="delimiter">&quot;</span></span>,
+            <span class="key">type</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">application/hal+json</span><span class="delimiter">&quot;</span></span>
+        }
+    },
+    <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">0A12321</span><span class="delimiter">&quot;</span></span>,
+    <span class="key">shippingCost</span>: <span class="float">13.54</span>,
+    <span class="key">date</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">2-08-2017</span><span class="delimiter">&quot;</span></span>,
+    <span class="key">shippingAddress</span>: {
+        <span class="key">street</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">321 Arrow Ln</span><span class="delimiter">&quot;</span></span>,
+        <span class="key">street2</span>: <span class="predefined-constant">null</span>,
+        <span class="key">city</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Chicago</span><span class="delimiter">&quot;</span></span>,
+        <span class="key">state</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">IL</span><span class="delimiter">&quot;</span></span>,
+        <span class="key">zip</span>: <span class="integer">646465</span>
+    },
+    <span class="key">products</span>: [
+            {
+                <span class="key">id</span>: <span class="integer">11</span>
+            },
+            {
+                <span class="key">id</span>: <span class="integer">1</span>
+            },
+            {
+                <span class="key">id</span>: <span class="integer">6</span>
+            }
+    ],
+    <span class="key">customer</span>: {
+        <span class="key">id</span>: <span class="integer">1</span>
+    }
+}
     <span class="comment">//...</span>
 }</code></pre>
 </div>

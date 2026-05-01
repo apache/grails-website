@@ -96,7 +96,40 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">src/main/groovy/demo/JwtCookieTokenReader.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/main/groovy/demo/JwtCookieTokenReader.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.rest.token.AccessToken</span>
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.rest.token.reader.TokenReader</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
+
+<span class="keyword">import</span> <span class="include">javax.servlet.http.Cookie</span>
+<span class="keyword">import</span> <span class="include">javax.servlet.http.HttpServletRequest</span>
+
+<span class="annotation">@Slf4j</span>
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">JwtCookieTokenReader</span> <span class="directive">implements</span> TokenReader {
+
+    <span class="directive">final</span> <span class="directive">static</span> <span class="predefined-type">String</span> DEFAULT_COOKIE_NAME = <span class="string"><span class="delimiter">'</span><span class="content">JWT</span><span class="delimiter">'</span></span>
+
+    <span class="predefined-type">String</span> cookieName = DEFAULT_COOKIE_NAME
+
+    <span class="annotation">@Override</span>
+    AccessToken findToken(HttpServletRequest request) {
+
+        log.debug <span class="string"><span class="delimiter">&quot;</span><span class="content">Looking for jwt token in a cookie named {}</span><span class="delimiter">&quot;</span></span>, cookieName
+        <span class="predefined-type">String</span> tokenValue = <span class="predefined-constant">null</span>
+        Cookie cookie = request.getCookies()?.find { Cookie cookie -&gt; cookie.name.equalsIgnoreCase(cookieName) }
+
+        <span class="keyword">if</span> ( cookie ) {
+            tokenValue = cookie.value
+        }
+
+        log.debug <span class="string"><span class="delimiter">&quot;</span><span class="content">Token: </span><span class="inline"><span class="inline-delimiter">${</span>tokenValue<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>
+        <span class="keyword">return</span> tokenValue ? <span class="keyword">new</span> AccessToken(tokenValue) : <span class="predefined-constant">null</span>
+
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -105,9 +138,11 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/conf/spring/resources.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/spring/resources.groovy[role=include]
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">demo.JwtCookieTokenReader</span>
 beans {
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/spring/resources.groovy[role=include]
+    tokenReader(JwtCookieTokenReader) {
+        cookieName = <span class="string"><span class="delimiter">'</span><span class="content">jwt</span><span class="delimiter">'</span></span>
+    }
 ...
 ..
 .

@@ -87,7 +87,21 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/services/demo/MovieDataService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/MovieDataService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Join</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Service</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="annotation">@Service</span>(Movie)
+<span class="type">interface</span> MovieDataService {
+
+    <span class="type">void</span> deleteByTitle(<span class="predefined-type">String</span> title)
+
+    <span class="annotation">@Join</span>(<span class="string"><span class="delimiter">'</span><span class="content">keywords</span><span class="delimiter">'</span></span>) <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="predefined-type">List</span>&lt;Movie&gt; findAll()
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -104,13 +118,58 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/services/demo/MovieService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/MovieService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.ReadOnly</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
+
+<span class="annotation">@Slf4j</span>
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">MovieService</span> {
+
+    <span class="annotation">@Transactional</span>
+    Movie addMovie(<span class="predefined-type">String</span> title, <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; keywords) {
+        Movie movie = <span class="keyword">new</span> Movie(<span class="key">title</span>: title)
+        <span class="keyword">if</span> ( keywords ) {
+            <span class="keyword">for</span> ( <span class="predefined-type">String</span> keyword : keywords ) {
+                movie.addToKeywords(<span class="keyword">new</span> Keyword(<span class="key">name</span>: keyword))
+            }
+        }
+        <span class="keyword">if</span> ( !movie.save() ) {
+            log.error <span class="string"><span class="delimiter">'</span><span class="content">Unable to save movie</span><span class="delimiter">'</span></span>
+        }
+        movie
+    }
+
+
+
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">grails-app/services/demo/BookDataService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/BookDataService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Join</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Service</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.ReadOnly</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="annotation">@Service</span>(<span class="predefined-type">Book</span>)
+<span class="type">interface</span> BookDataService {
+
+    <span class="annotation">@Join</span>(<span class="string"><span class="delimiter">'</span><span class="content">keywords</span><span class="delimiter">'</span></span>) <i class="conum" data-value="2"></i><b>(2)</b>
+    <span class="annotation">@ReadOnly</span>(<span class="string"><span class="delimiter">'</span><span class="content">books</span><span class="delimiter">'</span></span>) <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; findAll()
+
+    <span class="annotation">@Transactional</span>(<span class="string"><span class="delimiter">'</span><span class="content">books</span><span class="delimiter">'</span></span>) <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="type">void</span> deleteByTitle(<span class="predefined-type">String</span> title)
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -143,7 +202,28 @@ If you used <code>@ReadOnly</code> instead of <code>@ReadOnly('books')</code> yo
 <div class="listingblock">
 <div class="title">grails-app/services/demo/BookService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/BookService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">BookService</span> {
+
+    <span class="annotation">@Transactional</span>(<span class="string"><span class="delimiter">'</span><span class="content">books</span><span class="delimiter">'</span></span>) <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="predefined-type">Book</span> addBook(<span class="predefined-type">String</span> title, <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; keywords) {
+        <span class="predefined-type">Book</span> book = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: title)
+        <span class="keyword">if</span> ( keywords ) {
+            <span class="keyword">for</span> ( <span class="predefined-type">String</span> keyword : keywords ) {
+                book.addToKeywords(<span class="keyword">new</span> Keyword(<span class="key">name</span>: keyword))
+            }
+        }
+        <span class="keyword">if</span> ( !book.save() ) {
+            log.error <span class="string"><span class="delimiter">'</span><span class="content">Unable to save book</span><span class="delimiter">'</span></span>
+        }
+        book
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -164,7 +244,33 @@ the data source <code>ConnectionSource.DEFAULT</code>, the first specified, is u
 <div class="listingblock">
 <div class="title">grails-app/services/demo/KeywordService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/KeywordService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.DetachedCriteria</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.ReadOnly</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">KeywordService</span> {
+
+    <span class="annotation">@ReadOnly</span>(<span class="string"><span class="delimiter">'</span><span class="content">books</span><span class="delimiter">'</span></span>)
+    <span class="predefined-type">List</span>&lt;Keyword&gt; findAllBooksKeywords() {
+        booksQuery().list()
+    }
+
+    <span class="annotation">@ReadOnly</span>
+    <span class="predefined-type">List</span>&lt;Keyword&gt; findAllDefaultDataSourceKeywords() {
+        defaultDataSourceQuery().list()
+    }
+
+    <span class="directive">private</span> DetachedCriteria&lt;Keyword&gt; booksQuery() {
+        Keyword.where {}.withConnection(<span class="string"><span class="delimiter">'</span><span class="content">books</span><span class="delimiter">'</span></span>) <i class="conum" data-value="1"></i><b>(1)</b>
+    }
+
+    <span class="directive">private</span> DetachedCriteria&lt;Keyword&gt; defaultDataSourceQuery() {
+        Keyword.where {}
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">

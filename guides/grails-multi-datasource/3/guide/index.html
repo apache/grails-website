@@ -315,7 +315,29 @@ In previous versions of Grails for multiple data sources a best effort transacti
 <div class="listingblock">
 <div class="title">grails-app/conf/application.yml</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/application.yml[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">dataSource</span>:
+    <span class="key">pooled</span>: <span class="predefined-constant">true</span>
+    <span class="key">jmxExport</span>: <span class="predefined-constant">true</span>
+    <span class="key">driverClassName</span>: org.h2.Driver
+    <span class="key">username</span>: sa
+    <span class="key">password</span>: <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>
+<span class="key">environments</span>:
+    <span class="key">development</span>:
+        <span class="key">dataSource</span>:
+            <span class="key">dbCreate</span>: create-drop
+            <span class="key">url</span>: <span class="key">jdbc</span>:<span class="key">h2</span>:<span class="key">mem</span>:devDb;MVCC=TRUE;LOCK_TIMEOUT=<span class="integer">10000</span>;DB_CLOSE_ON_EXIT=FALSE
+        <span class="key">dataSources</span>:
+            <span class="key">books</span>:
+                <span class="key">dbCreate</span>: create-drop
+                <span class="key">url</span>: <span class="key">jdbc</span>:<span class="key">h2</span>:<span class="key">mem</span>:bookDevDb;MVCC=TRUE;LOCK_TIMEOUT=<span class="integer">10000</span>;DB_CLOSE_ON_EXIT=FALSE
+    <span class="key">test</span>:
+        <span class="key">dataSource</span>:
+            <span class="key">dbCreate</span>: create-drop
+            <span class="key">url</span>: <span class="key">jdbc</span>:<span class="key">h2</span>:<span class="key">mem</span>:testDb;MVCC=TRUE;LOCK_TIMEOUT=<span class="integer">10000</span>;DB_CLOSE_ON_EXIT=FALSE
+        <span class="key">dataSources</span>:
+            <span class="key">books</span>:
+                <span class="key">dbCreate</span>: create-drop
+                <span class="key">url</span>: <span class="key">jdbc</span>:<span class="key">h2</span>:<span class="key">mem</span>:bookTestDb;MVCC=TRUE;LOCK_TIMEOUT=<span class="integer">10000</span>;DB_CLOSE_ON_EXIT=FALSE</code></pre>
 </div>
 </div>
 
@@ -335,7 +357,12 @@ In previous versions of Grails for multiple data sources a best effort transacti
 <div class="listingblock">
 <div class="title">grails-app/domain/demo/Movie.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/domain/demo/Movie.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="type">class</span> <span class="class">Movie</span> {
+    <span class="predefined-type">String</span> title
+    <span class="directive">static</span> hasMany = [<span class="key">keywords</span>: Keyword]
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -344,7 +371,17 @@ In previous versions of Grails for multiple data sources a best effort transacti
 <div class="listingblock">
 <div class="title">grails-app/domain/demo/Book.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/domain/demo/<span class="predefined-type">Book</span>.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="type">class</span> <span class="class">Book</span> {
+    <span class="predefined-type">String</span> title
+
+    <span class="directive">static</span> hasMany = [<span class="key">keywords</span>: Keyword]
+
+    <span class="directive">static</span> mapping = {
+        datasource <span class="string"><span class="delimiter">'</span><span class="content">books</span><span class="delimiter">'</span></span> <i class="conum" data-value="1"></i><b>(1)</b>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -361,7 +398,17 @@ In previous versions of Grails for multiple data sources a best effort transacti
 <div class="listingblock">
 <div class="title">grails-app/domain/demo/Keyword.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/domain/demo/Keyword.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">org.grails.datastore.mapping.core.connections.ConnectionSource</span>
+
+<span class="type">class</span> <span class="class">Keyword</span> {
+    <span class="predefined-type">String</span> name
+
+    <span class="directive">static</span> mapping = {
+        datasources([ConnectionSource.DEFAULT, <span class="string"><span class="delimiter">'</span><span class="content">books</span><span class="delimiter">'</span></span>]) <i class="conum" data-value="1"></i><b>(1)</b>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -389,7 +436,21 @@ In previous versions of Grails for multiple data sources a best effort transacti
 <div class="listingblock">
 <div class="title">grails-app/services/demo/MovieDataService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/MovieDataService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Join</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Service</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="annotation">@Service</span>(Movie)
+<span class="type">interface</span> MovieDataService {
+
+    <span class="type">void</span> deleteByTitle(<span class="predefined-type">String</span> title)
+
+    <span class="annotation">@Join</span>(<span class="string"><span class="delimiter">'</span><span class="content">keywords</span><span class="delimiter">'</span></span>) <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="predefined-type">List</span>&lt;Movie&gt; findAll()
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -418,13 +479,58 @@ If you used <code>@ReadOnly</code> instead of <code>@ReadOnly('books')</code> yo
 <div class="listingblock">
 <div class="title">grails-app/services/demo/MovieService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/MovieService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.ReadOnly</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
+
+<span class="annotation">@Slf4j</span>
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">MovieService</span> {
+
+    <span class="annotation">@Transactional</span>
+    Movie addMovie(<span class="predefined-type">String</span> title, <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; keywords) {
+        Movie movie = <span class="keyword">new</span> Movie(<span class="key">title</span>: title)
+        <span class="keyword">if</span> ( keywords ) {
+            <span class="keyword">for</span> ( <span class="predefined-type">String</span> keyword : keywords ) {
+                movie.addToKeywords(<span class="keyword">new</span> Keyword(<span class="key">name</span>: keyword))
+            }
+        }
+        <span class="keyword">if</span> ( !movie.save() ) {
+            log.error <span class="string"><span class="delimiter">'</span><span class="content">Unable to save movie</span><span class="delimiter">'</span></span>
+        }
+        movie
+    }
+
+
+
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">grails-app/services/demo/BookDataService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/BookDataService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Join</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Service</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.ReadOnly</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="annotation">@Service</span>(<span class="predefined-type">Book</span>)
+<span class="type">interface</span> BookDataService {
+
+    <span class="annotation">@Join</span>(<span class="string"><span class="delimiter">'</span><span class="content">keywords</span><span class="delimiter">'</span></span>) <i class="conum" data-value="2"></i><b>(2)</b>
+    <span class="annotation">@ReadOnly</span>(<span class="string"><span class="delimiter">'</span><span class="content">books</span><span class="delimiter">'</span></span>) <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; findAll()
+
+    <span class="annotation">@Transactional</span>(<span class="string"><span class="delimiter">'</span><span class="content">books</span><span class="delimiter">'</span></span>) <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="type">void</span> deleteByTitle(<span class="predefined-type">String</span> title)
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -445,7 +551,28 @@ If you used <code>@ReadOnly</code> instead of <code>@ReadOnly('books')</code> yo
 <div class="listingblock">
 <div class="title">grails-app/services/demo/BookService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/BookService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">BookService</span> {
+
+    <span class="annotation">@Transactional</span>(<span class="string"><span class="delimiter">'</span><span class="content">books</span><span class="delimiter">'</span></span>) <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="predefined-type">Book</span> addBook(<span class="predefined-type">String</span> title, <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; keywords) {
+        <span class="predefined-type">Book</span> book = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: title)
+        <span class="keyword">if</span> ( keywords ) {
+            <span class="keyword">for</span> ( <span class="predefined-type">String</span> keyword : keywords ) {
+                book.addToKeywords(<span class="keyword">new</span> Keyword(<span class="key">name</span>: keyword))
+            }
+        }
+        <span class="keyword">if</span> ( !book.save() ) {
+            log.error <span class="string"><span class="delimiter">'</span><span class="content">Unable to save book</span><span class="delimiter">'</span></span>
+        }
+        book
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -466,7 +593,33 @@ the data source <code>ConnectionSource.DEFAULT</code>, the first specified, is u
 <div class="listingblock">
 <div class="title">grails-app/services/demo/KeywordService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/KeywordService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.DetachedCriteria</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.ReadOnly</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">KeywordService</span> {
+
+    <span class="annotation">@ReadOnly</span>(<span class="string"><span class="delimiter">'</span><span class="content">books</span><span class="delimiter">'</span></span>)
+    <span class="predefined-type">List</span>&lt;Keyword&gt; findAllBooksKeywords() {
+        booksQuery().list()
+    }
+
+    <span class="annotation">@ReadOnly</span>
+    <span class="predefined-type">List</span>&lt;Keyword&gt; findAllDefaultDataSourceKeywords() {
+        defaultDataSourceQuery().list()
+    }
+
+    <span class="directive">private</span> DetachedCriteria&lt;Keyword&gt; booksQuery() {
+        Keyword.where {}.withConnection(<span class="string"><span class="delimiter">'</span><span class="content">books</span><span class="delimiter">'</span></span>) <i class="conum" data-value="1"></i><b>(1)</b>
+    }
+
+    <span class="directive">private</span> DetachedCriteria&lt;Keyword&gt; defaultDataSourceQuery() {
+        Keyword.where {}
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -506,25 +659,123 @@ the data source <code>ConnectionSource.DEFAULT</code>, the first specified, is u
 <div class="listingblock">
 <div class="title">grails-app/controllers/demo/SaveBookCommand.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/controllers/demo/SaveBookCommand.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.compiler.GrailsCompileStatic</span>
+<span class="keyword">import</span> <span class="include">grails.validation.Validateable</span>
+
+<span class="annotation">@GrailsCompileStatic</span>
+<span class="type">class</span> <span class="class">SaveBookCommand</span> <span class="directive">implements</span> Validateable {
+    <span class="predefined-type">String</span> title
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; keywords
+
+    <span class="directive">static</span> constraints = {
+        title <span class="key">nullable</span>: <span class="predefined-constant">false</span>
+        keywords <span class="key">nullable</span>: <span class="predefined-constant">true</span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">grails-app/controllers/demo/BookController.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/controllers/demo/BookController.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">BookController</span> {
+
+    <span class="directive">static</span> allowedMethods = [<span class="key">save</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>, <span class="key">index</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>]
+
+    <span class="directive">static</span> responseFormats = [<span class="string"><span class="delimiter">'</span><span class="content">json</span><span class="delimiter">'</span></span>]
+
+    BookService bookService
+
+    KeywordService keywordService
+
+    BookDataService bookDataService
+
+    <span class="keyword">def</span> <span class="function">save</span>(SaveBookCommand cmd) {
+        bookService.addBook(cmd.title, cmd.keywords)
+        render <span class="key">status</span>: <span class="integer">201</span>
+    }
+
+    <span class="keyword">def</span> <span class="function">index</span>() {
+        [<span class="key">bookList</span>: bookDataService.findAll()]
+    }
+
+    <span class="keyword">def</span> <span class="function">delete</span>(<span class="predefined-type">String</span> title) {
+        bookDataService.deleteByTitle(title)
+        render <span class="key">status</span>: <span class="integer">204</span>
+    }
+
+    <span class="keyword">def</span> <span class="function">keywords</span>() {
+        render <span class="key">view</span>: <span class="string"><span class="delimiter">'</span><span class="content">/keyword/index</span><span class="delimiter">'</span></span>,
+               <span class="key">model</span>: [<span class="key">keywordList</span>: keywordService.findAllBooksKeywords()]
+    }
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">grails-app/controllers/demo/SaveBookCommand.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/controllers/demo/SaveBookCommand.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.compiler.GrailsCompileStatic</span>
+<span class="keyword">import</span> <span class="include">grails.validation.Validateable</span>
+
+<span class="annotation">@GrailsCompileStatic</span>
+<span class="type">class</span> <span class="class">SaveBookCommand</span> <span class="directive">implements</span> Validateable {
+    <span class="predefined-type">String</span> title
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; keywords
+
+    <span class="directive">static</span> constraints = {
+        title <span class="key">nullable</span>: <span class="predefined-constant">false</span>
+        keywords <span class="key">nullable</span>: <span class="predefined-constant">true</span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">grails-app/controllers/demo/MovieController.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/controllers/demo/MovieController.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">MovieController</span> {
+
+    <span class="directive">static</span> allowedMethods = [<span class="key">save</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>, <span class="key">index</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>]
+
+    <span class="directive">static</span> responseFormats = [<span class="string"><span class="delimiter">'</span><span class="content">json</span><span class="delimiter">'</span></span>]
+
+    MovieService movieService
+
+    MovieDataService movieDataService
+
+    KeywordService keywordService
+
+    <span class="keyword">def</span> <span class="function">save</span>(SaveMovieCommand cmd) {
+        movieService.addMovie(cmd.title, cmd.keywords)
+        render <span class="key">status</span>: <span class="integer">201</span>
+    }
+
+    <span class="keyword">def</span> <span class="function">index</span>() {
+        [<span class="key">movieList</span>: movieDataService.findAll()]
+    }
+
+    <span class="keyword">def</span> <span class="function">delete</span>(<span class="predefined-type">String</span> title) {
+        movieDataService.deleteByTitle(title)
+        render <span class="key">status</span>: <span class="integer">204</span>
+    }
+
+    <span class="keyword">def</span> <span class="function">keywords</span>() {
+        render <span class="key">view</span>: <span class="string"><span class="delimiter">'</span><span class="content">/keyword/index</span><span class="delimiter">'</span></span>,
+               <span class="key">model</span>: [<span class="key">keywordList</span>: keywordService.findAllDefaultDataSourceKeywords()]
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -547,31 +798,69 @@ the data source <code>ConnectionSource.DEFAULT</code>, the first specified, is u
 <div class="listingblock">
 <div class="title">grails-app/views/book/_book.gson</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/views/book/_book.gson[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">demo.Book</span>
+
+model {
+    <span class="predefined-type">Book</span> book
+}
+
+json {
+    title book.title
+    keywords book.keywords*.name
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">grails-app/views/book/index.gson</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/views/book/index.gson[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">demo.Book</span>
+
+model {
+    <span class="predefined-type">Iterable</span>&lt;<span class="predefined-type">Book</span>&gt; bookList
+}
+
+json tmpl.book(bookList)</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">grails-app/views/movie/_movie.gson</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/views/movie/_movie.gson[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">demo.Movie</span>
+
+model {
+    Movie movie
+}
+
+json {
+    title movie.title
+    keywords movie.keywords*.name
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">grails-app/views/movie/index.gson</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/views/movie/index.gson[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">demo.Movie</span>
+
+model {
+    <span class="predefined-type">Iterable</span>&lt;Movie&gt; movieList
+}
+
+json tmpl.movie(movieList)</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">grails-app/views/keyword/index.gson</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/views/keyword/index.gson[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">demo.Keyword</span>
+
+model {
+    <span class="predefined-type">Iterable</span>&lt;Keyword&gt; keywordList
+}
+
+json {
+    keywords keywordList*.name.unique().sort()
+}</code></pre>
 </div>
 </div>
 
@@ -591,7 +880,7 @@ the data source <code>ConnectionSource.DEFAULT</code>, the first specified, is u
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>build.gradle[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">testCompile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails:grails-datastore-rest-client</span><span class="delimiter">&quot;</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -600,7 +889,168 @@ the data source <code>ConnectionSource.DEFAULT</code>, the first specified, is u
 <div class="listingblock">
 <div class="title">src/integration-test/groovy/demo/MultipleDataSourceSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/integration-test/groovy/demo/MultipleDataSourceSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.plugins.rest.client.RestBuilder</span>
+<span class="keyword">import</span> <span class="include">grails.plugins.rest.client.RestResponse</span>
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Shared</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">MultipleDataSourceSpec</span> <span class="directive">extends</span> Specification {
+
+    <span class="annotation">@Shared</span>
+    RestBuilder rest = <span class="keyword">new</span> RestBuilder()
+
+    <span class="directive">private</span> RestResponse saveResource(<span class="predefined-type">String</span> resource, <span class="predefined-type">String</span> itemTitle, <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; itemKeywords) {
+        rest.post(<span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/</span><span class="inline"><span class="inline-delimiter">${</span>resource<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>) {
+            accept(<span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+            contentType(<span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+            json {
+                title = itemTitle
+                keywords = itemKeywords
+            }
+        }
+    }
+
+    <span class="directive">private</span> RestResponse deleteResource(<span class="predefined-type">String</span> resource, <span class="predefined-type">String</span> itemTitle) {
+        rest.delete(<span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/</span><span class="inline"><span class="inline-delimiter">${</span>resource<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>) {
+            accept(<span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+            contentType(<span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+            json {
+                title = itemTitle
+            }
+        }
+    }
+
+    <span class="directive">private</span> RestResponse fetchResource(<span class="predefined-type">String</span> resource) {
+        rest.get(<span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/</span><span class="inline"><span class="inline-delimiter">${</span>resource<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>) {
+            accept(<span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+        }
+    }
+
+    <span class="directive">private</span> RestResponse resourceKeywords(<span class="predefined-type">String</span> resource) {
+        rest.get(<span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/</span><span class="inline"><span class="inline-delimiter">${</span>resource<span class="inline-delimiter">}</span></span><span class="content">/keywords</span><span class="delimiter">&quot;</span></span>) {
+            accept(<span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+        }
+    }
+
+    <span class="keyword">def</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">Test Multi-Datasource support saving and retrieving books and movies</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        RestResponse resp = saveResource(<span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Change Agent</span><span class="delimiter">'</span></span>, [<span class="string"><span class="delimiter">'</span><span class="content">dna</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">sci-fi</span><span class="delimiter">'</span></span>])
+
+        <span class="key">then</span>:
+        resp.statusCode.value() == <span class="integer">201</span>
+
+        <span class="key">when</span>:
+        resp = saveResource(<span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Influx</span><span class="delimiter">'</span></span>, [<span class="string"><span class="delimiter">'</span><span class="content">sci-fi</span><span class="delimiter">'</span></span>])
+
+        <span class="key">then</span>:
+        resp.statusCode.value() == <span class="integer">201</span>
+
+        <span class="key">when</span>:
+        resp = saveResource(<span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Kill Decision</span><span class="delimiter">'</span></span>, [<span class="string"><span class="delimiter">'</span><span class="content">drone</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">sci-fi</span><span class="delimiter">'</span></span>])
+
+        <span class="key">then</span>:
+        resp.statusCode.value() == <span class="integer">201</span>
+
+        <span class="key">when</span>:
+        resp = saveResource(<span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Freedom (TM)</span><span class="delimiter">'</span></span>, [<span class="string"><span class="delimiter">'</span><span class="content">sci-fi</span><span class="delimiter">'</span></span>])
+
+        <span class="key">then</span>:
+        resp.statusCode.value() == <span class="integer">201</span>
+
+        <span class="key">when</span>:
+        resp = saveResource(<span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Daemon</span><span class="delimiter">'</span></span>, [<span class="string"><span class="delimiter">'</span><span class="content">sci-fi</span><span class="delimiter">'</span></span>])
+
+        <span class="key">then</span>:
+        resp.statusCode.value() == <span class="integer">201</span>
+
+        <span class="key">when</span>:
+        resp = saveResource(<span class="string"><span class="delimiter">'</span><span class="content">movie</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Pirates of Silicon Valley</span><span class="delimiter">'</span></span>, [<span class="string"><span class="delimiter">'</span><span class="content">apple</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">microsoft</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">technology</span><span class="delimiter">'</span></span>])
+
+        <span class="key">then</span>:
+        resp.statusCode.value() == <span class="integer">201</span>
+
+        <span class="key">when</span>:
+        resp = saveResource(<span class="string"><span class="delimiter">'</span><span class="content">movie</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Inception</span><span class="delimiter">'</span></span>, [<span class="string"><span class="delimiter">'</span><span class="content">sci-fi</span><span class="delimiter">'</span></span>])
+
+        <span class="key">then</span>:
+        resp.statusCode.value() == <span class="integer">201</span>
+
+        <span class="key">when</span>:
+        resp = fetchResource(<span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>:
+        resp.statusCode.value() == <span class="integer">200</span>
+        resp.json.collect { <span class="local-variable">it</span>.title }.sort() == [<span class="string"><span class="delimiter">'</span><span class="content">Change Agent</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Daemon</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Freedom (TM)</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Influx</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Kill Decision</span><span class="delimiter">'</span></span>]
+
+        <span class="key">when</span>:
+        resp = fetchResource(<span class="string"><span class="delimiter">'</span><span class="content">movie</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>:
+        resp.statusCode.value() == <span class="integer">200</span>
+        resp.json.collect { <span class="local-variable">it</span>.title }.sort() == [<span class="string"><span class="delimiter">'</span><span class="content">Inception</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Pirates of Silicon Valley</span><span class="delimiter">'</span></span>]
+
+        <span class="key">when</span>:
+        resp = resourceKeywords(<span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>:
+        resp.statusCode.value() == <span class="integer">200</span>
+        resp.json.keywords == [<span class="string"><span class="delimiter">'</span><span class="content">dna</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">drone</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">sci-fi</span><span class="delimiter">'</span></span>]
+
+        <span class="key">when</span>:
+        resp = resourceKeywords(<span class="string"><span class="delimiter">'</span><span class="content">movie</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>:
+        resp.statusCode.value() == <span class="integer">200</span>
+        resp.json.keywords == [<span class="string"><span class="delimiter">'</span><span class="content">apple</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">microsoft</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">sci-fi</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">technology</span><span class="delimiter">'</span></span>]
+
+
+        <span class="key">when</span>:
+        resp = deleteResource(<span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Change Agent</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>:
+        resp.statusCode.value() == <span class="integer">204</span>
+
+        <span class="key">when</span>:
+        resp = deleteResource(<span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Influx</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>:
+        resp.statusCode.value() == <span class="integer">204</span>
+
+        <span class="key">when</span>:
+        resp = deleteResource(<span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Kill Decision</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>:
+        resp.statusCode.value() == <span class="integer">204</span>
+
+        <span class="key">when</span>:
+        resp = deleteResource(<span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Freedom (TM)</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>:
+        resp.statusCode.value() == <span class="integer">204</span>
+
+        <span class="key">when</span>:
+        resp = deleteResource(<span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Daemon</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>:
+        resp.statusCode.value() == <span class="integer">204</span>
+
+        <span class="key">when</span>:
+        resp = deleteResource(<span class="string"><span class="delimiter">'</span><span class="content">movie</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Pirates of Silicon Valley</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>:
+        resp.statusCode.value() == <span class="integer">204</span>
+
+        <span class="key">when</span>:
+        resp = deleteResource(<span class="string"><span class="delimiter">'</span><span class="content">movie</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Inception</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>:
+        resp.statusCode.value() == <span class="integer">204</span>
+    }
+}</code></pre>
 </div>
 </div>
 

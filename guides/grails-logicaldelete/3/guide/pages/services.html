@@ -87,7 +87,15 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">src/main/groovy/demo/BookImage.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/main/groovy/demo/BookImage.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">BookImage</span> {
+    <span class="predefined-type">Long</span> id
+    <span class="predefined-type">String</span> image
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -96,7 +104,42 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/services/demo/BookDataService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/BookDataService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Service</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.ReadOnly</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+
+<span class="type">interface</span> IBookDataService {
+
+    <span class="predefined-type">Book</span> save(<span class="predefined-type">String</span> title, <span class="predefined-type">String</span> author, <span class="predefined-type">String</span> about, <span class="predefined-type">String</span> href, <span class="predefined-type">String</span> image)
+
+    <span class="predefined-type">Number</span> count()
+
+    <span class="predefined-type">Book</span> findById(<span class="predefined-type">Long</span> id)
+
+    <span class="type">void</span> delete(<span class="predefined-type">Long</span> id) <i class="conum" data-value="1"></i><b>(1)</b>
+}
+
+<span class="annotation">@Service</span>(<span class="predefined-type">Book</span>)
+<span class="directive">abstract</span> <span class="type">class</span> <span class="class">BookDataService</span> <span class="directive">implements</span> IBookDataService {
+
+    <span class="annotation">@ReadOnly</span>
+    <span class="predefined-type">List</span>&lt;BookImage&gt; findAll() {  <i class="conum" data-value="2"></i><b>(2)</b>
+        <span class="predefined-type">Book</span>.where {}.projections {
+            property(<span class="string"><span class="delimiter">'</span><span class="content">id</span><span class="delimiter">'</span></span>)
+            property(<span class="string"><span class="delimiter">'</span><span class="content">image</span><span class="delimiter">'</span></span>)
+        }.list().collect { <span class="keyword">new</span> BookImage(<span class="key">id</span>: <span class="local-variable">it</span>[<span class="integer">0</span>] <span class="keyword">as</span> <span class="predefined-type">Long</span>, <span class="key">image</span>: <span class="local-variable">it</span>[<span class="integer">1</span>] <span class="keyword">as</span> <span class="predefined-type">String</span>) }
+    }
+
+    <span class="annotation">@Transactional</span>
+    <span class="type">void</span> unDelete(<span class="predefined-type">Long</span> id) {
+        <span class="predefined-type">Book</span>.withDeleted { <i class="conum" data-value="3"></i><b>(3)</b>
+            <span class="predefined-type">Book</span> book = <span class="predefined-type">Book</span>.get(id)
+            book?.unDelete() <i class="conum" data-value="4"></i><b>(4)</b>
+        }
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">

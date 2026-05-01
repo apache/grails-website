@@ -117,13 +117,38 @@ In this guide, we use a Grails Service.</p>
 <div class="listingblock">
 <div class="title">/src/main/groovy/demo/CoordinateValidator.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/main/groovy/demo/CoordinateValidator.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">interface</span> CoordinateValidator {
+
+    <span class="type">boolean</span> isValidValueForPositionAndUserName(<span class="predefined-type">String</span> value, <span class="predefined-type">String</span> position, <span class="predefined-type">String</span> username)
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">/grails-app/services/demo/CoordinateValidatorService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/CoordinateValidatorService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.ReadOnly</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@Transactional</span>
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">CoordinateValidatorService</span> <span class="directive">implements</span> CoordinateValidator {
+
+    <span class="annotation">@ReadOnly</span>
+    <span class="annotation">@Override</span>
+    <span class="type">boolean</span> isValidValueForPositionAndUserName(<span class="predefined-type">String</span> v, <span class="predefined-type">String</span> p, <span class="predefined-type">String</span> name) {
+        SecurityCoordinate.where {
+            position == p &amp;&amp; value == v &amp;&amp; user.username == name
+        }.count() <span class="keyword">as</span> <span class="type">boolean</span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -132,7 +157,7 @@ In this guide, we use a Grails Service.</p>
 <div class="listingblock">
 <div class="title">/grails-app/conf/spring/resources.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/spring/resources.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">coordinateValidator(CoordinateValidatorService)</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -141,7 +166,46 @@ In this guide, we use a Grails Service.</p>
 <div class="listingblock">
 <div class="title">/src/main/groovy/demo/TwoFactorAuthenticationProvider.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/main/groovy/demo/TwoFactorAuthenticationProvider.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">org.springframework.security.authentication.BadCredentialsException</span>
+<span class="keyword">import</span> <span class="include">org.springframework.security.authentication.UsernamePasswordAuthenticationToken</span>
+<span class="keyword">import</span> <span class="include">org.springframework.security.authentication.dao.DaoAuthenticationProvider</span>
+<span class="keyword">import</span> <span class="include">org.springframework.security.core.AuthenticationException</span>
+<span class="keyword">import</span> <span class="include">org.springframework.security.core.userdetails.UserDetails</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">TwoFactorAuthenticationProvider</span> <span class="directive">extends</span> DaoAuthenticationProvider {
+
+    CoordinateValidator coordinateValidator
+
+    <span class="directive">protected</span> <span class="type">void</span> additionalAuthenticationChecks(UserDetails userDetails,
+                                                  UsernamePasswordAuthenticationToken authentication)
+            <span class="directive">throws</span> <span class="exception">AuthenticationException</span> {
+
+        <span class="local-variable">super</span>.additionalAuthenticationChecks(userDetails, authentication)
+
+        <span class="predefined-type">Object</span> details = authentication.details
+
+        <span class="keyword">if</span> ( !(details <span class="keyword">instanceof</span> TwoFactorAuthenticationDetails) ) {
+            logger.debug(<span class="string"><span class="delimiter">&quot;</span><span class="content">Authentication failed: authenticationToken principal is not a TwoFactorPrincipal</span><span class="delimiter">&quot;</span></span>);
+            <span class="keyword">throw</span> <span class="keyword">new</span> BadCredentialsException(messages.getMessage(
+                    <span class="string"><span class="delimiter">&quot;</span><span class="content">AbstractUserDetailsAuthenticationProvider.badCredentials</span><span class="delimiter">&quot;</span></span>,
+                    <span class="string"><span class="delimiter">&quot;</span><span class="content">Bad credentials</span><span class="delimiter">&quot;</span></span>));
+        }
+        <span class="keyword">def</span> twoFactorAuthenticationDetails = details <span class="keyword">as</span> TwoFactorAuthenticationDetails
+
+
+        <span class="keyword">if</span> ( !coordinateValidator.isValidValueForPositionAndUserName(twoFactorAuthenticationDetails.coordinateValue, twoFactorAuthenticationDetails.coordinatePosition, authentication.name) ) {
+            logger.debug(<span class="string"><span class="delimiter">&quot;</span><span class="content">Authentication failed: coordiante note valid</span><span class="delimiter">&quot;</span></span>);
+            <span class="keyword">throw</span> <span class="keyword">new</span> BadCredentialsException(messages.getMessage(
+                    <span class="string"><span class="delimiter">&quot;</span><span class="content">AbstractUserDetailsAuthenticationProvider.badCredentials</span><span class="delimiter">&quot;</span></span>,
+                    <span class="string"><span class="delimiter">&quot;</span><span class="content">Bad credentials</span><span class="delimiter">&quot;</span></span>));
+        }
+    }
+
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -150,7 +214,16 @@ In this guide, we use a Grails Service.</p>
 <div class="listingblock">
 <div class="title">/grails-app/conf/spring/resources.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/spring/resources.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">twoFactorAuthenticationProvider(TwoFactorAuthenticationProvider) {
+    coordinateValidator = ref(<span class="string"><span class="delimiter">'</span><span class="content">coordinateValidator</span><span class="delimiter">'</span></span>)
+    userDetailsService = ref(<span class="string"><span class="delimiter">'</span><span class="content">userDetailsService</span><span class="delimiter">'</span></span>)
+    passwordEncoder = ref(<span class="string"><span class="delimiter">'</span><span class="content">passwordEncoder</span><span class="delimiter">'</span></span>)
+    userCache = ref(<span class="string"><span class="delimiter">'</span><span class="content">userCache</span><span class="delimiter">'</span></span>)
+    preAuthenticationChecks = ref(<span class="string"><span class="delimiter">'</span><span class="content">preAuthenticationChecks</span><span class="delimiter">'</span></span>)
+    postAuthenticationChecks = ref(<span class="string"><span class="delimiter">'</span><span class="content">postAuthenticationChecks</span><span class="delimiter">'</span></span>)
+    authoritiesMapper = ref(<span class="string"><span class="delimiter">'</span><span class="content">authoritiesMapper</span><span class="delimiter">'</span></span>)
+    hideUserNotFoundExceptions = <span class="predefined-constant">true</span>
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -160,7 +233,10 @@ In order to do that, we define the providers which should be use to authenticate
 <div class="listingblock">
 <div class="title">/grails-app/conf/application.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/application.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.providerNames = [
+                <span class="string"><span class="delimiter">'</span><span class="content">twoFactorAuthenticationProvider</span><span class="delimiter">'</span></span>,
+                <span class="string"><span class="delimiter">'</span><span class="content">anonymousAuthenticationProvider</span><span class="delimiter">'</span></span>,
+                <span class="string"><span class="delimiter">'</span><span class="content">rememberMeAuthenticationProvider</span><span class="delimiter">'</span></span>]</code></pre>
 </div>
 </div>
 

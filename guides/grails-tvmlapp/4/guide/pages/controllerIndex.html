@@ -114,7 +114,29 @@ with the Grails Quickcasts:</p>
 <div class="listingblock">
 <div class="title">/grails-app/controllers/com/ociweb/quickcasts/QuickcastController.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/controllers/com/ociweb/quickcasts/QuickcastController.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> com.ociweb.quickcasts
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">QuickcastController</span> {
+    QuickcastService quickcastService
+    <span class="directive">static</span> responseFormats = [<span class="string"><span class="delimiter">'</span><span class="content">xml</span><span class="delimiter">'</span></span>]
+
+    RelatedQuickcastsService relatedQuickcastsService
+
+    <span class="keyword">def</span> <span class="function">index</span>() {
+        [<span class="key">quickcasts</span>: quickcastService.findAll()]
+    }
+
+    <span class="keyword">def</span> <span class="function">show</span>(<span class="predefined-type">Long</span> id) {
+        Quickcast quickcast = quickcastService.findById(id)
+        [
+                <span class="key">quickcast</span>: quickcast,
+                <span class="key">relatedQuickcasts</span>: relatedQuickcastsService.findAllRelatedQuickcasts(quickcast)
+        ]
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -130,7 +152,31 @@ with the Grails Quickcasts:</p>
 <div class="listingblock">
 <div class="title">/grails-app/views/quickcast/index.gml</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/views/quickcast/index.gml[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">com.ociweb.quickcasts.Quickcast</span>
+
+model {
+    <span class="predefined-type">Iterable</span>&lt;Quickcast&gt; quickcasts
+}
+
+document {
+    stackTemplate {
+        banner {
+            title <span class="local-variable">this</span>.g.message(<span class="key">code</span>: <span class="string"><span class="delimiter">'</span><span class="content">quickcasts.title</span><span class="delimiter">'</span></span>)
+        }
+        collectionList {
+            shelf {
+                section {
+                    quickcasts.each { quickcast -&gt;
+                        lockup(<span class="key">onselect</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">getDocument('quickcast/</span><span class="inline"><span class="inline-delimiter">${</span>quickcast.id<span class="inline-delimiter">}</span></span><span class="content">')</span><span class="delimiter">&quot;</span></span>) {
+                            img(<span class="key">src</span>: quickcast.heroImg, <span class="key">width</span>: <span class="integer">150</span>, <span class="key">height</span>: <span class="integer">226</span>)
+                            title quickcast.title
+                        }
+                    }
+                }
+            }
+        }
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -145,13 +191,85 @@ with the Grails Quickcasts:</p>
 <div class="listingblock">
 <div class="title">/build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>build.gradle[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">testCompile <span class="string"><span class="delimiter">&quot;</span><span class="content">io.micronaut:micronaut-http-client</span><span class="delimiter">&quot;</span></span></code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">/src/integration-test/groovy/com/ociweb/quickcasts/QuickcastControllerIndexSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/integration-test/groovy/com/ociweb/quickcasts/QuickcastControllerIndexSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> com.ociweb.quickcasts
+
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.*</span>
+<span class="keyword">import</span> <span class="include">grails.testing.spock.OnceBefore</span>
+<span class="keyword">import</span> <span class="include">groovy.xml.XmlUtil</span>
+<span class="keyword">import</span> <span class="include">io.micronaut.http.client.HttpClient</span>
+<span class="keyword">import</span> <span class="include">org.custommonkey.xmlunit.XMLUnit</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Shared</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Value</span>
+
+<span class="annotation">@Rollback</span>
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">QuickcastControllerIndexSpec</span> <span class="directive">extends</span> Specification {
+    <span class="annotation">@Shared</span> HttpClient client
+
+    <span class="annotation">@OnceBefore</span>
+    <span class="type">void</span> init() {
+        <span class="predefined-type">String</span> baseUrl = <span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">$</span>serverPort</span><span class="delimiter">&quot;</span></span>
+        <span class="local-variable">this</span>.client  = HttpClient.create(baseUrl.toURL())
+    }
+    <span class="keyword">def</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">test stack template is rendered correctly</span><span class="delimiter">&quot;</span></span>() {
+
+        <span class="key">given</span>:
+        <span class="keyword">def</span> expected = <span class="string"><span class="delimiter">'''</span><span class="content">&lt;document&gt;
+    &lt;stackTemplate&gt;
+        &lt;banner&gt;
+            &lt;title&gt;Grails Quickcasts&lt;/title&gt;
+        &lt;/banner&gt;
+        &lt;collectionList&gt;
+            &lt;shelf&gt;
+                &lt;section&gt;
+                    &lt;lockup onselect=&quot;getDocument('quickcast/1')&quot;&gt;
+                        &lt;img src=&quot;http://localhost:8888/quickcast_interceptor.png&quot; width=&quot;150&quot; height=&quot;226&quot;/&gt;
+                        &lt;title&gt;Interceptors - Grails 3&lt;/title&gt;
+                    &lt;/lockup&gt;
+                    &lt;lockup onselect=&quot;getDocument('quickcast/2')&quot;&gt;
+                        &lt;img src=&quot;http://localhost:8888/quickcast_jsonviews.png&quot; width=&quot;150&quot; height=&quot;226&quot;/&gt;
+                        &lt;title&gt;JSON Views - Grails 3&lt;/title&gt;
+                    &lt;/lockup&gt;
+                    &lt;lockup onselect=&quot;getDocument('quickcast/3')&quot;&gt;
+                        &lt;img src=&quot;http://localhost:8888/quickcast_multiprojectbuilds.png&quot; width=&quot;150&quot; height=&quot;226&quot;/&gt;
+                        &lt;title&gt;Multi-Project Builds - Grails 3&lt;/title&gt;
+                    &lt;/lockup&gt;
+                    &lt;lockup onselect=&quot;getDocument('quickcast/4')&quot;&gt;
+                        &lt;img src=&quot;http://localhost:8888/quickcast_angularscaffolding.png&quot; width=&quot;150&quot; height=&quot;226&quot;/&gt;
+                        &lt;title&gt;Angular Scaffolding - Grails 3&lt;/title&gt;
+                    &lt;/lockup&gt;
+                    &lt;lockup onselect=&quot;getDocument('quickcast/5')&quot;&gt;
+                        &lt;img src=&quot;http://localhost:8888/quickcast_retrievingruntimeconfigvalues.png&quot; width=&quot;150&quot; height=&quot;226&quot;/&gt;
+                        &lt;title&gt;Retrieving Runtime Config Values - Grails 3&lt;/title&gt;
+                    &lt;/lockup&gt;
+                    &lt;lockup onselect=&quot;getDocument('quickcast/6')&quot;&gt;
+                        &lt;img src=&quot;http://localhost:8888/quickcast_developinggrailsappswithintellij.png&quot; width=&quot;150&quot; height=&quot;226&quot;/&gt;
+                        &lt;title&gt;Developing Grails Application with IntelliJ IDEA - Grails 3&lt;/title&gt;
+                    &lt;/lockup&gt;
+                &lt;/section&gt;
+            &lt;/shelf&gt;
+        &lt;/collectionList&gt;
+    &lt;/stackTemplate&gt;
+&lt;/document&gt;
+</span><span class="delimiter">'''</span></span>
+        <span class="key">when</span>:
+        <span class="predefined-type">String</span> xml = client.toBlocking().retrieve(<span class="string"><span class="delimiter">'</span><span class="content">/quickcast</span><span class="delimiter">'</span></span>)
+
+        XMLUnit.setIgnoreWhitespace(<span class="predefined-constant">true</span>)
+        XMLUnit.setNormalizeWhitespace(<span class="predefined-constant">true</span>)
+
+        <span class="key">then</span>:
+        XMLUnit.compareXML(XmlUtil.serialize(xml), expected).identical()
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -160,7 +278,7 @@ with the Grails Quickcasts:</p>
 <div class="listingblock">
 <div class="title">/build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>build.gradle[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">testCompile <span class="string"><span class="delimiter">&quot;</span><span class="content">xmlunit:xmlunit:1.6</span><span class="delimiter">&quot;</span></span></code></pre>
 </div>
 </div>
 

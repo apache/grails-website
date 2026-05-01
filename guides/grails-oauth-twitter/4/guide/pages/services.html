@@ -94,7 +94,50 @@ for our basic functionality.</p>
 <div class="listingblock">
 <div class="title">grails-app/services/demo/BookDataService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/BookDataService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Service</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.ReadOnly</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileDynamic</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.mapping.query.api.BuildableCriteria</span>
+<span class="keyword">import</span> <span class="include">org.hibernate.transform.Transformers</span>
+
+<span class="type">interface</span> IBookDataService {
+    <span class="predefined-type">Book</span> save(<span class="predefined-type">String</span> title, <span class="predefined-type">String</span> author, <span class="predefined-type">String</span> about, <span class="predefined-type">String</span> href, <span class="predefined-type">String</span> image)
+    <span class="predefined-type">Number</span> count()
+    <span class="predefined-type">Book</span> findById(<span class="predefined-type">Long</span> id)
+}
+
+<span class="annotation">@Service</span>(<span class="predefined-type">Book</span>)
+<span class="directive">abstract</span> <span class="type">class</span> <span class="class">BookDataService</span> <span class="directive">implements</span> IBookDataService {
+
+    <span class="annotation">@CompileDynamic</span>
+    <span class="annotation">@ReadOnly</span>
+    <span class="predefined-type">List</span>&lt;BookImage&gt; findAll() {
+        BuildableCriteria c = <span class="predefined-type">Book</span>.createCriteria()
+        c.list {
+            resultTransformer(Transformers.aliasToBean(BookImage))
+            projections {
+                property(<span class="string"><span class="delimiter">'</span><span class="content">id</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">id</span><span class="delimiter">'</span></span>)
+                property(<span class="string"><span class="delimiter">'</span><span class="content">image</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">image</span><span class="delimiter">'</span></span>)
+            }
+        }
+    }
+
+    <span class="annotation">@CompileDynamic</span>
+    <span class="annotation">@ReadOnly</span>
+    <span class="predefined-type">List</span>&lt;BookImage&gt; findAllByIds(<span class="predefined-type">List</span>&lt;<span class="predefined-type">Long</span>&gt; ids) {
+        BuildableCriteria c = <span class="predefined-type">Book</span>.createCriteria()
+        c.list {
+            inList(<span class="string"><span class="delimiter">'</span><span class="content">id</span><span class="delimiter">'</span></span>, ids)
+            resultTransformer(Transformers.aliasToBean(BookImage))
+            projections {
+                property(<span class="string"><span class="delimiter">'</span><span class="content">id</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">id</span><span class="delimiter">'</span></span>)
+                property(<span class="string"><span class="delimiter">'</span><span class="content">image</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">image</span><span class="delimiter">'</span></span>)
+            }
+        }
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -103,7 +146,23 @@ for our basic functionality.</p>
 <div class="listingblock">
 <div class="title">grails-app/services/demo/BookFavouriteDataService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/BookFavouriteDataService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Query</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Service</span>
+
+<span class="annotation">@Service</span>(BookFavourite)
+<span class="type">interface</span> BookFavouriteDataService {
+
+    BookFavourite save(<span class="predefined-type">Long</span> bookId, <span class="predefined-type">String</span> username)
+
+    <span class="type">void</span> delete(<span class="predefined-type">Long</span> bookId, <span class="predefined-type">String</span> username)
+
+    <span class="annotation">@Query</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">select </span><span class="inline"><span class="inline-delimiter">$</span>b</span><span class="content">.bookId from </span><span class="inline"><span class="inline-delimiter">${</span>BookFavourite b<span class="inline-delimiter">}</span></span><span class="content"> where </span><span class="inline"><span class="inline-delimiter">$</span>b</span><span class="content">.username = </span><span class="inline"><span class="inline-delimiter">$</span>username</span><span class="delimiter">&quot;</span></span>) <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">Long</span>&gt; findBookIdByUsername(<span class="predefined-type">String</span> username)
+
+    BookFavourite findByBookIdAndUsername(<span class="predefined-type">Long</span> bookId, <span class="predefined-type">String</span> username)
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">

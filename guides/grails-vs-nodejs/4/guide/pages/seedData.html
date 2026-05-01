@@ -91,7 +91,47 @@ following code:</p>
 <div class="listingblock">
 <div class="title">/server/grails-app/init/demo/BootStrap.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/init/demo/BootStrap.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
+
+<span class="annotation">@Slf4j</span>
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">BootStrap</span> {
+
+    UserService userService
+    UserRoleService userRoleService
+    RoleService roleService
+    IceCreamService iceCreamService
+
+    <span class="keyword">def</span> init = { servletContext -&gt;
+        log.info <span class="string"><span class="delimiter">&quot;</span><span class="content">Loading database...</span><span class="delimiter">&quot;</span></span>
+
+        <span class="keyword">if</span> (!iceCreamService.count()) {
+
+            <span class="predefined-type">List</span>&lt;<span class="predefined-type">Long</span>&gt; ids = <span class="type">[]</span>
+            <span class="keyword">for</span> (<span class="predefined-type">String</span> flavor : [<span class="string"><span class="delimiter">'</span><span class="content">vanilla</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">chocolate</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">strawberry</span><span class="delimiter">'</span></span>]) {
+                IceCream iceCream = iceCreamService.saveIcream(flavor)
+                ids &lt;&lt; iceCream.id
+            }
+            log.info <span class="string"><span class="delimiter">&quot;</span><span class="content">Inserted records with ids </span><span class="inline"><span class="inline-delimiter">${</span>ids.join(<span class="string"><span class="delimiter">'</span><span class="content">,</span><span class="delimiter">'</span></span>)<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>
+        }
+
+        <span class="keyword">if</span> (!roleService.count()) {
+            <span class="predefined-type">Role</span> role = roleService.saveRole( <span class="string"><span class="delimiter">'</span><span class="content">ROLE_USER</span><span class="delimiter">'</span></span>)
+            log.info <span class="string"><span class="delimiter">&quot;</span><span class="content">Inserted role...</span><span class="delimiter">&quot;</span></span>
+
+            User user = userService.createUser(<span class="string"><span class="delimiter">'</span><span class="content">sherlock</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">secret</span><span class="delimiter">'</span></span>)
+            log.info <span class="string"><span class="delimiter">&quot;</span><span class="content">Inserted user...</span><span class="delimiter">&quot;</span></span>
+
+            userRoleService.saveUserRole(user, role)
+            log.info <span class="string"><span class="delimiter">&quot;</span><span class="content">Associated user with role...</span><span class="delimiter">&quot;</span></span>
+        }
+    }
+    <span class="keyword">def</span> destroy = {
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -101,43 +141,98 @@ to keep all your business logic in the service layer.</p>
 <div class="listingblock">
 <div class="title">/server/grails-app/services/demo/IceCreamService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/IceCreamService.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/IceCreamService.groovy[role=include]
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+<span class="keyword">import</span> <span class="include">grails.compiler.GrailsCompileStatic</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.DetachedCriteria</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.ReadOnly</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
+<span class="keyword">import</span> <span class="include">org.springframework.validation.ObjectError</span>
 
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/IceCreamService.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/IceCreamService.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/IceCreamService.groovy[role=include]</code></pre>
+<span class="annotation">@Slf4j</span>
+<span class="annotation">@CompileStatic</span>
+<span class="annotation">@Transactional</span>
+<span class="type">class</span> <span class="class">IceCreamService</span> {
+    IceCream saveIcream(<span class="predefined-type">String</span> flavor, <span class="type">boolean</span> flush = <span class="predefined-constant">false</span>) {
+        IceCream iceCream = <span class="keyword">new</span> IceCream(<span class="key">flavor</span>: flavor)
+        <span class="keyword">if</span> ( !iceCream.save(<span class="key">flush</span>: flush) ) {
+            log.error <span class="string"><span class="delimiter">'</span><span class="content">Failure while saving icream {}</span><span class="delimiter">'</span></span>, iceCream.errors.toString()
+        }
+        iceCream
+    }
+    <span class="annotation">@ReadOnly</span>
+    <span class="type">int</span> count() {
+        IceCream.count() <span class="keyword">as</span> <span class="type">int</span>
+    }</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">/server/grails-app/services/demo/RoleService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/RoleService.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/RoleService.groovy[role=include]
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.ReadOnly</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
 
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/RoleService.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/RoleService.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/RoleService.groovy[role=include]</code></pre>
+<span class="annotation">@Slf4j</span>
+<span class="annotation">@Transactional</span>
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">RoleService</span> {
+    <span class="predefined-type">Role</span> saveRole(<span class="predefined-type">String</span> authority, <span class="type">boolean</span> flush = <span class="predefined-constant">false</span>) {
+        <span class="predefined-type">Role</span> r = <span class="keyword">new</span> <span class="predefined-type">Role</span>(<span class="key">authority</span>: authority)
+        <span class="keyword">if</span> ( !r.save(<span class="key">flush</span>: flush) ) {
+            log.error <span class="string"><span class="delimiter">'</span><span class="content">Failure while saving role {}</span><span class="delimiter">'</span></span>, r.errors.toString()
+        }
+        r
+    }
+    <span class="annotation">@ReadOnly</span>
+    <span class="type">int</span> count() {
+        <span class="predefined-type">Role</span>.count() <span class="keyword">as</span> <span class="type">int</span>
+    }</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">/server/grails-app/services/demo/UserService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/UserService.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/UserService.groovy[role=include]
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+<span class="keyword">import</span> <span class="include">grails.gorm.DetachedCriteria</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.ReadOnly</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
 
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/UserService.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/UserService.groovy[role=include]</code></pre>
+<span class="annotation">@Slf4j</span>
+<span class="annotation">@Transactional</span>
+<span class="type">class</span> <span class="class">UserService</span> {
+    User createUser(<span class="predefined-type">String</span> username, <span class="predefined-type">String</span> password, <span class="type">boolean</span> flush = <span class="predefined-constant">false</span>) {
+        User user = <span class="keyword">new</span> User(<span class="key">username</span>: username, <span class="key">password</span>: password)
+        <span class="keyword">if</span> ( !user.save(<span class="key">flush</span>: flush) ) {
+            log.error <span class="string"><span class="delimiter">'</span><span class="content">Unable to save user {}</span><span class="delimiter">'</span></span>, user.errors.toString()
+        }
+        user
+    }</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">/server/grails-app/services/demo/UserRoleService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/UserRoleService.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/UserRoleService.groovy[role=include]
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
 
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/UserRoleService.groovy[role=include]
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>server/grails-app/services/demo/UserRoleService.groovy[role=include]</code></pre>
+<span class="annotation">@Slf4j</span>
+<span class="annotation">@Transactional</span>
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">UserRoleService</span> {
+    UserRole saveUserRole(User user, <span class="predefined-type">Role</span> role, <span class="type">boolean</span> flush = <span class="predefined-constant">false</span>) {
+        UserRole ur = <span class="keyword">new</span> UserRole(<span class="key">user</span>: user, <span class="key">role</span>: role)
+        <span class="keyword">if</span> ( !ur.save(<span class="key">flush</span>: flush) ) {
+            log.error <span class="string"><span class="delimiter">'</span><span class="content">Failure while saving user {}</span><span class="delimiter">'</span></span>, ur.errors.toString()
+        }
+        ur
+    }</code></pre>
 </div>
 </div>
 

@@ -978,13 +978,39 @@ $ ./grailsw create-domain-class Model
 <div class="listingblock">
 <div class="title">grails-app/domain/org/grails/guides/Make.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/domain/org/grails/guides/Make.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> org.grails.guides
+
+<span class="type">class</span> <span class="class">Make</span> {
+
+    <span class="predefined-type">String</span> name
+
+    <span class="directive">static</span> constraints = {
+    }
+
+    <span class="predefined-type">String</span> toString() {
+        name
+    }
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">grails-app/domain/org/grails/guides/Model.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/domain/org/grails/guides/Model.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> org.grails.guides
+
+<span class="type">class</span> <span class="class">Model</span> {
+
+    <span class="predefined-type">String</span> name
+
+    <span class="directive">static</span> belongsTo = [ <span class="key">make</span>: Make ]
+
+    <span class="directive">static</span> constraints = {
+    }
+
+    <span class="predefined-type">String</span> toString() {
+        name
+    }
+}</code></pre>
 </div>
 </div>
 <div class="admonitionblock note">
@@ -1005,7 +1031,22 @@ The <code>belongsTo</code> property is one of several properties that GORM uses 
 <div class="listingblock">
 <div class="title">grails-app/domain/org/grails/guides/Vehicle.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/domain/org/grails/guides/Vehicle.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> org.grails.guides
+
+<span class="annotation">@SuppressWarnings</span>(<span class="string"><span class="delimiter">'</span><span class="content">GrailsDomainReservedSqlKeywordName</span><span class="delimiter">'</span></span>)
+<span class="type">class</span> <span class="class">Vehicle</span> {
+
+    <span class="predefined-type">Integer</span> year
+
+    <span class="predefined-type">String</span> name
+    Model model
+    Make make
+
+    <span class="directive">static</span> constraints = {
+        year <span class="key">min</span>: <span class="integer">1900</span>
+        name <span class="key">maxSize</span>: <span class="integer">255</span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1031,7 +1072,32 @@ The <code>belongsTo</code> property is one of several properties that GORM uses 
 <div class="listingblock">
 <div class="title">grails-app/init/org/grails/guides/BootStrap.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/init/org/grails/guides/BootStrap.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> org.grails.guides
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">BootStrap</span> {
+
+    MakeService makeService
+    ModelService modelService
+    VehicleService vehicleService
+    <span class="keyword">def</span> init = { servletContext -&gt;
+
+        Make nissan = makeService.save(<span class="string"><span class="delimiter">'</span><span class="content">Nissan</span><span class="delimiter">'</span></span>)
+        Make ford = makeService.save( <span class="string"><span class="delimiter">'</span><span class="content">Ford</span><span class="delimiter">'</span></span>)
+
+        Model titan = modelService.save(<span class="string"><span class="delimiter">'</span><span class="content">Titan</span><span class="delimiter">'</span></span>, nissan)
+        Model leaf = modelService.save(<span class="string"><span class="delimiter">'</span><span class="content">Leaf</span><span class="delimiter">'</span></span>, nissan)
+        Model windstar = modelService.save(<span class="string"><span class="delimiter">'</span><span class="content">Windstar</span><span class="delimiter">'</span></span>, ford)
+
+        vehicleService.save(<span class="string"><span class="delimiter">'</span><span class="content">Pickup</span><span class="delimiter">'</span></span>, nissan, titan, <span class="integer">2012</span>).save()
+        vehicleService.save(<span class="string"><span class="delimiter">'</span><span class="content">Economy</span><span class="delimiter">'</span></span>, nissan, leaf, <span class="integer">2014</span>).save()
+        vehicleService.save(<span class="string"><span class="delimiter">'</span><span class="content">Minivan</span><span class="delimiter">'</span></span>, ford, windstar, <span class="integer">1990</span>).save()
+    }
+    <span class="keyword">def</span> destroy = {
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1160,7 +1226,23 @@ Be sure to add the dependency to the <code>dependencies</code> section of the <c
 <div class="listingblock">
 <div class="title">docs/console.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>docs/console.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">org.grails.guides.*</span>
+
+<span class="keyword">def</span> vehicles = Vehicle.list()
+
+println vehicles.size()
+
+<span class="keyword">def</span> pickup = Vehicle.findByName(<span class="string"><span class="delimiter">&quot;</span><span class="content">Pickup</span><span class="delimiter">&quot;</span></span>)
+
+println pickup.name
+println pickup.make.name
+println pickup.model.name
+
+<span class="keyword">def</span> nissan = Make.findByName(<span class="string"><span class="delimiter">&quot;</span><span class="content">Nissan</span><span class="delimiter">&quot;</span></span>)
+
+<span class="keyword">def</span> nissans = Vehicle.findAllByMake(nissan)
+
+println nissans.size()</code></pre>
 </div>
 </div>
 
@@ -1550,7 +1632,116 @@ To override existing files, use th <code>-force</code> flag along with the <code
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/controllers/org/grails/guides/scaffolding/VehicleController.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">static</span> <span class="include">org.springframework.http.HttpStatus.NOT_FOUND</span>
+<span class="keyword">import</span> <span class="include">static</span> <span class="include">org.springframework.http.HttpStatus.OK</span>
+<span class="keyword">import</span> <span class="include">static</span> <span class="include">org.springframework.http.HttpStatus.CREATED</span>
+<span class="keyword">import</span> <span class="include">org.grails.guides.Vehicle</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+
+<span class="annotation">@SuppressWarnings</span>([<span class="string"><span class="delimiter">'</span><span class="content">LineLength</span><span class="delimiter">'</span></span>])
+<span class="annotation">@ReadOnly</span> <i class="conum" data-value="1"></i><b>(1)</b>
+<span class="type">class</span> <span class="class">VehicleController</span> {
+
+    <span class="directive">static</span> namespace = <span class="string"><span class="delimiter">'</span><span class="content">scaffolding</span><span class="delimiter">'</span></span>
+
+    <span class="directive">static</span> allowedMethods = [<span class="key">save</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>, <span class="key">update</span>: <span class="string"><span class="delimiter">'</span><span class="content">PUT</span><span class="delimiter">'</span></span>, <span class="key">delete</span>: <span class="string"><span class="delimiter">'</span><span class="content">DELETE</span><span class="delimiter">'</span></span>]
+
+    <span class="keyword">def</span> <span class="function">index</span>(<span class="predefined-type">Integer</span> max) {
+        params.max = <span class="predefined-type">Math</span>.min(max ?: <span class="integer">10</span>, <span class="integer">100</span>) <i class="conum" data-value="2"></i><b>(2)</b>
+        respond Vehicle.list(params), <span class="key">model</span>:[<span class="key">vehicleCount</span>: Vehicle.count()] <i class="conum" data-value="3"></i><b>(3)</b>
+    }
+
+    <span class="keyword">def</span> <span class="function">show</span>(Vehicle vehicle) {
+        respond vehicle <i class="conum" data-value="3"></i><b>(3)</b>
+    }
+
+    <span class="annotation">@SuppressWarnings</span>([<span class="string"><span class="delimiter">'</span><span class="content">FactoryMethodName</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">GrailsMassAssignment</span><span class="delimiter">'</span></span>])
+    <span class="keyword">def</span> <span class="function">create</span>() {
+        respond <span class="keyword">new</span> Vehicle(params) <i class="conum" data-value="3"></i><b>(3)</b>
+    }
+
+    <span class="annotation">@Transactional</span> <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="keyword">def</span> <span class="function">save</span>(Vehicle vehicle) {
+        <span class="keyword">if</span> (vehicle == <span class="predefined-constant">null</span>) {
+            transactionStatus.setRollbackOnly()
+            notFound()
+            <span class="keyword">return</span>
+        }
+
+        <span class="keyword">if</span> (vehicle.hasErrors()) {
+            transactionStatus.setRollbackOnly()
+            respond vehicle.errors, <span class="key">view</span>:<span class="string"><span class="delimiter">'</span><span class="content">create</span><span class="delimiter">'</span></span>  <i class="conum" data-value="3"></i><b>(3)</b>
+            <span class="keyword">return</span>
+        }
+
+        vehicle.save <span class="key">flush</span>:<span class="predefined-constant">true</span>
+
+        request.withFormat {  <i class="conum" data-value="4"></i><b>(4)</b>
+            form multipartForm {
+                <i class="conum" data-value="5"></i><b>(5)</b>
+                flash.message = message(<span class="key">code</span>: <span class="string"><span class="delimiter">'</span><span class="content">default.created.message</span><span class="delimiter">'</span></span>, <span class="key">args</span>: [message(<span class="key">code</span>: <span class="string"><span class="delimiter">'</span><span class="content">vehicle.label</span><span class="delimiter">'</span></span>, <span class="keyword">default</span>: <span class="string"><span class="delimiter">'</span><span class="content">Vehicle</span><span class="delimiter">'</span></span>), vehicle.id])
+                redirect vehicle
+            }
+            <span class="string"><span class="delimiter">'</span><span class="content">*</span><span class="delimiter">'</span></span> { respond vehicle, [<span class="key">status</span>: CREATED] } <i class="conum" data-value="3"></i><b>(3)</b>
+        }
+    }
+
+    <span class="keyword">def</span> <span class="function">edit</span>(Vehicle vehicle) {
+        respond vehicle <i class="conum" data-value="3"></i><b>(3)</b>
+    }
+
+    <span class="annotation">@Transactional</span> <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="keyword">def</span> <span class="function">update</span>(Vehicle vehicle) {
+        <span class="keyword">if</span> (vehicle == <span class="predefined-constant">null</span>) {
+            transactionStatus.setRollbackOnly()
+            notFound()
+            <span class="keyword">return</span>
+        }
+
+        <span class="keyword">if</span> (vehicle.hasErrors()) {
+            transactionStatus.setRollbackOnly()
+            respond vehicle.errors, <span class="key">view</span>:<span class="string"><span class="delimiter">'</span><span class="content">edit</span><span class="delimiter">'</span></span> <i class="conum" data-value="3"></i><b>(3)</b>
+            <span class="keyword">return</span>
+        }
+
+        vehicle.save <span class="key">flush</span>:<span class="predefined-constant">true</span>
+
+        request.withFormat {
+            form multipartForm {
+                <i class="conum" data-value="5"></i><b>(5)</b>
+                flash.message = message(<span class="key">code</span>: <span class="string"><span class="delimiter">'</span><span class="content">default.updated.message</span><span class="delimiter">'</span></span>, <span class="key">args</span>: [message(<span class="key">code</span>: <span class="string"><span class="delimiter">'</span><span class="content">vehicle.label</span><span class="delimiter">'</span></span>, <span class="keyword">default</span>: <span class="string"><span class="delimiter">'</span><span class="content">Vehicle</span><span class="delimiter">'</span></span>), vehicle.id])
+                redirect vehicle <i class="conum" data-value="6"></i><b>(6)</b>
+            }
+            <span class="string"><span class="delimiter">'</span><span class="content">*</span><span class="delimiter">'</span></span> { respond vehicle, [<span class="key">status</span>: OK] } <i class="conum" data-value="3"></i><b>(3)</b>
+        }
+    }
+
+    <span class="annotation">@Transactional</span> <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="keyword">def</span> <span class="function">delete</span>(Vehicle vehicle) {
+
+        <span class="keyword">if</span> (vehicle == <span class="predefined-constant">null</span>) {
+            transactionStatus.setRollbackOnly()
+            notFound()
+            <span class="keyword">return</span>
+        }
+
+        vehicle.delete <span class="key">flush</span>:<span class="predefined-constant">true</span>
+
+        request.withFormat {
+            form multipartForm {
+                <i class="conum" data-value="5"></i><b>(5)</b>
+                flash.message = message(<span class="key">code</span>: <span class="string"><span class="delimiter">'</span><span class="content">default.deleted.message</span><span class="delimiter">'</span></span>, <span class="key">args</span>: [message(<span class="key">code</span>: <span class="string"><span class="delimiter">'</span><span class="content">vehicle.label</span><span class="delimiter">'</span></span>, <span class="keyword">default</span>: <span class="string"><span class="delimiter">'</span><span class="content">Vehicle</span><span class="delimiter">'</span></span>), vehicle.id])
+                redirect <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">index</span><span class="delimiter">'</span></span>, <span class="key">method</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span> <i class="conum" data-value="6"></i><b>(6)</b>
+            }
+            <span class="string"><span class="delimiter">'</span><span class="content">*</span><span class="delimiter">'</span></span> { render <span class="key">status</span>: NO_CONTENT } <i class="conum" data-value="7"></i><b>(7)</b>
+        }
+    }
+
+    <span class="directive">protected</span> <span class="type">void</span> notFound() {
+        request.withFormat {
+            form multipartForm {
+                <i class="conum" data-value="5"></i><b>(5)</b>
+                flash.message = message(<span class="key">code</span>: <span class="string"><span class="delimiter">'</span><span class="content">default.not.found.message</span><span class="delimiter">'</span></span>, <span class="key">args</span>: [message(<span class="key">code</span>: <span class="string"><span class="delimiter">'</span><span class="content">vehicle.label</span><span class="delimiter">'</span></span>, <span class="keyword">default</span>: <span class="string"><span class="delimiter">'</span><span class="content">Vehicle</span><span class="delimiter">'</span></span>), params.id])</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -1735,7 +1926,11 @@ Date: Wed, 11 Jan 2017 04:06:57 GMT
 <div class="listingblock">
 <div class="title">grails-app/controllers/org/grails/guides/UrlMappings.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/controllers/org/grails/guides/UrlMappings.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">        <span class="string"><span class="delimiter">&quot;</span><span class="content">/</span><span class="inline"><span class="inline-delimiter">$</span>controller</span><span class="content">/</span><span class="inline"><span class="inline-delimiter">$</span>action</span><span class="content">?/</span><span class="inline"><span class="inline-delimiter">$</span>id</span><span class="content">?(.</span><span class="inline"><span class="inline-delimiter">$</span>format</span><span class="content">)?</span><span class="delimiter">&quot;</span></span> {
+            constraints {
+                <span class="comment">// apply constraints here</span>
+            }
+        }</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1802,7 +1997,45 @@ Date: Wed, 11 Jan 2017 04:06:57 GMT
 <div class="listingblock">
 <div class="title">grails-app/views/layouts/public.gsp</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="xml">link:../snippets/grails-app/views/layouts/public.gsp[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="xml"><span class="doctype">&lt;!doctype html&gt;</span>
+<span class="tag">&lt;html</span> <span class="attribute-name">lang</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">en</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">no-js</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+<span class="tag">&lt;head&gt;</span>
+    <span class="tag">&lt;meta</span> <span class="attribute-name">http-equiv</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">Content-Type</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">content</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">text/html; charset=UTF-8</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;meta</span> <span class="attribute-name">http-equiv</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">X-UA-Compatible</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">content</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">IE=edge</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;title&gt;</span>
+        <span class="tag">&lt;g:layoutTitle</span> <span class="attribute-name">default</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">Auto Catalog</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;/title&gt;</span>
+    <span class="tag">&lt;meta</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">viewport</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">content</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">width=device-width, initial-scale=1</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+
+    <span class="tag">&lt;asset:stylesheet</span> <span class="attribute-name">src</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application.css</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+
+    <span class="tag">&lt;g:layoutHead</span><span class="tag">/&gt;</span>
+<span class="tag">&lt;/head&gt;</span>
+<span class="tag">&lt;body&gt;</span>
+
+<span class="tag">&lt;div</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">navbar navbar-default navbar-static-top</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">role</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">navigation</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;div</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">container</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+        <span class="tag">&lt;div</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">navbar-header</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+            <span class="tag">&lt;a</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">navbar-brand</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">href</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">/#</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+                <span class="tag">&lt;i</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">fa grails-icon</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+                    <span class="tag">&lt;asset:image</span> <span class="attribute-name">src</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">logo.png</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+                <span class="tag">&lt;/i&gt;</span> Auto Catalog
+            <span class="tag">&lt;/a&gt;</span>
+        <span class="tag">&lt;/div&gt;</span>
+        <span class="tag">&lt;div</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">navbar-collapse collapse</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">aria-expanded</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">false</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">style</span>=<span class="string"><span class="delimiter">&quot;</span><span class="key">height</span>: <span class="float">0.8px</span>;<span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+            <span class="tag">&lt;ul</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">nav navbar-nav navbar-right</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+                <span class="tag">&lt;g:pageProperty</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">page.nav</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
+            <span class="tag">&lt;/ul&gt;</span>
+        <span class="tag">&lt;/div&gt;</span>
+    <span class="tag">&lt;/div&gt;</span>
+<span class="tag">&lt;/div&gt;</span>
+
+<span class="tag">&lt;g:layoutBody</span><span class="tag">/&gt;</span>
+
+<span class="tag">&lt;div</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">footer</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">role</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">contentinfo</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span><span class="tag">&lt;/div&gt;</span>
+
+<span class="tag">&lt;/body&gt;</span>
+<span class="tag">&lt;/html&gt;</span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1838,7 +2071,10 @@ Don&#8217;t worry about the <code>&lt;asset&gt;</code> tags in the new layout ju
 <div class="listingblock">
 <div class="title">grails-app/views/home/index.gsp</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="xml">link:../snippets/grails-app/views/home/index.gsp[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="xml"><span class="tag">&lt;html&gt;</span>
+<span class="tag">&lt;head&gt;</span>
+    <span class="tag">&lt;meta</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">layout</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">content</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">public</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span> <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="tag">&lt;title&gt;</span>Home Page<span class="tag">&lt;/title&gt;</span></code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -2086,7 +2322,9 @@ This sort of code is a <strong>bad idea</strong> - we are accessing our domain m
 <div class="listingblock">
 <div class="title">grails-app/views/home/index.gsp</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="xml">link:../snippets/grails-app/views/home/index.gsp[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="xml">        ${vehicle.name} - ${vehicle.year} ${vehicle.make.name} ${vehicle.model.name}
+    <span class="tag">&lt;/g:link&gt;</span>
+<span class="tag">&lt;/li&gt;</span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -2184,7 +2422,13 @@ The version of Grails used in this guide included jQuery 2.2.0 by default:</p>
 <div class="listingblock">
 <div class="title">grails-app/views/home/index.gsp</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="xml">link:../snippets/grails-app/views/home/index.gsp[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="xml"><span class="tag">&lt;asset:javascript</span> <span class="attribute-name">src</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">jquery-3.1.1.js</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
+
+<span class="tag">&lt;script</span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">text/javascript</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+<span class="inline">  <span class="predefined">$</span>( document ).ready(<span class="keyword">function</span>() {
+    console.log( <span class="string"><span class="delimiter">&quot;</span><span class="content">jQuery 3.1.1 loaded!</span><span class="delimiter">&quot;</span></span> );
+  });</span>
+<span class="tag">&lt;/script&gt;</span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -2261,7 +2505,20 @@ Controllers are for "web logic", services for "business logic"
 <div class="listingblock">
 <div class="title">grails-app/services/org/grails/guides/ValueEstimateService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/org/grails/guides/ValueEstimateService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> org.grails.guides
+
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+
+<span class="annotation">@Transactional</span>
+<span class="type">class</span> <span class="class">ValueEstimateService</span> {
+
+    <span class="keyword">def</span> <span class="function">getEstimate</span>(Vehicle vehicle) {
+        log.info <span class="string"><span class="delimiter">'</span><span class="content">Estimating vehicle value...</span><span class="delimiter">'</span></span>
+
+        <span class="comment">//TODO: Call third-party valuation API</span>
+        <span class="predefined-type">Math</span>.round (vehicle.name.size() + vehicle.model.name.size() * vehicle.year) * <span class="integer">2</span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -2276,7 +2533,12 @@ Controllers are for "web logic", services for "business logic"
 <div class="listingblock">
 <div class="title">grails-app/controllers/org/grails/guides/VehicleController.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/controllers/org/grails/guides/scaffolding/VehicleController.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">static</span> <span class="include">org.springframework.http.HttpStatus.CREATED</span>
+<span class="keyword">import</span> <span class="include">org.grails.guides.Vehicle</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.ReadOnly</span>
+
+<span class="annotation">@SuppressWarnings</span>([<span class="string"><span class="delimiter">'</span><span class="content">LineLength</span><span class="delimiter">'</span></span>])</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -2293,7 +2555,8 @@ Controllers are for "web logic", services for "business logic"
 <div class="listingblock">
 <div class="title">grails-app/controllers/org/grails/guides/VehicleController.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/controllers/org/grails/guides/VehicleController.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> <span class="function">index</span>(<span class="predefined-type">Integer</span> max) {
+    params.max = <span class="predefined-type">Math</span>.min(max ?: <span class="integer">10</span>, <span class="integer">100</span>)</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -2305,7 +2568,9 @@ Controllers are for "web logic", services for "business logic"
 <div class="listingblock">
 <div class="title">grails-app/views/vehicle/show.gsp</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/views/vehicle/show.gsp[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">&lt;div id=<span class="string"><span class="delimiter">&quot;</span><span class="content">show-vehicle</span><span class="delimiter">&quot;</span></span> <span class="type">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">content scaffold-show</span><span class="delimiter">&quot;</span></span> <span class="class">role</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">main</span><span class="delimiter">&quot;</span></span>&gt;
+    &lt;h1&gt;&lt;<span class="key">g</span>:message code=<span class="string"><span class="delimiter">&quot;</span><span class="content">default.show.label</span><span class="delimiter">&quot;</span></span> args=<span class="string"><span class="delimiter">&quot;</span><span class="content">[entityName]</span><span class="delimiter">&quot;</span></span> /&gt;&lt;<span class="regexp"><span class="delimiter">/</span><span class="content">h1&gt;</span></span><span class="error">
+</span>    &lt;h1&gt;Estimated <span class="key">Value</span>: &lt;<span class="key">g</span>:formatNumber number=<span class="string"><span class="delimiter">&quot;</span><span class="inline"><span class="inline-delimiter">${</span>estimatedValue<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span> type=<span class="string"><span class="delimiter">&quot;</span><span class="content">currency</span><span class="delimiter">&quot;</span></span> currencyCode=<span class="string"><span class="delimiter">&quot;</span><span class="content">USD</span><span class="delimiter">&quot;</span></span> /&gt;&lt;<span class="regexp"><span class="delimiter">/</span><span class="content">h1&gt;</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -2423,7 +2688,36 @@ Total time: 6.353 secs
 <div class="listingblock">
 <div class="title">src/test/groovy/org/grails/guides/ValueEstimateServiceSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>src/test/groovy/org/grails/guides/ValueEstimateServiceSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> org.grails.guides
+
+<span class="keyword">import</span> <span class="include">grails.testing.gorm.DataTest</span>
+<span class="keyword">import</span> <span class="include">grails.testing.services.ServiceUnitTest</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="type">class</span> <span class="class">ValueEstimateServiceSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> ServiceUnitTest&lt;ValueEstimateService&gt;, DataTest {
+
+    <span class="type">void</span> setupSpec() { <i class="conum" data-value="1"></i><b>(1)</b>
+        mockDomain Make
+        mockDomain Model
+        mockDomain Vehicle
+    }
+
+    <span class="type">void</span> testEstimateRetrieval() {
+        <span class="key">given</span>: <span class="string"><span class="delimiter">'</span><span class="content">a vehicle</span><span class="delimiter">'</span></span>
+        <span class="keyword">def</span> make = <span class="keyword">new</span> Make(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Test</span><span class="delimiter">'</span></span>)
+        <span class="keyword">def</span> model = <span class="keyword">new</span> Model(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Test</span><span class="delimiter">'</span></span>, <span class="key">make</span>: make)
+        <span class="keyword">def</span> vehicle = <span class="keyword">new</span> Vehicle(<span class="key">year</span>: <span class="integer">2000</span>, <span class="key">make</span>: make, <span class="key">model</span>: model, <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Test Vehicle</span><span class="delimiter">'</span></span>)
+
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">service is called</span><span class="delimiter">'</span></span>
+        <span class="keyword">def</span> estimate = service.getEstimate(vehicle)
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">a non-zero result is returned</span><span class="delimiter">'</span></span>
+        estimate &gt; <span class="integer">0</span>
+
+        <span class="key">and</span>: <span class="string"><span class="delimiter">'</span><span class="content">estimate is not too large</span><span class="delimiter">'</span></span>
+        estimate &lt; <span class="integer">1000000</span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">

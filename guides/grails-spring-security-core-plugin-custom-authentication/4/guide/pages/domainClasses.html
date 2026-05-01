@@ -111,13 +111,72 @@ Service injection in GORM entities is disabled by default since Grails 3.2.8.
 <div class="listingblock">
 <div class="title">/grails-app/domain/demo/User.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/domain/demo/User.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">groovy.transform.EqualsAndHashCode</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.ToString</span>
+
+<span class="annotation">@EqualsAndHashCode</span>(includes=<span class="string"><span class="delimiter">'</span><span class="content">username</span><span class="delimiter">'</span></span>)
+<span class="annotation">@ToString</span>(includes=<span class="string"><span class="delimiter">'</span><span class="content">username</span><span class="delimiter">'</span></span>, includeNames=<span class="predefined-constant">true</span>, includePackage=<span class="predefined-constant">false</span>)
+<span class="type">class</span> <span class="class">User</span> <span class="directive">implements</span> <span class="predefined-type">Serializable</span> {
+
+        <span class="directive">private</span> <span class="directive">static</span> <span class="directive">final</span> <span class="type">long</span> serialVersionUID = <span class="integer">1</span>
+
+        <span class="directive">transient</span> springSecurityService
+
+        <span class="predefined-type">String</span> username
+        <span class="predefined-type">String</span> password
+        <span class="type">boolean</span> enabled = <span class="predefined-constant">true</span>
+        <span class="type">boolean</span> accountExpired
+        <span class="type">boolean</span> accountLocked
+        <span class="type">boolean</span> passwordExpired
+        <span class="directive">static</span> hasMany = [<span class="key">coordinates</span>: SecurityCoordinate]
+
+        <span class="predefined-type">Set</span>&lt;<span class="predefined-type">Role</span>&gt; getAuthorities() {
+                UserRole.findAllByUser(<span class="local-variable">this</span>)*.role
+        }
+
+        <span class="keyword">def</span> <span class="function">beforeInsert</span>() {
+                encodePassword()
+        }
+
+        <span class="keyword">def</span> <span class="function">beforeUpdate</span>() {
+                <span class="keyword">if</span> (isDirty(<span class="string"><span class="delimiter">'</span><span class="content">password</span><span class="delimiter">'</span></span>)) {
+                        encodePassword()
+                }
+        }
+
+        <span class="directive">protected</span> <span class="type">void</span> encodePassword() {
+                password = springSecurityService?.passwordEncoder ? springSecurityService.encodePassword(password) : password
+        }
+
+        <span class="directive">static</span> transients = [<span class="string"><span class="delimiter">'</span><span class="content">springSecurityService</span><span class="delimiter">'</span></span>]
+
+        <span class="directive">static</span> constraints = {
+                password <span class="key">blank</span>: <span class="predefined-constant">false</span>, <span class="key">password</span>: <span class="predefined-constant">true</span>
+                username <span class="key">blank</span>: <span class="predefined-constant">false</span>, <span class="key">unique</span>: <span class="predefined-constant">true</span>
+        }
+
+        <span class="directive">static</span> mapping = {
+                password <span class="key">column</span>: <span class="string"><span class="delimiter">'</span><span class="content">`password`</span><span class="delimiter">'</span></span>
+                autowire <span class="predefined-constant">true</span>
+        }
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">/grails-app/domain/demo/SecurityCoordinate.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/domain/demo/SecurityCoordinate.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">SecurityCoordinate</span> {
+    <span class="predefined-type">String</span> position
+    <span class="predefined-type">String</span> value
+    <span class="directive">static</span> belongsTo = [<span class="key">user</span>: User]
+}</code></pre>
 </div>
 </div>
 

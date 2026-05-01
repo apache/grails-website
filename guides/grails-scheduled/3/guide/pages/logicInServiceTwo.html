@@ -85,7 +85,41 @@ of that confusion here is the previous cron configuration written using the Task
 <div class="listingblock">
 <div class="title">grails-app/services/demo/todayat/DailyMailJobService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/demo/todayat/DailyMailJobService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">demo.EmailService</span>
+<span class="keyword">import</span> <span class="include">demo.EmailTask</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
+<span class="keyword">import</span> <span class="include">org.apache.commons.lang.time.DateUtils</span>
+<span class="keyword">import</span> <span class="include">org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler</span>
+<span class="keyword">import</span> <span class="include">java.time.Duration</span>
+
+<span class="annotation">@Slf4j</span>
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">DailyMailJobService</span> {
+    <span class="directive">private</span> <span class="directive">final</span> <span class="type">int</span> HOUR = <span class="integer">4</span>
+    <span class="directive">private</span> <span class="directive">final</span> <span class="type">int</span> MINUTE = <span class="integer">30</span>
+    <span class="directive">private</span> <span class="directive">final</span> <span class="type">int</span> SECONDS = <span class="integer">0</span>
+    <span class="directive">private</span> <span class="directive">static</span> <span class="directive">final</span> <span class="type">long</span> MILLISECONDS_IN_DAY = <span class="predefined-type">Duration</span>.ofDays(<span class="integer">1</span>).getSeconds() * <span class="integer">1000</span> <i class="conum" data-value="4"></i><b>(4)</b>
+
+    ThreadPoolTaskScheduler threadPoolTaskScheduler <i class="conum" data-value="1"></i><b>(1)</b>
+    EmailService emailService <i class="conum" data-value="2"></i><b>(2)</b>
+
+    <span class="type">void</span> register(<span class="predefined-type">String</span> email, <span class="predefined-type">String</span> message) {
+        scheduleDailyEmail(email, message)
+    }
+
+    <span class="type">void</span> scheduleDailyEmail(<span class="predefined-type">String</span> email, <span class="predefined-type">String</span> message) { <i class="conum" data-value="5"></i><b>(5)</b>
+        threadPoolTaskScheduler.scheduleAtFixedRate(<span class="keyword">new</span> EmailTask(emailService, email, message), dailyDate(), MILLISECONDS_IN_DAY)
+    }
+
+    <span class="predefined-type">Date</span> dailyDate() { <i class="conum" data-value="3"></i><b>(3)</b>
+        <span class="predefined-type">Date</span> startAt = <span class="keyword">new</span> <span class="predefined-type">Date</span>(<span class="key">hours</span>: HOUR, <span class="key">minutes</span>: MINUTE, <span class="key">seconds</span>: SECONDS)
+        <span class="keyword">if</span>(startAt.before(<span class="keyword">new</span> <span class="predefined-type">Date</span>())) {
+            <span class="keyword">return</span> (DateUtils.addDays(startAt, <span class="integer">1</span>))
+        }
+        startAt
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -118,7 +152,27 @@ of that confusion here is the previous cron configuration written using the Task
 <div class="listingblock">
 <div class="title">grails-app/init/demo/BootStrap.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/init/demo/BootStrap.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">demo.todayat.DailyMailJobService</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">BootStrap</span> {
+
+        RegisterService registerService
+    DailyMailJobService dailyMailJobService
+
+    <span class="keyword">def</span> init = { servletContext -&gt;
+        <span class="directive">final</span> <span class="predefined-type">String</span> followUp = <span class="string"><span class="delimiter">'</span><span class="content">Follow up - How was your experience</span><span class="delimiter">'</span></span>
+            registerService.register(<span class="string"><span class="delimiter">'</span><span class="content">harry@howards.com</span><span class="delimiter">'</span></span>, followUp)
+            sleep(<span class="integer">20</span>_000)
+            registerService.register(<span class="string"><span class="delimiter">'</span><span class="content">ron@howards.com</span><span class="delimiter">'</span></span>, followUp)
+        dailyMailJobService.register(<span class="string"><span class="delimiter">'</span><span class="content">john.daily@example.com</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Daily Reminder</span><span class="delimiter">'</span></span>)
+    }
+    <span class="keyword">def</span> destroy = {
+    }
+}</code></pre>
 </div>
 </div>
 
