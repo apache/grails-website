@@ -96,7 +96,13 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">/complete-swift-ios-v1/IntranetClient/GrailsFetcher.swift</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="swift">link:{sourcedir}/../complete-swift-ios-v1/IntranetClient/GrailsApi.swift[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="swift">struct GrailsApi {
+    static let serverUrl = &quot;http://192.168.1.40:8080&quot; <i class="conum" data-value="1"></i><b>(1)</b>
+    struct Announcements {
+        static let Path = &quot;announcements&quot; <i class="conum" data-value="2"></i><b>(2)</b>
+    }
+    static let version = &quot;1.0&quot; <i class="conum" data-value="3"></i><b>(3)</b>
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -130,7 +136,37 @@ You may need to change the ip address to match your local machine.
 <div class="listingblock">
 <div class="title">/complete-swift-ios-v1/IntranetClient/AnnouncementsFetcher.swift</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="swift">link:{sourcedir}/../complete-swift-ios-v1/IntranetClient/AnnouncementsFetcher.swift[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="swift">import Foundation
+
+class AnnouncementsFetcher : NSObject, URLSessionDelegate {
+
+    weak var delegate:AnnouncementsFetcherDelegate?
+    let builder = AnnouncementBuilder()
+
+    func fetchAnnouncements() {
+        let url = URL(string: &quot;\(GrailsApi.serverUrl)/\(GrailsApi.Announcements.Path)&quot;)!
+        let req = NSMutableURLRequest(url:url)
+        req.setValue(GrailsApi.version, forHTTPHeaderField: &quot;Accept-Version&quot;) <i class="conum" data-value="1"></i><b>(1)</b>
+        let config = URLSessionConfiguration.default
+        let session = URLSession(configuration: config, delegate: self, delegateQueue: OperationQueue.main)
+
+        let task = session.dataTask(with: req as URLRequest) { (data, response, error) in
+            if error != nil {
+                if let delegate = self.delegate {
+                    delegate.announcementsFetchingFailed()
+                }
+                return
+            }
+            let announcements = self.builder.announcementsFromJSON(data)
+            if let delegate = self.delegate {
+                delegate.announcementsFetched(announcements)
+            }
+
+        }
+        task.resume()
+
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -147,7 +183,12 @@ You may need to change the ip address to match your local machine.
 <div class="listingblock">
 <div class="title">/complete-swift-ios-v1/IntranetClient/AnnouncementsFetcherDelegate.swift</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="swift">link:{sourcedir}/../complete-swift-ios-v1/IntranetClient/AnnouncementsFetcherDelegate.swift[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="swift">protocol AnnouncementsFetcherDelegate: class {
+
+    func announcementsFetchingFailed()
+
+    func announcementsFetched(_ announcements: [Announcement])
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -156,7 +197,99 @@ You may need to change the ip address to match your local machine.
 <div class="listingblock">
 <div class="title">/complete-swift-ios-v1/IntranetClient/MasterViewController.swift</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="swift">link:{sourcedir}/../complete-swift-ios-v1/IntranetClient/MasterViewController.swift[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="swift">import UIKit
+
+class MasterViewController: UITableViewController, AnnouncementsFetcherDelegate {
+
+    var detailViewController: DetailViewController? = nil
+    var objects = [Any]()
+
+    var tableViewDataSource = AnnouncementsTableViewDataSource()
+    var tableViewDelegate = AnnouncementsTableViewDelegate()
+    let fetcher = AnnouncementsFetcher()
+
+    // MARK: - LifeCycle
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        self.tableView.dataSource = self.tableViewDataSource
+        self.tableView.delegate = self.tableViewDelegate
+        self.fetcher.delegate = self
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        self.clearsSelectionOnViewWillAppear = self.splitViewController!.isCollapsed
+        super.viewWillAppear(animated)
+        self.registerNotifications()
+        self.fetchAnnouncements() <i class="conum" data-value="1"></i><b>(1)</b>
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        self.unregisterNotifications()
+    }
+
+    // MARK: - Notifications
+
+    func registerNotifications() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(self.announcementTapped),
+            name: Notification.Name(&quot;AnnouncementTappedNotification&quot;),
+            object: nil)
+    }
+
+    func unregisterNotifications() {
+        NotificationCenter.default.removeObserver(
+            self,
+            name: Notification.Name(&quot;AnnouncementTappedNotification&quot;),
+            object: nil)
+    }
+
+    // MARK: - Private Methods
+
+    @objc func announcementTapped(notification: NSNotification){
+
+        let announcement = notification.object as! Announcement
+        self.performSegue(withIdentifier: &quot;showDetail&quot;, sender: announcement)
+    }
+
+    func fetchAnnouncements() {
+        self.setNetworkActivityIndicator(true)
+        self.fetcher.fetchAnnouncements()
+    }
+
+    func setNetworkActivityIndicator(_ visible: Bool) {
+        UIApplication.shared.isNetworkActivityIndicatorVisible = visible
+    }
+
+    // MARK: - Segues
+
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        if segue.identifier == &quot;showDetail&quot; {
+            let controller = (segue.destination as! UINavigationController).topViewController as! DetailViewController
+            if let announcement = sender as? Announcement {
+                controller.announcement = announcement
+            }
+            controller.navigationItem.leftBarButtonItem = self.splitViewController?.displayModeButtonItem
+            controller.navigationItem.leftItemsSupplementBackButton = true
+        }
+    }
+
+    // MARK: - AnnouncementsFetcherDelegate
+
+    func announcementsFetchingFailed() {
+        self.setNetworkActivityIndicator(false)
+    }
+
+    func announcementsFetched(_ announcements: [Announcement]) {  <i class="conum" data-value="2"></i><b>(2)</b>
+        self.setNetworkActivityIndicator(false)
+
+        self.tableViewDataSource.announcements = announcements
+        self.tableViewDelegate.announcements = announcements
+        self.tableView.reloadData()
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -177,13 +310,43 @@ You may need to change the ip address to match your local machine.
 <div class="listingblock">
 <div class="title">/complete-swift-ios-v1/IntranetClient/AnnouncementsTableViewDataSource.swift</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="swift">link:{sourcedir}/../complete-swift-ios-v1/IntranetClient/AnnouncementsTableViewDataSource.swift[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="swift">import UIKit
+
+class AnnouncementsTableViewDataSource : NSObject, UITableViewDataSource {
+
+    var announcements = [Announcement]()
+
+
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -&gt; Int {
+        return announcements.count
+    }
+
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -&gt; UITableViewCell {
+
+        let cell = tableView.dequeueReusableCell(withIdentifier: &quot;Cell&quot;, for: indexPath)
+
+        let announcement = announcements[indexPath.row]
+        cell.textLabel!.text = announcement.title
+        return cell
+    }
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">/complete-swift-ios-v1/IntranetClient/AnnouncementsTableViewDelegate.swift</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="swift">link:{sourcedir}/../complete-swift-ios-v1/IntranetClient/AnnouncementsTableViewDelegate.swift[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="swift">import UIKit
+
+class AnnouncementsTableViewDelegate : NSObject, UITableViewDelegate {
+
+    var announcements = [Announcement]()
+
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        let announcement = announcements[indexPath.row]
+        NotificationCenter.default.post(name: Notification.Name(&quot;AnnouncementTappedNotification&quot;), object: announcement) <i class="conum" data-value="1"></i><b>(1)</b>
+    }
+
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">

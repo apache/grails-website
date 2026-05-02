@@ -84,7 +84,41 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/controllers/example/grails/ExcelController.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/grails-app/controllers/example/grails/ExcelController.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">grails.config.Config</span>
+<span class="keyword">import</span> <span class="include">grails.core.support.GrailsConfigurationAware</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="keyword">import</span> <span class="include">static</span> <span class="include">org.springframework.http.HttpStatus.OK</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">ExcelController</span> <span class="directive">implements</span> GrailsConfigurationAware { <i class="conum" data-value="1"></i><b>(1)</b>
+
+    BookService bookService
+    BookExcelService bookExcelService
+
+    <span class="predefined-type">String</span> xlsxMimeType
+    <span class="predefined-type">String</span> encoding
+
+    <span class="annotation">@Override</span>
+    <span class="type">void</span> setConfiguration(Config co) {  <i class="conum" data-value="1"></i><b>(1)</b>
+        xlsxMimeType = co.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">grails.mime.types.xlsxMimeType</span><span class="delimiter">'</span></span>,
+                <span class="predefined-type">String</span>,
+                <span class="string"><span class="delimiter">'</span><span class="content">application/vnd.openxmlformats-officedocument.spreadsheetml.sheet</span><span class="delimiter">'</span></span>)
+        encoding = co.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">grails.converters.encoding</span><span class="delimiter">'</span></span>, <span class="predefined-type">String</span>, <span class="string"><span class="delimiter">'</span><span class="content">UTF-8</span><span class="delimiter">'</span></span>)
+    }
+
+    <span class="keyword">def</span> <span class="function">index</span>() {
+        response.status = OK.value() <i class="conum" data-value="2"></i><b>(2)</b>
+        response.setHeader <span class="string"><span class="delimiter">&quot;</span><span class="content">Content-disposition</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">attachment; filename=</span><span class="inline"><span class="inline-delimiter">${</span>BookExcelService.EXCEL_FILENAME<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="3"></i><b>(3)</b>
+        response.contentType = <span class="string"><span class="delimiter">&quot;</span><span class="inline"><span class="inline-delimiter">${</span>xlsxMimeType<span class="inline-delimiter">}</span></span><span class="content">;charset=</span><span class="inline"><span class="inline-delimiter">${</span>encoding<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="4"></i><b>(4)</b>
+        <span class="predefined-type">OutputStream</span> outs = response.outputStream
+        bookExcelService.exportExcelFromBooks(outs, bookService.findAll()) <i class="conum" data-value="5"></i><b>(5)</b>
+        outs.flush()
+        outs.close()
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">

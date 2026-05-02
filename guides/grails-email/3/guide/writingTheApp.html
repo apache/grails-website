@@ -129,7 +129,7 @@ function addJsClass() {
     ...
     ..
     .
-link:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/grails-app/controllers/example/grails/UrlMappings.groovy[role=include]
+        post <span class="string"><span class="delimiter">&quot;</span><span class="content">/mail/send</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">mail</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">send</span><span class="delimiter">'</span></span>)
     }
 }</code></pre>
 </div>
@@ -140,7 +140,29 @@ link:..<span class="regexp"><span class="delimiter">/</span><span class="content
 <div class="listingblock">
 <div class="title">grails-app/controllers/example/grails/MailController.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/grails-app/controllers/example/grails/MailController.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
+
+<span class="annotation">@Slf4j</span>
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">MailController</span> {
+
+    EmailService emailService
+
+    <span class="directive">static</span> allowedMethods = [<span class="key">send</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>]
+
+    <span class="keyword">def</span> <span class="function">send</span>(EmailCmd cmd) {
+        <span class="keyword">if</span> ( cmd.hasErrors() ) {
+            render <span class="key">status</span>: <span class="integer">422</span>
+            <span class="keyword">return</span>
+        }
+        log.info <span class="string"><span class="delimiter">'</span><span class="content">{}</span><span class="delimiter">'</span></span>, cmd.toString()
+        emailService.send(cmd)
+        render <span class="key">status</span>: <span class="integer">200</span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -149,7 +171,33 @@ link:..<span class="regexp"><span class="delimiter">/</span><span class="content
 <div class="listingblock">
 <div class="title">grails-app/controllers/example/grails/EmailCmd.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/grails-app/controllers/example/grails/EmailCmd.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">grails.compiler.GrailsCompileStatic</span>
+<span class="keyword">import</span> <span class="include">grails.validation.Validateable</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.ToString</span>
+
+<span class="annotation">@ToString</span>
+<span class="annotation">@GrailsCompileStatic</span>
+<span class="type">class</span> <span class="class">EmailCmd</span> <span class="directive">implements</span> Validateable, Email {
+    <span class="predefined-type">String</span> recipient
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; cc = <span class="type">[]</span>
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; bcc = <span class="type">[]</span>
+    <span class="predefined-type">String</span> subject
+    <span class="predefined-type">String</span> htmlBody
+    <span class="predefined-type">String</span> textBody
+    <span class="predefined-type">String</span> replyTo
+
+    <span class="directive">static</span> constraints = {
+        recipient <span class="key">nullable</span>: <span class="predefined-constant">false</span> <i class="conum" data-value="1"></i><b>(1)</b>
+        subject <span class="key">nullable</span>: <span class="predefined-constant">false</span>  <i class="conum" data-value="2"></i><b>(2)</b>
+        htmlBody <span class="key">nullable</span>: <span class="predefined-constant">true</span>
+        textBody <span class="key">nullable</span>: <span class="predefined-constant">true</span>, <span class="key">validator</span>: { <span class="predefined-type">String</span> val, EmailCmd obj -&gt;  <i class="conum" data-value="3"></i><b>(3)</b>
+            !(!obj.htmlBody &amp;&amp; !val)
+        }
+        replyTo <span class="key">nullable</span>: <span class="predefined-constant">true</span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -185,13 +233,33 @@ link:..<span class="regexp"><span class="delimiter">/</span><span class="content
 <div class="listingblock">
 <div class="title">src/groovy/main/example/grails/EmailService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/src/main/groovy/example/grails/EmailService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">interface</span> EmailService {
+    <span class="type">void</span> send(Email email)
+}</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="title">src/groovy/main/example/grails/Email.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/src/main/groovy/example/grails/Email.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">interface</span> Email {
+    <span class="predefined-type">String</span> getRecipient()
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; getCc()
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; getBcc()
+    <span class="predefined-type">String</span> getSubject()
+    <span class="predefined-type">String</span> getHtmlBody()
+    <span class="predefined-type">String</span> getTextBody()
+    <span class="predefined-type">String</span> getReplyTo()
+}</code></pre>
 </div>
 </div>
 
@@ -221,7 +289,7 @@ link:..<span class="regexp"><span class="delimiter">/</span><span class="content
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>build.gradle[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">    compile <span class="string"><span class="delimiter">'</span><span class="content">com.amazonaws:aws-java-sdk-ses:1.11.285</span><span class="delimiter">'</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -230,7 +298,12 @@ link:..<span class="regexp"><span class="delimiter">/</span><span class="content
 <div class="listingblock">
 <div class="title">grails-app/conf/application.yml</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/application.yml[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">aws</span>:
+    <span class="key">accessKeyId</span>: <span class="string"><span class="delimiter">'</span><span class="content">${AWS_ACCESS_KEY_ID}</span><span class="delimiter">'</span></span>
+    <span class="key">secretKey</span>: <span class="string"><span class="delimiter">'</span><span class="content">${AWS_SECRET_KEY}</span><span class="delimiter">'</span></span>
+    <span class="key">sourceEmail</span>: <span class="string"><span class="delimiter">'</span><span class="content">${AWS_SOURCE_EMAIL}</span><span class="delimiter">'</span></span>
+    <span class="key">ses</span>:
+        <span class="key">region</span>: <span class="string"><span class="delimiter">'</span><span class="content">${AWS_REGION}</span><span class="delimiter">'</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -239,7 +312,44 @@ link:..<span class="regexp"><span class="delimiter">/</span><span class="content
 <div class="listingblock">
 <div class="title">grails-app/services/example/grails/AwsCredentialsProviderService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/AwsCredentialsProviderService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">com.amazonaws.auth.AWSCredentials</span>
+<span class="keyword">import</span> <span class="include">com.amazonaws.auth.AWSCredentialsProvider</span>
+<span class="keyword">import</span> <span class="include">com.amazonaws.auth.BasicAWSCredentials</span>
+<span class="keyword">import</span> <span class="include">grails.config.Config</span>
+<span class="keyword">import</span> <span class="include">grails.core.support.GrailsConfigurationAware</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">AwsCredentialsProviderService</span> <span class="directive">implements</span> AWSCredentialsProvider, GrailsConfigurationAware { <i class="conum" data-value="1"></i><b>(1)</b>
+
+    <span class="predefined-type">String</span> accessKey
+
+    <span class="predefined-type">String</span> secretKey
+
+    <span class="annotation">@Override</span>
+    AWSCredentials getCredentials() {
+        <span class="keyword">return</span> <span class="keyword">new</span> BasicAWSCredentials(accessKey, secretKey)
+    }
+
+    <span class="annotation">@Override</span>
+    <span class="type">void</span> refresh() {
+
+    }
+
+    <span class="annotation">@Override</span>
+    <span class="type">void</span> setConfiguration(Config co) {
+        <span class="local-variable">this</span>.accessKey = co.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">aws.accessKeyId</span><span class="delimiter">'</span></span>, <span class="predefined-type">String</span>)
+        <span class="keyword">if</span> (!<span class="local-variable">this</span>.accessKey) {
+            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="exception">IllegalStateException</span>(<span class="string"><span class="delimiter">'</span><span class="content">aws.accessKeyId not set</span><span class="delimiter">'</span></span>)
+        }
+        <span class="local-variable">this</span>.secretKey = co.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">aws.secretKey</span><span class="delimiter">'</span></span>, <span class="predefined-type">String</span>)
+        <span class="keyword">if</span> (!<span class="local-variable">this</span>.secretKey) {
+            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="exception">IllegalStateException</span>(<span class="string"><span class="delimiter">'</span><span class="content">aws.secretKey not set</span><span class="delimiter">'</span></span>)
+        }
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -253,7 +363,101 @@ link:..<span class="regexp"><span class="delimiter">/</span><span class="content
 <div class="listingblock">
 <div class="title">grails-app/services/example/grails/AwsSesMailService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/AwsSesMailService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">com.amazonaws.services.simpleemail.model.SendEmailResult</span>
+<span class="keyword">import</span> <span class="include">grails.config.Config</span>
+<span class="keyword">import</span> <span class="include">grails.core.support.GrailsConfigurationAware</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
+<span class="keyword">import</span> <span class="include">com.amazonaws.services.simpleemail.AmazonSimpleEmailService</span>
+<span class="keyword">import</span> <span class="include">com.amazonaws.services.simpleemail.AmazonSimpleEmailServiceClientBuilder</span>
+<span class="keyword">import</span> <span class="include">com.amazonaws.services.simpleemail.model.Body</span>
+<span class="keyword">import</span> <span class="include">com.amazonaws.services.simpleemail.model.Content</span>
+<span class="keyword">import</span> <span class="include">com.amazonaws.services.simpleemail.model.Destination</span>
+<span class="keyword">import</span> <span class="include">com.amazonaws.services.simpleemail.model.Message</span>
+<span class="keyword">import</span> <span class="include">com.amazonaws.services.simpleemail.model.SendEmailRequest</span>
+
+<span class="annotation">@Slf4j</span>
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">AwsSesMailService</span> <span class="directive">implements</span> EmailService, GrailsConfigurationAware {  <i class="conum" data-value="1"></i><b>(1)</b>
+
+    <span class="predefined-type">String</span> awsRegion
+
+    <span class="predefined-type">String</span> sourceEmail
+
+    AwsCredentialsProviderService awsCredentialsProviderService
+
+    <span class="annotation">@Override</span>
+    <span class="type">void</span> setConfiguration(Config co) {
+        <span class="local-variable">this</span>.awsRegion = co.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">aws.ses.region</span><span class="delimiter">'</span></span>)
+        <span class="keyword">if</span> (!<span class="local-variable">this</span>.awsRegion) {
+            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="exception">IllegalStateException</span>(<span class="string"><span class="delimiter">'</span><span class="content">aws.ses.region not set</span><span class="delimiter">'</span></span>)
+        }
+
+        <span class="local-variable">this</span>.sourceEmail = co.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">aws.sourceEmail</span><span class="delimiter">'</span></span>)
+        <span class="keyword">if</span> (!<span class="local-variable">this</span>.sourceEmail) {
+            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="exception">IllegalStateException</span>(<span class="string"><span class="delimiter">'</span><span class="content">aws.sourceEmaill not set</span><span class="delimiter">'</span></span>)
+        }
+    }
+
+    <span class="directive">private</span> Body bodyOfEmail(Email email) {
+        <span class="keyword">if</span> (email.htmlBody) {
+            Content htmlBody = <span class="keyword">new</span> Content().withData(email.htmlBody)
+            <span class="keyword">return</span> <span class="keyword">new</span> Body().withHtml(htmlBody)
+        }
+        <span class="keyword">if</span> (email.textBody) {
+            Content textBody = <span class="keyword">new</span> Content().withData(email.textBody)
+            <span class="keyword">return</span> <span class="keyword">new</span> Body().withHtml(textBody)
+        }
+        <span class="keyword">new</span> Body()
+    }
+
+    <span class="annotation">@Override</span>
+     <span class="type">void</span> send(Email email) {
+
+        <span class="keyword">if</span> ( !awsCredentialsProviderService ) {
+            log.warn(<span class="string"><span class="delimiter">&quot;</span><span class="content">AWS Credentials provider not configured</span><span class="delimiter">&quot;</span></span>)
+            <span class="keyword">return</span>
+        }
+
+        <span class="predefined-type">Destination</span> destination = <span class="keyword">new</span> <span class="predefined-type">Destination</span>().withToAddresses(email.recipient)
+        <span class="keyword">if</span> ( email.getCc() ) {
+            destination = destination.withCcAddresses(email.getCc())
+        }
+        <span class="keyword">if</span> ( email.getBcc() ) {
+            destination = destination.withBccAddresses(email.getBcc())
+        }
+        Content subject = <span class="keyword">new</span> Content().withData(email.getSubject())
+        Body body = bodyOfEmail(email)
+        Message message = <span class="keyword">new</span> Message().withSubject(subject).withBody(body)
+
+        SendEmailRequest request = <span class="keyword">new</span> SendEmailRequest()
+                .withSource(sourceEmail)
+                .withDestination(destination)
+                .withMessage(message)
+
+        <span class="keyword">if</span> ( email.getReplyTo() ) {
+            request = request.withReplyToAddresses()
+        }
+
+        <span class="keyword">try</span> {
+            log.info(<span class="string"><span class="delimiter">&quot;</span><span class="content">Attempting to send an email through Amazon SES by using the AWS SDK for Java...</span><span class="delimiter">&quot;</span></span>)
+
+            AmazonSimpleEmailService client = AmazonSimpleEmailServiceClientBuilder.standard()
+                    .withCredentials(awsCredentialsProviderService)
+                    .withRegion(awsRegion)
+                    .build()
+
+            SendEmailResult sendEmailResult = client.sendEmail(request)
+            log.info(<span class="string"><span class="delimiter">&quot;</span><span class="content">Email sent! {}</span><span class="delimiter">&quot;</span></span>, sendEmailResult.toString())
+
+        } <span class="keyword">catch</span> (<span class="exception">Exception</span> ex) {
+            log.warn(<span class="string"><span class="delimiter">&quot;</span><span class="content">The email was not sent.</span><span class="delimiter">&quot;</span></span>)
+            log.warn(<span class="string"><span class="delimiter">&quot;</span><span class="content">Error message: {}</span><span class="delimiter">&quot;</span></span>, ex.message)
+        }
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -294,7 +498,7 @@ link:..<span class="regexp"><span class="delimiter">/</span><span class="content
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>build.gradle[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">    compile <span class="string"><span class="delimiter">'</span><span class="content">com.sendgrid:sendgrid-java:4.1.2</span><span class="delimiter">'</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -303,7 +507,9 @@ link:..<span class="regexp"><span class="delimiter">/</span><span class="content
 <div class="listingblock">
 <div class="title">grails-app/conf/application.yml</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/application.yml[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">sendgrid</span>:
+    <span class="key">apiKey</span>: <span class="string"><span class="delimiter">'</span><span class="content">${SENDGRID_APIKEY}</span><span class="delimiter">'</span></span>
+    <span class="key">fromEmail</span>: <span class="string"><span class="delimiter">'</span><span class="content">${SENDGRID_FROM_EMAIL}</span><span class="delimiter">'</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -312,7 +518,105 @@ link:..<span class="regexp"><span class="delimiter">/</span><span class="content
 <div class="listingblock">
 <div class="title">grails-app/services/example/grails/SendGridEmailService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/SendGridEmailService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">com.sendgrid.Personalization</span>
+<span class="keyword">import</span> <span class="include">com.sendgrid.Content</span>
+<span class="keyword">import</span> <span class="include">com.sendgrid.Mail</span>
+<span class="keyword">import</span> <span class="include">com.sendgrid.SendGrid</span>
+<span class="keyword">import</span> <span class="include">com.sendgrid.Request</span>
+<span class="keyword">import</span> <span class="include">com.sendgrid.Response</span>
+<span class="keyword">import</span> <span class="include">com.sendgrid.Method</span>
+<span class="keyword">import</span> <span class="include">grails.config.Config</span>
+<span class="keyword">import</span> <span class="include">grails.core.support.GrailsConfigurationAware</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
+
+<span class="annotation">@Slf4j</span>
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">SendGridEmailService</span> <span class="directive">implements</span> EmailService, GrailsConfigurationAware {  <i class="conum" data-value="1"></i><b>(1)</b>
+
+    <span class="predefined-type">String</span> apiKey
+
+    <span class="predefined-type">String</span> fromEmail
+
+    <span class="annotation">@Override</span>
+    <span class="type">void</span> setConfiguration(Config co) {
+        <span class="local-variable">this</span>.apiKey = co.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">sendgrid.apiKey</span><span class="delimiter">'</span></span>, <span class="predefined-type">String</span>)
+        <span class="keyword">if</span> (!<span class="local-variable">this</span>.apiKey) {
+            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="exception">IllegalStateException</span>(<span class="string"><span class="delimiter">'</span><span class="content">sendgrid.apiKey not set</span><span class="delimiter">'</span></span>)
+        }
+        <span class="local-variable">this</span>.fromEmail = co.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">sendgrid.fromEmail</span><span class="delimiter">'</span></span>, <span class="predefined-type">String</span>)
+        <span class="keyword">if</span> (!<span class="local-variable">this</span>.fromEmail) {
+            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="exception">IllegalStateException</span>(<span class="string"><span class="delimiter">'</span><span class="content">sendgrid.apiKey not set</span><span class="delimiter">'</span></span>)
+        }
+    }
+
+    <span class="directive">protected</span> Content contentOfEmail(Email email) {
+        <span class="keyword">if</span> ( email.textBody ) {
+            <span class="keyword">return</span> <span class="keyword">new</span> Content(<span class="string"><span class="delimiter">&quot;</span><span class="content">text/plain</span><span class="delimiter">&quot;</span></span>, email.textBody)
+        }
+        <span class="keyword">if</span> ( email.htmlBody ) {
+            <span class="keyword">return</span> <span class="keyword">new</span> Content(<span class="string"><span class="delimiter">&quot;</span><span class="content">text/html</span><span class="delimiter">&quot;</span></span>, email.htmlBody)
+        }
+        <span class="keyword">return</span> <span class="predefined-constant">null</span>
+    }
+
+    <span class="annotation">@Override</span>
+    <span class="type">void</span> send(Email email) {
+
+        Personalization personalization = <span class="keyword">new</span> Personalization()
+        personalization.subject = email.subject
+
+        com.sendgrid.Email to = <span class="keyword">new</span> com.sendgrid.Email(email.recipient)
+        personalization.addTo(to)
+
+        <span class="keyword">if</span> ( email.getCc() ) {
+            <span class="keyword">for</span> ( <span class="predefined-type">String</span> cc : email.getCc() ) {
+                com.sendgrid.Email ccEmail = <span class="keyword">new</span> com.sendgrid.Email()
+                ccEmail.email = cc
+                personalization.addCc(ccEmail)
+            }
+        }
+
+        <span class="keyword">if</span> ( email.getBcc() ) {
+            <span class="keyword">for</span> ( <span class="predefined-type">String</span> bcc : email.getBcc() ) {
+                com.sendgrid.Email bccEmail = <span class="keyword">new</span> com.sendgrid.Email()
+                bccEmail.email = bcc
+                personalization.addBcc(bccEmail)
+            }
+        }
+
+        Mail mail = <span class="keyword">new</span> Mail()
+        com.sendgrid.Email from = <span class="keyword">new</span> com.sendgrid.Email()
+        from.email = fromEmail
+        mail.from = from
+        mail.addPersonalization(personalization)
+        Content content = contentOfEmail(email)
+        mail.addContent(content)
+
+        SendGrid sg = <span class="keyword">new</span> SendGrid(apiKey)
+        Request request = <span class="keyword">new</span> Request()
+        <span class="keyword">try</span> {
+            request.with {
+                method = <span class="predefined-type">Method</span>.POST
+                endpoint = <span class="string"><span class="delimiter">&quot;</span><span class="content">mail/send</span><span class="delimiter">&quot;</span></span>
+                body = mail.build()
+            }
+            Response response = sg.api(request)
+            log.info(<span class="string"><span class="delimiter">&quot;</span><span class="content">Status Code: {}</span><span class="delimiter">&quot;</span></span>, <span class="predefined-type">String</span>.valueOf(response.getStatusCode()))
+            log.info(<span class="string"><span class="delimiter">&quot;</span><span class="content">Body: {}</span><span class="delimiter">&quot;</span></span>, response.getBody())
+            <span class="keyword">if</span> ( log.infoEnabled ) {
+                response.getHeaders().each { <span class="predefined-type">String</span> k, <span class="predefined-type">String</span> v -&gt;
+                    log.info(<span class="string"><span class="delimiter">&quot;</span><span class="content">Response Header {} =&gt; {}</span><span class="delimiter">&quot;</span></span>, k, v)
+                }
+            }
+
+        } <span class="keyword">catch</span> (<span class="exception">IOException</span> ex) {
+            log.error(ex.getMessage())
+        }
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -346,7 +650,18 @@ link:..<span class="regexp"><span class="delimiter">/</span><span class="content
 <div class="listingblock">
 <div class="title">grails-app/conf/spring/resources.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/grails-app/conf/spring/resources.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">example.grails.AwsSesMailService</span>
+<span class="keyword">import</span> <span class="include">example.grails.SendGridEmailService</span>
+
+beans = {
+    <span class="keyword">if</span> ( <span class="predefined-type">System</span>.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">AWS_REGION</span><span class="delimiter">'</span></span>) &amp;&amp; <span class="predefined-type">System</span>.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">AWS_SOURCE_EMAIL</span><span class="delimiter">'</span></span>) &amp;&amp; <span class="predefined-type">System</span>.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">AWS_ACCESS_KEY_ID</span><span class="delimiter">'</span></span>) &amp;&amp; <span class="predefined-type">System</span>.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">AWS_SECRET_KEY</span><span class="delimiter">'</span></span>) ) {
+        emailService(AwsSesMailService) {
+            awsCredentialsProviderService = ref(<span class="string"><span class="delimiter">'</span><span class="content">awsCredentialsProviderService</span><span class="delimiter">'</span></span>)
+        }
+    } <span class="keyword">else</span> <span class="keyword">if</span> ( <span class="predefined-type">System</span>.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">SENDGRID_FROM_EMAIL</span><span class="delimiter">'</span></span>) &amp;&amp; <span class="predefined-type">System</span>.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">SENDGRID_APIKEY</span><span class="delimiter">'</span></span>) ) {
+        emailService(SendGridEmailService)
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -358,7 +673,7 @@ link:..<span class="regexp"><span class="delimiter">/</span><span class="content
 <pre class="CodeRay highlight"><code data-lang="groovy">...
 ..
 .
-link:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/grails-app/conf/logback.groovy[role=include]</code></pre>
+logger(<span class="string"><span class="delimiter">'</span><span class="content">example.grails</span><span class="delimiter">'</span></span>, INFO, [<span class="string"><span class="delimiter">'</span><span class="content">STDOUT</span><span class="delimiter">'</span></span>], <span class="predefined-constant">false</span>)</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -400,7 +715,7 @@ link:..<span class="regexp"><span class="delimiter">/</span><span class="content
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/build.gradle[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">    testCompile <span class="string"><span class="delimiter">'</span><span class="content">org.spockframework:spock-spring:1.1-groovy-2.4</span><span class="delimiter">'</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -409,7 +724,20 @@ link:..<span class="regexp"><span class="delimiter">/</span><span class="content
 <div class="listingblock">
 <div class="title">grails-app/init/example/grails/Application.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/grails-app/init/example/grails/Application.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">grails.boot.GrailsApp</span>
+<span class="keyword">import</span> <span class="include">grails.boot.config.GrailsAutoConfiguration</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">org.springframework.context.annotation.ComponentScan</span>
+
+<span class="annotation">@ComponentScan</span>(<span class="string"><span class="delimiter">'</span><span class="content">example.grails</span><span class="delimiter">'</span></span>)
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">Application</span> <span class="directive">extends</span> GrailsAutoConfiguration {
+    <span class="directive">static</span> <span class="type">void</span> main(<span class="predefined-type">String</span><span class="type">[]</span> args) {
+        GrailsApp.run(Application, args)
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -418,7 +746,54 @@ link:..<span class="regexp"><span class="delimiter">/</span><span class="content
 <div class="listingblock">
 <div class="title">src/integration-test/groovy/example/grails/MailControllerSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/src/integration-test/groovy/example/grails/MailControllerSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">grails.plugins.rest.client.RestBuilder</span>
+<span class="keyword">import</span> <span class="include">grails.plugins.rest.client.RestResponse</span>
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Autowired</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Qualifier</span>
+<span class="keyword">import</span> <span class="include">org.springframework.boot.test.context.TestConfiguration</span>
+<span class="keyword">import</span> <span class="include">org.springframework.context.annotation.Bean</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+<span class="keyword">import</span> <span class="include">spock.mock.DetachedMockFactory</span>
+
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">MailControllerSpec</span> <span class="directive">extends</span> Specification {
+
+    EmailService emailService
+
+    <span class="keyword">def</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">/mail/send interacts once email service</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        RestBuilder rest = <span class="keyword">new</span> RestBuilder()
+
+        <span class="key">when</span>:
+        RestResponse resp = rest.post(<span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/mail/send</span><span class="delimiter">&quot;</span></span>) {
+            accept(<span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+            contentType(<span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+            json {
+                subject = <span class="string"><span class="delimiter">'</span><span class="content">Test</span><span class="delimiter">'</span></span>
+                recipient = <span class="string"><span class="delimiter">'</span><span class="content">delamos@grails.example</span><span class="delimiter">'</span></span>
+                textBody  = <span class="string"><span class="delimiter">'</span><span class="content">Hola hola</span><span class="delimiter">'</span></span>
+            }
+        }
+
+        <span class="key">then</span>:
+        resp.status == <span class="integer">200</span>
+        <span class="integer">1</span> * emailService.send(_) <i class="conum" data-value="1"></i><b>(1)</b>
+
+    }
+
+    <span class="annotation">@TestConfiguration</span>
+    <span class="directive">static</span> <span class="type">class</span> <span class="class">EmailServiceConfiguration</span> {
+        <span class="directive">private</span> DetachedMockFactory factory = <span class="keyword">new</span> DetachedMockFactory()
+
+        <span class="annotation">@Bean</span>
+        EmailService emailService() {
+            factory.Mock(EmailService)
+        }
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">

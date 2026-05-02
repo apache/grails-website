@@ -87,7 +87,7 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/build.gradle[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">    testCompile <span class="string"><span class="delimiter">'</span><span class="content">org.spockframework:spock-spring:1.1-groovy-2.4</span><span class="delimiter">'</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -96,7 +96,20 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/init/example/grails/Application.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/grails-app/init/example/grails/Application.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">grails.boot.GrailsApp</span>
+<span class="keyword">import</span> <span class="include">grails.boot.config.GrailsAutoConfiguration</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">org.springframework.context.annotation.ComponentScan</span>
+
+<span class="annotation">@ComponentScan</span>(<span class="string"><span class="delimiter">'</span><span class="content">example.grails</span><span class="delimiter">'</span></span>)
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">Application</span> <span class="directive">extends</span> GrailsAutoConfiguration {
+    <span class="directive">static</span> <span class="type">void</span> main(<span class="predefined-type">String</span><span class="type">[]</span> args) {
+        GrailsApp.run(Application, args)
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -105,7 +118,54 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">src/integration-test/groovy/example/grails/MailControllerSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/src/integration-test/groovy/example/grails/MailControllerSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">grails.plugins.rest.client.RestBuilder</span>
+<span class="keyword">import</span> <span class="include">grails.plugins.rest.client.RestResponse</span>
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Autowired</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Qualifier</span>
+<span class="keyword">import</span> <span class="include">org.springframework.boot.test.context.TestConfiguration</span>
+<span class="keyword">import</span> <span class="include">org.springframework.context.annotation.Bean</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+<span class="keyword">import</span> <span class="include">spock.mock.DetachedMockFactory</span>
+
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">MailControllerSpec</span> <span class="directive">extends</span> Specification {
+
+    EmailService emailService
+
+    <span class="keyword">def</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">/mail/send interacts once email service</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        RestBuilder rest = <span class="keyword">new</span> RestBuilder()
+
+        <span class="key">when</span>:
+        RestResponse resp = rest.post(<span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/mail/send</span><span class="delimiter">&quot;</span></span>) {
+            accept(<span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+            contentType(<span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+            json {
+                subject = <span class="string"><span class="delimiter">'</span><span class="content">Test</span><span class="delimiter">'</span></span>
+                recipient = <span class="string"><span class="delimiter">'</span><span class="content">delamos@grails.example</span><span class="delimiter">'</span></span>
+                textBody  = <span class="string"><span class="delimiter">'</span><span class="content">Hola hola</span><span class="delimiter">'</span></span>
+            }
+        }
+
+        <span class="key">then</span>:
+        resp.status == <span class="integer">200</span>
+        <span class="integer">1</span> * emailService.send(_) <i class="conum" data-value="1"></i><b>(1)</b>
+
+    }
+
+    <span class="annotation">@TestConfiguration</span>
+    <span class="directive">static</span> <span class="type">class</span> <span class="class">EmailServiceConfiguration</span> {
+        <span class="directive">private</span> DetachedMockFactory factory = <span class="keyword">new</span> DetachedMockFactory()
+
+        <span class="annotation">@Bean</span>
+        EmailService emailService() {
+            factory.Mock(EmailService)
+        }
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">

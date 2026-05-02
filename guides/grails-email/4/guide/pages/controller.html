@@ -89,7 +89,7 @@ function addJsClass() {
     ...
     ..
     .
-link:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/grails-app/controllers/example/grails/UrlMappings.groovy[role=include]
+        post <span class="string"><span class="delimiter">&quot;</span><span class="content">/mail/send</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">mail</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">send</span><span class="delimiter">'</span></span>)
     }
 }</code></pre>
 </div>
@@ -100,7 +100,29 @@ link:..<span class="regexp"><span class="delimiter">/</span><span class="content
 <div class="listingblock">
 <div class="title">grails-app/controllers/example/grails/MailController.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/grails-app/controllers/example/grails/MailController.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
+
+<span class="annotation">@Slf4j</span>
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">MailController</span> {
+
+    EmailService emailService
+
+    <span class="directive">static</span> allowedMethods = [<span class="key">send</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>]
+
+    <span class="keyword">def</span> <span class="function">send</span>(EmailCmd cmd) {
+        <span class="keyword">if</span> ( cmd.hasErrors() ) {
+            render <span class="key">status</span>: <span class="integer">422</span>
+            <span class="keyword">return</span>
+        }
+        log.info <span class="string"><span class="delimiter">'</span><span class="content">{}</span><span class="delimiter">'</span></span>, cmd.toString()
+        emailService.send(cmd)
+        render <span class="key">status</span>: <span class="integer">200</span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -109,7 +131,33 @@ link:..<span class="regexp"><span class="delimiter">/</span><span class="content
 <div class="listingblock">
 <div class="title">grails-app/controllers/example/grails/EmailCmd.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/grails-app/controllers/example/grails/EmailCmd.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">grails.compiler.GrailsCompileStatic</span>
+<span class="keyword">import</span> <span class="include">grails.validation.Validateable</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.ToString</span>
+
+<span class="annotation">@ToString</span>
+<span class="annotation">@GrailsCompileStatic</span>
+<span class="type">class</span> <span class="class">EmailCmd</span> <span class="directive">implements</span> Validateable, Email {
+    <span class="predefined-type">String</span> recipient
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; cc = <span class="type">[]</span>
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; bcc = <span class="type">[]</span>
+    <span class="predefined-type">String</span> subject
+    <span class="predefined-type">String</span> htmlBody
+    <span class="predefined-type">String</span> textBody
+    <span class="predefined-type">String</span> replyTo
+
+    <span class="directive">static</span> constraints = {
+        recipient <span class="key">nullable</span>: <span class="predefined-constant">false</span> <i class="conum" data-value="1"></i><b>(1)</b>
+        subject <span class="key">nullable</span>: <span class="predefined-constant">false</span>  <i class="conum" data-value="2"></i><b>(2)</b>
+        htmlBody <span class="key">nullable</span>: <span class="predefined-constant">true</span>
+        textBody <span class="key">nullable</span>: <span class="predefined-constant">true</span>, <span class="key">validator</span>: { <span class="predefined-type">String</span> val, EmailCmd obj -&gt;  <i class="conum" data-value="3"></i><b>(3)</b>
+            !(!obj.htmlBody &amp;&amp; !val)
+        }
+        replyTo <span class="key">nullable</span>: <span class="predefined-constant">true</span>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">

@@ -121,7 +121,7 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/build.gradle[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">compile <span class="string"><span class="delimiter">'</span><span class="content">org.grails.plugins:spring-security-core:3.2.1</span><span class="delimiter">'</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -168,7 +168,7 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/conf/application.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/grails-app/conf/application.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.useBasicAuth = <span class="predefined-constant">true</span></code></pre>
 </div>
 </div>
 
@@ -188,7 +188,39 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/controllers/example/grails/HomeController.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/grails-app/controllers/example/grails/HomeController.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.SpringSecurityService</span>
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.annotation.Secured</span>
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.userdetails.GrailsUser</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="annotation">@Secured</span>(<span class="string"><span class="delimiter">'</span><span class="content">isAuthenticated()</span><span class="delimiter">'</span></span>)
+<span class="type">class</span> <span class="class">HomeController</span> {
+
+    <span class="directive">static</span> responseFormats = [<span class="string"><span class="delimiter">'</span><span class="content">json</span><span class="delimiter">'</span></span>]
+
+    SpringSecurityService springSecurityService
+
+    <span class="keyword">def</span> <span class="function">index</span>() {
+        [<span class="key">name</span>: loggedUsername()]
+    }
+
+    <span class="predefined-type">String</span> loggedUsername() {
+        <span class="keyword">if</span> ( springSecurityService.principal == <span class="predefined-constant">null</span> ) {
+            <span class="keyword">return</span> <span class="predefined-constant">null</span>
+        }
+        <span class="keyword">if</span> ( springSecurityService.principal <span class="keyword">instanceof</span> <span class="predefined-type">String</span> ) {
+            <span class="keyword">return</span> springSecurityService.principal
+        }
+        <span class="keyword">if</span> ( springSecurityService.principal <span class="keyword">instanceof</span> GrailsUser ) {
+            <span class="keyword">return</span> ((GrailsUser) springSecurityService.principal).username
+        }
+        <span class="predefined-constant">null</span>
+    }
+
+}</code></pre>
 </div>
 </div>
 
@@ -208,7 +240,13 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/views/home/index.gson</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/grails-app/views/home/index.gson[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">model {
+    <span class="predefined-type">String</span> name
+}
+
+json {
+    username name
+}</code></pre>
 </div>
 </div>
 
@@ -235,7 +273,19 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/services/example/grails/UserDataService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/grails-app/services/example/grails/UserDataService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Service</span>
+
+<span class="annotation">@Service</span>(User)
+<span class="type">interface</span> UserDataService {
+
+    User save(<span class="predefined-type">String</span> username, <span class="predefined-type">String</span> password, <span class="type">boolean</span> enabled, <span class="type">boolean</span> accountExpired, <span class="type">boolean</span> accountLocked, <span class="type">boolean</span> passwordExpired)
+
+    <span class="type">void</span> delete(<span class="predefined-type">Serializable</span> id)
+
+    <span class="type">int</span> count()
+}</code></pre>
 </div>
 </div>
 
@@ -255,7 +305,46 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">src/integration-test/groovy/example/grails/HomeControllerSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/src/integration-test/groovy/example/grails/HomeControllerSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">grails.plugins.rest.client.RestBuilder</span>
+<span class="keyword">import</span> <span class="include">grails.plugins.rest.client.RestResponse</span>
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">HomeControllerSpec</span> <span class="directive">extends</span> Specification {
+
+    UserDataService userDataService
+
+    <span class="keyword">def</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">verify basic auth is possible</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        RestBuilder rest = <span class="keyword">new</span> RestBuilder()
+        <span class="directive">final</span> <span class="predefined-type">String</span> username = <span class="string"><span class="delimiter">'</span><span class="content">sherlock</span><span class="delimiter">'</span></span>
+        <span class="directive">final</span> <span class="predefined-type">String</span> password = <span class="string"><span class="delimiter">'</span><span class="content">elementary</span><span class="delimiter">'</span></span>
+
+        <span class="key">when</span>:
+        User user = userDataService.save(username, password, <span class="predefined-constant">true</span>, <span class="predefined-constant">false</span>, <span class="predefined-constant">false</span>, <span class="predefined-constant">false</span>, )
+
+        <span class="key">then</span>:
+        userDataService.count() == old(userDataService.count()) + <span class="integer">1</span>
+
+        <span class="key">when</span>:
+        <span class="predefined-type">String</span> token = <span class="string"><span class="delimiter">&quot;</span><span class="inline"><span class="inline-delimiter">${</span>username<span class="inline-delimiter">}</span></span><span class="content">:</span><span class="inline"><span class="inline-delimiter">${</span>password<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>.encodeAsBase64()
+        RestResponse rsp = rest.get(<span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/home</span><span class="delimiter">&quot;</span></span>) {
+            auth(<span class="string"><span class="delimiter">&quot;</span><span class="content">Basic </span><span class="inline"><span class="inline-delimiter">$</span>token</span><span class="delimiter">&quot;</span></span>)
+        }
+
+        <span class="key">then</span>:
+        rsp.status == <span class="integer">200</span>
+
+        <span class="key">and</span>:
+        rsp.json.username == username
+
+        <span class="key">cleanup</span>:
+        userDataService?.delete(user?.id)
+    }
+}</code></pre>
 </div>
 </div>
 

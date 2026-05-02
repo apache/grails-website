@@ -91,7 +91,7 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>build.gradle[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">    compile <span class="string"><span class="delimiter">'</span><span class="content">com.amazonaws:aws-java-sdk-ses:1.11.285</span><span class="delimiter">'</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -100,7 +100,12 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/conf/application.yml</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/application.yml[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">aws</span>:
+    <span class="key">accessKeyId</span>: <span class="string"><span class="delimiter">'</span><span class="content">${AWS_ACCESS_KEY_ID}</span><span class="delimiter">'</span></span>
+    <span class="key">secretKey</span>: <span class="string"><span class="delimiter">'</span><span class="content">${AWS_SECRET_KEY}</span><span class="delimiter">'</span></span>
+    <span class="key">sourceEmail</span>: <span class="string"><span class="delimiter">'</span><span class="content">${AWS_SOURCE_EMAIL}</span><span class="delimiter">'</span></span>
+    <span class="key">ses</span>:
+        <span class="key">region</span>: <span class="string"><span class="delimiter">'</span><span class="content">${AWS_REGION}</span><span class="delimiter">'</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -109,7 +114,44 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/services/example/grails/AwsCredentialsProviderService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/AwsCredentialsProviderService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">com.amazonaws.auth.AWSCredentials</span>
+<span class="keyword">import</span> <span class="include">com.amazonaws.auth.AWSCredentialsProvider</span>
+<span class="keyword">import</span> <span class="include">com.amazonaws.auth.BasicAWSCredentials</span>
+<span class="keyword">import</span> <span class="include">grails.config.Config</span>
+<span class="keyword">import</span> <span class="include">grails.core.support.GrailsConfigurationAware</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">AwsCredentialsProviderService</span> <span class="directive">implements</span> AWSCredentialsProvider, GrailsConfigurationAware { <i class="conum" data-value="1"></i><b>(1)</b>
+
+    <span class="predefined-type">String</span> accessKey
+
+    <span class="predefined-type">String</span> secretKey
+
+    <span class="annotation">@Override</span>
+    AWSCredentials getCredentials() {
+        <span class="keyword">return</span> <span class="keyword">new</span> BasicAWSCredentials(accessKey, secretKey)
+    }
+
+    <span class="annotation">@Override</span>
+    <span class="type">void</span> refresh() {
+
+    }
+
+    <span class="annotation">@Override</span>
+    <span class="type">void</span> setConfiguration(Config co) {
+        <span class="local-variable">this</span>.accessKey = co.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">aws.accessKeyId</span><span class="delimiter">'</span></span>, <span class="predefined-type">String</span>)
+        <span class="keyword">if</span> (!<span class="local-variable">this</span>.accessKey) {
+            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="exception">IllegalStateException</span>(<span class="string"><span class="delimiter">'</span><span class="content">aws.accessKeyId not set</span><span class="delimiter">'</span></span>)
+        }
+        <span class="local-variable">this</span>.secretKey = co.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">aws.secretKey</span><span class="delimiter">'</span></span>, <span class="predefined-type">String</span>)
+        <span class="keyword">if</span> (!<span class="local-variable">this</span>.secretKey) {
+            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="exception">IllegalStateException</span>(<span class="string"><span class="delimiter">'</span><span class="content">aws.secretKey not set</span><span class="delimiter">'</span></span>)
+        }
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -123,7 +165,101 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/services/example/grails/AwsSesMailService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/AwsSesMailService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">com.amazonaws.services.simpleemail.model.SendEmailResult</span>
+<span class="keyword">import</span> <span class="include">grails.config.Config</span>
+<span class="keyword">import</span> <span class="include">grails.core.support.GrailsConfigurationAware</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
+<span class="keyword">import</span> <span class="include">com.amazonaws.services.simpleemail.AmazonSimpleEmailService</span>
+<span class="keyword">import</span> <span class="include">com.amazonaws.services.simpleemail.AmazonSimpleEmailServiceClientBuilder</span>
+<span class="keyword">import</span> <span class="include">com.amazonaws.services.simpleemail.model.Body</span>
+<span class="keyword">import</span> <span class="include">com.amazonaws.services.simpleemail.model.Content</span>
+<span class="keyword">import</span> <span class="include">com.amazonaws.services.simpleemail.model.Destination</span>
+<span class="keyword">import</span> <span class="include">com.amazonaws.services.simpleemail.model.Message</span>
+<span class="keyword">import</span> <span class="include">com.amazonaws.services.simpleemail.model.SendEmailRequest</span>
+
+<span class="annotation">@Slf4j</span>
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">AwsSesMailService</span> <span class="directive">implements</span> EmailService, GrailsConfigurationAware {  <i class="conum" data-value="1"></i><b>(1)</b>
+
+    <span class="predefined-type">String</span> awsRegion
+
+    <span class="predefined-type">String</span> sourceEmail
+
+    AwsCredentialsProviderService awsCredentialsProviderService
+
+    <span class="annotation">@Override</span>
+    <span class="type">void</span> setConfiguration(Config co) {
+        <span class="local-variable">this</span>.awsRegion = co.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">aws.ses.region</span><span class="delimiter">'</span></span>)
+        <span class="keyword">if</span> (!<span class="local-variable">this</span>.awsRegion) {
+            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="exception">IllegalStateException</span>(<span class="string"><span class="delimiter">'</span><span class="content">aws.ses.region not set</span><span class="delimiter">'</span></span>)
+        }
+
+        <span class="local-variable">this</span>.sourceEmail = co.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">aws.sourceEmail</span><span class="delimiter">'</span></span>)
+        <span class="keyword">if</span> (!<span class="local-variable">this</span>.sourceEmail) {
+            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="exception">IllegalStateException</span>(<span class="string"><span class="delimiter">'</span><span class="content">aws.sourceEmaill not set</span><span class="delimiter">'</span></span>)
+        }
+    }
+
+    <span class="directive">private</span> Body bodyOfEmail(Email email) {
+        <span class="keyword">if</span> (email.htmlBody) {
+            Content htmlBody = <span class="keyword">new</span> Content().withData(email.htmlBody)
+            <span class="keyword">return</span> <span class="keyword">new</span> Body().withHtml(htmlBody)
+        }
+        <span class="keyword">if</span> (email.textBody) {
+            Content textBody = <span class="keyword">new</span> Content().withData(email.textBody)
+            <span class="keyword">return</span> <span class="keyword">new</span> Body().withHtml(textBody)
+        }
+        <span class="keyword">new</span> Body()
+    }
+
+    <span class="annotation">@Override</span>
+     <span class="type">void</span> send(Email email) {
+
+        <span class="keyword">if</span> ( !awsCredentialsProviderService ) {
+            log.warn(<span class="string"><span class="delimiter">&quot;</span><span class="content">AWS Credentials provider not configured</span><span class="delimiter">&quot;</span></span>)
+            <span class="keyword">return</span>
+        }
+
+        <span class="predefined-type">Destination</span> destination = <span class="keyword">new</span> <span class="predefined-type">Destination</span>().withToAddresses(email.recipient)
+        <span class="keyword">if</span> ( email.getCc() ) {
+            destination = destination.withCcAddresses(email.getCc())
+        }
+        <span class="keyword">if</span> ( email.getBcc() ) {
+            destination = destination.withBccAddresses(email.getBcc())
+        }
+        Content subject = <span class="keyword">new</span> Content().withData(email.getSubject())
+        Body body = bodyOfEmail(email)
+        Message message = <span class="keyword">new</span> Message().withSubject(subject).withBody(body)
+
+        SendEmailRequest request = <span class="keyword">new</span> SendEmailRequest()
+                .withSource(sourceEmail)
+                .withDestination(destination)
+                .withMessage(message)
+
+        <span class="keyword">if</span> ( email.getReplyTo() ) {
+            request = request.withReplyToAddresses()
+        }
+
+        <span class="keyword">try</span> {
+            log.info(<span class="string"><span class="delimiter">&quot;</span><span class="content">Attempting to send an email through Amazon SES by using the AWS SDK for Java...</span><span class="delimiter">&quot;</span></span>)
+
+            AmazonSimpleEmailService client = AmazonSimpleEmailServiceClientBuilder.standard()
+                    .withCredentials(awsCredentialsProviderService)
+                    .withRegion(awsRegion)
+                    .build()
+
+            SendEmailResult sendEmailResult = client.sendEmail(request)
+            log.info(<span class="string"><span class="delimiter">&quot;</span><span class="content">Email sent! {}</span><span class="delimiter">&quot;</span></span>, sendEmailResult.toString())
+
+        } <span class="keyword">catch</span> (<span class="exception">Exception</span> ex) {
+            log.warn(<span class="string"><span class="delimiter">&quot;</span><span class="content">The email was not sent.</span><span class="delimiter">&quot;</span></span>)
+            log.warn(<span class="string"><span class="delimiter">&quot;</span><span class="content">Error message: {}</span><span class="delimiter">&quot;</span></span>, ex.message)
+        }
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">

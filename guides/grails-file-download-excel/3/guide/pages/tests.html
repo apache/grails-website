@@ -97,7 +97,12 @@ easy is to test that the file downloads but also that the downloaded file conten
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/build.gradle[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">    testCompile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails.plugins:geb</span><span class="delimiter">&quot;</span></span>
+    testCompile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.seleniumhq.selenium:selenium-remote-driver:3.6.0</span><span class="delimiter">&quot;</span></span>
+    testCompile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.seleniumhq.selenium:selenium-api:3.6.0</span><span class="delimiter">&quot;</span></span>
+    testCompile <span class="string"><span class="delimiter">&quot;</span><span class="content">org.seleniumhq.selenium:selenium-support:3.6.0</span><span class="delimiter">&quot;</span></span>
+    testRuntime <span class="string"><span class="delimiter">&quot;</span><span class="content">org.seleniumhq.selenium:selenium-chrome-driver:3.6.0</span><span class="delimiter">&quot;</span></span>
+    testRuntime <span class="string"><span class="delimiter">&quot;</span><span class="content">org.seleniumhq.selenium:selenium-firefox-driver:3.6.0</span><span class="delimiter">&quot;</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -106,7 +111,38 @@ easy is to test that the file downloads but also that the downloaded file conten
 <div class="listingblock">
 <div class="title">src/integration-test/resources/GebConfig.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/src/integration-test/resources/GebConfig.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">org.openqa.selenium.chrome.ChromeDriver</span>
+<span class="keyword">import</span> <span class="include">org.openqa.selenium.chrome.ChromeOptions</span>
+<span class="keyword">import</span> <span class="include">org.openqa.selenium.firefox.FirefoxDriver</span>
+
+ChromeOptions options = <span class="keyword">new</span> ChromeOptions()
+<span class="keyword">if</span> ( <span class="predefined-type">System</span>.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">download.folder</span><span class="delimiter">'</span></span>) ) {
+    options.setExperimentalOption(<span class="string"><span class="delimiter">&quot;</span><span class="content">prefs</span><span class="delimiter">&quot;</span></span>, [
+            <span class="string"><span class="delimiter">&quot;</span><span class="content">profile.default_content_settings.popups</span><span class="delimiter">&quot;</span></span>:  <span class="integer">0</span>, <i class="conum" data-value="1"></i><b>(1)</b>
+            <span class="string"><span class="delimiter">&quot;</span><span class="content">download.default_directory</span><span class="delimiter">&quot;</span></span>: <span class="predefined-type">System</span>.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">download.folder</span><span class="delimiter">'</span></span>) <i class="conum" data-value="2"></i><b>(2)</b>
+    ])
+}
+
+environments {
+
+    <span class="comment">// run via “./gradlew -Dgeb.env=chrome iT”</span>
+    chrome {
+        driver = { <span class="keyword">new</span> ChromeDriver(options) }
+    }
+
+    <span class="comment">// run via “./gradlew -Dgeb.env=chromeHeadless iT”</span>
+    chromeHeadless {
+        driver = {
+            options.addArguments(<span class="string"><span class="delimiter">'</span><span class="content">headless</span><span class="delimiter">'</span></span>)
+            <span class="keyword">new</span> ChromeDriver(options)
+        }
+    }
+
+    <span class="comment">// run via “./gradlew -Dgeb.env=firefox iT”</span>
+    firefox {
+        driver = { <span class="keyword">new</span> FirefoxDriver() }
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -127,7 +163,24 @@ easy is to test that the file downloads but also that the downloaded file conten
 <div class="listingblock">
 <div class="title">src/integration-test/groovy/example/grails/HomePage.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/src/integration-test/groovy/example/grails/HomePage.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">geb.Page</span>
+
+<span class="type">class</span> <span class="class">HomePage</span> <span class="directive">extends</span> Page {
+
+    <span class="directive">static</span> at = { title == <span class="string"><span class="delimiter">'</span><span class="content">Welcome to Grails</span><span class="delimiter">'</span></span> }
+
+    <span class="directive">static</span> url = <span class="string"><span class="delimiter">'</span><span class="content">/</span><span class="delimiter">'</span></span>
+
+    <span class="directive">static</span> content = {
+        excelLink { <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">a</span><span class="delimiter">'</span></span>, <span class="key">text</span>: contains(<span class="string"><span class="delimiter">'</span><span class="content">Excel</span><span class="delimiter">'</span></span>), <span class="integer">0</span>) }
+    }
+
+    <span class="type">void</span> downloadExcel() {
+        excelLink.click()
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -142,11 +195,11 @@ easy is to test that the file downloads but also that the downloaded file conten
 ..
     }
     dependencies {
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/build.gradle[role=include]
+        classpath <span class="string"><span class="delimiter">&quot;</span><span class="content">com.bertramlabs.plugins:asset-pipeline-gradle:2.15.1</span><span class="delimiter">&quot;</span></span>
     }
 }
 
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/build.gradle[role=include]
+apply <span class="key">plugin</span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">com.energizedwork.webdriver-binaries</span><span class="delimiter">&quot;</span></span>
 
 dependencies {
 ...
@@ -154,9 +207,16 @@ dependencies {
 .
 }
 
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/build.gradle[role=include]
+webdriverBinaries {
+    chromedriver <span class="string"><span class="delimiter">'</span><span class="content">2.45</span><span class="delimiter">'</span></span>
+    geckodriver <span class="string"><span class="delimiter">'</span><span class="content">0.23.0</span><span class="delimiter">'</span></span>
+}
 
-<span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/build.gradle[role=include]</code></pre>
+tasks.withType(Test) {
+    systemProperty <span class="string"><span class="delimiter">&quot;</span><span class="content">geb.env</span><span class="delimiter">&quot;</span></span>, <span class="predefined-type">System</span>.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">geb.env</span><span class="delimiter">'</span></span>) <i class="conum" data-value="1"></i><b>(1)</b>
+    systemProperty <span class="string"><span class="delimiter">&quot;</span><span class="content">download.folder</span><span class="delimiter">&quot;</span></span>, <span class="predefined-type">System</span>.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">download.folder</span><span class="delimiter">'</span></span>) <i class="conum" data-value="2"></i><b>(2)</b>
+    systemProperty <span class="string"><span class="delimiter">&quot;</span><span class="content">geb.build.reportsDir</span><span class="delimiter">&quot;</span></span>, reporting.file(<span class="string"><span class="delimiter">&quot;</span><span class="content">geb/integrationTest</span><span class="delimiter">&quot;</span></span>)
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -177,7 +237,57 @@ dependencies {
 <div class="listingblock">
 <div class="title">src/integration-test/groovy/example/grails/DownloadExcelSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/src/integration-test/groovy/example/grails/DownloadExcelSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">builders.dsl.spreadsheet.query.api.SpreadsheetCriteria</span>
+<span class="keyword">import</span> <span class="include">builders.dsl.spreadsheet.query.api.SpreadsheetCriteriaResult</span>
+<span class="keyword">import</span> <span class="include">builders.dsl.spreadsheet.query.poi.PoiSpreadsheetCriteria</span>
+<span class="keyword">import</span> <span class="include">geb.spock.GebSpec</span>
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">spock.lang.IgnoreIf</span>
+<span class="keyword">import</span> <span class="include">spock.util.concurrent.PollingConditions</span>
+
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">DownloadExcelSpec</span> <span class="directive">extends</span> GebSpec {
+
+    <span class="annotation">@IgnoreIf</span>({ !sys[<span class="string"><span class="delimiter">'</span><span class="content">download.folder</span><span class="delimiter">'</span></span>] || sys[<span class="string"><span class="delimiter">'</span><span class="content">geb.env</span><span class="delimiter">'</span></span>] != <span class="string"><span class="delimiter">'</span><span class="content">chrome</span><span class="delimiter">'</span></span> })
+    <span class="keyword">def</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">books can be downloaded as an excel file</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        PollingConditions conditions = <span class="keyword">new</span> PollingConditions(<span class="key">timeout</span>: <span class="integer">5</span>)
+
+        <span class="key">when</span>:
+        browser.to HomePage
+
+        <span class="key">then</span>:
+        browser.at HomePage
+
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">clicking excel button</span><span class="delimiter">'</span></span>
+        <span class="predefined-type">String</span> expectedPath = <span class="predefined-type">System</span>.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">download.folder</span><span class="delimiter">'</span></span>) + <span class="string"><span class="delimiter">&quot;</span><span class="content">/</span><span class="delimiter">&quot;</span></span> + BookExcelService.EXCEL_FILENAME
+        <span class="predefined-type">File</span> outputFile = <span class="keyword">new</span> <span class="predefined-type">File</span>(expectedPath)
+        browser.page(HomePage).downloadExcel()
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">an excel file is downloaded</span><span class="delimiter">'</span></span>
+        conditions.eventually { outputFile.exists() }
+
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">if we search for a row with a particular value (Building Microservices)</span><span class="delimiter">'</span></span>
+        SpreadsheetCriteria query = PoiSpreadsheetCriteria.FACTORY.forFile(outputFile)
+        SpreadsheetCriteriaResult result = query.query {
+            sheet(BookExcelService.SHEET_NAME) {
+                row {
+                    cell {
+                        value <span class="string"><span class="delimiter">'</span><span class="content">Building Microservices</span><span class="delimiter">'</span></span>
+                    }
+                }
+            }
+        }
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">a row is found</span><span class="delimiter">'</span></span>
+        result.cells.size() == <span class="integer">1</span>
+
+        <span class="key">cleanup</span>:
+        outputFile?.delete()
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">

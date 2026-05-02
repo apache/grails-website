@@ -259,7 +259,7 @@
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/build.gradle[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">    compileOnly <span class="string"><span class="delimiter">&quot;</span><span class="content">io.micronaut:micronaut-inject-groovy</span><span class="delimiter">&quot;</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -268,7 +268,16 @@
 <div class="listingblock">
 <div class="title">src/main/groovy/example/grails/AddressConfiguration.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/src/main/groovy/example/grails/AddressConfiguration.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">io.micronaut.context.annotation.ConfigurationProperties</span>
+
+<span class="annotation">@ConfigurationProperties</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">address</span><span class="delimiter">&quot;</span></span>) <i class="conum" data-value="1"></i><b>(1)</b>
+<span class="type">class</span> <span class="class">AddressConfiguration</span> {
+    <span class="predefined-type">String</span> street
+    <span class="predefined-type">String</span> city
+    <span class="predefined-type">String</span> country
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -288,7 +297,10 @@
 <div class="listingblock">
 <div class="title">grails-app/conf/application.yml</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/grails-app/conf/application.yml[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">address</span>:
+    <span class="key">street</span>: <span class="integer">221</span>B Baker Street
+    <span class="key">city</span>: London
+    <span class="key">country</span>: United Kingdom</code></pre>
 </div>
 </div>
 
@@ -308,7 +320,26 @@
 <div class="listingblock">
 <div class="title">grails-app/taglib/example/grails/AddressTagLib.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/grails-app/taglib/example/grails/AddressTagLib.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Autowired</span>
+
+<span class="type">class</span> <span class="class">AddressTagLib</span> {
+
+    <span class="directive">static</span> namespace = <span class="string"><span class="delimiter">&quot;</span><span class="content">app</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="1"></i><b>(1)</b>
+
+    <span class="annotation">@Autowired</span> <i class="conum" data-value="2"></i><b>(2)</b>
+    AddressConfiguration addressConfiguration <i class="conum" data-value="3"></i><b>(3)</b>
+
+    <span class="keyword">def</span> address = { attrs, body -&gt;
+        out &lt;&lt; <span class="string"><span class="delimiter">&quot;&quot;&quot;</span><span class="char">\
+</span><span class="content">&lt;div class='adr'&gt;
+    &lt;div class='street-address'&gt;</span><span class="inline"><span class="inline-delimiter">${</span>addressConfiguration.street<span class="inline-delimiter">}</span></span><span class="content">&lt;/div&gt;
+    &lt;span class='locality'&gt;</span><span class="inline"><span class="inline-delimiter">${</span>addressConfiguration.city<span class="inline-delimiter">}</span></span><span class="content">&lt;/span&gt;,
+    &lt;div class='country-name'&gt;</span><span class="inline"><span class="inline-delimiter">${</span>addressConfiguration.country<span class="inline-delimiter">}</span></span><span class="content">&lt;/div&gt;
+&lt;/div&gt;</span><span class="delimiter">&quot;&quot;&quot;</span></span> <i class="conum" data-value="4"></i><b>(4)</b>
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -363,7 +394,22 @@
 <div class="listingblock">
 <div class="title">src/integration-test/groovy/example/grails/AddressSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>snippets/src/integration-test/groovy/example/grails/AddressSpec.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">geb.spock.GebSpec</span>
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">AddressSpec</span> <span class="directive">extends</span> GebSpec {
+
+    <span class="keyword">def</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">verify address is displayed in homepage</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        browser.go(<span class="string"><span class="delimiter">&quot;</span><span class="content">/</span><span class="delimiter">&quot;</span></span>)
+
+        <span class="key">then</span>:
+        browser.driver.pageSource.contains(<span class="string"><span class="delimiter">'</span><span class="content">221B Baker Street</span><span class="delimiter">'</span></span>)
+    }
+}</code></pre>
 </div>
 </div>
 

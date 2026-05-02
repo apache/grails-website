@@ -91,7 +91,7 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>build.gradle[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">    compile <span class="string"><span class="delimiter">'</span><span class="content">software.amazon.awssdk:ses:2.10.24</span><span class="delimiter">'</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -100,7 +100,10 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/conf/application.yml</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/conf/application.yml[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">aws</span>:
+    <span class="key">ses</span>:
+        <span class="key">source</span>: <span class="string"><span class="delimiter">'</span><span class="content">${AWS_SOURCE}</span><span class="delimiter">'</span></span>
+        <span class="key">region</span>: <span class="string"><span class="delimiter">'</span><span class="content">${AWS_REGION}</span><span class="delimiter">'</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -131,7 +134,92 @@ function addJsClass() {
 <div class="listingblock">
 <div class="title">grails-app/services/example/grails/AwsSesMailService.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">link</span>:..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>..<span class="regexp"><span class="delimiter">/</span><span class="content">snippets</span><span class="delimiter">/</span></span>grails-app/services/example/grails/AwsSesMailService.groovy[role=include]</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">grails.config.Config</span>
+<span class="keyword">import</span> <span class="include">grails.core.support.GrailsConfigurationAware</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
+<span class="keyword">import</span> <span class="include">software.amazon.awssdk.regions.Region</span>
+<span class="keyword">import</span> <span class="include">software.amazon.awssdk.services.ses.SesClient</span>
+<span class="keyword">import</span> <span class="include">software.amazon.awssdk.services.ses.model.Body</span>
+<span class="keyword">import</span> <span class="include">software.amazon.awssdk.services.ses.model.Content</span>
+<span class="keyword">import</span> <span class="include">software.amazon.awssdk.services.ses.model.Destination</span>
+<span class="keyword">import</span> <span class="include">software.amazon.awssdk.services.ses.model.Message</span>
+<span class="keyword">import</span> <span class="include">software.amazon.awssdk.services.ses.model.SendEmailRequest</span>
+<span class="keyword">import</span> <span class="include">software.amazon.awssdk.services.ses.model.SendEmailResponse</span>
+
+<span class="annotation">@Slf4j</span>
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">AwsSesMailService</span> <span class="directive">implements</span> EmailService, GrailsConfigurationAware {  <i class="conum" data-value="1"></i><b>(1)</b>
+
+    <span class="predefined-type">String</span> sourceEmail
+
+    SesClient sesClient
+
+    <span class="annotation">@Override</span>
+    <span class="type">void</span> setConfiguration(Config co) {
+
+        <span class="predefined-type">String</span> awsRegion = co.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">aws.ses.region</span><span class="delimiter">'</span></span>)
+        <span class="keyword">if</span> (!awsRegion) {
+            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="exception">IllegalStateException</span>(<span class="string"><span class="delimiter">'</span><span class="content">aws.ses.region not set</span><span class="delimiter">'</span></span>)
+        }
+        <span class="local-variable">this</span>.sesClient = SesClient.builder().region(<span class="predefined-type">Region</span>.of(awsRegion)).build();
+
+        <span class="local-variable">this</span>.sourceEmail = co.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">aws.ses.source</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>)
+        <span class="keyword">if</span> (!<span class="local-variable">this</span>.sourceEmail) {
+            log.warn(<span class="string"><span class="delimiter">'</span><span class="content">aws.sourceEmail not set</span><span class="delimiter">'</span></span>)
+        }
+    }
+
+    <span class="directive">private</span> Body bodyOfEmail(Email email) {
+        <span class="keyword">if</span> (email.htmlBody) {
+            Content htmlBody = Content.builder().data(email.htmlBody).build()
+            <span class="keyword">return</span> Body.builder().html(htmlBody).build()
+        }
+        <span class="keyword">if</span> (email.textBody) {
+            Content textBody = Content.builder().data(email.textBody).build()
+            <span class="keyword">return</span> Body.builder().text(textBody).build()
+        }
+        Body.builder().build()
+    }
+
+    <span class="directive">private</span> <span class="predefined-type">Destination</span> destination(Email email) {
+        <span class="predefined-type">Destination</span>.Builder destinationBuilder = <span class="predefined-type">Destination</span>.builder().toAddresses(email.recipient)
+        <span class="keyword">if</span> ( email.getCc() ) {
+            destinationBuilder = destinationBuilder.ccAddresses(email.getCc())
+        }
+        <span class="keyword">if</span> ( email.getBcc() ) {
+            destinationBuilder = destinationBuilder.bccAddresses(email.getBcc())
+        }
+        destinationBuilder.build()
+    }
+
+    <span class="directive">private</span> Message composeMessage(Email email) {
+        Content subject = Content.builder().data(email.getSubject()).build()
+        Body body = bodyOfEmail(email)
+        Message.builder().subject(subject).body(body).build()
+    }
+
+    <span class="annotation">@Override</span>
+     <span class="type">void</span> send(Email email) {
+        <span class="keyword">try</span> {
+            <span class="predefined-type">Destination</span> destination = destination(email)
+            Message message = composeMessage(email)
+            SendEmailRequest sendEmailRequest = SendEmailRequest.builder()
+                    .source(sourceEmail)
+                    .destination(destination)
+                    .message(message)
+                    .build()
+            SendEmailResponse response = sesClient.sendEmail(sendEmailRequest)
+            log.info(<span class="string"><span class="delimiter">&quot;</span><span class="content">Email sent! {}</span><span class="delimiter">&quot;</span></span>, response.messageId())
+
+        } <span class="keyword">catch</span> (<span class="exception">Exception</span> ex) {
+            log.warn(<span class="string"><span class="delimiter">&quot;</span><span class="content">The email was not sent.</span><span class="delimiter">&quot;</span></span>)
+            log.warn(<span class="string"><span class="delimiter">&quot;</span><span class="content">Error message: {}</span><span class="delimiter">&quot;</span></span>, ex.message)
+        }
+    }
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
