@@ -173,9 +173,11 @@
             
             <div class="toc-item" style="margin-left:0px"><a href="#customTable"><strong>12</strong><span>Customising the Table Template</span></a></div>
             
-            <div class="toc-item" style="margin-left:10px"><a href="#bookTableTemplate"><strong>12.1</strong><span>A Custom _table.gsp for Book</span></a></div>
+            <div class="toc-item" style="margin-left:10px"><a href="#appWideTable"><strong>12.1</strong><span>App-Wide _table.gsp Override</span></a></div>
             
-            <div class="toc-item" style="margin-left:10px"><a href="#bookTableColumns"><strong>12.2</strong><span>Per-Column Cell Overrides</span></a></div>
+            <div class="toc-item" style="margin-left:10px"><a href="#perDomainTable"><strong>12.2</strong><span>Per-Domain Override via template= Attribute</span></a></div>
+            
+            <div class="toc-item" style="margin-left:10px"><a href="#perColumnCells"><strong>12.3</strong><span>Per-Column Cell Overrides</span></a></div>
             
             <div class="toc-item" style="margin-left:0px"><a href="#cleanCrud"><strong>13</strong><span>The Result - Clean CRUD GSPs</span></a></div>
             
@@ -283,7 +285,7 @@
 <div class="ulist">
 <ul>
 <li>
-<p>JDK 17 or later (JDK 21 or 25 recommended for Grails 8 snapshots).</p>
+<p>JDK 21 or later. JDK 21 LTS is the minimum required by Apache Grails 8; JDK 25 LTS also works.</p>
 </li>
 <li>
 <p>Approximately 30 minutes of your time.</p>
@@ -297,7 +299,7 @@
 </ul>
 </div>
 <div class="paragraph">
-<p>This guide targets Apache Grails 8 (snapshot). The Fields plugin is bundled with <code>grails-core</code> in Grails 7 and later, so no additional plugin dependency is required.</p>
+<p>This guide targets Apache Grails 8. The Fields plugin is bundled with <code>grails-core</code> in Grails 7 and later, so no additional plugin dependency is required.</p>
 </div>
 
 
@@ -348,7 +350,7 @@ cd grails-fields-custom-widgets-and-wrappers/complete
 
 
 <div class="paragraph">
-<p>Generate a fresh Grails 8 snapshot project. The <a href="https://prev-snapshot.grails.org">Grails snapshot starter service</a> exposes the same <code>create-app</code> API as <code>start.grails.org</code> but for the in-development branch.</p>
+<p>Generate a fresh Apache Grails 8 project from <a href="https://start.grails.org">start.grails.org</a>.</p>
 </div>
 
 
@@ -362,38 +364,10 @@ cd grails-fields-custom-widgets-and-wrappers/complete
 
 
 <div class="paragraph">
-<p>Run the following command to download a <code>web</code> profile starter for Grails 8 with Hibernate, Tomcat, DevTools, and the JDK 25 toolchain:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="bash">curl --location --request GET \
-  'https://prev-snapshot.grails.org/create/web/example.library?gorm=HIBERNATE&amp;servlet=TOMCAT&amp;reloading=DEVTOOLS&amp;javaVersion=JDK_25' \
-  --output library.zip
-unzip library.zip -d library
-cd library</code></pre>
-</div>
+<p>Open <a href="https://start.grails.org">start.grails.org</a>, pick the <code>web</code> profile, name the application <code>library</code>, set the package to <code>example</code>, and download the generated zip. Unzip it and <code>cd</code> into the project directory.</p>
 </div>
 <div class="paragraph">
-<p>The query string controls four feature toggles:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><code>gorm=HIBERNATE</code> - uses Hibernate as the GORM data store (the default; the alternative is <code>MONGODB</code>).</p>
-</li>
-<li>
-<p><code>servlet=TOMCAT</code> - embeds Apache Tomcat as the servlet container.</p>
-</li>
-<li>
-<p><code>reloading=DEVTOOLS</code> - wires in Spring Boot DevTools so file changes restart the JVM.</p>
-</li>
-<li>
-<p><code>javaVersion=JDK_25</code> - sets the source/target compatibility to JDK 25 in <code>build.gradle</code>.</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>The resulting project is a self-contained Gradle build. Verify it boots before you go further:</p>
+<p>Verify it boots before you go further:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -402,18 +376,6 @@ cd library</code></pre>
 </div>
 <div class="paragraph">
 <p>Open <code><a href="http://localhost:8080/" class="bare">http://localhost:8080/</a></code> in a browser and you should see the default Grails landing page. Stop the application with <code>Ctrl+C</code> once you have confirmed it runs.</p>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-If <code>prev-snapshot.grails.org</code> is not reachable in your environment, you can pin Grails 8 manually instead. Add the snapshot Maven repository to <code>build.gradle</code> and set <code>grailsVersion=8.0.0-SNAPSHOT</code> in <code>gradle.properties</code>. The <a href="https://repo.grails.org/grails/libs-snapshots-local/">Apache Grails snapshot repository</a> hosts the artifacts.
-</td>
-</tr>
-</table>
 </div>
 
 
@@ -2152,43 +2114,55 @@ For very large candidate sets (hundreds of <code>Tag</code> rows), a checkbox gr
 
 
 <div class="paragraph">
-<p><code>&lt;f:table&gt;</code> reads its column list from the <code>properties</code> attribute (or the first seven of the bean), looks each property up in <code>_displayWidget.gsp</code> for the cell, and emits a <code>&lt;table&gt;</code> with a header row.</p>
+<p><code>&lt;f:table&gt;</code> reads its column list from the <code>properties</code> attribute (or the first seven properties of the bean), looks each cell up via <code>&lt;f:displayWidget&gt;</code>, and emits a <code>&lt;table&gt;</code> with a sortable header row.</p>
 </div>
 <div class="paragraph">
-<p>You can customise tables at two layers: the whole-table template (<code>_table.gsp</code>) and the individual cell templates (<code>_displayWidget.gsp</code>). Both follow the same lookup precedence as the form templates - per-class first, then default fallback.</p>
+<p>Customising the table renders at three layers:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Whole-table layout, app-wide</strong> - replace the <code>&lt;table&gt;</code> skeleton (header row, body iteration, accessibility attributes) for every <code>&lt;f:table&gt;</code> invocation in the application. This is a single file under <code>grails-app/views/templates/_fields/_table.gsp</code>.</p>
+</li>
+<li>
+<p><strong>Whole-table layout, per-domain or per-page</strong> - opt one specific <code>&lt;f:table&gt;</code> invocation into a different template via the <code>template=</code> attribute, with the override file living next to the app-wide one under <code>grails-app/views/templates/_fields/</code>.</p>
+</li>
+<li>
+<p><strong>Per-column cells</strong> - each <code>&lt;td&gt;</code> is rendered by <code>&lt;f:displayWidget&gt;</code>, which DOES go through the standard <code>_fields/&lt;class&gt;/&lt;property&gt;/_displayWidget.gsp</code> lookup chain. So one-off cell formatting is a per-property override, not a table-template change.</p>
+</li>
+</ul>
+</div>
+<div class="admonitionblock caution">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-caution" title="Caution"></i>
+</td>
+<td class="content">
+Unlike the form templates (<code>&lt;f:field&gt;</code>, <code>&lt;f:all&gt;</code>, <code>&lt;f:display&gt;</code> with a property), <code>&lt;f:table&gt;</code> does NOT walk the <code>_fields/&lt;class&gt;/_table.gsp</code> lookup chain. Looking at <a href="https://github.com/apache/grails-core/blob/8.0.x/grails-fields/grails-app/taglib/grails/plugin/formfields/FormFieldsTagLib.groovy"><code>FormFieldsTagLib.table</code></a> in the plugin source, the template path is hardcoded to <code>/templates/_fields/$template</code>, where <code>$template</code> defaults to the literal string <code>'table'</code>. A file at <code>grails-app/views/_fields/book/_table.gsp</code> is never picked up by the plugin, regardless of what domain class you pass.
+</td>
+</tr>
+</table>
 </div>
 
 
-<h2 id="bookTableTemplate">12.1 A Custom _table.gsp for Book</h2>
+<h2 id="appWideTable">12.1 App-Wide _table.gsp Override</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-fields-custom-widgets-and-wrappers/v8/guide/bookTableTemplate.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-fields-custom-widgets-and-wrappers/v8/guide/appWideTable.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
 
 
 <div class="paragraph">
-<p>Override the whole table for <code>Book</code> so that:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>The table renders as a Bootstrap 5 striped, hover-enabled table.</p>
-</li>
-<li>
-<p>The header row uses <code>&lt;th scope="col"&gt;</code> for accessibility.</p>
-</li>
-<li>
-<p>The last column always contains action buttons (View / Edit / Delete) without you adding a property to <code>properties=</code>.</p>
-</li>
-</ul>
+<p>Replace the default app-wide table template with one that renders as a Bootstrap 5 striped, hover-enabled table, uses <code>&lt;th scope="col"&gt;</code> for accessibility, and adds a trailing actions column for View / Edit / Delete buttons.</p>
 </div>
 <div class="paragraph">
-<p>Create <code>_fields/book/_table.gsp</code>:</p>
+<p>Create the file at the path the plugin actually looks up:</p>
 </div>
 <div class="listingblock">
-<div class="title">grails-app/views/_fields/book/_table.gsp</div>
+<div class="title">grails-app/views/templates/_fields/_table.gsp</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="html"><span class="tag">&lt;table</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">table table-striped table-hover align-middle</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
     <span class="tag">&lt;thead</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">table-dark</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
@@ -2249,28 +2223,90 @@ For very large candidate sets (hundreds of <code>Tag</code> rows), a checkbox gr
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>domainClass</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Class&lt;?&gt;</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The Java class of the elements - useful when emitting links via <code>&lt;g:link controller="&#8230;&#8203;"&gt;</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.datastore.mapping.model.PersistentEntity</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The persistent entity for the bean type. Use <code>domainClass.javaClass.simpleName.toLowerCase()</code> to compute a controller name for <code>&lt;g:link&gt;</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>domainProperties</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>List&lt;DomainProperty&gt;</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The columns the plugin selected, already filtered by the <code>properties=</code>/<code>except=</code> attributes.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>List&lt;Map&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The columns the plugin selected, already filtered by the <code>properties=</code>/<code>except=</code> attributes. Each map has <code>property</code>, <code>label</code>, and <code>bean</code> keys (plus <code>class</code> and <code>theme</code> if those attributes were passed).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>displayStyle</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>String</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The <code>displayStyle</code> attribute from <code>&lt;f:table&gt;</code>, defaulting to <code>'table'</code>. Pass it through to per-cell <code>&lt;f:displayWidget&gt;</code> calls so cell templates can branch on style.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>theme</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>String</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The <code>theme</code> attribute from <code>&lt;f:table&gt;</code>. Same passthrough rule.</p></td>
 </tr>
 </tbody>
 </table>
 <div class="paragraph">
-<p>Inside the loop, render each cell with <code>&lt;f:displayWidget bean="${book}" property="${prop.name}"/&gt;</code>. That dispatches to whichever <code>_displayWidget.gsp</code> is most specific - your <code>Date</code> display widget for the <code>publishedDate</code> cell, your <code>Boolean</code> widget for the <code>inStock</code> cell, and so on.</p>
+<p>Inside the loop, render each cell with <code>&lt;f:displayWidget bean="${book}" property="${prop.property}"/&gt;</code>. That call DOES go through the standard lookup chain - it will pick up your per-property <code>_displayWidget.gsp</code> overrides (the <code>Date</code> formatter you wrote in chapter 9.2, the <code>Boolean</code> checkmark from 9.3, the per-column overrides we&#8217;ll write in chapter 12.3, etc.).</p>
 </div>
 <div class="paragraph">
-<p><code>&lt;f:table&gt;</code> for any <em>other</em> domain class still uses the default table template. Only <code>Book</code> gets this customised layout.</p>
+<p>Because this template lives at <code>templates/_fields/_table.gsp</code>, <strong>every</strong> <code>&lt;f:table&gt;</code> in the application now uses this layout - books, authors, and any future domain class. Restart the app and visit <code><a href="http://localhost:8080/book/index" class="bare">http://localhost:8080/book/index</a></code> and <code><a href="http://localhost:8080/author/index" class="bare">http://localhost:8080/author/index</a></code>; both list pages now use the Bootstrap-styled table.</p>
 </div>
 
 
-<h2 id="bookTableColumns">12.2 Per-Column Cell Overrides</h2>
+<h2 id="perDomainTable">12.2 Per-Domain Override via template= Attribute</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-fields-custom-widgets-and-wrappers/v8/guide/bookTableColumns.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-fields-custom-widgets-and-wrappers/v8/guide/perDomainTable.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>When you want a <strong>specific</strong> <code>&lt;f:table&gt;</code> invocation to use a different layout - for example, the books list page should show a card-grid instead of a table while every other list view keeps the standard table - opt into a per-page template via the <code>template=</code> attribute:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/views/book/index.gsp</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="html"><span class="tag">&lt;f:table</span> <span class="attribute-name">collection</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${bookList}</span><span class="delimiter">&quot;</span></span>
+         <span class="attribute-name">properties</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">title,author,genre,priceUSD,inStock</span><span class="delimiter">&quot;</span></span>
+         <span class="attribute-name">template</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">bookCards</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The plugin resolves <code>template="bookCards"</code> to the path <code>/templates/_fields/bookCards</code>, so create the override at:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/views/templates/_fields/_bookCards.gsp</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="html"><span class="tag">&lt;div</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">row row-cols-1 row-cols-md-3 g-3</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;g:each</span> <span class="attribute-name">in</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${collection}</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">var</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">book</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+        <span class="tag">&lt;div</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">col</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+            <span class="tag">&lt;div</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">card h-100</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+                <span class="tag">&lt;div</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">card-body</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+                    <span class="tag">&lt;h5</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">card-title</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>${book.title.encodeAsHTML()}<span class="tag">&lt;/h5&gt;</span>
+                    <span class="tag">&lt;p</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">card-subtitle text-muted mb-2</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+                        <span class="tag">&lt;f:displayWidget</span> <span class="attribute-name">bean</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${book}</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">property</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">author</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+                    <span class="tag">&lt;/p&gt;</span>
+                    <span class="tag">&lt;p</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">card-text</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span><span class="tag">&lt;g:formatNumber</span> <span class="attribute-name">number</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${book.priceUSD}</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">currency</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">currencyCode</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">USD</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span><span class="tag">&lt;/p&gt;</span>
+                    <span class="tag">&lt;g:link</span> <span class="attribute-name">resource</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${book}</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">action</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">show</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">btn btn-sm btn-outline-primary</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>View<span class="tag">&lt;/g:link&gt;</span>
+                <span class="tag">&lt;/div&gt;</span>
+            <span class="tag">&lt;/div&gt;</span>
+        <span class="tag">&lt;/div&gt;</span>
+    <span class="tag">&lt;/g:each&gt;</span>
+<span class="tag">&lt;/div&gt;</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Inside this template, <code>collection</code> is the same model variable the app-wide <code>_table.gsp</code> receives. The <code>template=</code> attribute is only useful when you want a non-table layout for one specific page; if you want every list view to look like the new layout, change <code>_table.gsp</code> instead.</p>
+</div>
+<div class="paragraph">
+<p>You can also use <code>template=</code> to swap layouts based on a request attribute (e.g. a "list" vs "grid" toggle), since the attribute value is just a string passed to <code>render()</code> at runtime.</p>
+</div>
+
+
+<h2 id="perColumnCells">12.3 Per-Column Cell Overrides</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-fields-custom-widgets-and-wrappers/v8/guide/perColumnCells.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>

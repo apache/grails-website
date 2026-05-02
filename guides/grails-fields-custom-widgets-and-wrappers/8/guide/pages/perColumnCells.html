@@ -2,7 +2,7 @@
                       "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
 <head>
-    <title>2.1 Download a Grails 8 Snapshot Starter</title>
+    <title>12.3 Per-Column Cell Overrides</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
     <link rel="stylesheet" href="../css/guide.css" type="text/css" media="screen, print" title="Style" charset="utf-8" />            
@@ -87,11 +87,11 @@ function addJsClass() {
             <div id="main" class="corner-all">
 
                 
-                    <div class="toc-item prev-left"><a href="../../guide/gettingStarted.html">&lt;&lt; <strong>1</strong><span>Getting Started</span></a></div>
+                    <div class="toc-item prev-left"><a href="../../guide/perPropertyOverrides.html">&lt;&lt; <strong>11</strong><span>Per-Property Overrides</span></a></div>
                 
 
                 
-                    <div class="toc-item next-right"><a href="../../guide/domainModel.html"><strong>3</strong><span>The Book and Author Domain Model</span> >></a></div>
+                    <div class="toc-item next-right"><a href="../../guide/cleanCrud.html"><strong>13</strong><span>The Result - Clean CRUD GSPs</span> >></a></div>
                 
 
 
@@ -99,36 +99,49 @@ function addJsClass() {
 
                 
 
-<h2 id="download">2.1 Download a Grails 8 Snapshot Starter</h2>
+<h2 id="perColumnCells">12.3 Per-Column Cell Overrides</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-fields-custom-widgets-and-wrappers/v8/guide/download.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-fields-custom-widgets-and-wrappers/v8/guide/perColumnCells.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
 
 
 <div class="paragraph">
-<p>Open <a href="https://start.grails.org">start.grails.org</a>, pick the <code>web</code> profile, name the application <code>library</code>, set the package to <code>example</code>, and download the generated zip. Unzip it and <code>cd</code> into the project directory.</p>
+<p>Sometimes a single column wants formatting that does not generalise to the property&#8217;s type. For example, the <code>priceUSD</code> column on the books table should render with a <code>$</code> prefix and two decimal places, but you do not want every <code>BigDecimal</code> in the app to look like USD.</p>
 </div>
 <div class="paragraph">
-<p>Verify it boots before you go further:</p>
+<p>Per-class, per-property display widgets work the same way as form widgets. Create <code>_fields/book/priceUSD/_displayWidget.gsp</code>:</p>
 </div>
 <div class="listingblock">
+<div class="title">grails-app/views/_fields/book/priceUSD/_displayWidget.gsp</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="bash">./gradlew bootRun</code></pre>
+<pre class="CodeRay highlight"><code data-lang="html"><span class="tag">&lt;g:formatNumber</span> <span class="attribute-name">number</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${value}</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">currency</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">currencyCode</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">USD</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span></code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Open <code><a href="http://localhost:8080/" class="bare">http://localhost:8080/</a></code> in a browser and you should see the default Grails landing page. Stop the application with <code>Ctrl+C</code> once you have confirmed it runs.</p>
+<p>The <code>&lt;f:displayWidget&gt;</code> call inside the table template dispatches to the most-specific path, so the price column picks up the currency formatting. The other <code>BigDecimal</code> columns in the app keep using whatever <code>_fields/bigDecimal/_displayWidget.gsp</code> (or the default) produces.</p>
+</div>
+<div class="paragraph">
+<p>A second example: render <code>Book.author</code> as the author&#8217;s <code>name</code> rather than the default <code>toString()</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/views/_fields/book/author/_displayWidget.gsp</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="html"><span class="tag">&lt;g:if</span> <span class="attribute-name">test</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${value}</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span><span class="tag">&lt;g:link</span> <span class="attribute-name">controller</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">author</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">action</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">show</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">id</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${value.id}</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>${value.name}<span class="tag">&lt;/g:link&gt;</span><span class="tag">&lt;/g:if&gt;</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The same display widget is also picked up by <code>&lt;f:display bean="book" property="author"/&gt;</code> on the show page - one customisation, two consumers.</p>
 </div>
 
 
                 <div style="clear:both;margin-top:15px;"></div>
                 
-                    <div class="toc-item prev-left"><a href="../../guide/gettingStarted.html">&lt;&lt; <strong>1</strong><span>Getting Started</span></a></div>
+                    <div class="toc-item prev-left"><a href="../../guide/perPropertyOverrides.html">&lt;&lt; <strong>11</strong><span>Per-Property Overrides</span></a></div>
                 
-                    <div class="toc-item next-right"><a href="../../guide/domainModel.html"><strong>3</strong><span>The Book and Author Domain Model</span> >></a></div>
+                    <div class="toc-item next-right"><a href="../../guide/cleanCrud.html"><strong>13</strong><span>The Result - Clean CRUD GSPs</span> >></a></div>
                 
                 <div style="clear:both"></div>
             </div>

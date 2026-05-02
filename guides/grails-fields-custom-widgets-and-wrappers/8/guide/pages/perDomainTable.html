@@ -2,7 +2,7 @@
                       "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
 <head>
-    <title>2.1 Download a Grails 8 Snapshot Starter</title>
+    <title>12.2 Per-Domain Override via template= Attribute</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
     <link rel="stylesheet" href="../css/guide.css" type="text/css" media="screen, print" title="Style" charset="utf-8" />            
@@ -87,11 +87,11 @@ function addJsClass() {
             <div id="main" class="corner-all">
 
                 
-                    <div class="toc-item prev-left"><a href="../../guide/gettingStarted.html">&lt;&lt; <strong>1</strong><span>Getting Started</span></a></div>
+                    <div class="toc-item prev-left"><a href="../../guide/perPropertyOverrides.html">&lt;&lt; <strong>11</strong><span>Per-Property Overrides</span></a></div>
                 
 
                 
-                    <div class="toc-item next-right"><a href="../../guide/domainModel.html"><strong>3</strong><span>The Book and Author Domain Model</span> >></a></div>
+                    <div class="toc-item next-right"><a href="../../guide/cleanCrud.html"><strong>13</strong><span>The Result - Clean CRUD GSPs</span> >></a></div>
                 
 
 
@@ -99,36 +99,63 @@ function addJsClass() {
 
                 
 
-<h2 id="download">2.1 Download a Grails 8 Snapshot Starter</h2>
+<h2 id="perDomainTable">12.2 Per-Domain Override via template= Attribute</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-fields-custom-widgets-and-wrappers/v8/guide/download.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-fields-custom-widgets-and-wrappers/v8/guide/perDomainTable.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
 
 
 <div class="paragraph">
-<p>Open <a href="https://start.grails.org">start.grails.org</a>, pick the <code>web</code> profile, name the application <code>library</code>, set the package to <code>example</code>, and download the generated zip. Unzip it and <code>cd</code> into the project directory.</p>
-</div>
-<div class="paragraph">
-<p>Verify it boots before you go further:</p>
+<p>When you want a <strong>specific</strong> <code>&lt;f:table&gt;</code> invocation to use a different layout - for example, the books list page should show a card-grid instead of a table while every other list view keeps the standard table - opt into a per-page template via the <code>template=</code> attribute:</p>
 </div>
 <div class="listingblock">
+<div class="title">grails-app/views/book/index.gsp</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="bash">./gradlew bootRun</code></pre>
+<pre class="CodeRay highlight"><code data-lang="html"><span class="tag">&lt;f:table</span> <span class="attribute-name">collection</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${bookList}</span><span class="delimiter">&quot;</span></span>
+         <span class="attribute-name">properties</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">title,author,genre,priceUSD,inStock</span><span class="delimiter">&quot;</span></span>
+         <span class="attribute-name">template</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">bookCards</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span></code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Open <code><a href="http://localhost:8080/" class="bare">http://localhost:8080/</a></code> in a browser and you should see the default Grails landing page. Stop the application with <code>Ctrl+C</code> once you have confirmed it runs.</p>
+<p>The plugin resolves <code>template="bookCards"</code> to the path <code>/templates/_fields/bookCards</code>, so create the override at:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/views/templates/_fields/_bookCards.gsp</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="html"><span class="tag">&lt;div</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">row row-cols-1 row-cols-md-3 g-3</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;g:each</span> <span class="attribute-name">in</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${collection}</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">var</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">book</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+        <span class="tag">&lt;div</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">col</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+            <span class="tag">&lt;div</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">card h-100</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+                <span class="tag">&lt;div</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">card-body</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+                    <span class="tag">&lt;h5</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">card-title</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>${book.title.encodeAsHTML()}<span class="tag">&lt;/h5&gt;</span>
+                    <span class="tag">&lt;p</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">card-subtitle text-muted mb-2</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+                        <span class="tag">&lt;f:displayWidget</span> <span class="attribute-name">bean</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${book}</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">property</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">author</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+                    <span class="tag">&lt;/p&gt;</span>
+                    <span class="tag">&lt;p</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">card-text</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span><span class="tag">&lt;g:formatNumber</span> <span class="attribute-name">number</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${book.priceUSD}</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">currency</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">currencyCode</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">USD</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span><span class="tag">&lt;/p&gt;</span>
+                    <span class="tag">&lt;g:link</span> <span class="attribute-name">resource</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${book}</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">action</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">show</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">btn btn-sm btn-outline-primary</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>View<span class="tag">&lt;/g:link&gt;</span>
+                <span class="tag">&lt;/div&gt;</span>
+            <span class="tag">&lt;/div&gt;</span>
+        <span class="tag">&lt;/div&gt;</span>
+    <span class="tag">&lt;/g:each&gt;</span>
+<span class="tag">&lt;/div&gt;</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Inside this template, <code>collection</code> is the same model variable the app-wide <code>_table.gsp</code> receives. The <code>template=</code> attribute is only useful when you want a non-table layout for one specific page; if you want every list view to look like the new layout, change <code>_table.gsp</code> instead.</p>
+</div>
+<div class="paragraph">
+<p>You can also use <code>template=</code> to swap layouts based on a request attribute (e.g. a "list" vs "grid" toggle), since the attribute value is just a string passed to <code>render()</code> at runtime.</p>
 </div>
 
 
                 <div style="clear:both;margin-top:15px;"></div>
                 
-                    <div class="toc-item prev-left"><a href="../../guide/gettingStarted.html">&lt;&lt; <strong>1</strong><span>Getting Started</span></a></div>
+                    <div class="toc-item prev-left"><a href="../../guide/perPropertyOverrides.html">&lt;&lt; <strong>11</strong><span>Per-Property Overrides</span></a></div>
                 
-                    <div class="toc-item next-right"><a href="../../guide/domainModel.html"><strong>3</strong><span>The Book and Author Domain Model</span> >></a></div>
+                    <div class="toc-item next-right"><a href="../../guide/cleanCrud.html"><strong>13</strong><span>The Result - Clean CRUD GSPs</span> >></a></div>
                 
                 <div style="clear:both"></div>
             </div>
