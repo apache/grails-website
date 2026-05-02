@@ -1,0 +1,255 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+                      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+    <title>10.3 one-to-many</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
+    <link rel="stylesheet" href="../css/guide.css" type="text/css" media="screen, print" title="Style" charset="utf-8" />            
+    <link rel="stylesheet" href="../css/pdf.css" type="text/css" media="print" title="PDF" charset="utf-8"/>
+    <script type="text/javascript">
+function addJsClass() {
+    var classes = document.body.className.split(" ");
+    classes.push("js");
+    document.body.className = classes.join(" ");
+}
+    </script>
+</head>
+
+<body class="body" onload="addJsClass();">
+<div id="navigation">
+    <div class="navTitle">
+        
+        Grails Framework Guide 
+    </div>
+    <div class="navLinks">
+        <ul>
+            <li>
+                <div id="nav-summary" onmouseover="toggleNavSummary(false)" onmouseout="toggleNavSummary(true)">
+                    <a href="../../guide/index.html" class="button">Table of contents</a>
+
+                    <div id="nav-summary-childs" style="display:none;">
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../../guide/gettingStarted.html"><strong>1</strong><span>Getting Started</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../../guide/createApp.html"><strong>2</strong><span>Creating the Application</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../../guide/domainModel.html"><strong>3</strong><span>The Book and Author Domain Model</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../../guide/scaffolding.html"><strong>4</strong><span>Scaffolding the CRUD Controllers</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../../guide/fAllAndFDisplay.html"><strong>5</strong><span>Replacing the GSPs with f:all and f:display</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../../guide/fTable.html"><strong>6</strong><span>Replacing list.gsp with f:table</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../../guide/templateLookup.html"><strong>7</strong><span>Template Lookup Precedence</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../../guide/customDefaultWrapper.html"><strong>8</strong><span>Customising the Default Wrapper</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../../guide/customWidgets.html"><strong>9</strong><span>Customising Widgets by Type</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../../guide/associationWidgets.html"><strong>10</strong><span>Customising Association Widgets</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../../guide/perPropertyOverrides.html"><strong>11</strong><span>Per-Property Overrides</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../../guide/customTable.html"><strong>12</strong><span>Customising the Table Template</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../../guide/cleanCrud.html"><strong>13</strong><span>The Result - Clean CRUD GSPs</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../../guide/helpWithGrails.html"><strong>14</strong><span>Do you need help with Grails?</span></a>
+                        </div>
+                        
+                    </div>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+
+</div>
+
+<table id="colset" border="0" cellpadding="0" cellspacing="0">
+    <tr>
+        <td id="col1">
+            <div id="main" class="corner-all">
+
+                
+                    <div class="toc-item prev-left"><a href="../../guide/customWidgets.html">&lt;&lt; <strong>9</strong><span>Customising Widgets by Type</span></a></div>
+                
+
+                
+                    <div class="toc-item next-right"><a href="../../guide/perPropertyOverrides.html"><strong>11</strong><span>Per-Property Overrides</span> >></a></div>
+                
+
+
+                
+
+                
+
+<h2 id="oneToManyWidget">10.3 one-to-many</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-fields-custom-widgets-and-wrappers/v8/guide/oneToManyWidget.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>A one-to-many association is the read-only side of the relationship. <code>Author.books</code> is implemented by a foreign-key column on the <code>book</code> table - editing it from <code>Author.create.gsp</code> is <em>almost always wrong</em> because it mixes parent and child lifecycles. The right behaviour on the parent form is to render the existing children as a list of links, plus a quick-add button that opens the child controller pre-populated with the parent reference.</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/views/_fields/oneToMany/_widget.gsp</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="html"><span class="error">&lt;</span>%--
+    one-to-many: usually NOT editable on the parent side. Children are
+    edited from their own controller (the side that owns the foreign key).
+    Render the existing children as a navigable list with quick-add link.
+--%<span class="error">&gt;</span>
+<span class="tag">&lt;g:set</span> <span class="attribute-name">var</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">childClass</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">value</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${persistentProperty.associatedEntity.javaClass}</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+<span class="tag">&lt;g:set</span> <span class="attribute-name">var</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">childController</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">value</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${childClass.simpleName.toLowerCase()}</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+<span class="tag">&lt;g:set</span> <span class="attribute-name">var</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">children</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">value</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${value ?: []}</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+
+<span class="tag">&lt;div</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">border rounded p-2 bg-light</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;g:if</span> <span class="attribute-name">test</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${children}</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+        <span class="tag">&lt;ul</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">list-unstyled mb-2</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+            <span class="tag">&lt;g:each</span> <span class="attribute-name">in</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${children}</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">var</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">child</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+                <span class="tag">&lt;li&gt;</span>
+                    <span class="tag">&lt;g:link</span> <span class="attribute-name">controller</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${childController}</span><span class="delimiter">&quot;</span></span>
+                            <span class="attribute-name">action</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">show</span><span class="delimiter">&quot;</span></span>
+                            <span class="attribute-name">id</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${child.id}</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>${child.toString().encodeAsHTML()}<span class="tag">&lt;/g:link&gt;</span>
+                <span class="tag">&lt;/li&gt;</span>
+            <span class="tag">&lt;/g:each&gt;</span>
+        <span class="tag">&lt;/ul&gt;</span>
+    <span class="tag">&lt;/g:if&gt;</span>
+    <span class="tag">&lt;g:else&gt;</span>
+        <span class="tag">&lt;p</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">text-muted small mb-2</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>No ${property} yet.<span class="tag">&lt;/p&gt;</span>
+    <span class="tag">&lt;/g:else&gt;</span>
+    <span class="tag">&lt;g:link</span> <span class="attribute-name">controller</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${childController}</span><span class="delimiter">&quot;</span></span>
+            <span class="attribute-name">action</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">create</span><span class="delimiter">&quot;</span></span>
+            <span class="attribute-name">params</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">['${persistentProperty.referencedPropertyName}.id': bean?.id]</span><span class="delimiter">&quot;</span></span>
+            <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">btn btn-sm btn-outline-primary</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>Add ${childClass.simpleName}<span class="tag">&lt;/g:link&gt;</span>
+<span class="tag">&lt;/div&gt;</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The template:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Reads <code>persistentProperty.referencedPropertyName</code> to find the back-reference name on the other side. For <code>Author.books</code>, the back-reference on <code>Book</code> is <code>author</code>, so the quick-add link passes <code>author.id=&lt;parent&gt;</code> to <code>BookController.create()</code> - which Spring binds straight onto the new <code>Book.author</code> field.</p>
+</li>
+<li>
+<p>Renders zero work on the parent form. Submitting the parent form does not save children.</p>
+</li>
+<li>
+<p>Includes a tiny "no children yet" placeholder so the field is not visually empty.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The display side is a comma-separated inline list:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/views/_fields/oneToMany/_displayWidget.gsp</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="html"><span class="tag">&lt;g:set</span> <span class="attribute-name">var</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">childClass</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">value</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${persistentProperty.associatedEntity.javaClass}</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+<span class="tag">&lt;g:set</span> <span class="attribute-name">var</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">childController</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">value</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${childClass.simpleName.toLowerCase()}</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+<span class="tag">&lt;g:set</span> <span class="attribute-name">var</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">children</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">value</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${value ?: []}</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+
+<span class="tag">&lt;g:if</span> <span class="attribute-name">test</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${children}</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;ul</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">list-inline mb-0</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+        <span class="tag">&lt;g:each</span> <span class="attribute-name">in</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${children}</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">var</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">child</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">status</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">i</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+            <span class="tag">&lt;li</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">list-inline-item</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+                <span class="tag">&lt;g:link</span> <span class="attribute-name">controller</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${childController}</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">action</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">show</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">id</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${child.id}</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+                    ${child.toString().encodeAsHTML()}<span class="tag">&lt;/g:link&gt;</span><span class="tag">&lt;g:if</span> <span class="attribute-name">test</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${i &lt; children.size() - 1}</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>,<span class="tag">&lt;/g:if&gt;</span>
+            <span class="tag">&lt;/li&gt;</span>
+        <span class="tag">&lt;/g:each&gt;</span>
+    <span class="tag">&lt;/ul&gt;</span>
+<span class="tag">&lt;/g:if&gt;</span>
+<span class="tag">&lt;g:else&gt;</span><span class="tag">&lt;span</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">text-muted</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span><span class="entity">&amp;mdash;</span><span class="tag">&lt;/span&gt;</span><span class="tag">&lt;/g:else&gt;</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>&lt;f:display bean="author"/&gt;</code> will now render <code>Author.books</code> as a list of clickable book titles, and <code>&lt;f:table collection="${authorList}"/&gt;</code> will get the same list inside the <code>books</code> column if you include it in <code>properties=</code>.</p>
+</div>
+<div class="admonitionblock caution">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-caution" title="Caution"></i>
+</td>
+<td class="content">
+Avoid putting one-to-many on a <code>&lt;f:table&gt;</code> for very large collections - rendering 50 link badges per row is slow and unhelpful. Either skip the property in <code>properties=</code> or write a per-property <code>_displayWidget.gsp</code> that emits a count link instead (<code>12 books &#8594; /author/12/books</code>).
+</td>
+</tr>
+</table>
+</div>
+
+
+                <div style="clear:both;margin-top:15px;"></div>
+                
+                    <div class="toc-item prev-left"><a href="../../guide/customWidgets.html">&lt;&lt; <strong>9</strong><span>Customising Widgets by Type</span></a></div>
+                
+                    <div class="toc-item next-right"><a href="../../guide/perPropertyOverrides.html"><strong>11</strong><span>Per-Property Overrides</span> >></a></div>
+                
+                <div style="clear:both"></div>
+            </div>
+        </td>
+        <td id="col2">
+            <div class="local clearfix">
+                <div class="local-title" style="text-align: right"><a href="https://travis-ci.org/grails-guides/grails-fields-custom-widgets-and-wrappers"><img src="https://travis-ci.org/grails-guides/grails-fields-custom-widgets-and-wrappers.svg?branch=master" /></a></div>            
+                 <div class="local-title">
+                    <a href="https://github.com/grails-guides/grails-fields-custom-widgets-and-wrappers">
+                    <svg height="35" class="octicon octicon-mark-github" viewBox="0 0 16 16" version="1.1" width="35" aria-hidden="true"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a> &nbsp;&nbsp;Get the Code
+                </div>
+                <div class="menu">
+                    <div class="input-group">                        
+                        <button href="#" onclick="document.getElementById('github-url').value='git@github.com:grails-guides/grails-fields-custom-widgets-and-wrappers.git'" class="codeButton">SSH</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-fields-custom-widgets-and-wrappers.git'" class="codeButton">HTTPS</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-fields-custom-widgets-and-wrappers'" class="codeButton">Subversion</button>
+                    </div>
+       
+                    <div class="input-group">                    
+                        <!-- Target -->
+                        <input id="github-url" value="git@github.com:grails-guides/grails-fields-custom-widgets-and-wrappers.git" type="text" />
+
+                        <!-- Trigger -->
+                        <button class="clipbtn" type="button" data-clipboard-target="#github-url">
+
+                            <img width="13" src="../img/clippy.svg" alt="Copy to clipboard">
+                        </button>       
+
+                    </div>
+                    <div class="input-group">
+                      <a href="https://github.com/grails-guides/grails-fields-custom-widgets-and-wrappers/archive/master.zip" class="downloadButton">Download ZIP</a>
+                    </div>
+                </div>
+            </div>
+        </td>
+    </tr>
+</table>
+
+<div id="footer">
+    
+    
+</div>
+
+<script type="text/javascript" src="../js/docs.js"></script>
+
+</body>
+</html>

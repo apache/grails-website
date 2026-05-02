@@ -1,0 +1,476 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+                      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+    <title>3 The Book and Author Domain Model</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
+    <link rel="stylesheet" href="../css/guide.css" type="text/css" media="screen, print" title="Style" charset="utf-8" />            
+    <link rel="stylesheet" href="../css/pdf.css" type="text/css" media="print" title="PDF" charset="utf-8"/>
+    <script type="text/javascript">
+function addJsClass() {
+    var classes = document.body.className.split(" ");
+    classes.push("js");
+    document.body.className = classes.join(" ");
+}
+    </script>
+</head>
+
+<body class="body" onload="addJsClass();">
+<div id="navigation">
+    <div class="navTitle">
+        
+        Grails Framework Guide 
+    </div>
+    <div class="navLinks">
+        <ul>
+            <li>
+                <div id="nav-summary" onmouseover="toggleNavSummary(false)" onmouseout="toggleNavSummary(true)">
+                    <a href="../guide/index.html" class="button">Table of contents</a>
+
+                    <div id="nav-summary-childs" style="display:none;">
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/gettingStarted.html"><strong>1</strong><span>Getting Started</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/createApp.html"><strong>2</strong><span>Creating the Application</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/domainModel.html"><strong>3</strong><span>The Book and Author Domain Model</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/scaffolding.html"><strong>4</strong><span>Scaffolding the CRUD Controllers</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/fAllAndFDisplay.html"><strong>5</strong><span>Replacing the GSPs with f:all and f:display</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/fTable.html"><strong>6</strong><span>Replacing list.gsp with f:table</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/templateLookup.html"><strong>7</strong><span>Template Lookup Precedence</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/customDefaultWrapper.html"><strong>8</strong><span>Customising the Default Wrapper</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/customWidgets.html"><strong>9</strong><span>Customising Widgets by Type</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/associationWidgets.html"><strong>10</strong><span>Customising Association Widgets</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/perPropertyOverrides.html"><strong>11</strong><span>Per-Property Overrides</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/customTable.html"><strong>12</strong><span>Customising the Table Template</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/cleanCrud.html"><strong>13</strong><span>The Result - Clean CRUD GSPs</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>14</strong><span>Do you need help with Grails?</span></a>
+                        </div>
+                        
+                    </div>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+
+</div>
+
+<table id="colset" border="0" cellpadding="0" cellspacing="0">
+    <tr>
+        <td id="col1">
+            <div id="main" class="corner-all">
+
+                
+                    <div class="toc-item prev-left"><a href="../guide/createApp.html">&lt;&lt; <strong>2</strong><span>Creating the Application</span></a></div>
+                
+
+                
+                    <div class="toc-item next-right"><a href="../guide/scaffolding.html"><strong>4</strong><span>Scaffolding the CRUD Controllers</span> >></a></div>
+                
+
+
+                
+                <div id="table-of-content">
+                    <h2>Table of Contents</h2>
+                    
+                    <div class="toc-item" style="margin-left:0px"><a href="#authorClass"><strong>3.1</strong><span>Author Domain Class</span></a>
+                    </div>
+                    
+                    <div class="toc-item" style="margin-left:0px"><a href="#bookClass"><strong>3.2</strong><span>Book Domain Class</span></a>
+                    </div>
+                    
+                    <div class="toc-item" style="margin-left:0px"><a href="#bootstrapData"><strong>3.3</strong><span>Bootstrap Sample Data</span></a>
+                    </div>
+                    
+                </div>
+                
+
+                
+
+<h1 id="domainModel">3 The Book and Author Domain Model</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-fields-custom-widgets-and-wrappers/v8/guide/domainModel.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>A small library is the right size to exercise every interesting customisation hook in the Fields plugin: two domain classes, a <code>belongsTo</code> association, a few different property types (<code>String</code>, <code>Date</code>, <code>Boolean</code>, <code>BigDecimal</code>), and a handful of constraints (<code>inList</code>, <code>email</code>, <code>url</code>, <code>matches</code>, <code>widget: 'textarea'</code>) that drive widget selection.</p>
+</div>
+
+
+<h2 id="authorClass">3.1 Author Domain Class</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-fields-custom-widgets-and-wrappers/v8/guide/authorClass.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Create the <code>Author</code> domain class first. Authors have a name, an email address, a free-form bio, and an optional homepage URL.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">./grailsw create-domain-class example.Author</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Replace the contents of the generated file with:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/domain/example/Author.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="type">class</span> <span class="class">Author</span> {
+
+    <span class="predefined-type">String</span> name
+    <span class="predefined-type">String</span> email
+    <span class="predefined-type">String</span> bio
+    <span class="predefined-type">String</span> website
+
+    <span class="directive">static</span> hasOne = [<span class="key">contactInfo</span>: ContactInfo]
+    <span class="directive">static</span> hasMany = [<span class="key">books</span>: <span class="predefined-type">Book</span>]
+
+    <span class="directive">static</span> constraints = {
+        name <span class="key">blank</span>: <span class="predefined-constant">false</span>, <span class="key">maxSize</span>: <span class="integer">200</span>
+        email <span class="key">email</span>: <span class="predefined-constant">true</span>, <span class="key">blank</span>: <span class="predefined-constant">false</span>
+        bio <span class="key">blank</span>: <span class="predefined-constant">false</span>, <span class="key">maxSize</span>: <span class="integer">4000</span>, <span class="key">widget</span>: <span class="string"><span class="delimiter">'</span><span class="content">textarea</span><span class="delimiter">'</span></span>
+        website <span class="key">url</span>: <span class="predefined-constant">true</span>, <span class="key">nullable</span>: <span class="predefined-constant">true</span>
+        contactInfo <span class="key">nullable</span>: <span class="predefined-constant">true</span>
+    }
+
+    <span class="directive">static</span> mapping = {
+        sort <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">asc</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="predefined-type">String</span> toString() { name }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Notable constraints:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>email: true</code> - Grails validates the value as an email address; the Fields plugin renders an <code>&lt;input type="email"&gt;</code> widget.</p>
+</li>
+<li>
+<p><code>url: true</code> - Grails validates the value as a URL; the Fields plugin renders an <code>&lt;input type="url"&gt;</code> widget.</p>
+</li>
+<li>
+<p><code>widget: 'textarea'</code> on <code>bio</code> - tells the Fields plugin to render a <code>&lt;textarea&gt;</code> instead of the default <code>&lt;input type="text"&gt;</code>.</p>
+</li>
+<li>
+<p><code>nullable: true</code> on <code>website</code> - makes the field optional in the form.</p>
+</li>
+<li>
+<p><code>static hasOne = [contactInfo: ContactInfo]</code> - one-to-one association where <code>Author</code> owns the FK column on <code>ContactInfo</code>. We will customise this in the association chapter.</p>
+</li>
+<li>
+<p><code>static hasMany = [books: Book]</code> - one-to-many back-reference; the books own the FK on their side via <code>belongsTo: Author</code>.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The <code>ContactInfo</code> class is a thin owned domain object:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/domain/example/ContactInfo.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="type">class</span> <span class="class">ContactInfo</span> {
+
+    <span class="predefined-type">String</span> phone
+    <span class="predefined-type">String</span> mailingAddress
+
+    <span class="directive">static</span> belongsTo = [<span class="key">author</span>: Author]
+
+    <span class="directive">static</span> constraints = {
+        phone <span class="key">blank</span>: <span class="predefined-constant">false</span>, <span class="key">maxSize</span>: <span class="integer">32</span>
+        mailingAddress <span class="key">blank</span>: <span class="predefined-constant">false</span>, <span class="key">maxSize</span>: <span class="integer">500</span>, <span class="key">widget</span>: <span class="string"><span class="delimiter">'</span><span class="content">textarea</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="predefined-type">String</span> toString() { <span class="string"><span class="delimiter">&quot;</span><span class="content">Contact for </span><span class="inline"><span class="inline-delimiter">${</span>author?.name<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span> }
+}</code></pre>
+</div>
+</div>
+
+
+<h2 id="bookClass">3.2 Book Domain Class</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-fields-custom-widgets-and-wrappers/v8/guide/bookClass.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Create the <code>Book</code> domain class. A book belongs to one <code>Author</code>, has an ISBN that follows a strict pattern, a published date, a price, an in-stock flag, and a genre selected from a fixed list.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">./grailsw create-domain-class example.Book</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Replace the contents of the generated file with:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/domain/example/Book.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="type">class</span> <span class="class">Book</span> {
+
+    <span class="predefined-type">String</span> title
+    <span class="predefined-type">String</span> isbn
+    <span class="predefined-type">String</span> genre
+    <span class="predefined-type">String</span> description
+    <span class="predefined-type">Date</span> publishedDate
+    <span class="predefined-type">BigDecimal</span> priceUSD
+    <span class="predefined-type">Boolean</span> inStock = <span class="predefined-constant">true</span>
+
+    <span class="directive">static</span> belongsTo = [<span class="key">author</span>: Author]
+    <span class="directive">static</span> hasMany = [<span class="key">tags</span>: Tag]
+
+    <span class="directive">static</span> constraints = {
+        title <span class="key">blank</span>: <span class="predefined-constant">false</span>, <span class="key">maxSize</span>: <span class="integer">255</span>
+        isbn <span class="key">blank</span>: <span class="predefined-constant">false</span>, <span class="key">matches</span>: <span class="regexp"><span class="delimiter">/</span><span class="content">^(?:</span><span class="char">\d</span><span class="content">{10}|</span><span class="char">\d</span><span class="content">{13}|</span><span class="char">\d</span><span class="content">{3}-</span><span class="char">\d</span><span class="content">-</span><span class="char">\d</span><span class="content">{2}-</span><span class="char">\d</span><span class="content">{6}-</span><span class="char">\d</span><span class="content">)</span><span class="content">$</span><span class="delimiter">/</span></span>
+        genre <span class="key">inList</span>: [<span class="string"><span class="delimiter">'</span><span class="content">Fiction</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Non-Fiction</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Biography</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Science</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">History</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Poetry</span><span class="delimiter">'</span></span>]
+        description <span class="key">blank</span>: <span class="predefined-constant">false</span>, <span class="key">maxSize</span>: <span class="integer">2000</span>, <span class="key">widget</span>: <span class="string"><span class="delimiter">'</span><span class="content">textarea</span><span class="delimiter">'</span></span>
+        publishedDate <span class="key">nullable</span>: <span class="predefined-constant">false</span>
+        priceUSD <span class="key">min</span>: <span class="float">0.00</span>G, <span class="key">scale</span>: <span class="integer">2</span>
+        inStock <span class="key">nullable</span>: <span class="predefined-constant">false</span>
+    }
+
+    <span class="directive">static</span> mapping = {
+        sort <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">asc</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="predefined-type">String</span> toString() { title }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Each constraint here will drive a customisation later in the guide:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>inList:</code> on <code>genre</code> - the Fields plugin will render a <code>&lt;select&gt;</code> populated from the list. We will keep that behaviour but restyle it.</p>
+</li>
+<li>
+<p><code>matches:</code> on <code>isbn</code> - we will reach down to a per-property <code>_widget.gsp</code> and add an HTML <code>pattern</code> attribute that mirrors the Groovy regex.</p>
+</li>
+<li>
+<p><code>widget: 'textarea'</code> on <code>description</code> - we will swap in a per-property <code>_wrapper.gsp</code> that adds a live character counter.</p>
+</li>
+<li>
+<p><code>belongsTo: Author</code> - many-to-one association: the Fields plugin renders this as a <code>&lt;select&gt;</code> populated with all <code>Author</code> instances. We will customise the option label and the display widget.</p>
+</li>
+<li>
+<p><code>static hasMany = [tags: Tag]</code> - many-to-many association via the <code>Tag</code> domain class. The default plugin widget is a multi-select; we will swap it for a checkbox group in the association chapter.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><code>Tag</code> itself is the join-side domain:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/domain/example/Tag.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="type">class</span> <span class="class">Tag</span> {
+
+    <span class="predefined-type">String</span> name
+
+    <span class="directive">static</span> hasMany = [<span class="key">books</span>: <span class="predefined-type">Book</span>]
+    <span class="directive">static</span> belongsTo = <span class="predefined-type">Book</span>
+
+    <span class="directive">static</span> constraints = {
+        name <span class="key">blank</span>: <span class="predefined-constant">false</span>, <span class="key">maxSize</span>: <span class="integer">60</span>, <span class="key">unique</span>: <span class="predefined-constant">true</span>
+    }
+
+    <span class="directive">static</span> mapping = {
+        sort <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">asc</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="predefined-type">String</span> toString() { name }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The <code>static mapping</code> block on <code>Book</code> sorts list views by <code>title</code> ascending, which we will exploit when we customise the table template.</p>
+</div>
+
+
+<h2 id="bootstrapData">3.3 Bootstrap Sample Data</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-fields-custom-widgets-and-wrappers/v8/guide/bootstrapData.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Replace <code>grails-app/init/example/BootStrap.groovy</code> with the following so that the application starts with a few authors and books to look at:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/init/example/BootStrap.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="type">class</span> <span class="class">BootStrap</span> {
+
+    <span class="keyword">def</span> init = { servletContext -&gt;
+        Tag fantasy = <span class="keyword">new</span> Tag(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Fantasy</span><span class="delimiter">'</span></span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        Tag classic = <span class="keyword">new</span> Tag(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Classic</span><span class="delimiter">'</span></span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        Tag romance = <span class="keyword">new</span> Tag(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Romance</span><span class="delimiter">'</span></span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        Tag adventure = <span class="keyword">new</span> Tag(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Adventure</span><span class="delimiter">'</span></span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+
+        Author tolkien = <span class="keyword">new</span> Author(
+                <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">J.R.R. Tolkien</span><span class="delimiter">'</span></span>,
+                <span class="key">email</span>: <span class="string"><span class="delimiter">'</span><span class="content">jrr@example.com</span><span class="delimiter">'</span></span>,
+                <span class="key">bio</span>: <span class="string"><span class="delimiter">'</span><span class="content">English writer and philologist, best known for The Hobbit and The Lord of the Rings.</span><span class="delimiter">'</span></span>,
+                <span class="key">website</span>: <span class="string"><span class="delimiter">'</span><span class="content">https://www.tolkienestate.com/</span><span class="delimiter">'</span></span>
+        )
+        tolkien.contactInfo = <span class="keyword">new</span> ContactInfo(
+                <span class="key">phone</span>: <span class="string"><span class="delimiter">'</span><span class="content">+44 20 7946 0958</span><span class="delimiter">'</span></span>,
+                <span class="key">mailingAddress</span>: <span class="string"><span class="delimiter">'</span><span class="content">1 Oxford Way, Oxford, England</span><span class="delimiter">'</span></span>
+        )
+        tolkien.save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+
+        Author austen = <span class="keyword">new</span> Author(
+                <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Jane Austen</span><span class="delimiter">'</span></span>,
+                <span class="key">email</span>: <span class="string"><span class="delimiter">'</span><span class="content">jane@example.com</span><span class="delimiter">'</span></span>,
+                <span class="key">bio</span>: <span class="string"><span class="delimiter">'</span><span class="content">English novelist known primarily for her six major novels of the early 19th century.</span><span class="delimiter">'</span></span>,
+                <span class="key">website</span>: <span class="predefined-constant">null</span>
+        )
+        austen.contactInfo = <span class="keyword">new</span> ContactInfo(
+                <span class="key">phone</span>: <span class="string"><span class="delimiter">'</span><span class="content">+44 1256 462100</span><span class="delimiter">'</span></span>,
+                <span class="key">mailingAddress</span>: <span class="string"><span class="delimiter">'</span><span class="content">Steventon Rectory, Hampshire, England</span><span class="delimiter">'</span></span>
+        )
+        austen.save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+
+        <span class="predefined-type">Book</span> hobbit = <span class="keyword">new</span> <span class="predefined-type">Book</span>(
+                <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">The Hobbit</span><span class="delimiter">'</span></span>,
+                <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>,
+                <span class="key">genre</span>: <span class="string"><span class="delimiter">'</span><span class="content">Fiction</span><span class="delimiter">'</span></span>,
+                <span class="key">description</span>: <span class="string"><span class="delimiter">'</span><span class="content">A reluctant hobbit, Bilbo Baggins, sets out to the Lonely Mountain with a spirited group of dwarves to reclaim their mountain home.</span><span class="delimiter">'</span></span>,
+                <span class="key">publishedDate</span>: <span class="predefined-type">Date</span>.parse(<span class="string"><span class="delimiter">'</span><span class="content">yyyy-MM-dd</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">1937-09-21</span><span class="delimiter">'</span></span>),
+                <span class="key">priceUSD</span>: <span class="float">14.99</span>G,
+                <span class="key">inStock</span>: <span class="predefined-constant">true</span>,
+                <span class="key">author</span>: tolkien
+        )
+        hobbit.addToTags(fantasy).addToTags(adventure).addToTags(classic).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+
+        <span class="predefined-type">Book</span> pride = <span class="keyword">new</span> <span class="predefined-type">Book</span>(
+                <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Pride and Prejudice</span><span class="delimiter">'</span></span>,
+                <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780141439518</span><span class="delimiter">'</span></span>,
+                <span class="key">genre</span>: <span class="string"><span class="delimiter">'</span><span class="content">Fiction</span><span class="delimiter">'</span></span>,
+                <span class="key">description</span>: <span class="string"><span class="delimiter">'</span><span class="content">The story of Mr Bennet of Longbourn estate and his five daughters on the lookout for marriage.</span><span class="delimiter">'</span></span>,
+                <span class="key">publishedDate</span>: <span class="predefined-type">Date</span>.parse(<span class="string"><span class="delimiter">'</span><span class="content">yyyy-MM-dd</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">1813-01-28</span><span class="delimiter">'</span></span>),
+                <span class="key">priceUSD</span>: <span class="float">9.99</span>G,
+                <span class="key">inStock</span>: <span class="predefined-constant">true</span>,
+                <span class="key">author</span>: austen
+        )
+        pride.addToTags(romance).addToTags(classic).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+    }
+
+    <span class="keyword">def</span> destroy = {}
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Restart the application with <code>./gradlew bootRun</code>. The H2 database is in-memory by default, so the seed data is recreated on every startup.</p>
+</div>
+
+
+                <div style="clear:both;margin-top:15px;"></div>
+                
+                    <div class="toc-item prev-left"><a href="../guide/createApp.html">&lt;&lt; <strong>2</strong><span>Creating the Application</span></a></div>
+                
+                    <div class="toc-item next-right"><a href="../guide/scaffolding.html"><strong>4</strong><span>Scaffolding the CRUD Controllers</span> >></a></div>
+                
+                <div style="clear:both"></div>
+            </div>
+        </td>
+        <td id="col2">
+            <div class="local clearfix">
+                <div class="local-title" style="text-align: right"><a href="https://travis-ci.org/grails-guides/grails-fields-custom-widgets-and-wrappers"><img src="https://travis-ci.org/grails-guides/grails-fields-custom-widgets-and-wrappers.svg?branch=master" /></a></div>            
+                 <div class="local-title">
+                    <a href="https://github.com/grails-guides/grails-fields-custom-widgets-and-wrappers">
+                    <svg height="35" class="octicon octicon-mark-github" viewBox="0 0 16 16" version="1.1" width="35" aria-hidden="true"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a> &nbsp;&nbsp;Get the Code
+                </div>
+                <div class="menu">
+                    <div class="input-group">                        
+                        <button href="#" onclick="document.getElementById('github-url').value='git@github.com:grails-guides/grails-fields-custom-widgets-and-wrappers.git'" class="codeButton">SSH</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-fields-custom-widgets-and-wrappers.git'" class="codeButton">HTTPS</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-fields-custom-widgets-and-wrappers'" class="codeButton">Subversion</button>
+                    </div>
+       
+                    <div class="input-group">                    
+                        <!-- Target -->
+                        <input id="github-url" value="git@github.com:grails-guides/grails-fields-custom-widgets-and-wrappers.git" type="text" />
+
+                        <!-- Trigger -->
+                        <button class="clipbtn" type="button" data-clipboard-target="#github-url">
+
+                            <img width="13" src="../img/clippy.svg" alt="Copy to clipboard">
+                        </button>       
+
+                    </div>
+                    <div class="input-group">
+                      <a href="https://github.com/grails-guides/grails-fields-custom-widgets-and-wrappers/archive/master.zip" class="downloadButton">Download ZIP</a>
+                    </div>
+                </div>
+            </div>
+        </td>
+    </tr>
+</table>
+
+<div id="footer">
+    
+    
+</div>
+
+<script type="text/javascript" src="../js/docs.js"></script>
+
+</body>
+</html>
