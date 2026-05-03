@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>A Library REST API with Grails 8 | Grails Guides | Apache Grails</title>
+    <meta name='description' content='A Library REST API with Grails 8. Build a Book + Author REST API on Grails 8 using RestfulController, JSON views, structured 422 validation responses, bounded pagination, all-or-nothing bulk create, and URL-prefix versioning under /v1/.'/>
+    <meta charset='UTF-8'/>
+<meta name='viewport' content='width=device-width, initial-scale=1'/>
+<link rel='icon' href='https://grails.apache.org/images/favicon.ico'/>
+<link rel='mask-icon' href='https://grails.apache.org/images/grails-pinned-icon.svg' color='feb672'/>
+<link rel='alternate' type='application/rss+xml' title='RSS' href='https://grails.apache.org/rss.xml'/>
+<link rel='stylesheet' href='https://grails.apache.org/stylesheets/screen.css'/>
+<link rel='stylesheet' href='https://grails.apache.org/stylesheets/plugin.css'/>
+<script src='https://grails.apache.org/javascripts/navigation.js'></script>
+
+<!-- Matomo -->
+<script>
+  var _paq = window._paq = window._paq || [];
+  _paq.push(['setDoNotTrack', true]);
+  _paq.push(['disableCookies']);
+  _paq.push(['trackPageView']);
+  _paq.push(['enableLinkTracking']);
+  (function() {
+    var u = 'https://analytics.apache.org/';
+    _paq.push(['setTrackerUrl', u + 'matomo.php']);
+    _paq.push(['setSiteId', '79']);
+    var d = document, g = d.createElement('script'), s = d.getElementsByTagName('script')[0];
+    g.async = true; g.src = u + 'matomo.js'; s.parentNode.insertBefore(g, s);
+  })();
+</script>
+<!-- End Matomo Code -->
+
+<script
+    async
+    src="https://widget.kapa.ai/kapa-widget.bundle.js"
+    data-website-id="d804a9f2-51a2-414c-97f7-12f2a1ba4609"
+    data-project-name="Apache Grails"
+    data-project-color="#3F4346"
+    data-font-family="system-ui,-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,Segoe UI,sans-serif,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol;"
+    data-project-logo="https://grails.apache.org/images/grails.png"
+    data-modal-override-open-id="ask-ai-input"
+    data-modal-override-open-class="search-input"
+    data-user-analytics-fingerprint-enabled="true"
+    data-modal-title="Apache Grails AI Assistant"
+    data-modal-example-questions-title="Try asking me..."
+    data-modal-example-questions="How does database migration work?,How does Spring Security work?"
+    data-button-text-color="#FBB576"
+    data-modal-header-bg-color="#FFFFFF"
+    data-modal-title-color="#FBB576"
+    data-consent-required="true"></script>
+
+    <link rel='stylesheet' href='../css/guide.css'/>
+    <script src='../js/clipboard.min.js'></script>
+</head>
+<body class='guide'>
+<header class='main-header'>
+    <div class='content'>
+        <a href='https://grails.apache.org/index.html'><img class='grails-logo' src='https://grails.apache.org/images/grails_logo.svg' alt='Grails Logo'/></a>
+        <a href='javascript:show("top-menus", "show-navigation-link")' id='show-navigation-link'
+           class='mobile align-center'>Show Navigation</a>
+        <div id='top-menus'>
+            <nav class='secondary-menu' id='secondary-menu'>
+                <ul>
+                    <li><a href='https://grails.apache.org/casestudies/index.html'>Case Studies</a></li>
+                    <li><a href='https://grails.apache.org/blog/index.html'>Blog</a></li>
+                    <li><a href='https://grails.apache.org/learning.html'>Learning</a></li>
+                    <li><a href='https://grails.apache.org/community.html'>Community</a></li>
+                    <li><a href='https://grails.apache.org/search.html'>Search</a></li>
+                </ul>
+            </nav>
+            <nav class='main-menu' id='main-menu'>
+                <ul>
+                    <li><a href='https://grails.apache.org/documentation.html'>Documentation</a></li>
+                    <li><a href='https://grails.apache.org/download.html'>Download</a></li>
+                    <li><a href='https://plugins.grails.org'>Plugins</a></li>
+                    <li><a href='https://grails.apache.org/guides'>Guides</a></li>
+                    <li><a href='https://grails.apache.org/faq.html'>FAQ</a></li>
+                    <li><a href='https://grails.apache.org/support.html'>Support</a></li>
+                    <li><a href='https://start.grails.org'>Forge App</a></li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</header>
+
+<div class='fullwidth'><article class="guide">
+    <aside>
+        <button type="button" class="btn btn-large" onclick="window.location.href=&quot;https://github.com/grails-guides/grails-rest-library&quot;"><img height="15" src="../img/github_white.svg" alt="GitHub"/><span>&nbsp;Get the Code</span></button>
+        <ul class="githublinks">
+            <li><button type="button" class="btn btn-default codeButton" onclick="document.getElementById('github-url').value='git@github.com:grails-guides/grails-rest-library.git'">SSH</button></li>
+            <li><button type="button" class="btn btn-default codeButton" onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-rest-library.git'">HTTPS</button></li>
+        </ul>
+        <div class="input-group">
+            <input id="github-url" value="git@github.com:grails-guides/grails-rest-library.git" type="text"/>
+            <button type="button" class="clippy btn btn-default" data-clipboard-target="#github-url">
+                <img width="13" src="../img/clippy.svg" alt="Copy to clipboard">
+            </button>
+        </div>
+        <script>var clipboard = new Clipboard('.clippy');</script>
+        <button type="button" class="btn btn-large" onclick="window.location.href=&quot;https://github.com/grails-guides/grails-rest-library/archive/master.zip&quot;">Download ZIP</button>
+        
+        <div id="table-of-content">
+            <h3>Table of Contents</h3>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#gettingStarted"><strong>1</strong><span>Getting Started</span></a></div>
+            
+            <div class="toc-item" style="margin-left:10px"><a href="#whatYouWillBuild"><strong>1.1</strong><span>What You Will Build</span></a></div>
+            
+            <div class="toc-item" style="margin-left:10px"><a href="#requirements"><strong>1.2</strong><span>What You Will Need</span></a></div>
+            
+            <div class="toc-item" style="margin-left:10px"><a href="#howto"><strong>1.3</strong><span>How to Complete the Guide</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#createApp"><strong>2</strong><span>Creating the Application</span></a></div>
+            
+            <div class="toc-item" style="margin-left:10px"><a href="#download"><strong>2.1</strong><span>Download a Grails 8 rest_api Starter</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#domainModel"><strong>3</strong><span>The Book and Author Domain Model</span></a></div>
+            
+            <div class="toc-item" style="margin-left:10px"><a href="#bootstrapData"><strong>3.1</strong><span>Bootstrap Sample Data</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#urlMappings"><strong>4</strong><span>URL Mappings and v1 Versioning</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#controllers"><strong>5</strong><span>RestfulController With a Hard Page Cap</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#jsonViews"><strong>6</strong><span>JSON Views</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#validation"><strong>7</strong><span>Structured 422 Validation Responses</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#pagination"><strong>8</strong><span>Pagination, Sorting, and Filtering</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#bulkCreate"><strong>9</strong><span>All-or-Nothing Bulk Create</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#versioning"><strong>10</strong><span>URL-Prefix vs Content-Negotiation Versioning</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#runningTheApp"><strong>11</strong><span>Running the Application</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#helpWithGrails"><strong>12</strong><span>Do you need help with Grails?</span></a></div>
+            
+            <div style="clear:both"></div>
+        </div>
+        
+    </aside>
+    <header>
+        <h1>A Library REST API with Grails 8</h1>
+        <p>Build a Book + Author REST API on Grails 8 using RestfulController, JSON views, structured 422 validation responses, bounded pagination, all-or-nothing bulk create, and URL-prefix versioning under /v1/.</p>
+        <p><strong>Authors:</strong> James Fredley</p>
+        <p><strong>Grails Version:</strong> 8</p>
+    </header>
+    
+
+<h1 id="gettingStarted">1 Getting Started</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-rest-library/v8/guide/gettingStarted.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>In this guide you will build a small Library REST API on Apache Grails 8 with two domain classes (<code>Book</code> and <code>Author</code>), a <code>RestfulController</code>-driven CRUD surface, JSON views (<code>.gson</code>), and the production-quality concerns most beginner REST guides skip: structured 422 validation responses, bounded pagination, URL-prefix versioning, and an all-or-nothing bulk-create endpoint.</p>
+</div>
+<div class="paragraph">
+<p>This guide targets Apache Grails 8 / Spring Boot 4 / JDK 21.</p>
+</div>
+
+
+<h2 id="whatYouWillBuild">1.1 What You Will Build</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-rest-library/v8/guide/whatYouWillBuild.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>By the end of the guide you will have:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>A <code>Book</code> and <code>Author</code> domain pair, with <code>Book</code> <code>belongsTo: Author</code> and reasonable constraints (a regex-validated ISBN, a positive <code>pageCount</code>, optional <code>dateOfBirth</code>).</p>
+</li>
+<li>
+<p><code>BookController extends RestfulController&lt;Book&gt;</code> and <code>AuthorController extends RestfulController&lt;Author&gt;</code>, each scoped to JSON via <code>responseFormats</code> and bounded by a <code>listAllResources</code> override that hard-caps <code>params.max</code> at 100.</p>
+</li>
+<li>
+<p>JSON views (<code>.gson</code>) under <code>grails-app/views/book/</code> and <code>grails-app/views/author/</code> that render the API responses. Each view emits a body, embeds a HAL-style <code>_links</code> object, and reuses a shared <code>_book.gson</code> / <code>_author.gson</code> partial.</p>
+</li>
+<li>
+<p>A <code>POST /v1/books/bulk</code> endpoint that accepts a JSON array, validates every entry, and returns a structured 422 with the field errors of every failing entry on the first validation failure (the whole transaction rolls back).</p>
+</li>
+<li>
+<p>URL-prefix versioning: every endpoint lives under <code>/v1/</code>. The chapter on versioning compares this with the <code>Accept: application/vnd.example.v2+json</code> content-negotiation approach and recommends starting with URL prefixes.</p>
+</li>
+<li>
+<p>Sample data in <code>BootStrap</code> so <code>curl <a href="http://localhost:8080/v1/books" class="bare">http://localhost:8080/v1/books</a></code> returns four real books from two real authors immediately after <code>./gradlew bootRun</code>.</p>
+</li>
+</ul>
+</div>
+
+
+<h2 id="requirements">1.2 What You Will Need</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-rest-library/v8/guide/requirements.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>To complete this guide you will need:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>JDK 21</p>
+</li>
+<li>
+<p>About 30 minutes</p>
+</li>
+<li>
+<p><code>curl</code> or another HTTP client for hitting the running endpoints</p>
+</li>
+</ul>
+</div>
+
+
+<h2 id="howto">1.3 How to Complete the Guide</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-rest-library/v8/guide/howto.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>You can either type the code in this guide as you read or skip ahead and clone the finished sample:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">git clone -b grails8 https://github.com/grails-guides/grails-rest-library.git
+cd grails-rest-library/complete
+./gradlew bootRun
+curl -s http://localhost:8080/v1/books | jq</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>initial/</code> is the vanilla Grails 8 <code>rest_api</code> starter from <code><a href="https://prev-snapshot.grails.org" class="bare">https://prev-snapshot.grails.org</a></code> (with the <code>postgres</code>, <code>testcontainers</code>, <code>views-json</code>, and <code>database-migration</code> features). <code>complete/</code> adds the Book + Author domain model, the controllers, the JSON views, and the bootstrap data.</p>
+</div>
+
+
+<h1 id="createApp">2 Creating the Application</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-rest-library/v8/guide/createApp.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Generate a fresh Apache Grails 8 <strong>Rest API</strong> application from <a href="https://prev-snapshot.grails.org">prev-snapshot.grails.org</a>. Pick the <code>rest_api</code> application type (not <code>web</code>); it ships JSON views by default and skips the GSP view layer the regular <code>web</code> profile drags along.</p>
+</div>
+
+
+<h2 id="download">2.1 Download a Grails 8 rest_api Starter</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-rest-library/v8/guide/download.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">curl -L -o library.zip \
+  &quot;https://prev-snapshot.grails.org/create/rest_api/example.library?lang=GROOVY&amp;build=GRADLE&amp;test=SPOCK&amp;javaVersion=JDK_21&amp;features=postgres,testcontainers,views-json,database-migration&quot;
+unzip library.zip
+cd library</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The <code>rest_api</code> starter is leaner than the <code>web</code> starter: no asset pipeline, no GSP, no Bootstrap webjars. The <code>views-json</code> feature adds the <code>.gson</code> view support and the matching <code>org.apache.grails:grails-views-gson</code> dependency.</p>
+</div>
+
+
+<h1 id="domainModel">3 The Book and Author Domain Model</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-rest-library/v8/guide/domainModel.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Two domain classes model the library. <code>Author</code> is independent; <code>Book</code> belongs to an <code>Author</code>.</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/domain/example/Author.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.persistence.Entity</span>
+
+<span class="annotation">@Entity</span>
+<span class="type">class</span> <span class="class">Author</span> {
+
+    <span class="predefined-type">String</span> name
+    <span class="predefined-type">String</span> biography
+    <span class="predefined-type">Date</span> dateOfBirth
+
+    <span class="directive">static</span> hasMany = [<span class="key">books</span>: <span class="predefined-type">Book</span>]
+
+    <span class="directive">static</span> constraints = {
+        name        <span class="key">blank</span>: <span class="predefined-constant">false</span>, <span class="key">maxSize</span>: <span class="integer">255</span>
+        biography   <span class="key">nullable</span>: <span class="predefined-constant">true</span>, <span class="key">maxSize</span>: <span class="integer">4000</span>
+        dateOfBirth <span class="key">nullable</span>: <span class="predefined-constant">true</span>
+    }
+
+    <span class="directive">static</span> mapping = {
+        books <span class="key">fetch</span>: <span class="string"><span class="delimiter">'</span><span class="content">lazy</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="predefined-type">String</span> toString() { name }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/domain/example/Book.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.persistence.Entity</span>
+
+<span class="annotation">@Entity</span>
+<span class="type">class</span> <span class="class">Book</span> {
+
+    <span class="predefined-type">String</span>  title
+    <span class="predefined-type">String</span>  isbn
+    <span class="predefined-type">Integer</span> pageCount
+    <span class="predefined-type">Date</span>    publishedOn
+
+    <span class="directive">static</span> belongsTo = [<span class="key">author</span>: Author]
+
+    <span class="directive">static</span> constraints = {
+        title       <span class="key">blank</span>: <span class="predefined-constant">false</span>, <span class="key">maxSize</span>: <span class="integer">255</span>
+        isbn        <span class="key">blank</span>: <span class="predefined-constant">false</span>, <span class="key">unique</span>: <span class="predefined-constant">true</span>, <span class="key">matches</span>: <span class="regexp"><span class="delimiter">/</span><span class="content">^(97(8|9))?</span><span class="char">\d</span><span class="content">{9}(</span><span class="char">\d</span><span class="content">|X)</span><span class="content">$</span><span class="delimiter">/</span></span>
+        pageCount   <span class="key">nullable</span>: <span class="predefined-constant">true</span>, <span class="key">min</span>: <span class="integer">1</span>
+        publishedOn <span class="key">nullable</span>: <span class="predefined-constant">true</span>
+    }
+
+    <span class="predefined-type">String</span> toString() { title }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A few constraint choices to highlight:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>name blank: false, maxSize: 255</code> on Author and <code>title</code> on Book reject empty strings and cap database column width, so the rejection is surfaced at validation time, not as a SQL error.</p>
+</li>
+<li>
+<p><code>isbn matches: /^(97(8|9))?\d{9}(\d|X)$/</code> is a soft ISBN-10/13 check. It is intentionally permissive (no checksum validation); the regex is a chapter-and-verse example of how Grails' <code>matches:</code> constraint composes with <code>unique: true</code>.</p>
+</li>
+<li>
+<p><code>pageCount nullable: true, min: 1</code> allows an unset value but rejects zero or negative integers.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The <code>static mapping</code> block on <code>Author</code> lazy-loads <code>books</code>. With eager loading, every <code>Author.list()</code> call would fetch every book of every author - the textbook N+1 problem. Lazy loading delegates to GORM&#8217;s session lifecycle, and views explicitly opt back in to eager fetch via <code>Author.list(fetch: [books: 'join'])</code> when they need it.</p>
+</div>
+
+
+<h2 id="bootstrapData">3.1 Bootstrap Sample Data</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-rest-library/v8/guide/bootstrapData.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>A <code>BootStrap</code> class seeds two authors and four books on first startup, but only outside production:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/init/example/BootStrap.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">grails.util.Environment</span>
+<span class="keyword">import</span> <span class="include">org.slf4j.Logger</span>
+<span class="keyword">import</span> <span class="include">org.slf4j.LoggerFactory</span>
+
+<span class="type">class</span> <span class="class">BootStrap</span> {
+
+    <span class="directive">private</span> <span class="directive">static</span> <span class="directive">final</span> <span class="predefined-type">Logger</span> log = LoggerFactory.getLogger(BootStrap)
+
+    <span class="annotation">@Transactional</span>
+    Closure init = { servletContext -&gt;
+
+        <span class="keyword">if</span> (Environment.current == Environment.PRODUCTION) {
+            log.info <span class="string"><span class="delimiter">'</span><span class="content">production environment - skipping bootstrap data</span><span class="delimiter">'</span></span>
+            <span class="keyword">return</span>
+        }
+        <span class="keyword">if</span> (Author.count() &gt; <span class="integer">0</span>) {
+            log.info <span class="string"><span class="delimiter">'</span><span class="content">authors already present - skipping bootstrap data</span><span class="delimiter">'</span></span>
+            <span class="keyword">return</span>
+        }
+
+        Author tolkien = <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">J.R.R. Tolkien</span><span class="delimiter">'</span></span>,
+                                    <span class="key">biography</span>: <span class="string"><span class="delimiter">'</span><span class="content">English writer and philologist (1892-1973).</span><span class="delimiter">'</span></span>,
+                                    <span class="key">dateOfBirth</span>: <span class="predefined-type">Date</span>.parse(<span class="string"><span class="delimiter">'</span><span class="content">yyyy-MM-dd</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">1892-01-03</span><span class="delimiter">'</span></span>))
+                                    .save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        Author leguin  = <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Ursula K. Le Guin</span><span class="delimiter">'</span></span>,
+                                    <span class="key">biography</span>: <span class="string"><span class="delimiter">'</span><span class="content">American author (1929-2018).</span><span class="delimiter">'</span></span>,
+                                    <span class="key">dateOfBirth</span>: <span class="predefined-type">Date</span>.parse(<span class="string"><span class="delimiter">'</span><span class="content">yyyy-MM-dd</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">1929-10-21</span><span class="delimiter">'</span></span>))
+                                    .save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">author</span>: tolkien, <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">The Hobbit</span><span class="delimiter">'</span></span>,                  <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">310</span>,
+                 <span class="key">publishedOn</span>: <span class="predefined-type">Date</span>.parse(<span class="string"><span class="delimiter">'</span><span class="content">yyyy-MM-dd</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">1937-09-21</span><span class="delimiter">'</span></span>)).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">author</span>: tolkien, <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">The Fellowship of the Ring</span><span class="delimiter">'</span></span>,  <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928210</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">423</span>,
+                 <span class="key">publishedOn</span>: <span class="predefined-type">Date</span>.parse(<span class="string"><span class="delimiter">'</span><span class="content">yyyy-MM-dd</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">1954-07-29</span><span class="delimiter">'</span></span>)).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">author</span>: leguin,  <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">A Wizard of Earthsea</span><span class="delimiter">'</span></span>,        <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547851402</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">205</span>,
+                 <span class="key">publishedOn</span>: <span class="predefined-type">Date</span>.parse(<span class="string"><span class="delimiter">'</span><span class="content">yyyy-MM-dd</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">1968-11-01</span><span class="delimiter">'</span></span>)).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">author</span>: leguin,  <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">The Left Hand of Darkness</span><span class="delimiter">'</span></span>,   <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780441478125</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">304</span>,
+                 <span class="key">publishedOn</span>: <span class="predefined-type">Date</span>.parse(<span class="string"><span class="delimiter">'</span><span class="content">yyyy-MM-dd</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">1969-03-01</span><span class="delimiter">'</span></span>)).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+    }
+
+    Closure destroy = { }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Two guards keep this safe:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>Environment.current == Environment.PRODUCTION</code> early-exit means the seed never runs against a real database.</p>
+</li>
+<li>
+<p>The <code>Author.count() &gt; 0</code> check makes the seed idempotent during development - subsequent restarts do not create duplicate rows.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The <code>@Transactional</code> annotation on the <code>init</code> closure means the four <code>save(failOnError: true)</code> calls all commit together or all roll back. Without it, a failure on book 3 would leave books 1 and 2 in the database in a half-loaded state.</p>
+</div>
+
+
+<h1 id="urlMappings">4 URL Mappings and v1 Versioning</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-rest-library/v8/guide/urlMappings.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>URL-prefix versioning lives in <code>UrlMappings.groovy</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/controllers/example/UrlMappings.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="type">class</span> <span class="class">UrlMappings</span> {
+
+    <span class="directive">static</span> mappings = {
+
+        <span class="string"><span class="delimiter">'</span><span class="content">/v1/books</span><span class="delimiter">'</span></span>(<span class="key">resources</span>: <span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>) {
+            collection {
+                <span class="string"><span class="delimiter">'</span><span class="content">/bulk</span><span class="delimiter">'</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">bulkCreate</span><span class="delimiter">'</span></span>, <span class="key">method</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>)
+            }
+        }
+        <span class="string"><span class="delimiter">'</span><span class="content">/v1/authors</span><span class="delimiter">'</span></span>(<span class="key">resources</span>: <span class="string"><span class="delimiter">'</span><span class="content">author</span><span class="delimiter">'</span></span>)
+
+        <span class="string"><span class="delimiter">'</span><span class="content">/</span><span class="delimiter">'</span></span>(<span class="key">view</span>: <span class="string"><span class="delimiter">'</span><span class="content">/index</span><span class="delimiter">'</span></span>)
+
+        <span class="string"><span class="delimiter">'</span><span class="content">500</span><span class="delimiter">'</span></span>(<span class="key">view</span>: <span class="string"><span class="delimiter">'</span><span class="content">/error</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">'</span><span class="content">404</span><span class="delimiter">'</span></span>(<span class="key">view</span>: <span class="string"><span class="delimiter">'</span><span class="content">/notFound</span><span class="delimiter">'</span></span>)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The <code>'/v1/books'(resources: 'book')</code> line generates the standard seven REST routes:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 12.5%;">
+<col style="width: 50%;">
+<col style="width: 37.5%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Method</th>
+<th class="tableblock halign-left valign-top">Path</th>
+<th class="tableblock halign-left valign-top">Controller action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GET</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/v1/books</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>index</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">POST</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/v1/books</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>save</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GET</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/v1/books/{id}</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>show</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/v1/books/{id}</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>update</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PATCH</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/v1/books/{id}</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>patch</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DELETE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/v1/books/{id}</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>delete</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GET</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/v1/books/create</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>create</code> (rarely used in JSON APIs; safe to ignore)</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The nested <code>collection { &#8230;&#8203; }</code> block adds non-instance routes - in our case <code>POST /v1/books/bulk</code> mapped to a <code>bulkCreate</code> action we will write later.</p>
+</div>
+
+
+<h1 id="controllers">5 RestfulController With a Hard Page Cap</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-rest-library/v8/guide/controllers.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p><code>AuthorController</code> extends <code>grails.rest.RestfulController&lt;Author&gt;</code>, which provides every action the URL mappings reference (<code>index</code>, <code>show</code>, <code>save</code>, <code>update</code>, <code>patch</code>, <code>delete</code>) for free:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/controllers/example/AuthorController.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.rest.RestfulController</span>
+
+<span class="type">class</span> <span class="class">AuthorController</span> <span class="directive">extends</span> RestfulController&lt;Author&gt; {
+
+    <span class="directive">static</span> responseFormats = [<span class="string"><span class="delimiter">'</span><span class="content">json</span><span class="delimiter">'</span></span>]
+
+    AuthorController() { <span class="local-variable">super</span>(Author) }
+
+    <span class="comment">/**
+     * GET /v1/authors?max=20&amp;offset=0&amp;sort=name&amp;order=asc
+     *
+     * Bound `max` defaults to 25 and is hard-capped at 100 so a paginating
+     * client cannot ask for the full table in one request. `offset`,
+     * `sort`, and `order` flow through to the GORM query unchanged.
+     */</span>
+    <span class="annotation">@Override</span>
+    <span class="directive">protected</span> <span class="predefined-type">List</span>&lt;Author&gt; listAllResources(<span class="predefined-type">Map</span> params) {
+        params.max = <span class="predefined-type">Math</span>.min(params.int(<span class="string"><span class="delimiter">'</span><span class="content">max</span><span class="delimiter">'</span></span>, <span class="integer">25</span>), <span class="integer">100</span>)
+        Author.list(params)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>responseFormats = ['json']</code> restricts every action to negotiate JSON; the legacy XML-by-default behaviour from older Grails versions is gone.</p>
+</div>
+<div class="paragraph">
+<p>The single override is <code>listAllResources</code>. Without it, a <code>GET /v1/authors?max=99999</code> would happily return every row in the table. The hard cap (<code>Math.min(params.int('max', 25), 100)</code>) bounds the response, with 25 as the default when the client does not pass <code>max</code>. <code>params.offset</code>, <code>params.sort</code>, and <code>params.order</code> flow through unchanged so a paginating client gets <code>?max=25&amp;offset=50&amp;sort=name&amp;order=asc</code> semantics out of the box.</p>
+</div>
+
+
+<h1 id="jsonViews">6 JSON Views</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-rest-library/v8/guide/jsonViews.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>JSON views (<code>.gson</code>) shape the response without touching the controller. Each view declares its model and emits the JSON body using a Groovy DSL.</p>
+</div>
+<div class="paragraph">
+<p>The shared partial:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/views/book/_book.gson</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">example.Book</span>
+
+model {
+    <span class="predefined-type">Book</span> book
+}
+
+json {
+    id          book.id
+    title       book.title
+    isbn        book.isbn
+    pageCount   book.pageCount
+    publishedOn book.publishedOn?.format(<span class="string"><span class="delimiter">'</span><span class="content">yyyy-MM-dd</span><span class="delimiter">'</span></span>)
+    author {
+        id   book.author.id
+        name book.author.name
+    }
+    _links {
+        self   <span class="key">url</span>: g.createLink(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>,   <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">show</span><span class="delimiter">'</span></span>, <span class="key">id</span>: book.id,        <span class="key">absolute</span>: <span class="predefined-constant">true</span>)
+        author <span class="key">url</span>: g.createLink(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">author</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">show</span><span class="delimiter">'</span></span>, <span class="key">id</span>: book.author.id, <span class="key">absolute</span>: <span class="predefined-constant">true</span>)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The <code>model { }</code> block declares the Groovy types the view expects. The <code>json { }</code> block emits the response body. The <code>_links</code> object is plain JSON; nothing about HAL or HATEOAS is enforced - it is a convention you can either keep or drop, but having it makes API discovery from a browser dramatically easier.</p>
+</div>
+<div class="paragraph">
+<p>The list view reuses the partial via <code>g.render</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/views/book/index.gson</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">example.Book</span>
+
+model {
+    <span class="predefined-type">Iterable</span>&lt;<span class="predefined-type">Book</span>&gt; bookList
+    <span class="predefined-type">Long</span>           bookCount
+}
+
+json {
+    page    <span class="predefined-type">Math</span>.max(<span class="integer">0</span>, (params.int(<span class="string"><span class="delimiter">'</span><span class="content">offset</span><span class="delimiter">'</span></span>, <span class="integer">0</span>) ?: <span class="integer">0</span>).intdiv(params.int(<span class="string"><span class="delimiter">'</span><span class="content">max</span><span class="delimiter">'</span></span>, <span class="integer">25</span>) ?: <span class="integer">25</span>))
+    pageSize params.int(<span class="string"><span class="delimiter">'</span><span class="content">max</span><span class="delimiter">'</span></span>, <span class="integer">25</span>)
+    total   bookCount
+    items   bookList.collect { <span class="predefined-type">Book</span> b -&gt; g.render(<span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">book</span>: b]) }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Three things to notice:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The <code>model</code> block declares both the page (<code>Iterable&lt;Book&gt; bookList</code>) and the total count (<code>Long bookCount</code>). <code>RestfulController.index</code> populates both automatically.</p>
+</li>
+<li>
+<p>The pagination metadata at the top (<code>page</code>, <code>pageSize</code>, <code>total</code>) gives clients enough information to render a pager without re-querying.</p>
+</li>
+<li>
+<p><code>bookList.collect { Book b &#8594; g.render(template: 'book', model: [book: b]) }</code> reuses the <code>_book.gson</code> partial for every item. One source of truth for the body shape; both the show and index views use it.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The <code>show.gson</code> view is a one-liner that delegates to the same partial:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/views/book/show.gson</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">example.Book</span>
+
+model {
+    <span class="predefined-type">Book</span> book
+}
+
+json g.render(<span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">book</span>: book])</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Author views follow the same pattern: <code>_author.gson</code> partial, <code>index.gson</code> list with pagination metadata, <code>show.gson</code> one-liner.</p>
+</div>
+
+
+<h1 id="validation">7 Structured 422 Validation Responses</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-rest-library/v8/guide/validation.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>When a <code>POST /v1/books</code> body fails validation, <code>RestfulController</code> returns a 422 by default - but the body shape is not always what API consumers expect. The hand-rolled <code>bulkCreate</code> action in <code>BookController</code> shows the structured-422 pattern:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/controllers/example/BookController.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">grails.rest.RestfulController</span>
+<span class="keyword">import</span> <span class="include">org.springframework.http.HttpStatus</span>
+
+<span class="type">class</span> <span class="class">BookController</span> <span class="directive">extends</span> RestfulController&lt;<span class="predefined-type">Book</span>&gt; {
+
+    <span class="directive">static</span> responseFormats = [<span class="string"><span class="delimiter">'</span><span class="content">json</span><span class="delimiter">'</span></span>]
+
+    BookController() { <span class="local-variable">super</span>(<span class="predefined-type">Book</span>) }
+
+    <span class="annotation">@Override</span>
+    <span class="directive">protected</span> <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; listAllResources(<span class="predefined-type">Map</span> params) {
+        params.max = <span class="predefined-type">Math</span>.min(params.int(<span class="string"><span class="delimiter">'</span><span class="content">max</span><span class="delimiter">'</span></span>, <span class="integer">25</span>), <span class="integer">100</span>)
+        <span class="predefined-type">Book</span>.list(params)
+    }
+
+    <span class="comment">/**
+     * POST /v1/books/bulk
+     *
+     * All-or-nothing bulk create. The whole request rolls back on the
+     * first validation failure; the response is a structured 422 with
+     * the field errors of every failing book in the batch.
+     */</span>
+    <span class="annotation">@Transactional</span>
+    <span class="keyword">def</span> <span class="function">bulkCreate</span>() {
+        <span class="keyword">if</span> (!request.JSON <span class="keyword">instanceof</span> <span class="predefined-type">List</span>) {
+            response.status = HttpStatus.UNPROCESSABLE_ENTITY.value()
+            respond <span class="key">errors</span>: [[<span class="key">message</span>: <span class="string"><span class="delimiter">'</span><span class="content">request body must be a JSON array of Book objects</span><span class="delimiter">'</span></span>]]
+            <span class="keyword">return</span>
+        }
+
+        <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; drafts = request.JSON.collect { json -&gt; <span class="keyword">new</span> <span class="predefined-type">Book</span>(json <span class="keyword">as</span> <span class="predefined-type">Map</span>) }
+        <span class="predefined-type">List</span>&lt;<span class="predefined-type">Map</span>&gt; failures = <span class="type">[]</span>
+        drafts.eachWithIndex { <span class="predefined-type">Book</span> b, <span class="type">int</span> i -&gt;
+            <span class="keyword">if</span> (!b.validate()) {
+                failures &lt;&lt; [<span class="key">index</span>: i, <span class="key">errors</span>: b.errors.fieldErrors.collect {
+                    [<span class="key">field</span>: <span class="local-variable">it</span>.field, <span class="key">code</span>: <span class="local-variable">it</span>.code, <span class="key">message</span>: <span class="local-variable">it</span>.defaultMessage]
+                }]
+            }
+        }
+
+        <span class="keyword">if</span> (failures) {
+            transactionStatus.setRollbackOnly()
+            response.status = HttpStatus.UNPROCESSABLE_ENTITY.value()
+            respond <span class="key">books</span>: failures
+            <span class="keyword">return</span>
+        }
+
+        drafts*.save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        response.status = HttpStatus.CREATED.value()
+        respond <span class="key">books</span>: drafts
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>When validation fails, the body looks like:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="json">{
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">books</span><span class="delimiter">&quot;</span></span>: [
+    {
+      <span class="key"><span class="delimiter">&quot;</span><span class="content">index</span><span class="delimiter">&quot;</span></span>: <span class="integer">0</span>,
+      <span class="key"><span class="delimiter">&quot;</span><span class="content">errors</span><span class="delimiter">&quot;</span></span>: [
+        { <span class="key"><span class="delimiter">&quot;</span><span class="content">field</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">title</span><span class="delimiter">&quot;</span></span>, <span class="key"><span class="delimiter">&quot;</span><span class="content">code</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">blank</span><span class="delimiter">&quot;</span></span>,   <span class="key"><span class="delimiter">&quot;</span><span class="content">message</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Property [title] of class [Book] cannot be blank</span><span class="delimiter">&quot;</span></span> },
+        { <span class="key"><span class="delimiter">&quot;</span><span class="content">field</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">isbn</span><span class="delimiter">&quot;</span></span>,  <span class="key"><span class="delimiter">&quot;</span><span class="content">code</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">matches</span><span class="delimiter">&quot;</span></span>, <span class="key"><span class="delimiter">&quot;</span><span class="content">message</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Property [isbn] of class [Book] does not match the required pattern</span><span class="delimiter">&quot;</span></span> }
+      ]
+    },
+    {
+      <span class="key"><span class="delimiter">&quot;</span><span class="content">index</span><span class="delimiter">&quot;</span></span>: <span class="integer">2</span>,
+      <span class="key"><span class="delimiter">&quot;</span><span class="content">errors</span><span class="delimiter">&quot;</span></span>: [
+        { <span class="key"><span class="delimiter">&quot;</span><span class="content">field</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">isbn</span><span class="delimiter">&quot;</span></span>, <span class="key"><span class="delimiter">&quot;</span><span class="content">code</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">unique</span><span class="delimiter">&quot;</span></span>, <span class="key"><span class="delimiter">&quot;</span><span class="content">message</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Property [isbn] of class [Book] with value [9780547928227] must be unique</span><span class="delimiter">&quot;</span></span> }
+      ]
+    }
+  ]
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The shape is opinionated: each failing object has its source-array <code>index</code> so the client can map the failure back to the input, and each error has a stable <code>code</code> (<code>blank</code>, <code>matches</code>, <code>unique</code>, <code>nullable</code>, <code>min</code>, <code>max</code>) the client can branch on without parsing free-text messages. Any client building a form on top of this API can light up the right field with the right error without string-matching.</p>
+</div>
+<div class="paragraph">
+<p>The <code>transactionStatus.setRollbackOnly()</code> line is what makes <code>bulkCreate</code> all-or-nothing: even though the action&#8217;s <code>@Transactional</code> started a transaction implicitly, this call marks it for rollback regardless of what the action returns. The four books that <strong>did</strong> validate never reach the database.</p>
+</div>
+
+
+<h1 id="pagination">8 Pagination, Sorting, and Filtering</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-rest-library/v8/guide/pagination.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Every list endpoint in this guide exposes the same three query parameters:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>max</code> - page size, default 25, hard-capped at 100.</p>
+</li>
+<li>
+<p><code>offset</code> - zero-based starting offset, default 0.</p>
+</li>
+<li>
+<p><code>sort</code> - column name to sort by, with optional <code>order=asc</code> or <code>order=desc</code>.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><code>RestfulController.index</code> reads <code>params.max</code> and <code>params.offset</code> automatically; the override on <code>listAllResources</code> we already wrote bounds them.</p>
+</div>
+<div class="paragraph">
+<p>Round-trip with <code>curl</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">curl -s 'http://localhost:8080/v1/books?max=2&amp;offset=2&amp;sort=publishedOn&amp;order=desc' | jq</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Returns:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="json">{
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">page</span><span class="delimiter">&quot;</span></span>: <span class="integer">1</span>,
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">pageSize</span><span class="delimiter">&quot;</span></span>: <span class="integer">2</span>,
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">total</span><span class="delimiter">&quot;</span></span>: <span class="integer">4</span>,
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">items</span><span class="delimiter">&quot;</span></span>: [
+    { <span class="key"><span class="delimiter">&quot;</span><span class="content">id</span><span class="delimiter">&quot;</span></span>: <span class="integer">2</span>, <span class="key"><span class="delimiter">&quot;</span><span class="content">title</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">The Fellowship of the Ring</span><span class="delimiter">&quot;</span></span>, <span class="error">.</span><span class="error">.</span><span class="error">.</span> },
+    { <span class="key"><span class="delimiter">&quot;</span><span class="content">id</span><span class="delimiter">&quot;</span></span>: <span class="integer">1</span>, <span class="key"><span class="delimiter">&quot;</span><span class="content">title</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">The Hobbit</span><span class="delimiter">&quot;</span></span>, <span class="error">.</span><span class="error">.</span><span class="error">.</span> }
+  ]
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The <code>page</code> value is <code>offset / pageSize</code>; <code>total</code> is the unpaginated row count. A client that wants a page-and-size API instead of an offset-and-size API can compute either from the other.</p>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p><strong>Filtering</strong> sits orthogonal to pagination. If you want <code>GET /v1/books?author=2</code>, override <code>listAllResources</code> to consume <code>params.author</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="annotation">@Override</span>
+<span class="directive">protected</span> <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; listAllResources(<span class="predefined-type">Map</span> params) {
+    params.max = <span class="predefined-type">Math</span>.min(params.int(<span class="string"><span class="delimiter">'</span><span class="content">max</span><span class="delimiter">'</span></span>, <span class="integer">25</span>), <span class="integer">100</span>)
+    <span class="keyword">if</span> (params.author) {
+        <span class="predefined-type">Book</span>.findAllByAuthor(Author.get(params.long(<span class="string"><span class="delimiter">'</span><span class="content">author</span><span class="delimiter">'</span></span>)), params)
+    } <span class="keyword">else</span> {
+        <span class="predefined-type">Book</span>.list(params)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This stays out of the URL mappings layer; the same route serves both filtered and unfiltered queries.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+
+
+<h1 id="bulkCreate">9 All-or-Nothing Bulk Create</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-rest-library/v8/guide/bulkCreate.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>A frequent ask from API consumers is "let me create N records in one round trip". The single <code>POST /v1/books/bulk</code> endpoint added in the URL mappings handles it:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">curl -s -X POST http://localhost:8080/v1/books/bulk \
+  -H 'Content-Type: application/json' \
+  -d '[
+    { &quot;title&quot;: &quot;The Two Towers&quot;, &quot;isbn&quot;: &quot;9780547928203&quot;, &quot;pageCount&quot;: 416, &quot;publishedOn&quot;: &quot;1954-11-11&quot;, &quot;author&quot;: { &quot;id&quot;: 1 } },
+    { &quot;title&quot;: &quot;The Return of the King&quot;, &quot;isbn&quot;: &quot;9780547928197&quot;, &quot;pageCount&quot;: 432, &quot;publishedOn&quot;: &quot;1955-10-20&quot;, &quot;author&quot;: { &quot;id&quot;: 1 } }
+  ]'</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The <code>bulkCreate</code> action validates every entry first, <strong>then</strong> saves them. If any single book fails validation, the whole transaction rolls back via <code>transactionStatus.setRollbackOnly()</code> and the response is a 422 with structured field errors for every failing entry. If all entries validate, the response is a 201 with the persisted bodies.</p>
+</div>
+<div class="paragraph">
+<p>This is the safest semantic for bulk creates in a typed API: clients never have to deal with "of the ten you sent, six made it through and four did not". They get either all ten or none, with a precise diagnosis on failure.</p>
+</div>
+
+
+<h1 id="versioning">10 URL-Prefix vs Content-Negotiation Versioning</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-rest-library/v8/guide/versioning.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Two patterns dominate REST versioning:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>URL prefix</strong>: <code>/v1/books</code>, <code>/v2/books</code>. Cheap to implement, trivially debuggable, plays well with caches and proxies.</p>
+</li>
+<li>
+<p><strong>Content negotiation</strong>: <code>Accept: application/vnd.example.v2+json</code>. Cleaner semantically (the URL is the resource, not the representation), but adds friction to every consumer.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>This guide leads with URL prefix because it is the cheaper choice for a project that has not yet shipped its first breaking change. The <code>'/v1/books'(resources: 'book')</code> URL mapping localises every v1 route under a single prefix; when v2 ships, you add a second <code>'/v2/books'(resources: 'bookV2')</code> mapping to a fresh <code>BookV2Controller</code> and let v1 keep serving its existing clients while you migrate them.</p>
+</div>
+<div class="paragraph">
+<p>The migration discipline that <strong>does</strong> matter:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Never break v1 within its lifetime.</strong> Even adding a new required field is a breaking change for a strict client. Add fields as optional; deprecate via response headers.</p>
+</li>
+<li>
+<p><strong>Document a deprecation timeline</strong> on day 1 of v2. "v1 sunsets 12 months after v2 GA" gives consumers a window.</p>
+</li>
+<li>
+<p><strong>Run v1 and v2 from the same codebase</strong> whenever you can. Two controllers, two view trees, one domain model. Forking the domain model is a smell.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>For the small percentage of cases where content negotiation makes sense - public APIs with thousands of consumers, where <sub>/v1</sub> in URLs would be visually offensive - Grails' <code>responseFormats</code> and the <code>Accept</code>-header mapping are first-class. The mechanics are the same; only the surface changes.</p>
+</div>
+
+
+<h1 id="runningTheApp">11 Running the Application</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-rest-library/v8/guide/runningTheApp.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>With everything in place, run the app:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">./gradlew bootRun</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The bootstrap data populates two authors and four books on first start. Smoke-test the surface:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash"># List
+curl -s http://localhost:8080/v1/books | jq
+curl -s http://localhost:8080/v1/authors | jq
+
+# Show single
+curl -s http://localhost:8080/v1/books/1 | jq
+
+# Pagination
+curl -s 'http://localhost:8080/v1/books?max=2&amp;offset=2&amp;sort=title' | jq
+
+# Create
+curl -s -X POST http://localhost:8080/v1/books \
+  -H 'Content-Type: application/json' \
+  -d '{ &quot;title&quot;: &quot;The Silmarillion&quot;, &quot;isbn&quot;: &quot;9780544338012&quot;, &quot;pageCount&quot;: 384, &quot;author&quot;: { &quot;id&quot;: 1 } }' | jq
+
+# Validation failure (422 with structured field errors)
+curl -s -X POST http://localhost:8080/v1/books \
+  -H 'Content-Type: application/json' \
+  -d '{ &quot;title&quot;: &quot;&quot; }' | jq
+
+# Bulk create (all-or-nothing)
+curl -s -X POST http://localhost:8080/v1/books/bulk \
+  -H 'Content-Type: application/json' \
+  -d '[
+    { &quot;title&quot;: &quot;The Two Towers&quot;, &quot;isbn&quot;: &quot;9780547928203&quot;, &quot;pageCount&quot;: 416, &quot;author&quot;: { &quot;id&quot;: 1 } }
+  ]' | jq</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Each of these returns a sensible JSON body with the right HTTP status. The validation-failure curl returns 422 with the structured field errors from the validation chapter; the rest return 200 (list/show), 201 (create), or 204 (delete) as appropriate.</p>
+</div>
+
+
+<h1 id="helpWithGrails">12 Do you need help with Grails?</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-rest-library/v8/guide/helpWithGrails.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="sect1">
+<h2 id="_help_with_apache_grails">Help with Apache Grails</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Apache Grails is supported by an active community of contributors and the Apache Software Foundation. If you need help working through a guide, want to discuss the framework, or have run into something that looks like a bug, the channels below are the right place to start.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="https://slack.grails.org">Slack</a> - real-time conversation with the Apache Grails community.</p>
+</li>
+<li>
+<p><a href="https://lists.apache.org/list.html?dev@grails.apache.org">Developer mailing list</a> - design discussions and contributor coordination.</p>
+</li>
+<li>
+<p><a href="https://lists.apache.org/list.html?users@grails.apache.org">Users mailing list</a> - end-user questions and answers.</p>
+</li>
+<li>
+<p><a href="https://github.com/apache/grails-core/issues">Issue tracker on GitHub</a> - file a bug or feature request against the framework.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>For Grails plugins, see the matching project on <a href="https://github.com/apache?q=grails">the apache org</a> or the plugin&#8217;s own GitHub repository.</p>
+</div>
+</div>
+</div>
+
+</article></div>
+<footer>
+    <div class='content'>
+        <div class='apache-grails'>
+            <p>Apache Grails is supported by the Apache Software Foundation and the Grails community.</p>
+            <a href='https://apache.org'><img src='https://www.apache.org/img/asf_logo.png' width='200px' alt='Apache Software Foundation'/></a>
+            <p>Apache, Apache Grails, Grails, Groovy, and the ASF logo are either registered trademarks or trademarks of The Apache Software Foundation.</p>
+        </div>
+        <nav class='social-media-nav'>
+            <ul>
+                <li><a href='mailto:dev@grails.apache.org'><img src='https://grails.apache.org/images/email.svg' alt='Email Icon'/></a></li>
+                <li><a href='https://slack.grails.org'><img src='https://grails.apache.org/images/slack.svg' alt='Slack Icon'/></a></li>
+                <li><a href='https://www.youtube.com/@GrailsFramework'><img src='https://grails.apache.org/images/youtube.svg' alt='Youtube Icon'/></a></li>
+                <li><a href='https://bsky.app/profile/grails.apache.org'><img src='https://grails.apache.org/images/bsky.svg' alt='Bluesky Icon'/></a></li>
+                <li><a rel="me" href="https://fosstodon.org/@grails"><img src='https://grails.apache.org/images/mastodont.svg' alt='Mastodon Icon'/></a></li>
+                <li><a href='https://www.linkedin.com/showcase/official-grails/'><img src='https://grails.apache.org/images/linkedin.svg' alt='LinkedIn Icon'/></a></li>
+                <li><a href='https://github.com/apache/grails-core'><img src='https://grails.apache.org/images/github.svg' alt='GitHub Icon'/></a></li>
+                <li><a href='https://twitter.com/grailsframework'><img src='https://grails.apache.org/images/x-twitter.svg' alt='Twitter Icon'/></a></li>
+            </ul>
+        </nav>
+    </div>
+    <div class='footer-bottom'>
+        <p>&copy; 2005-2026 the Apache Grails project</p>
+        <p>Grails is Open Source:
+            <a href='https://www.apache.org/licenses/'>License</a>,
+            <a href='https://privacy.apache.org/policies/privacy-policy-public.html'>Privacy Policy</a>,
+            <a href='https://www.apache.org/foundation/sponsorship'>Sponsor Apache</a>,
+            <a href='https://www.apache.org/events/current-event'>Events</a>,
+            <a href='https://www.apache.org/security'>Security</a>,
+            <a href='https://www.apache.org/foundation/thanks.html'>Thanks</a>,
+            <a href='https://grails.apache.org/support-schedule.html'>Support Schedule</a>
+        </p>
+    </div>
+</footer>
+
+</body>
+</html>
