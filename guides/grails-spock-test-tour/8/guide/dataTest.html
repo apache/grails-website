@@ -1,0 +1,220 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+                      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+    <title>4 ServiceUnitTest + DataTest for Queries</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
+    <link rel="stylesheet" href="../css/guide.css" type="text/css" media="screen, print" title="Style" charset="utf-8" />            
+    <link rel="stylesheet" href="../css/pdf.css" type="text/css" media="print" title="PDF" charset="utf-8"/>
+    <script type="text/javascript">
+function addJsClass() {
+    var classes = document.body.className.split(" ");
+    classes.push("js");
+    document.body.className = classes.join(" ");
+}
+    </script>
+</head>
+
+<body class="body" onload="addJsClass();">
+<div id="navigation">
+    <div class="navTitle">
+        
+        Grails Framework Guide 
+    </div>
+    <div class="navLinks">
+        <ul>
+            <li>
+                <div id="nav-summary" onmouseover="toggleNavSummary(false)" onmouseout="toggleNavSummary(true)">
+                    <a href="../guide/index.html" class="button">Table of contents</a>
+
+                    <div id="nav-summary-childs" style="display:none;">
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/gettingStarted.html"><strong>1</strong><span>Getting Started</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/testLayers.html"><strong>2</strong><span>Five Test Layers</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/domainUnitTest.html"><strong>3</strong><span>DomainUnitTest for Constraints</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/dataTest.html"><strong>4</strong><span>ServiceUnitTest + DataTest for Queries</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/controllerUnitTest.html"><strong>5</strong><span>ControllerUnitTest for Routing</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/integrationTest.html"><strong>6</strong><span>@Integration With @Rollback</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/functionalTest.html"><strong>7</strong><span>Geb Functional Tests</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/parameterised.html"><strong>8</strong><span>Parameterised where: Data Tables</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/platform.html"><strong>9</strong><span>useJUnitPlatform and JaCoCo Coverage</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>10</strong><span>Do you need help with Grails?</span></a>
+                        </div>
+                        
+                    </div>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+
+</div>
+
+<table id="colset" border="0" cellpadding="0" cellspacing="0">
+    <tr>
+        <td id="col1">
+            <div id="main" class="corner-all">
+
+                
+                    <div class="toc-item prev-left"><a href="../guide/domainUnitTest.html">&lt;&lt; <strong>3</strong><span>DomainUnitTest for Constraints</span></a></div>
+                
+
+                
+                    <div class="toc-item next-right"><a href="../guide/controllerUnitTest.html"><strong>5</strong><span>ControllerUnitTest for Routing</span> >></a></div>
+                
+
+
+                
+
+                
+
+<h1 id="dataTest">4 ServiceUnitTest + DataTest for Queries</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-spock-test-tour/v8/guide/dataTest.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p><code>ServiceUnitTest&lt;BookService&gt;</code> plus <code>DataTest</code> exercises GORM finders against the in-memory datastore. Real GORM queries run; no Spring context, no real database.</p>
+</div>
+<div class="listingblock">
+<div class="title">src/test/groovy/example/BookServiceSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.testing.gorm.DataTest</span>
+<span class="keyword">import</span> <span class="include">grails.testing.services.ServiceUnitTest</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="comment">/**
+ * DataTest + ServiceUnitTest exercises the @Service(Book) interface
+ * against the in-memory datastore. Real GORM finders run; no Spring
+ * context, no real database. Best fit for testing query logic
+ * (criteria, where queries, finder method names).
+ */</span>
+<span class="type">class</span> <span class="class">BookServiceSpec</span> <span class="directive">extends</span> Specification
+        <span class="directive">implements</span> ServiceUnitTest&lt;BookService&gt;, DataTest {
+
+    <span class="predefined-type">Class</span><span class="type">[]</span> getDomainClassesToMock() { [<span class="predefined-type">Book</span>] }
+
+    <span class="type">void</span> setup() {
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Short Story</span><span class="delimiter">'</span></span>,  <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780000000001</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">50</span> ).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Novella</span><span class="delimiter">'</span></span>,      <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780000000002</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">150</span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Novel</span><span class="delimiter">'</span></span>,        <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780000000003</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">400</span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Doorstopper</span><span class="delimiter">'</span></span>,  <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780000000004</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">900</span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">countByPageCountGreaterThanEquals returns the right count</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">expect</span>:
+        service.countByPageCountGreaterThanEquals(<span class="integer">200</span>) == <span class="integer">2</span>
+        service.countByPageCountGreaterThanEquals(<span class="integer">0</span>)   == <span class="integer">4</span>
+        service.countByPageCountGreaterThanEquals(<span class="integer">901</span>) == <span class="integer">0</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">findByIsbn returns the matching book</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        <span class="predefined-type">Book</span> b = service.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9780000000003</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>:
+        b.title == <span class="string"><span class="delimiter">'</span><span class="content">Novel</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">findByIsbn returns null when no match</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">expect</span>:
+        service.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9999999999999</span><span class="delimiter">'</span></span>) == <span class="predefined-constant">null</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Three things to highlight:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>Class[] getDomainClassesToMock() { [Book] }</code> is what <code>DataTest</code> reads to know which entities to register with the in-memory datastore. List every domain class your spec touches; forget one and you get a <code>Hibernate could not find entity</code> error at first use.</p>
+</li>
+<li>
+<p><code>setup()</code> runs before every feature method and seeds the datastore. There is no inter-spec state leak because <code>DataTest</code> clears the in-memory store between methods.</p>
+</li>
+<li>
+<p>Dynamic-finder method names like <code>countByPageCountGreaterThanEquals</code> are interpreted by GORM at runtime. They are typo-prone; write a test the moment you add one.</p>
+</li>
+</ul>
+</div>
+
+
+                <div style="clear:both;margin-top:15px;"></div>
+                
+                    <div class="toc-item prev-left"><a href="../guide/domainUnitTest.html">&lt;&lt; <strong>3</strong><span>DomainUnitTest for Constraints</span></a></div>
+                
+                    <div class="toc-item next-right"><a href="../guide/controllerUnitTest.html"><strong>5</strong><span>ControllerUnitTest for Routing</span> >></a></div>
+                
+                <div style="clear:both"></div>
+            </div>
+        </td>
+        <td id="col2">
+            <div class="local clearfix">
+                <div class="local-title" style="text-align: right"><a href="https://travis-ci.org/grails-guides/grails-spock-test-tour"><img src="https://travis-ci.org/grails-guides/grails-spock-test-tour.svg?branch=master" /></a></div>            
+                 <div class="local-title">
+                    <a href="https://github.com/grails-guides/grails-spock-test-tour">
+                    <svg height="35" class="octicon octicon-mark-github" viewBox="0 0 16 16" version="1.1" width="35" aria-hidden="true"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a> &nbsp;&nbsp;Get the Code
+                </div>
+                <div class="menu">
+                    <div class="input-group">                        
+                        <button href="#" onclick="document.getElementById('github-url').value='git@github.com:grails-guides/grails-spock-test-tour.git'" class="codeButton">SSH</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-spock-test-tour.git'" class="codeButton">HTTPS</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-spock-test-tour'" class="codeButton">Subversion</button>
+                    </div>
+       
+                    <div class="input-group">                    
+                        <!-- Target -->
+                        <input id="github-url" value="git@github.com:grails-guides/grails-spock-test-tour.git" type="text" />
+
+                        <!-- Trigger -->
+                        <button class="clipbtn" type="button" data-clipboard-target="#github-url">
+
+                            <img width="13" src="../img/clippy.svg" alt="Copy to clipboard">
+                        </button>       
+
+                    </div>
+                    <div class="input-group">
+                      <a href="https://github.com/grails-guides/grails-spock-test-tour/archive/master.zip" class="downloadButton">Download ZIP</a>
+                    </div>
+                </div>
+            </div>
+        </td>
+    </tr>
+</table>
+
+<div id="footer">
+    
+    
+</div>
+
+<script type="text/javascript" src="../js/docs.js"></script>
+
+</body>
+</html>
