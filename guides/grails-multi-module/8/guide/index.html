@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Grails 8 Multi-Project Build: Shared Plugin + Two Webapps | Grails Guides | Apache Grails</title>
+    <meta name='description' content='Grails 8 Multi-Project Build: Shared Plugin + Two Webapps. Lay out a real-world Grails 8 multi-project build: one shared-core Grails Plugin holding the domain model and GORM data services, plus two separate web apps (customer + admin) that consume the plugin and deploy independently.'/>
+    <meta charset='UTF-8'/>
+<meta name='viewport' content='width=device-width, initial-scale=1'/>
+<link rel='icon' href='https://grails.apache.org/images/favicon.ico'/>
+<link rel='mask-icon' href='https://grails.apache.org/images/grails-pinned-icon.svg' color='feb672'/>
+<link rel='alternate' type='application/rss+xml' title='RSS' href='https://grails.apache.org/rss.xml'/>
+<link rel='stylesheet' href='https://grails.apache.org/stylesheets/screen.css'/>
+<link rel='stylesheet' href='https://grails.apache.org/stylesheets/plugin.css'/>
+<script src='https://grails.apache.org/javascripts/navigation.js'></script>
+
+<!-- Matomo -->
+<script>
+  var _paq = window._paq = window._paq || [];
+  _paq.push(['setDoNotTrack', true]);
+  _paq.push(['disableCookies']);
+  _paq.push(['trackPageView']);
+  _paq.push(['enableLinkTracking']);
+  (function() {
+    var u = 'https://analytics.apache.org/';
+    _paq.push(['setTrackerUrl', u + 'matomo.php']);
+    _paq.push(['setSiteId', '79']);
+    var d = document, g = d.createElement('script'), s = d.getElementsByTagName('script')[0];
+    g.async = true; g.src = u + 'matomo.js'; s.parentNode.insertBefore(g, s);
+  })();
+</script>
+<!-- End Matomo Code -->
+
+<script
+    async
+    src="https://widget.kapa.ai/kapa-widget.bundle.js"
+    data-website-id="d804a9f2-51a2-414c-97f7-12f2a1ba4609"
+    data-project-name="Apache Grails"
+    data-project-color="#3F4346"
+    data-font-family="system-ui,-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,Segoe UI,sans-serif,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol;"
+    data-project-logo="https://grails.apache.org/images/grails.png"
+    data-modal-override-open-id="ask-ai-input"
+    data-modal-override-open-class="search-input"
+    data-user-analytics-fingerprint-enabled="true"
+    data-modal-title="Apache Grails AI Assistant"
+    data-modal-example-questions-title="Try asking me..."
+    data-modal-example-questions="How does database migration work?,How does Spring Security work?"
+    data-button-text-color="#FBB576"
+    data-modal-header-bg-color="#FFFFFF"
+    data-modal-title-color="#FBB576"
+    data-consent-required="true"></script>
+
+    <link rel='stylesheet' href='../css/guide.css'/>
+    <script src='../js/clipboard.min.js'></script>
+</head>
+<body class='guide'>
+<header class='main-header'>
+    <div class='content'>
+        <a href='https://grails.apache.org/index.html'><img class='grails-logo' src='https://grails.apache.org/images/grails_logo.svg' alt='Grails Logo'/></a>
+        <a href='javascript:show("top-menus", "show-navigation-link")' id='show-navigation-link'
+           class='mobile align-center'>Show Navigation</a>
+        <div id='top-menus'>
+            <nav class='secondary-menu' id='secondary-menu'>
+                <ul>
+                    <li><a href='https://grails.apache.org/casestudies/index.html'>Case Studies</a></li>
+                    <li><a href='https://grails.apache.org/blog/index.html'>Blog</a></li>
+                    <li><a href='https://grails.apache.org/learning.html'>Learning</a></li>
+                    <li><a href='https://grails.apache.org/community.html'>Community</a></li>
+                    <li><a href='https://grails.apache.org/search.html'>Search</a></li>
+                </ul>
+            </nav>
+            <nav class='main-menu' id='main-menu'>
+                <ul>
+                    <li><a href='https://grails.apache.org/documentation.html'>Documentation</a></li>
+                    <li><a href='https://grails.apache.org/download.html'>Download</a></li>
+                    <li><a href='https://plugins.grails.org'>Plugins</a></li>
+                    <li><a href='https://grails.apache.org/guides'>Guides</a></li>
+                    <li><a href='https://grails.apache.org/faq.html'>FAQ</a></li>
+                    <li><a href='https://grails.apache.org/support.html'>Support</a></li>
+                    <li><a href='https://start.grails.org'>Forge App</a></li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</header>
+
+<div class='fullwidth'><article class="guide">
+    <aside>
+        <button type="button" class="btn btn-large" onclick="window.location.href=&quot;https://github.com/grails-guides/grails-multi-module&quot;"><img height="15" src="../img/github_white.svg" alt="GitHub"/><span>&nbsp;Get the Code</span></button>
+        <ul class="githublinks">
+            <li><button type="button" class="btn btn-default codeButton" onclick="document.getElementById('github-url').value='git@github.com:grails-guides/grails-multi-module.git'">SSH</button></li>
+            <li><button type="button" class="btn btn-default codeButton" onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-multi-module.git'">HTTPS</button></li>
+        </ul>
+        <div class="input-group">
+            <input id="github-url" value="git@github.com:grails-guides/grails-multi-module.git" type="text"/>
+            <button type="button" class="clippy btn btn-default" data-clipboard-target="#github-url">
+                <img width="13" src="../img/clippy.svg" alt="Copy to clipboard">
+            </button>
+        </div>
+        <script>var clipboard = new Clipboard('.clippy');</script>
+        <button type="button" class="btn btn-large" onclick="window.location.href=&quot;https://github.com/grails-guides/grails-multi-module/archive/master.zip&quot;">Download ZIP</button>
+        
+        <div id="table-of-content">
+            <h3>Table of Contents</h3>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#gettingStarted"><strong>1</strong><span>Getting Started</span></a></div>
+            
+            <div class="toc-item" style="margin-left:10px"><a href="#whatYouWillBuild"><strong>1.1</strong><span>What You Will Build</span></a></div>
+            
+            <div class="toc-item" style="margin-left:10px"><a href="#requirements"><strong>1.2</strong><span>What You Will Need</span></a></div>
+            
+            <div class="toc-item" style="margin-left:10px"><a href="#howto"><strong>1.3</strong><span>How to Complete the Guide</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#generateModules"><strong>2</strong><span>Generate the Three Module Starters</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#rootBuild"><strong>3</strong><span>Root settings.gradle and build.gradle</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#sharedCore"><strong>4</strong><span>The shared-core Plugin</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#webapps"><strong>5</strong><span>The Two Webapps Consume shared-core</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#runningEach"><strong>6</strong><span>Running and Packaging Each Webapp</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#testingPerModule"><strong>7</strong><span>Per-Module Testing</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#extractingPlugin"><strong>8</strong><span>Extracting a Plugin From a Monolith</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#failureModes"><strong>9</strong><span>Failure Modes</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#helpWithGrails"><strong>10</strong><span>Do you need help with Grails?</span></a></div>
+            
+            <div style="clear:both"></div>
+        </div>
+        
+    </aside>
+    <header>
+        <h1>Grails 8 Multi-Project Build: Shared Plugin + Two Webapps</h1>
+        <p>Lay out a real-world Grails 8 multi-project build: one shared-core Grails Plugin holding the domain model and GORM data services, plus two separate web apps (customer + admin) that consume the plugin and deploy independently.</p>
+        <p><strong>Authors:</strong> James Fredley</p>
+        <p><strong>Grails Version:</strong> 8</p>
+    </header>
+    
+
+<h1 id="gettingStarted">1 Getting Started</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-multi-module/v8/guide/gettingStarted.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>In this guide you will lay out a real-world Grails 8 multi-project build: one shared Grails Plugin (<code>shared-core</code>) holding the domain model, GORM services, and security configuration, plus two separate Grails web apps (<code>webapp-customer</code> and <code>webapp-admin</code>) that consume the plugin.</p>
+</div>
+<div class="paragraph">
+<p>This is the canonical shape for products with a customer-facing UI and an admin/back-office UI: the two apps share their data model exactly but differ in screens, authorization rules, and deployment cadence. Each webapp builds its own <code>bootJar</code> with the plugin embedded, so the two apps deploy independently while always staying in sync on the data model.</p>
+</div>
+<div class="paragraph">
+<p>This guide targets Apache Grails 8 / JDK 21.</p>
+</div>
+
+
+<h2 id="whatYouWillBuild">1.1 What You Will Build</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-multi-module/v8/guide/whatYouWillBuild.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>By the end of the guide your workspace will look like:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="text">grails-multi-module/
+|-- settings.gradle
+|-- build.gradle
+|-- shared-core/                # Grails Plugin
+|   |-- build.gradle
+|   `-- grails-app/
+|       |-- domain/example/Book.groovy
+|       `-- services/example/BookService.groovy
+|-- webapp-customer/            # Grails web app (read-only catalog)
+|   |-- build.gradle            # `implementation project(':shared-core')`
+|   `-- grails-app/
+|       `-- controllers/customer/CatalogController.groovy
+`-- webapp-admin/               # Grails web app (CRUD)
+    |-- build.gradle            # `implementation project(':shared-core')`
+    `-- grails-app/
+        `-- controllers/admin/BookController.groovy</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Three modules, one root, two webapps that build to two <code>bootJar`s, one plugin every consumer reuses. Each webapp can be `bootRun</code> independently; both can be built together with <code>./gradlew build</code>.</p>
+</div>
+
+
+<h2 id="requirements">1.2 What You Will Need</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-multi-module/v8/guide/requirements.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>To complete this guide you will need:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>JDK 21</p>
+</li>
+<li>
+<p>About 45 minutes</p>
+</li>
+</ul>
+</div>
+
+
+<h2 id="howto">1.3 How to Complete the Guide</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-multi-module/v8/guide/howto.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>You can either build the workspace from scratch by following the chapters or skip ahead and clone the finished sample:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">git clone -b grails8 https://github.com/grails-guides/grails-multi-module.git
+cd grails-multi-module/complete
+./gradlew :webapp-customer:bootRun     # http://localhost:8080
+# in a second shell, with the customer port freed:
+./gradlew :webapp-admin:bootRun        # http://localhost:8080</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The repository contains two top-level directories:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>initial/</code> - intentionally empty; the README points at the three forge URLs that produce each module starter.</p>
+</li>
+<li>
+<p><code>complete/</code> - the assembled three-module workspace this guide builds.</p>
+</li>
+</ul>
+</div>
+
+
+<h1 id="generateModules">2 Generate the Three Module Starters</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-multi-module/v8/guide/generateModules.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Each of the three modules is a fresh forge zip. The plugin is the <code>web_plugin</code> application type; the two webapps are the <code>web</code> type:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">mkdir grails-multi-module &amp;&amp; cd grails-multi-module &amp;&amp; mkdir initial complete &amp;&amp; cd complete
+
+# shared-core - the plugin that holds the shared domain model + services
+curl -L -o p.zip &quot;https://prev-snapshot.grails.org/create/web_plugin/example.shared?lang=GROOVY&amp;build=GRADLE&amp;test=SPOCK&amp;javaVersion=JDK_21&quot;
+unzip p.zip &amp;&amp; mv shared shared-core &amp;&amp; rm p.zip
+
+# webapp-customer - read-only catalog
+curl -L -o c.zip &quot;https://prev-snapshot.grails.org/create/web/example.customer?lang=GROOVY&amp;build=GRADLE&amp;test=SPOCK&amp;javaVersion=JDK_21&quot;
+unzip c.zip &amp;&amp; mv customer webapp-customer &amp;&amp; rm c.zip
+
+# webapp-admin - back-office CRUD
+curl -L -o a.zip &quot;https://prev-snapshot.grails.org/create/web/example.admin?lang=GROOVY&amp;build=GRADLE&amp;test=SPOCK&amp;javaVersion=JDK_21&quot;
+unzip a.zip &amp;&amp; mv admin webapp-admin &amp;&amp; rm a.zip</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Patch <code>compileJava.options.release = 17</code> to <code>21</code> in each of the three <code>build.gradle</code> files (the forge ships JDK 17 by default even when <code>javaVersion=JDK_21</code> is requested).</p>
+</div>
+<div class="paragraph">
+<p>Each subdirectory is currently a stand-alone Grails project. The next chapter wires them into a single multi-project build.</p>
+</div>
+
+
+<h1 id="rootBuild">3 Root settings.gradle and build.gradle</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-multi-module/v8/guide/rootBuild.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>A root <code>settings.gradle</code> and a root <code>build.gradle</code> turn three side-by-side Grails projects into one Gradle build:</p>
+</div>
+<div class="listingblock">
+<div class="title">settings.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">/*
+ * Multi-project root settings file.
+ *
+ * Three modules participate:
+ *   shared-core      : Grails Plugin holding the domain model, GORM services,
+ *                      and security-config bits the two webapps share.
+ *   webapp-customer  : customer-facing Grails web app (read-only catalog).
+ *   webapp-admin     : back-office Grails web app with full CRUD.
+ *
+ * Both webapps depend on shared-core via `implementation project(':shared-core')`.
+ * GORM picks up the plugin's domain classes automatically.
+ */</span>
+
+rootProject.name = <span class="string"><span class="delimiter">'</span><span class="content">grails-multi-module</span><span class="delimiter">'</span></span>
+
+include <span class="string"><span class="delimiter">'</span><span class="content">shared-core</span><span class="delimiter">'</span></span>
+include <span class="string"><span class="delimiter">'</span><span class="content">webapp-customer</span><span class="delimiter">'</span></span>
+include <span class="string"><span class="delimiter">'</span><span class="content">webapp-admin</span><span class="delimiter">'</span></span></code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">/*
+ * Root build script. Per-module build.gradle files keep their own
+ * dependency lists; this root file only carries cross-cutting concerns:
+ * the JDK release level, the plain-old `useJUnitPlatform()` for every
+ * Test task, and the same Apache Grails snapshot repositories every
+ * module needs.
+ */</span>
+
+subprojects {
+    repositories {
+        mavenCentral()
+        maven { url = <span class="string"><span class="delimiter">'</span><span class="content">https://repo.grails.org/grails/restricted</span><span class="delimiter">'</span></span> }
+        maven {
+            url = <span class="string"><span class="delimiter">'</span><span class="content">https://repository.apache.org/content/groups/snapshots</span><span class="delimiter">'</span></span>
+            content {
+                includeVersionByRegex(<span class="string"><span class="delimiter">'</span><span class="content">org[.]apache[.]grails.*</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">.*</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">.*-SNAPSHOT</span><span class="delimiter">'</span></span>)
+            }
+            content {
+                includeVersionByRegex(<span class="string"><span class="delimiter">'</span><span class="content">org[.]apache[.]groovy.*</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">groovy.*</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">.*-SNAPSHOT</span><span class="delimiter">'</span></span>)
+            }
+            mavenContent { snapshotsOnly() }
+        }
+        maven {
+            url = <span class="string"><span class="delimiter">'</span><span class="content">https://repository.apache.org/content/groups/staging</span><span class="delimiter">'</span></span>
+            content {
+                includeVersionByRegex(<span class="string"><span class="delimiter">'</span><span class="content">org[.]apache[.]grails[.]gradle</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">grails-publish</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">.*</span><span class="delimiter">'</span></span>)
+            }
+            content {
+                includeVersionByRegex(<span class="string"><span class="delimiter">'</span><span class="content">org[.]apache[.]groovy.*</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">groovy.*</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">.*</span><span class="delimiter">'</span></span>)
+            }
+            mavenContent { releasesOnly() }
+        }
+    }
+
+    plugins.withId(<span class="string"><span class="delimiter">'</span><span class="content">groovy</span><span class="delimiter">'</span></span>) {
+        tasks.withType(Test).configureEach {
+            useJUnitPlatform()
+        }
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Three patterns to point at:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>rootProject.name = 'grails-multi-module'</code> is what <code>./gradlew projects</code> shows at the top of the tree. Without it, Gradle uses the directory name, which is fine for this sample but may not match your repo name in a real layout.</p>
+</li>
+<li>
+<p>The <code>subprojects { repositories { &#8230;&#8203; } }</code> block is where every module&#8217;s Apache Grails snapshot + staging Maven repos live. Avoid the temptation to also put <code>dependencies { &#8230;&#8203; }</code> here - you want each module to declare what it needs explicitly.</p>
+</li>
+<li>
+<p><code>plugins.withId('groovy') { tasks.withType(Test).configureEach { useJUnitPlatform() } }</code> ensures the JUnit 5 runner is used in every module that loads the Groovy plugin (which is every Grails module). Without it, only the Grails 8 starter&#8217;s own build.gradle would have it; the plugin module would default to the Vintage runner.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The per-module <code>build.gradle</code> files keep their dependency lists. Sharing too aggressively at root level (e.g. <code>dependencies { implementation '&#8230;&#8203;' }</code> inside <code>subprojects</code>) creates surprise transitive dependencies that are hard to debug.</p>
+</div>
+
+
+<h1 id="sharedCore">4 The shared-core Plugin</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-multi-module/v8/guide/sharedCore.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>The plugin module holds the domain model and the GORM data services. A simple Book domain in <code>shared-core/grails-app/domain/example/Book.groovy</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">shared-core/grails-app/domain/example/Book.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.persistence.Entity</span>
+
+<span class="annotation">@Entity</span>
+<span class="type">class</span> <span class="class">Book</span> {
+
+    <span class="predefined-type">String</span>  title
+    <span class="predefined-type">String</span>  isbn
+    <span class="predefined-type">Integer</span> pageCount
+    <span class="predefined-type">Date</span>    publishedOn
+
+    <span class="directive">static</span> constraints = {
+        title       <span class="key">blank</span>: <span class="predefined-constant">false</span>, <span class="key">maxSize</span>: <span class="integer">255</span>
+        isbn        <span class="key">blank</span>: <span class="predefined-constant">false</span>, <span class="key">unique</span>: <span class="predefined-constant">true</span>, <span class="key">matches</span>: <span class="regexp"><span class="delimiter">/</span><span class="content">^(97(8|9))?</span><span class="char">\d</span><span class="content">{9}(</span><span class="char">\d</span><span class="content">|X)</span><span class="content">$</span><span class="delimiter">/</span></span>
+        pageCount   <span class="key">nullable</span>: <span class="predefined-constant">true</span>, <span class="key">min</span>: <span class="integer">1</span>
+        publishedOn <span class="key">nullable</span>: <span class="predefined-constant">true</span>
+    }
+
+    <span class="predefined-type">String</span> toString() { title }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>And a GORM data service that both webapps consume:</p>
+</div>
+<div class="listingblock">
+<div class="title">shared-core/grails-app/services/example/BookService.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Service</span>
+
+<span class="annotation">@Service</span>(<span class="predefined-type">Book</span>)
+<span class="type">interface</span> BookService {
+
+    <span class="predefined-type">Book</span>   get(<span class="predefined-type">Serializable</span> id)
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; list(<span class="predefined-type">Map</span> args)
+    <span class="predefined-type">Long</span>   count()
+    <span class="predefined-type">Book</span>   save(<span class="predefined-type">Book</span> book)
+    <span class="predefined-type">Book</span>   delete(<span class="predefined-type">Serializable</span> id)
+
+    <span class="predefined-type">Book</span>   findByIsbn(<span class="predefined-type">String</span> isbn)
+    <span class="predefined-type">Long</span>   countByPublishedOnGreaterThanEquals(<span class="predefined-type">Date</span> threshold)
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Two things to highlight:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The <code>@Service(Book)</code> interface is auto-implemented by GORM at compile time. The webapps inject <code>BookService bookService</code> directly; there is no <code>BookServiceImpl</code> to write.</p>
+</li>
+<li>
+<p>The package is <code>example</code>, not <code>shared</code> or <code>core</code>. This is the <strong>domain</strong> package - it is what the data layer is "about", not what module owns it. The two webapps' UI controllers will live in <code>customer.<strong></code> and <code>admin.</strong></code> so the package separation makes the layering explicit.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The plugin&#8217;s <code>build.gradle</code> should already contain <code>apply plugin: 'org.apache.grails.gradle.grails-plugin'</code> (the forge generates this for <code>web_plugin</code>). That is what registers the plugin&#8217;s domain classes and services for GORM auto-discovery in any consumer.</p>
+</div>
+
+
+<h1 id="webapps">5 The Two Webapps Consume shared-core</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-multi-module/v8/guide/webapps.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Both webapps consume <code>shared-core</code> via a single line in their <code>dependencies</code> block:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">implementation project(<span class="string"><span class="delimiter">'</span><span class="content">:shared-core</span><span class="delimiter">'</span></span>)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>That line goes immediately under <code>profile "org.apache.grails.profiles:web"</code> in each webapp&#8217;s <code>build.gradle</code>. Once it is in place, the plugin&#8217;s <code>Book</code> domain and <code>BookService</code> data service are visible to the consumer&#8217;s controllers, services, and GSPs at compile time, <strong>and</strong> GORM treats the consumer&#8217;s persistent context as the place those entities live at runtime.</p>
+</div>
+<div class="paragraph">
+<p>Each webapp owns its own controller package. The customer webapp uses <code>customer.*</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">webapp-customer/grails-app/controllers/customer/CatalogController.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> customer
+
+<span class="keyword">import</span> <span class="include">example.Book</span>
+<span class="keyword">import</span> <span class="include">example.BookService</span>
+
+<span class="comment">/**
+ * Customer webapp's read-only catalog.
+ *
+ * Reuses example.Book and example.BookService from the shared-core
+ * plugin. Notice this controller does not extend RestfulController -
+ * the customer side does not need create/update/delete; it only needs
+ * to render the catalog as GSP pages with whatever filtering the UI
+ * exposes.
+ */</span>
+<span class="type">class</span> <span class="class">CatalogController</span> {
+
+    <span class="directive">static</span> allowedMethods = [<span class="key">index</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>, <span class="key">show</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>]
+
+    BookService bookService
+
+    <span class="keyword">def</span> <span class="function">index</span>() {
+        <span class="predefined-type">Integer</span> max    = <span class="predefined-type">Math</span>.min(params.int(<span class="string"><span class="delimiter">'</span><span class="content">max</span><span class="delimiter">'</span></span>, <span class="integer">25</span>), <span class="integer">100</span>)
+        <span class="predefined-type">Integer</span> offset = params.int(<span class="string"><span class="delimiter">'</span><span class="content">offset</span><span class="delimiter">'</span></span>, <span class="integer">0</span>)
+        respond bookService.list([<span class="key">max</span>: max, <span class="key">offset</span>: offset, <span class="key">sort</span>: <span class="string"><span class="delimiter">'</span><span class="content">title</span><span class="delimiter">'</span></span>]),
+                <span class="key">model</span>: [<span class="key">bookCount</span>: bookService.count()]
+    }
+
+    <span class="keyword">def</span> <span class="function">show</span>(<span class="predefined-type">Long</span> id) {
+        <span class="predefined-type">Book</span> book = bookService.get(id)
+        <span class="keyword">if</span> (!book) { response.status = <span class="integer">404</span>; <span class="keyword">return</span> }
+        respond book
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The admin webapp uses <code>admin.*</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">webapp-admin/grails-app/controllers/admin/BookController.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> admin
+
+<span class="keyword">import</span> <span class="include">example.Book</span>
+<span class="keyword">import</span> <span class="include">example.BookService</span>
+<span class="keyword">import</span> <span class="include">grails.rest.RestfulController</span>
+
+<span class="comment">/**
+ * Admin webapp's BookController.
+ *
+ * Reuses example.Book and example.BookService from the shared-core
+ * plugin; this module only owns the controller. The package separation
+ * (admin.* vs example.*) keeps app-specific UI concerns out of the
+ * shared module.
+ */</span>
+<span class="type">class</span> <span class="class">BookController</span> <span class="directive">extends</span> RestfulController&lt;<span class="predefined-type">Book</span>&gt; {
+
+    <span class="directive">static</span> responseFormats = [<span class="string"><span class="delimiter">'</span><span class="content">html</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">json</span><span class="delimiter">'</span></span>]
+
+    BookService bookService
+
+    BookController() { <span class="local-variable">super</span>(<span class="predefined-type">Book</span>) }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Three patterns to highlight:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Both controllers reference <code>example.Book</code> and <code>example.BookService</code> from the plugin. Neither one duplicates a single line of domain or service code.</p>
+</li>
+<li>
+<p>The customer-side <code>CatalogController</code> is hand-rolled; it deliberately does not extend <code>RestfulController</code>. Customers should not see <code>/v1/books</code> (POST/PUT/DELETE).</p>
+</li>
+<li>
+<p>The admin-side <code>BookController</code> extends <code>RestfulController&lt;Book&gt;</code>. The full CRUD surface comes for free; the admin webapp picks it up by reference.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The package separation (<code>customer.<strong></code> vs <code>admin.</strong></code> for controllers, <code>example.<strong></code> for domain/service) is not enforced by Grails; it is a convention. But it is the convention that keeps refactors honest: a piece of code that lives under <code>example.</strong></code> belongs to the data layer, and any UI concern that creeps in there (a controller, a tag library, a flash-message string) is by definition misplaced.</p>
+</div>
+
+
+<h1 id="runningEach">6 Running and Packaging Each Webapp</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-multi-module/v8/guide/runningEach.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Run each webapp independently:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">./gradlew :webapp-customer:bootRun
+# In another shell:
+./gradlew :webapp-admin:bootRun</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Both default to port 8080, so you cannot run them at the same time without overrides. For dev work you have two cheap options:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>./gradlew :webapp-admin:bootRun --args='--server.port=8081'</code> - one-shot port override.</p>
+</li>
+<li>
+<p>Set <code>server.port: 8081</code> in <code>webapp-admin/grails-app/conf/application.yml</code> so the admin app permanently uses 8081 in dev. The customer app keeps 8080.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Production deployment uses <code>bootJar</code> instead of <code>bootRun</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">./gradlew :webapp-customer:bootJar
+./gradlew :webapp-admin:bootJar
+ls webapp-customer/build/libs/   # webapp-customer-0.1.jar
+ls webapp-admin/build/libs/      # webapp-admin-0.1.jar</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Each <code>bootJar</code> embeds the <code>shared-core</code> plugin classes (and only the <strong>transitive</strong> runtime dependencies the plugin actually needs). The two jars deploy independently to different hosts, different containers, different release cadences. The data model they share is the byte-for-byte identical compiled <code>Book.class</code> produced once by the <code>shared-core:compileGroovy</code> task and packaged into both.</p>
+</div>
+
+
+<h1 id="testingPerModule">7 Per-Module Testing</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-multi-module/v8/guide/testingPerModule.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Tests live with the module they cover.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>shared-core</code> has its own integration suite (<code>shared-core/src/integration-test/</code>) that runs against an in-memory H2 datasource and exercises the domain constraints + GORM data service queries directly. No webapp boots.</p>
+</li>
+<li>
+<p>Each webapp has its own functional suite (<code>webapp-customer/src/integration-test/</code>, <code>webapp-admin/src/integration-test/</code>) that boots the corresponding <code>bootJar</code> and drives it with Geb specs.</p>
+</li>
+<li>
+<p>Unit tests (Spock-based, no Spring context) live in each module&#8217;s <code>src/test/</code>.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Run them granularly during development:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">./gradlew :shared-core:integrationTest
+./gradlew :webapp-customer:integrationTest
+./gradlew :webapp-admin:integrationTest</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Or fan out the whole test suite from the root:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">./gradlew test integrationTest</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The matching <a href="../grails-github-actions-cicd/8/guide/index.html">GitHub Actions CI/CD guide</a> shows how to model these as separate jobs in a single workflow so a failing functional test in <code>webapp-admin</code> does not stop the <code>shared-core</code> suite from reporting its result.</p>
+</div>
+
+
+<h1 id="extractingPlugin">8 Extracting a Plugin From a Monolith</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-multi-module/v8/guide/extractingPlugin.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Most multi-module layouts grow out of a monolith that already exists. The migration from "one Grails app with two areas" to "one shared plugin plus two webapps" is mechanical:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>Decide what the plugin owns.</strong> Domain classes, GORM data services, security policy beans, and any tag library that emits content the customer and admin pages both render. Anything UI-shaped (controllers, GSPs, JSON views) stays in the consuming webapp.</p>
+</li>
+<li>
+<p><strong>Generate a Grails 8 plugin</strong> (the forge <code>web_plugin</code> type) into a new <code>shared-core/</code> directory next to the existing app.</p>
+</li>
+<li>
+<p><strong>Move (<code>git mv</code>) the chosen files</strong> out of <code>app/grails-app/&#8230;&#8203;</code> into <code>shared-core/grails-app/&#8230;&#8203;</code>. Keep package names. The history follows the rename.</p>
+</li>
+<li>
+<p><strong>In <code>settings.gradle</code> of the existing app, <code>include 'shared-core'</code>.</strong> In the existing app&#8217;s <code>build.gradle</code>, add <code>implementation project(':shared-core')</code>. Run <code>./gradlew build</code> - it should still pass.</p>
+</li>
+<li>
+<p><strong>Generate the second webapp</strong> (the forge <code>web</code> type) into <code>webapp-customer/</code>. Add <code>implementation project(':shared-core')</code> to its <code>build.gradle</code>. Move whichever controllers/views logically belong there from the original app.</p>
+</li>
+<li>
+<p><strong>Rename the original app</strong> to <code>webapp-admin/</code> (or whichever role it ended up playing).</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The third commit on the timeline is a single commit that moves files; the fourth is the wiring change. Reviewers can see exactly what moved without unrelated diffs.</p>
+</div>
+
+
+<h1 id="failureModes">9 Failure Modes</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-multi-module/v8/guide/failureModes.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Three failure modes show up in real multi-module Grails layouts. Recognise them early, address them once.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Circular plugin dependencies.</strong> If <code>shared-core</code> reaches "up" into either webapp - e.g. via a <code>MessageSource</code> lookup that depends on a webapp&#8217;s <code>i18n/</code> - the build still passes locally (because the consumer is on the classpath at run time) but breaks the moment you try to publish <code>shared-core</code> to a Maven repo. Fix the direction: the plugin should never know about its consumers.</p>
+</li>
+<li>
+<p><strong>GORM mapping conflicts when the same domain class loads twice.</strong> A common mistake: copying a domain class from <code>shared-core</code> into <code>webapp-admin</code> "just to add an admin-only field". GORM sees two <code>example.Book</code> classes on the classpath, registers both, and either silently picks one or fails at startup. The fix is always the same: the field belongs on <code>shared-core.Book</code>, with <code>nullable: true</code> and an admin-only setter.</p>
+</li>
+<li>
+<p><strong>Two webapps disagree on the schema migration order.</strong> If both webapps run Liquibase changesets at startup, one of them will be racing the other on first deploy. Pick one - typically <code>webapp-admin</code> - to own migrations; the other (<code>webapp-customer</code>) reads the migrated schema with <code>dbCreate: none</code>. Document the discipline; do not rely on lock acquisition from Liquibase for cross-app coordination.</p>
+</li>
+</ul>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p><strong>Cross-repo iteration.</strong> If <code>shared-core</code> later moves to its own GitHub repository, <code>includeBuild('../shared-core')</code> in the webapps' <code>settings.gradle</code> still gives you live cross-iteration during development - the consumer compiles against the live source tree, not a published JAR.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+
+
+<h1 id="helpWithGrails">10 Do you need help with Grails?</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-multi-module/v8/guide/helpWithGrails.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="sect1">
+<h2 id="_help_with_apache_grails">Help with Apache Grails</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Apache Grails is supported by an active community of contributors and the Apache Software Foundation. If you need help working through a guide, want to discuss the framework, or have run into something that looks like a bug, the channels below are the right place to start.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="https://slack.grails.org">Slack</a> - real-time conversation with the Apache Grails community.</p>
+</li>
+<li>
+<p><a href="https://lists.apache.org/list.html?dev@grails.apache.org">Developer mailing list</a> - design discussions and contributor coordination.</p>
+</li>
+<li>
+<p><a href="https://lists.apache.org/list.html?users@grails.apache.org">Users mailing list</a> - end-user questions and answers.</p>
+</li>
+<li>
+<p><a href="https://github.com/apache/grails-core/issues">Issue tracker on GitHub</a> - file a bug or feature request against the framework.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>For Grails plugins, see the matching project on <a href="https://github.com/apache?q=grails">the apache org</a> or the plugin&#8217;s own GitHub repository.</p>
+</div>
+</div>
+</div>
+
+</article></div>
+<footer>
+    <div class='content'>
+        <div class='apache-grails'>
+            <p>Apache Grails is supported by the Apache Software Foundation and the Grails community.</p>
+            <a href='https://apache.org'><img src='https://www.apache.org/img/asf_logo.png' width='200px' alt='Apache Software Foundation'/></a>
+            <p>Apache, Apache Grails, Grails, Groovy, and the ASF logo are either registered trademarks or trademarks of The Apache Software Foundation.</p>
+        </div>
+        <nav class='social-media-nav'>
+            <ul>
+                <li><a href='mailto:dev@grails.apache.org'><img src='https://grails.apache.org/images/email.svg' alt='Email Icon'/></a></li>
+                <li><a href='https://slack.grails.org'><img src='https://grails.apache.org/images/slack.svg' alt='Slack Icon'/></a></li>
+                <li><a href='https://www.youtube.com/@GrailsFramework'><img src='https://grails.apache.org/images/youtube.svg' alt='Youtube Icon'/></a></li>
+                <li><a href='https://bsky.app/profile/grails.apache.org'><img src='https://grails.apache.org/images/bsky.svg' alt='Bluesky Icon'/></a></li>
+                <li><a rel="me" href="https://fosstodon.org/@grails"><img src='https://grails.apache.org/images/mastodont.svg' alt='Mastodon Icon'/></a></li>
+                <li><a href='https://www.linkedin.com/showcase/official-grails/'><img src='https://grails.apache.org/images/linkedin.svg' alt='LinkedIn Icon'/></a></li>
+                <li><a href='https://github.com/apache/grails-core'><img src='https://grails.apache.org/images/github.svg' alt='GitHub Icon'/></a></li>
+                <li><a href='https://twitter.com/grailsframework'><img src='https://grails.apache.org/images/x-twitter.svg' alt='Twitter Icon'/></a></li>
+            </ul>
+        </nav>
+    </div>
+    <div class='footer-bottom'>
+        <p>&copy; 2005-2026 the Apache Grails project</p>
+        <p>Grails is Open Source:
+            <a href='https://www.apache.org/licenses/'>License</a>,
+            <a href='https://privacy.apache.org/policies/privacy-policy-public.html'>Privacy Policy</a>,
+            <a href='https://www.apache.org/foundation/sponsorship'>Sponsor Apache</a>,
+            <a href='https://www.apache.org/events/current-event'>Events</a>,
+            <a href='https://www.apache.org/security'>Security</a>,
+            <a href='https://www.apache.org/foundation/thanks.html'>Thanks</a>,
+            <a href='https://grails.apache.org/support-schedule.html'>Support Schedule</a>
+        </p>
+    </div>
+</footer>
+
+</body>
+</html>
