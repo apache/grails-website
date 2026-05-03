@@ -1,0 +1,263 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+                      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+    <title>4 Configuring Tailwind for Grails</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
+    <link rel="stylesheet" href="../css/guide.css" type="text/css" media="screen, print" title="Style" charset="utf-8" />            
+    <link rel="stylesheet" href="../css/pdf.css" type="text/css" media="print" title="PDF" charset="utf-8"/>
+    <script type="text/javascript">
+function addJsClass() {
+    var classes = document.body.className.split(" ");
+    classes.push("js");
+    document.body.className = classes.join(" ");
+}
+    </script>
+</head>
+
+<body class="body" onload="addJsClass();">
+<div id="navigation">
+    <div class="navTitle">
+        
+        Grails Framework Guide 
+    </div>
+    <div class="navLinks">
+        <ul>
+            <li>
+                <div id="nav-summary" onmouseover="toggleNavSummary(false)" onmouseout="toggleNavSummary(true)">
+                    <a href="../guide/index.html" class="button">Table of contents</a>
+
+                    <div id="nav-summary-childs" style="display:none;">
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/gettingStarted.html"><strong>1</strong><span>Getting Started</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/createApp.html"><strong>2</strong><span>Creating the Application</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/installTailwind.html"><strong>3</strong><span>Installing Tailwind CSS 4</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/configureTailwind.html"><strong>4</strong><span>Configuring Tailwind for Grails</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/gradleWiring.html"><strong>5</strong><span>Wiring Tailwind into the Gradle Build</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/firstPaint.html"><strong>6</strong><span>Applying Tailwind to the GSP Layout</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/darkMode.html"><strong>7</strong><span>Class-Based Dark Mode</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/componentLayer.html"><strong>8</strong><span>Reusable Component Classes with @apply</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>9</strong><span>Do you need help with Grails?</span></a>
+                        </div>
+                        
+                    </div>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+
+</div>
+
+<table id="colset" border="0" cellpadding="0" cellspacing="0">
+    <tr>
+        <td id="col1">
+            <div id="main" class="corner-all">
+
+                
+                    <div class="toc-item prev-left"><a href="../guide/installTailwind.html">&lt;&lt; <strong>3</strong><span>Installing Tailwind CSS 4</span></a></div>
+                
+
+                
+                    <div class="toc-item next-right"><a href="../guide/gradleWiring.html"><strong>5</strong><span>Wiring Tailwind into the Gradle Build</span> >></a></div>
+                
+
+
+                
+                <div id="table-of-content">
+                    <h2>Table of Contents</h2>
+                    
+                    <div class="toc-item" style="margin-left:0px"><a href="#inputCss"><strong>4.1</strong><span>The input.css Entry Point</span></a>
+                    </div>
+                    
+                </div>
+                
+
+                
+
+<h1 id="configureTailwind">4 Configuring Tailwind for Grails</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-tailwindcss/v8/guide/configureTailwind.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Tailwind 4 introduced a CSS-first configuration model: most projects no longer need a <code>tailwind.config.js</code> file at all. Theme tokens, content sources, and custom variants are declared in your CSS entry point with the <code>@theme</code>, <code>@source</code>, and <code>@custom-variant</code> at-rules.</p>
+</div>
+<div class="paragraph">
+<p>For a Grails app that means three knobs to set:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Where to scan for class names.</strong> Tailwind 4&#8217;s JIT scanner does not know about <code>.gsp</code> files out of the box, and it is conservative about reading utility-class string literals from <code>.groovy</code> source. Both have to be added with explicit <code>@source</code> directives.</p>
+</li>
+<li>
+<p><strong>How to opt into class-based dark mode.</strong> The default dark variant follows <code>prefers-color-scheme</code>. To let the user pick a theme and persist it, override the variant so <code>dark:</code> utilities apply when an ancestor has the <code>dark</code> class.</p>
+</li>
+<li>
+<p><strong>Reusable component classes (optional).</strong> Anything you find yourself spelling more than three or four times across GSPs is a candidate for the <code>@layer components</code> block.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>All three live in <code>src/main/css/input.css</code>, which we will write next.</p>
+</div>
+
+
+<h2 id="inputCss">4.1 The input.css Entry Point</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-tailwindcss/v8/guide/inputCss.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Create the Tailwind entry point at <code>src/main/css/input.css</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/main/css/input.css</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="css"><span class="comment">/*
+ * Tailwind CSS 4 entry point.
+ *
+ * Tailwind 4 uses CSS-first configuration: the @import below pulls in the
+ * framework, @source tells the JIT scanner where to find class names, and
+ * @custom-variant lets us opt into class-based dark mode without a separate
+ * tailwind.config.js. See guides/grails-tailwindcss/v8/guide/configureTailwind.adoc.
+ */</span>
+
+<span class="directive">@import</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">tailwindcss</span><span class="delimiter">&quot;</span></span>;
+
+<span class="comment">/*
+ * Where to scan for class names. Tailwind 4 auto-detects most file types,
+ * but does not know about .gsp out of the box and is conservative about
+ * scanning .groovy files for utility-class string literals (e.g. classes
+ * passed via tag-attribute composition in controllers or tag libraries).
+ */</span>
+<span class="directive">@source</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">../../../grails-app/views</span><span class="delimiter">&quot;</span></span>;
+<span class="directive">@source</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">../../../grails-app/controllers</span><span class="delimiter">&quot;</span></span>;
+<span class="directive">@source</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">../../../grails-app/services</span><span class="delimiter">&quot;</span></span>;
+<span class="directive">@source</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">../../../src/main/groovy</span><span class="delimiter">&quot;</span></span>;
+
+<span class="comment">/*
+ * Dark mode via a class on &lt;html&gt;. Toggled at runtime in main.gsp.
+ * The default Tailwind 4 dark variant follows prefers-color-scheme; this
+ * override lets a user persist their choice across sessions.
+ */</span>
+<span class="directive">@custom-variant</span> <span class="tag">dark</span> (<span class="error">&amp;</span><span class="pseudo-class">:where</span>(<span class="class">.dark</span>, <span class="class">.dark</span> <span class="tag">*</span>));
+
+<span class="comment">/*
+ * A small component layer: classes you can spell once and reuse across
+ * GSPs without the full utility chain. Good fit for buttons, cards, and
+ * form-control wrappers that the Grails Fields plugin will eventually
+ * render around your inputs.
+ */</span>
+<span class="directive">@layer</span> <span class="tag">components</span> {
+    .<span class="key">btn-primary</span> {
+        <span class="directive">@apply</span> <span class="key">inline-flex</span> <span class="key">items-center</span> <span class="key">justify-center</span> <span class="key">rounded-md</span> <span class="key">bg-blue-600</span> <span class="key">px-4</span> <span class="key">py-2</span> <span class="key">text-sm</span> <span class="key">font-medium</span> <span class="key">text-white</span> <span class="key">shadow-sm</span> <span class="key">hover</span>:<span class="value">bg-blue-700</span> <span class="value">focus</span>:<span class="value">outline-none</span> <span class="value">focus</span>:<span class="value">ring-2</span> <span class="value">focus</span>:<span class="value">ring-blue-500</span> <span class="value">focus</span>:<span class="value">ring-offset-2</span> <span class="value">dark</span>:<span class="value">bg-blue-500</span> <span class="value">dark</span>:<span class="value">hover</span>:<span class="value">bg-blue-600</span> <span class="value">dark</span>:<span class="value">focus</span>:<span class="value">ring-offset-gray-900</span>;
+    }
+    .<span class="key">card</span> {
+        <span class="directive">@apply</span> <span class="key">rounded-lg</span> <span class="key">border</span> <span class="key">border-gray-200</span> <span class="key">bg-white</span> <span class="key">p-6</span> <span class="key">shadow-sm</span> <span class="key">dark</span>:<span class="value">border-gray-700</span> <span class="value">dark</span>:<span class="value">bg-gray-800</span>;
+    }
+    .<span class="key">nav-link</span> {
+        <span class="directive">@apply</span> <span class="key">text-sm</span> <span class="key">font-medium</span> <span class="key">text-gray-600</span> <span class="key">hover</span>:<span class="value">text-gray-900</span> <span class="value">dark</span>:<span class="value">text-gray-300</span> <span class="value">dark</span>:<span class="value">hover</span>:<span class="value">text-white</span>;
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Three things in this file are worth highlighting:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>@import "tailwindcss";</code> pulls in the framework. In v3 you wrote three separate <code>@tailwind base; @tailwind components; @tailwind utilities;</code> directives; v4 collapses all three into the single <code>@import</code>.</p>
+</li>
+<li>
+<p>The <code>@source</code> directives tell the scanner exactly where to look. The starter the forge produces puts views under <code>grails-app/views</code>, controllers under <code>grails-app/controllers</code>, services under <code>grails-app/services</code>, and any helper code (tag libs, command objects, traits) under <code>src/main/groovy</code>. Adding a new directory tree later means another <code>@source</code> line; nothing else.</p>
+</li>
+<li>
+<p>The <code>@custom-variant dark (&amp;:where(.dark, .dark *));</code> line redefines <code>dark:</code> so it applies whenever an ancestor (typically <code>&lt;html&gt;</code>) carries the <code>dark</code> class. Without this override the v4 default uses <code>prefers-color-scheme</code>, which honours the OS theme but does not let the user override it.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The <code>@layer components</code> block at the bottom defines <code>.btn-primary</code>, <code>.card</code>, and <code>.nav-link</code> - these are referenced from <code>main.gsp</code> and <code>index.gsp</code> in later chapters.</p>
+</div>
+
+
+                <div style="clear:both;margin-top:15px;"></div>
+                
+                    <div class="toc-item prev-left"><a href="../guide/installTailwind.html">&lt;&lt; <strong>3</strong><span>Installing Tailwind CSS 4</span></a></div>
+                
+                    <div class="toc-item next-right"><a href="../guide/gradleWiring.html"><strong>5</strong><span>Wiring Tailwind into the Gradle Build</span> >></a></div>
+                
+                <div style="clear:both"></div>
+            </div>
+        </td>
+        <td id="col2">
+            <div class="local clearfix">
+                <div class="local-title" style="text-align: right"><a href="https://travis-ci.org/grails-guides/grails-tailwindcss"><img src="https://travis-ci.org/grails-guides/grails-tailwindcss.svg?branch=master" /></a></div>            
+                 <div class="local-title">
+                    <a href="https://github.com/grails-guides/grails-tailwindcss">
+                    <svg height="35" class="octicon octicon-mark-github" viewBox="0 0 16 16" version="1.1" width="35" aria-hidden="true"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a> &nbsp;&nbsp;Get the Code
+                </div>
+                <div class="menu">
+                    <div class="input-group">                        
+                        <button href="#" onclick="document.getElementById('github-url').value='git@github.com:grails-guides/grails-tailwindcss.git'" class="codeButton">SSH</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-tailwindcss.git'" class="codeButton">HTTPS</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-tailwindcss'" class="codeButton">Subversion</button>
+                    </div>
+       
+                    <div class="input-group">                    
+                        <!-- Target -->
+                        <input id="github-url" value="git@github.com:grails-guides/grails-tailwindcss.git" type="text" />
+
+                        <!-- Trigger -->
+                        <button class="clipbtn" type="button" data-clipboard-target="#github-url">
+
+                            <img width="13" src="../img/clippy.svg" alt="Copy to clipboard">
+                        </button>       
+
+                    </div>
+                    <div class="input-group">
+                      <a href="https://github.com/grails-guides/grails-tailwindcss/archive/master.zip" class="downloadButton">Download ZIP</a>
+                    </div>
+                </div>
+            </div>
+        </td>
+    </tr>
+</table>
+
+<div id="footer">
+    
+    
+</div>
+
+<script type="text/javascript" src="../js/docs.js"></script>
+
+</body>
+</html>
