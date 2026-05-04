@@ -106,26 +106,88 @@ function addJsClass() {
 
 
 <div class="paragraph">
-<p>Grails' <code>&lt;g:form&gt;</code> tag automatically inserts a <code>SYNCHRONIZER_TOKEN</code> parameter when the controller declares <code>static withForm = &#8230;&#8203;</code>. HTMX requests do not go through <code>&lt;g:form&gt;</code>, so the token has to be wired in differently.</p>
+<p>There are two different token stories to keep straight in Grails 8.</p>
 </div>
 <div class="paragraph">
-<p>The HTMX configuration block in <code>main.gsp</code> reads the token from a <code>&lt;meta&gt;</code> tag and forwards it as a custom header on every request:</p>
+<p>First, Grails core has the long-standing <code>useToken</code> / <code>withForm</code> mechanism. It is implemented by <code>FormTagLib</code>, <code>Controller.withForm</code>, and <code>SynchronizerTokensHolder</code>, and it is primarily a duplicate-submit token flow:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="html"><span class="tag">&lt;meta</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">csrf-token</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">content</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${useToken().token}</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-<span class="tag">&lt;script&gt;</span>
-<span class="inline">    document.body.addEventListener(<span class="string"><span class="delimiter">'</span><span class="content">htmx:configRequest</span><span class="delimiter">'</span></span>, <span class="keyword">function</span>(evt) {
-        <span class="keyword">var</span> meta = document.querySelector(<span class="string"><span class="delimiter">'</span><span class="content">meta[name=&quot;csrf-token&quot;]</span><span class="delimiter">'</span></span>);
-        <span class="keyword">if</span> (meta) {
-            evt.detail.headers[<span class="string"><span class="delimiter">'</span><span class="content">X-Grails-Csrf-Token</span><span class="delimiter">'</span></span>] = meta.content;
-        }
-    });</span>
-<span class="tag">&lt;/script&gt;</span></code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">&lt;<span class="key">g</span>:form useToken=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span> ...&gt;
+    ...
+&lt;<span class="regexp"><span class="delimiter">/</span><span class="content">g:form&gt;</span></span><span class="error">
+</span>
+withForm {
+    <span class="comment">// valid token</span>
+}.invalidToken {
+    <span class="comment">// invalid or replayed token</span>
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>A matching <code>before</code> interceptor checks the header on every state-changing request and rejects mismatches with a 403. For a sample app the token check is overkill; for a real back-office the few lines of plumbing buy you the same protection <code>&lt;g:form&gt;</code> provides for traditional forms.</p>
+<p>That mechanism works well for normal Grails forms. It is not, by itself, a built-in HTMX-wide CSRF filter for button-driven <code>hx-post</code>, <code>hx-patch</code>, or <code>hx-delete</code> requests.</p>
+</div>
+<div class="paragraph">
+<p>Second, if Spring Security&#8217;s CSRF filter is on the classpath and active, Grails exposes the <code>_csrf</code> request attribute and <code>FormTagLib</code> automatically writes the hidden field into <code>&lt;g:form&gt;</code>. For HTMX requests triggered from links and buttons, forward that header globally:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/views/layouts/main.gsp</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="html"><span class="doctype">&lt;!doctype html&gt;</span>
+<span class="tag">&lt;html</span> <span class="attribute-name">lang</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">en</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+<span class="tag">&lt;head&gt;</span>
+    <span class="tag">&lt;meta</span> <span class="attribute-name">charset</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">utf-8</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;meta</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">viewport</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">content</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">width=device-width, initial-scale=1</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;title&gt;</span><span class="tag">&lt;g:layoutTitle</span> <span class="attribute-name">default</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">Grails + HTMX</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span><span class="tag">&lt;/title&gt;</span>
+    <span class="tag">&lt;asset:link</span> <span class="attribute-name">rel</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">icon</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">href</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">favicon.ico</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">image/x-ico</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;asset:stylesheet</span> <span class="attribute-name">src</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application.css</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+
+    <span class="tag">&lt;g:set</span> <span class="attribute-name">var</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">csrfToken</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">value</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${request.getAttribute('_csrf')}</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;g:if</span> <span class="attribute-name">test</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${csrfToken}</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+        <span class="tag">&lt;meta</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">csrf-header</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">content</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${csrfToken.headerName}</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+        <span class="tag">&lt;meta</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">csrf-token</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">content</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${csrfToken.token}</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+        <span class="tag">&lt;script&gt;</span>
+<span class="inline">            document.addEventListener(<span class="string"><span class="delimiter">'</span><span class="content">htmx:configRequest</span><span class="delimiter">'</span></span>, <span class="keyword">function</span>(event) {
+                const header = document.querySelector(<span class="string"><span class="delimiter">'</span><span class="content">meta[name=&quot;csrf-header&quot;]</span><span class="delimiter">'</span></span>)?.content;
+                const token = document.querySelector(<span class="string"><span class="delimiter">'</span><span class="content">meta[name=&quot;csrf-token&quot;]</span><span class="delimiter">'</span></span>)?.content;
+                <span class="keyword">if</span> (header &amp;&amp; token) {
+                    event.detail.headers[header] = token;
+                }
+            });</span>
+        <span class="tag">&lt;/script&gt;</span>
+    <span class="tag">&lt;/g:if&gt;</span>
+
+    <span class="tag">&lt;g:layoutHead</span><span class="tag">/&gt;</span>
+<span class="tag">&lt;/head&gt;</span>
+<span class="tag">&lt;body&gt;</span>
+
+<span class="tag">&lt;nav</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">navbar navbar-expand-lg bg-body border-bottom shadow-sm</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;div</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">container-lg</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+        <span class="tag">&lt;a</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">navbar-brand</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">href</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${request.contextPath}/</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+            Grails + HTMX
+        <span class="tag">&lt;/a&gt;</span>
+    <span class="tag">&lt;/div&gt;</span>
+<span class="tag">&lt;/nav&gt;</span>
+
+<span class="tag">&lt;g:layoutBody</span><span class="tag">/&gt;</span>
+
+<span class="tag">&lt;asset:javascript</span> <span class="attribute-name">src</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application.js</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+<span class="tag">&lt;/body&gt;</span>
+<span class="tag">&lt;/html&gt;</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This guide&#8217;s layout only adds those <code>&lt;meta&gt;</code> tags and the <code>htmx:configRequest</code> listener when <code>_csrf</code> exists. That keeps the sample app truthful:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>without Spring Security, the app is just a plain Grails 8 sample and the listener is inert;</p>
+</li>
+<li>
+<p>with Spring Security CSRF enabled, HTMX requests automatically carry the expected header name and token value.</p>
+</li>
+</ul>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -135,11 +197,27 @@ function addJsClass() {
 </td>
 <td class="content">
 <div class="paragraph">
-<p>The <code>Origin</code> and <code>Referer</code> headers also defeat CSRF for fetch-based clients. Modern browsers send them automatically and a same-origin check is one line of interceptor code. Belt-and-braces shops do both; pick the discipline that matches your threat model.</p>
+<p>If you stay entirely inside <code>&lt;g:form&gt;</code> submissions, Grails' form helpers already do the right thing for both token systems. You only need the global HTMX header hook for non-form triggers such as row-level toggle and delete buttons.</p>
 </div>
 </td>
 </tr>
 </table>
+</div>
+<div class="paragraph">
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>grails-app/views/layouts/main.gsp</code></p>
+</li>
+<li>
+<p><code>grails-app/views/task/_taskForm.gsp</code></p>
+</li>
+<li>
+<p><code>grails-app/views/task/_taskEdit.gsp</code></p>
+</li>
+</ul>
 </div>
 
 

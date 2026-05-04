@@ -102,7 +102,7 @@ function addJsClass() {
 
 
 <div class="paragraph">
-<p>Tailwind 4 introduced a CSS-first configuration model: most projects no longer need a <code>tailwind.config.js</code> file at all. Theme tokens, content sources, and custom variants are declared in your CSS entry point with the <code>@theme</code>, <code>@source</code>, and <code>@custom-variant</code> at-rules.</p>
+<p>Tailwind 4 introduced a CSS-first configuration model. Most projects no longer need a <code>tailwind.config.js</code> file at all. Theme tokens, content sources, and custom variants are declared in your CSS entry point with the <code>@theme</code>, <code>@source</code>, and <code>@custom-variant</code> at-rules.</p>
 </div>
 <div class="paragraph">
 <p>For a Grails app that means three knobs to set:</p>
@@ -110,18 +110,28 @@ function addJsClass() {
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Where to scan for class names.</strong> Tailwind 4&#8217;s JIT scanner does not know about <code>.gsp</code> files out of the box, and it is conservative about reading utility-class string literals from <code>.groovy</code> source. Both have to be added with explicit <code>@source</code> directives.</p>
+<p><strong>Where to scan for class names.</strong> Tailwind 4&#8217;s scanner does not know about <code>.gsp</code> files out of the box, and it is conservative about reading utility-class string literals from <code>.groovy</code> source. Both have to be added with explicit <code>@source</code> directives.</p>
 </li>
 <li>
 <p><strong>How to opt into class-based dark mode.</strong> The default dark variant follows <code>prefers-color-scheme</code>. To let the user pick a theme and persist it, override the variant so <code>dark:</code> utilities apply when an ancestor has the <code>dark</code> class.</p>
 </li>
 <li>
-<p><strong>Reusable component classes (optional).</strong> Anything you find yourself spelling more than three or four times across GSPs is a candidate for the <code>@layer components</code> block.</p>
+<p><strong>Reusable component classes (optional).</strong> Tailwind 4 adds <code>@utility</code> for custom utilities, but a small <code>@layer components</code> block is still a good fit when you want a few named classes that read well in GSPs.</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
 <p>All three live in <code>src/main/css/input.css</code>, which we will write next.</p>
+</div>
+<div class="paragraph">
+<p>Files touched in this chapter:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>src/main/css/input.css</code></p>
+</li>
+</ul>
 </div>
 
 
@@ -160,6 +170,7 @@ function addJsClass() {
 <span class="directive">@source</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">../../../grails-app/views</span><span class="delimiter">&quot;</span></span>;
 <span class="directive">@source</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">../../../grails-app/controllers</span><span class="delimiter">&quot;</span></span>;
 <span class="directive">@source</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">../../../grails-app/services</span><span class="delimiter">&quot;</span></span>;
+<span class="directive">@source</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">../../../grails-app/taglib</span><span class="delimiter">&quot;</span></span>;
 <span class="directive">@source</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">../../../src/main/groovy</span><span class="delimiter">&quot;</span></span>;
 
 <span class="comment">/*
@@ -185,11 +196,11 @@ function addJsClass() {
     .<span class="key">nav-link</span> {
         <span class="directive">@apply</span> <span class="key">text-sm</span> <span class="key">font-medium</span> <span class="key">text-gray-600</span> <span class="key">hover</span>:<span class="value">text-gray-900</span> <span class="value">dark</span>:<span class="value">text-gray-300</span> <span class="value">dark</span>:<span class="value">hover</span>:<span class="value">text-white</span>;
     }
-}</code></pre>
+}[]</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Three things in this file are worth highlighting:</p>
+<p>Four things in this file are worth highlighting:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -197,15 +208,25 @@ function addJsClass() {
 <p><code>@import "tailwindcss";</code> pulls in the framework. In v3 you wrote three separate <code>@tailwind base; @tailwind components; @tailwind utilities;</code> directives; v4 collapses all three into the single <code>@import</code>.</p>
 </li>
 <li>
-<p>The <code>@source</code> directives tell the scanner exactly where to look. The starter the forge produces puts views under <code>grails-app/views</code>, controllers under <code>grails-app/controllers</code>, services under <code>grails-app/services</code>, and any helper code (tag libs, command objects, traits) under <code>src/main/groovy</code>. Adding a new directory tree later means another <code>@source</code> line; nothing else.</p>
+<p>The <code>@source</code> directives tell the scanner exactly where to look. The starter the forge produces puts views under <code>grails-app/views</code>, controllers under <code>grails-app/controllers</code>, services under <code>grails-app/services</code>, tag libraries under <code>grails-app/taglib</code>, and helper code under <code>src/main/groovy</code>.</p>
 </li>
 <li>
 <p>The <code>@custom-variant dark (&amp;:where(.dark, .dark *));</code> line redefines <code>dark:</code> so it applies whenever an ancestor (typically <code>&lt;html&gt;</code>) carries the <code>dark</code> class. Without this override the v4 default uses <code>prefers-color-scheme</code>, which honours the OS theme but does not let the user override it.</p>
 </li>
+<li>
+<p>The <code>@layer components</code> block at the bottom defines <code>.btn-primary</code>, <code>.card</code>, and <code>.nav-link</code>. These are referenced from <code>main.gsp</code> and <code>index.gsp</code> in later chapters.</p>
+</li>
 </ul>
 </div>
 <div class="paragraph">
-<p>The <code>@layer components</code> block at the bottom defines <code>.btn-primary</code>, <code>.card</code>, and <code>.nav-link</code> - these are referenced from <code>main.gsp</code> and <code>index.gsp</code> in later chapters.</p>
+<p>Files touched in this chapter:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>src/main/css/input.css</code></p>
+</li>
+</ul>
 </div>
 
 

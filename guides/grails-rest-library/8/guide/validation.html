@@ -113,54 +113,107 @@ function addJsClass() {
 <span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
 <span class="keyword">import</span> <span class="include">grails.rest.RestfulController</span>
 <span class="keyword">import</span> <span class="include">org.springframework.http.HttpStatus</span>
+<span class="keyword">import</span> <span class="include">org.springframework.validation.FieldError</span>
 
 <span class="type">class</span> <span class="class">BookController</span> <span class="directive">extends</span> RestfulController&lt;<span class="predefined-type">Book</span>&gt; {
 
     <span class="directive">static</span> responseFormats = [<span class="string"><span class="delimiter">'</span><span class="content">json</span><span class="delimiter">'</span></span>]
 
-    BookController() { <span class="local-variable">super</span>(<span class="predefined-type">Book</span>) }
+    BookController() {
+        <span class="local-variable">super</span>(<span class="predefined-type">Book</span>)
+    }
+
+    <span class="annotation">@Override</span>
+    <span class="keyword">def</span> <span class="function">index</span>(<span class="predefined-type">Integer</span> max) {
+        <span class="keyword">if</span> (max != <span class="predefined-constant">null</span> &amp;&amp; max &lt; <span class="integer">0</span>) {
+            max = <span class="predefined-constant">null</span>
+        }
+
+        params.max = <span class="predefined-type">Math</span>.min(max ?: <span class="integer">25</span>, <span class="integer">100</span>)
+        params.offset = <span class="predefined-type">Math</span>.max(params.int(<span class="string"><span class="delimiter">'</span><span class="content">offset</span><span class="delimiter">'</span></span>, <span class="integer">0</span>), <span class="integer">0</span>)
+
+        respond listAllResources(params), <span class="key">model</span>: [<span class="key">bookCount</span>: countResources()]
+    }
 
     <span class="annotation">@Override</span>
     <span class="directive">protected</span> <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; listAllResources(<span class="predefined-type">Map</span> params) {
-        params.max = <span class="predefined-type">Math</span>.min(params.int(<span class="string"><span class="delimiter">'</span><span class="content">max</span><span class="delimiter">'</span></span>, <span class="integer">25</span>), <span class="integer">100</span>)
-        <span class="predefined-type">Book</span>.list(params)
+        <span class="predefined-type">Long</span> authorId = params.long(<span class="string"><span class="delimiter">'</span><span class="content">author</span><span class="delimiter">'</span></span>)
+        <span class="predefined-type">Map</span> queryParams = [<span class="key">max</span>: params.max, <span class="key">offset</span>: params.offset, <span class="key">sort</span>: params.sort, <span class="key">order</span>: params.order].findAll { <span class="local-variable">it</span>.value != <span class="predefined-constant">null</span> }
+
+        <span class="keyword">if</span> (authorId != <span class="predefined-constant">null</span>) {
+            <span class="keyword">return</span> <span class="predefined-type">Book</span>.where {
+                author.id == authorId
+            }.list(queryParams)
+        }
+
+        <span class="predefined-type">Book</span>.list(queryParams)
     }
 
-    <span class="comment">/**
-     * POST /v1/books/bulk
-     *
-     * All-or-nothing bulk create. The whole request rolls back on the
-     * first validation failure; the response is a structured 422 with
-     * the field errors of every failing book in the batch.
-     */</span>
+    <span class="annotation">@Override</span>
+    <span class="directive">protected</span> <span class="predefined-type">Integer</span> countResources() {
+        <span class="predefined-type">Long</span> authorId = params.long(<span class="string"><span class="delimiter">'</span><span class="content">author</span><span class="delimiter">'</span></span>)
+        <span class="keyword">if</span> (authorId != <span class="predefined-constant">null</span>) {
+            <span class="keyword">return</span> <span class="predefined-type">Book</span>.where {
+                author.id == authorId
+            }.count() <span class="keyword">as</span> <span class="predefined-type">Integer</span>
+        }
+
+        <span class="predefined-type">Book</span>.count()
+    }
+
     <span class="annotation">@Transactional</span>
     <span class="keyword">def</span> <span class="function">bulkCreate</span>() {
-        <span class="keyword">if</span> (!request.JSON <span class="keyword">instanceof</span> <span class="predefined-type">List</span>) {
+        <span class="keyword">if</span> (!(request.JSON <span class="keyword">instanceof</span> <span class="predefined-type">List</span>)) {
             response.status = HttpStatus.UNPROCESSABLE_ENTITY.value()
-            respond <span class="key">errors</span>: [[<span class="key">message</span>: <span class="string"><span class="delimiter">'</span><span class="content">request body must be a JSON array of Book objects</span><span class="delimiter">'</span></span>]]
+            respond([
+                <span class="key">errors</span>: [[<span class="key">code</span>: <span class="string"><span class="delimiter">'</span><span class="content">invalid.body</span><span class="delimiter">'</span></span>, <span class="key">message</span>: <span class="string"><span class="delimiter">'</span><span class="content">Request body must be a JSON array of book objects</span><span class="delimiter">'</span></span>]]
+            ])
             <span class="keyword">return</span>
         }
 
-        <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; drafts = request.JSON.collect { json -&gt; <span class="keyword">new</span> <span class="predefined-type">Book</span>(json <span class="keyword">as</span> <span class="predefined-type">Map</span>) }
-        <span class="predefined-type">List</span>&lt;<span class="predefined-type">Map</span>&gt; failures = <span class="type">[]</span>
-        drafts.eachWithIndex { <span class="predefined-type">Book</span> b, <span class="type">int</span> i -&gt;
-            <span class="keyword">if</span> (!b.validate()) {
-                failures &lt;&lt; [<span class="key">index</span>: i, <span class="key">errors</span>: b.errors.fieldErrors.collect {
-                    [<span class="key">field</span>: <span class="local-variable">it</span>.field, <span class="key">code</span>: <span class="local-variable">it</span>.code, <span class="key">message</span>: <span class="local-variable">it</span>.defaultMessage]
-                }]
+        <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; drafts = request.JSON.collect { <span class="predefined-type">Object</span> json -&gt;
+            <span class="predefined-type">Book</span> draft = <span class="keyword">new</span> <span class="predefined-type">Book</span>()
+            bindData(draft, json <span class="keyword">as</span> <span class="predefined-type">Map</span>)
+            draft
+        }
+
+        <span class="predefined-type">List</span>&lt;<span class="predefined-type">Map</span>&lt;<span class="predefined-type">String</span>, <span class="predefined-type">Object</span>&gt;&gt; failures = <span class="type">[]</span>
+        drafts.eachWithIndex { <span class="predefined-type">Book</span> draft, <span class="type">int</span> index -&gt;
+            draft.validate()
+            <span class="keyword">if</span> (draft.hasErrors()) {
+                failures &lt;&lt; [
+                    index : index,
+                    <span class="key">errors</span>: draft.errors.allErrors.collect { error -&gt;
+                        <span class="predefined-type">Map</span>&lt;<span class="predefined-type">String</span>, <span class="predefined-type">Object</span>&gt; payload = [
+                            object : error.objectName,
+                            code   : error.code,
+                            <span class="key">message</span>: message(<span class="key">error</span>: error)
+                        ]
+                        <span class="keyword">if</span> (error <span class="keyword">instanceof</span> FieldError) {
+                            payload.field = error.field
+                            payload.rejectedValue = error.rejectedValue
+                            payload.bindingFailure = error.bindingFailure
+                        }
+                        payload
+                    }
+                ]
             }
         }
 
         <span class="keyword">if</span> (failures) {
             transactionStatus.setRollbackOnly()
             response.status = HttpStatus.UNPROCESSABLE_ENTITY.value()
-            respond <span class="key">books</span>: failures
+            respond([<span class="key">books</span>: failures])
             <span class="keyword">return</span>
         }
 
-        drafts*.save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
-        response.status = HttpStatus.CREATED.value()
-        respond <span class="key">books</span>: drafts
+        drafts.each { <span class="predefined-type">Book</span> book -&gt;
+            book.save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        }
+
+        params.max = <span class="predefined-type">Math</span>.max(drafts.size(), <span class="integer">1</span>)
+        params.offset = <span class="integer">0</span>
+        respond drafts, [<span class="key">status</span>: HttpStatus.CREATED, <span class="key">view</span>: <span class="string"><span class="delimiter">'</span><span class="content">index</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">bookCount</span>: drafts.size()]]
     }
 }</code></pre>
 </div>

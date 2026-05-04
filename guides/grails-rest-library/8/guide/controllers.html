@@ -116,19 +116,20 @@ function addJsClass() {
 
     <span class="directive">static</span> responseFormats = [<span class="string"><span class="delimiter">'</span><span class="content">json</span><span class="delimiter">'</span></span>]
 
-    AuthorController() { <span class="local-variable">super</span>(Author) }
+    AuthorController() {
+        <span class="local-variable">super</span>(Author)
+    }
 
-    <span class="comment">/**
-     * GET /v1/authors?max=20&amp;offset=0&amp;sort=name&amp;order=asc
-     *
-     * Bound `max` defaults to 25 and is hard-capped at 100 so a paginating
-     * client cannot ask for the full table in one request. `offset`,
-     * `sort`, and `order` flow through to the GORM query unchanged.
-     */</span>
     <span class="annotation">@Override</span>
-    <span class="directive">protected</span> <span class="predefined-type">List</span>&lt;Author&gt; listAllResources(<span class="predefined-type">Map</span> params) {
-        params.max = <span class="predefined-type">Math</span>.min(params.int(<span class="string"><span class="delimiter">'</span><span class="content">max</span><span class="delimiter">'</span></span>, <span class="integer">25</span>), <span class="integer">100</span>)
-        Author.list(params)
+    <span class="keyword">def</span> <span class="function">index</span>(<span class="predefined-type">Integer</span> max) {
+        <span class="keyword">if</span> (max != <span class="predefined-constant">null</span> &amp;&amp; max &lt; <span class="integer">0</span>) {
+            max = <span class="predefined-constant">null</span>
+        }
+
+        params.max = <span class="predefined-type">Math</span>.min(max ?: <span class="integer">25</span>, <span class="integer">100</span>)
+        params.offset = <span class="predefined-type">Math</span>.max(params.int(<span class="string"><span class="delimiter">'</span><span class="content">offset</span><span class="delimiter">'</span></span>, <span class="integer">0</span>), <span class="integer">0</span>)
+
+        respond listAllResources(params), <span class="key">model</span>: [<span class="key">authorCount</span>: countResources()]
     }
 }</code></pre>
 </div>

@@ -111,7 +111,7 @@
             
             <div class="toc-item" style="margin-left:0px"><a href="#createApp"><strong>2</strong><span>Creating the Application</span></a></div>
             
-            <div class="toc-item" style="margin-left:10px"><a href="#download"><strong>2.1</strong><span>Download a Grails 8 Snapshot Starter</span></a></div>
+            <div class="toc-item" style="margin-left:10px"><a href="#download"><strong>2.1</strong><span>Download a Grails 8 Starter</span></a></div>
             
             <div class="toc-item" style="margin-left:0px"><a href="#workflowOverview"><strong>3</strong><span>The Multi-Stage Job Graph</span></a></div>
             
@@ -277,7 +277,7 @@ cd grails-github-actions-cicd/complete
 <div class="ulist">
 <ul>
 <li>
-<p><code>initial/</code> - the starting Grails 8 snapshot project, generated from <code><a href="https://prev-snapshot.grails.org" class="bare">https://prev-snapshot.grails.org</a></code> with the <code>postgres</code>, <code>testcontainers</code>, and <code>geb-with-webdriver-binaries</code> features.</p>
+<p><code>initial/</code> - the starting Grails 8 project, generated from <a href="https://start.grails.org">start.grails.org</a> with the <code>postgres</code> and <code>testcontainers</code> features.</p>
 </li>
 <li>
 <p><code>complete/</code> - the same project with the three workflow YAML files added under <code>.github/</code>.</p>
@@ -296,11 +296,11 @@ cd grails-github-actions-cicd/complete
 
 
 <div class="paragraph">
-<p>Generate a fresh Apache Grails 8 web application from <a href="https://prev-snapshot.grails.org">prev-snapshot.grails.org</a> with the three features the rest of the guide expects: <code>postgres</code>, <code>testcontainers</code>, and <code>geb-with-webdriver-binaries</code> (so functional tests can drive a headless browser).</p>
+<p>Generate a fresh Apache Grails 8 web application from <a href="https://start.grails.org">start.grails.org</a> with the two features the rest of the guide expects: <code>postgres</code> and <code>testcontainers</code>. The functional tests use <code>ContainerGebSpec</code> from <code>org.apache.grails:grails-geb</code>, which runs the browser in a Testcontainers Selenium container - no <code>geb-with-webdriver-binaries</code> feature is needed.</p>
 </div>
 
 
-<h2 id="download">2.1 Download a Grails 8 Snapshot Starter</h2>
+<h2 id="download">2.1 Download a Grails 8 Starter</h2>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-github-actions-cicd/v8/guide/download.adoc"'>
@@ -309,16 +309,11 @@ cd grails-github-actions-cicd/complete
 </div>
 
 
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="bash">curl -L -o cicd-app.zip \
-  &quot;https://prev-snapshot.grails.org/create/web/example.cicd?lang=GROOVY&amp;build=GRADLE&amp;test=SPOCK&amp;javaVersion=JDK_21&amp;features=postgres,testcontainers,geb-with-webdriver-binaries&quot;
-unzip cicd-app.zip
-cd cicd</code></pre>
-</div>
+<div class="paragraph">
+<p>Open <a href="https://start.grails.org">start.grails.org</a>, pick the <code>web</code> profile, name the application <code>cicd</code>, set the package to <code>example</code>, choose JDK 21, tick the <code>postgres</code> and <code>testcontainers</code> features, and download the generated zip. Unzip it and <code>cd</code> into the <code>cicd</code> directory.</p>
 </div>
 <div class="paragraph">
-<p>The forge unpacks into a <code>cicd/</code> directory containing a vanilla Grails 8 web layout with three feature-driven additions:</p>
+<p>The forge unpacks into a <code>cicd/</code> directory containing a vanilla Grails 8 web layout with two feature-driven additions:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -328,10 +323,10 @@ cd cicd</code></pre>
 <li>
 <p><code>testImplementation "org.testcontainers:postgresql"</code> (and <code>org.testcontainers:spock</code> + <code>:testcontainers</code>)</p>
 </li>
-<li>
-<p><code>integrationTestImplementation testFixtures("org.apache.grails:grails-geb")</code> and <code>com.energizedwork.gebish:webdriver-binaries-gradle-plugin</code> for downloading Chrome/Firefox driver binaries automatically</p>
-</li>
 </ul>
+</div>
+<div class="paragraph">
+<p>Geb container support comes from <code>testFixtures("org.apache.grails:grails-geb")</code>, which is already on the test classpath in the standard <code>web</code> profile - no extra forge feature is needed.</p>
 </div>
 
 
@@ -647,7 +642,7 @@ cd cicd</code></pre>
 
 
 <div class="paragraph">
-<p>The <code>functional-test</code> job boots the application against a Testcontainers-managed Postgres and drives it with Geb 8 specs. Because it does not declare a <code>services.postgres</code> block, the runner is a plain Ubuntu VM; Testcontainers spins up Postgres on demand from the test JVM via the local Docker socket (which GitHub-hosted runners expose by default).</p>
+<p>The <code>functional-test</code> job boots the application against a Testcontainers-managed Postgres and drives it with Geb 8 specs that extend <code>ContainerGebSpec</code> (from <code>testFixtures("org.apache.grails:grails-geb")</code>). The browser itself runs in a Selenium-Chrome container started by Testcontainers, so the runner never needs Chrome/Firefox installed on the host. Because the job does not declare a <code>services.postgres</code> block, the runner is a plain Ubuntu VM; Testcontainers spins up both Postgres and Selenium on demand from the test JVM via the local Docker socket (which GitHub-hosted runners expose by default).</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -678,7 +673,7 @@ cd cicd</code></pre>
 <p><code>if: always()</code> on the geb-reports upload is intentional: even on a green run you may want the screenshots from <code>build/geb-reports/</code> to confirm the page rendered as expected. On a red run, those screenshots are how you debug "works on my machine" failures - the runner&#8217;s screenshot of the failed page is usually enough to spot the missing element.</p>
 </div>
 <div class="paragraph">
-<p>The <code>geb-with-webdriver-binaries</code> feature you selected at the forge step downloads matching Chrome/Firefox driver binaries on the fly via <code>webdriver-binaries-gradle-plugin</code>, so no <code>apt-get install</code> of the browsers themselves is needed - the plugin handles both the browser and the driver.</p>
+<p>No <code>apt-get install</code> of Chrome/Firefox is needed - the browser process lives inside the Selenium container Testcontainers pulls (<code>selenium/standalone-chrome</code> by default). The first cold run pulls the image (~200 MB) and is slower; subsequent runs reuse the cached layer. The legacy <code>geb-with-webdriver-binaries</code> forge feature is obsolete in Grails 8 and is not used here.</p>
 </div>
 
 

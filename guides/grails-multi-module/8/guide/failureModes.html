@@ -2,7 +2,7 @@
                       "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
 <head>
-    <title>9 Failure Modes</title>
+    <title>10 Failure Modes</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
     <link rel="stylesheet" href="../css/guide.css" type="text/css" media="screen, print" title="Style" charset="utf-8" />            
@@ -48,16 +48,19 @@ function addJsClass() {
                         <div class="toc-item" style="margin-left:0"><a href="../guide/runningEach.html"><strong>6</strong><span>Running and Packaging Each Webapp</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/testingPerModule.html"><strong>7</strong><span>Per-Module Testing</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/devReload.html"><strong>7</strong><span>Dev-Mode Auto-Reload Across Projects</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/extractingPlugin.html"><strong>8</strong><span>Extracting a Plugin From a Monolith</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/testingPerModule.html"><strong>8</strong><span>Per-Module Testing</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/failureModes.html"><strong>9</strong><span>Failure Modes</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/extractingPlugin.html"><strong>9</strong><span>Extracting a Plugin From a Monolith</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>10</strong><span>Do you need help with Grails?</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/failureModes.html"><strong>10</strong><span>Failure Modes</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>11</strong><span>Do you need help with Grails?</span></a>
                         </div>
                         
                     </div>
@@ -75,11 +78,11 @@ function addJsClass() {
             <div id="main" class="corner-all">
 
                 
-                    <div class="toc-item prev-left"><a href="../guide/extractingPlugin.html">&lt;&lt; <strong>8</strong><span>Extracting a Plugin From a Monolith</span></a></div>
+                    <div class="toc-item prev-left"><a href="../guide/extractingPlugin.html">&lt;&lt; <strong>9</strong><span>Extracting a Plugin From a Monolith</span></a></div>
                 
 
                 
-                    <div class="toc-item next-right"><a href="../guide/helpWithGrails.html"><strong>10</strong><span>Do you need help with Grails?</span> >></a></div>
+                    <div class="toc-item next-right"><a href="../guide/helpWithGrails.html"><strong>11</strong><span>Do you need help with Grails?</span> >></a></div>
                 
 
 
@@ -87,7 +90,7 @@ function addJsClass() {
 
                 
 
-<h1 id="failureModes">9 Failure Modes</h1>
+<h1 id="failureModes">10 Failure Modes</h1>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-multi-module/v8/guide/failureModes.adoc"'>
@@ -97,42 +100,44 @@ function addJsClass() {
 
 
 <div class="paragraph">
-<p>Three failure modes show up in real multi-module Grails layouts. Recognise them early, address them once.</p>
+<p>Three failure modes show up again and again in real Grails multi-module workspaces.</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Circular plugin dependencies.</strong> If <code>shared-core</code> reaches "up" into either webapp - e.g. via a <code>MessageSource</code> lookup that depends on a webapp&#8217;s <code>i18n/</code> - the build still passes locally (because the consumer is on the classpath at run time) but breaks the moment you try to publish <code>shared-core</code> to a Maven repo. Fix the direction: the plugin should never know about its consumers.</p>
+<p><strong>Circular module dependencies, disguised as plugin wiring.</strong> The <code>dependsOn</code> and <code>loadAfter</code> properties on a Grails plugin descriptor are runtime ordering hints from <code>grails-core/src/main/groovy/grails/plugins/Plugin.groovy</code>. They do not replace Gradle project dependencies. If a webapp depends on <code>shared-core</code>, then <code>shared-core</code> must not depend back on that webapp. Keep the dependency arrow one-way: webapps depend on the plugin.</p>
 </li>
 <li>
-<p><strong>GORM mapping conflicts when the same domain class loads twice.</strong> A common mistake: copying a domain class from <code>shared-core</code> into <code>webapp-admin</code> "just to add an admin-only field". GORM sees two <code>example.Book</code> classes on the classpath, registers both, and either silently picks one or fails at startup. The fix is always the same: the field belongs on <code>shared-core.Book</code>, with <code>nullable: true</code> and an admin-only setter.</p>
+<p><strong>Mapping collisions in the Hibernate model.</strong> Grails 8 collects every domain artefact into the mapping context and Hibernate bootstrap path. You can see that in <code>grails-domain-class/src/main/groovy/org/grails/plugins/domain/support/DefaultMappingContextFactoryBean.groovy</code> and <code>grails-data-hibernate5/grails-plugin/src/main/groovy/grails/plugin/hibernate/HibernateGrailsPlugin.groovy</code>. If the plugin and a webapp both define separate entities that map to the same table or incompatible association metadata, startup fails or the schema becomes ambiguous. Keep one authoritative domain model in <code>shared-core</code>.</p>
 </li>
 <li>
-<p><strong>Two webapps disagree on the schema migration order.</strong> If both webapps run Liquibase changesets at startup, one of them will be racing the other on first deploy. Pick one - typically <code>webapp-admin</code> - to own migrations; the other (<code>webapp-customer</code>) reads the migrated schema with <code>dbCreate: none</code>. Document the discipline; do not rely on lock acquisition from Liquibase for cross-app coordination.</p>
+<p><strong>Both webapps try to run startup migrations.</strong> <code>grails-data-hibernate5/dbmigration/src/main/groovy/org/grails/plugins/databasemigration/DatabaseMigrationGrailsPlugin.groovy</code> runs Liquibase updates at startup when <code>grails.plugin.databasemigration.updateOnStart*</code> flags are enabled. Liquibase locking prevents corruption, but it still leaves startup order and deploy timing to chance. Pick one app to own migrations. Let the other app boot against an already-migrated schema.</p>
 </li>
 </ul>
 </div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
 <div class="paragraph">
-<p><strong>Cross-repo iteration.</strong> If <code>shared-core</code> later moves to its own GitHub repository, <code>includeBuild('../shared-core')</code> in the webapps' <code>settings.gradle</code> still gives you live cross-iteration during development - the consumer compiles against the live source tree, not a published JAR.</p>
+<p>Files touched:</p>
 </div>
-</td>
-</tr>
-</table>
+<div class="ulist">
+<ul>
+<li>
+<p>shared-core/build.gradle</p>
+</li>
+<li>
+<p>webapp-customer/build.gradle</p>
+</li>
+<li>
+<p>webapp-admin/build.gradle</p>
+</li>
+</ul>
 </div>
 
 
                 <div style="clear:both;margin-top:15px;"></div>
                 
-                    <div class="toc-item prev-left"><a href="../guide/extractingPlugin.html">&lt;&lt; <strong>8</strong><span>Extracting a Plugin From a Monolith</span></a></div>
+                    <div class="toc-item prev-left"><a href="../guide/extractingPlugin.html">&lt;&lt; <strong>9</strong><span>Extracting a Plugin From a Monolith</span></a></div>
                 
-                    <div class="toc-item next-right"><a href="../guide/helpWithGrails.html"><strong>10</strong><span>Do you need help with Grails?</span> >></a></div>
+                    <div class="toc-item next-right"><a href="../guide/helpWithGrails.html"><strong>11</strong><span>Do you need help with Grails?</span> >></a></div>
                 
                 <div style="clear:both"></div>
             </div>

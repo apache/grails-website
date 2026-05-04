@@ -48,16 +48,19 @@ function addJsClass() {
                         <div class="toc-item" style="margin-left:0"><a href="../guide/runningEach.html"><strong>6</strong><span>Running and Packaging Each Webapp</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/testingPerModule.html"><strong>7</strong><span>Per-Module Testing</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/devReload.html"><strong>7</strong><span>Dev-Mode Auto-Reload Across Projects</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/extractingPlugin.html"><strong>8</strong><span>Extracting a Plugin From a Monolith</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/testingPerModule.html"><strong>8</strong><span>Per-Module Testing</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/failureModes.html"><strong>9</strong><span>Failure Modes</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/extractingPlugin.html"><strong>9</strong><span>Extracting a Plugin From a Monolith</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>10</strong><span>Do you need help with Grails?</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/failureModes.html"><strong>10</strong><span>Failure Modes</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>11</strong><span>Do you need help with Grails?</span></a>
                         </div>
                         
                     </div>
@@ -97,7 +100,50 @@ function addJsClass() {
 
 
 <div class="paragraph">
-<p>The plugin module holds the domain model and the GORM data services. A simple Book domain in <code>shared-core/grails-app/domain/example/Book.groovy</code>:</p>
+<p><code>shared-core</code> is a Grails web plugin, not a plain Groovy library. Keep the generated plugin descriptor class:</p>
+</div>
+<div class="listingblock">
+<div class="title">shared-core/src/main/groovy/example/SharedCoreGrailsPlugin.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.plugins.Plugin</span>
+
+<span class="type">class</span> <span class="class">SharedCoreGrailsPlugin</span> <span class="directive">extends</span> Plugin {
+
+    <span class="keyword">def</span> profiles = [<span class="string"><span class="delimiter">'</span><span class="content">web</span><span class="delimiter">'</span></span>]
+
+    Closure doWithSpring() {
+        { -&gt;
+            <span class="comment">// Optional shared beans go here.</span>
+        }
+    }
+
+    <span class="type">void</span> doWithDynamicMethods() {
+    }
+
+    <span class="type">void</span> doWithApplicationContext() {
+    }
+
+    <span class="type">void</span> onChange(<span class="predefined-type">Map</span>&lt;<span class="predefined-type">String</span>, <span class="predefined-type">Object</span>&gt; event) {
+    }
+
+    <span class="type">void</span> onConfigChange(<span class="predefined-type">Map</span>&lt;<span class="predefined-type">String</span>, <span class="predefined-type">Object</span>&gt; event) {
+    }
+
+    <span class="type">void</span> onShutdown(<span class="predefined-type">Map</span>&lt;<span class="predefined-type">String</span>, <span class="predefined-type">Object</span>&gt; event) {
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>That class name and location are conventions, not decoration. Grails discovers plugins from a class under <code>src/main/groovy/&lt;package&gt;/</code> whose name ends in <code>GrailsPlugin</code> and whose base class is <code>grails.plugins.Plugin</code>. The lifecycle hooks available to you - <code>doWithSpring</code>, <code>doWithApplicationContext</code>, <code>doWithDynamicMethods</code>, <code>onChange</code>, <code>onConfigChange</code>, and <code>onShutdown</code> - come from <code>grails-core/src/main/groovy/grails/plugins/Plugin.groovy</code>.</p>
+</div>
+<div class="paragraph">
+<p>Core Grails plugins use additional descriptor conventions as plain properties on that class: <code>profiles</code>, <code>watchedResources</code>, <code>observe</code>, <code>loadAfter</code>, and <code>pluginExcludes</code>. See <code>grails-domain-class/src/main/groovy/org/grails/plugins/domain/DomainClassGrailsPlugin.groovy</code> and <code>grails-data-hibernate5/grails-plugin/src/main/groovy/grails/plugin/hibernate/HibernateGrailsPlugin.groovy</code> for live Grails 8 examples.</p>
+</div>
+<div class="paragraph">
+<p>The plugin module then owns the shared domain model and GORM data services. Start with a simple <code>Book</code> domain:</p>
 </div>
 <div class="listingblock">
 <div class="title">shared-core/grails-app/domain/example/Book.groovy</div>
@@ -126,7 +172,7 @@ function addJsClass() {
 </div>
 </div>
 <div class="paragraph">
-<p>And a GORM data service that both webapps consume:</p>
+<p>And a GORM data service that both webapps inject:</p>
 </div>
 <div class="listingblock">
 <div class="title">shared-core/grails-app/services/example/BookService.groovy</div>
@@ -150,20 +196,45 @@ function addJsClass() {
 </div>
 </div>
 <div class="paragraph">
-<p>Two things to highlight:</p>
+<p>The domain auto-discovery story in Grails 8 is now easy to verify in source:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>The <code>@Service(Book)</code> interface is auto-implemented by GORM at compile time. The webapps inject <code>BookService bookService</code> directly; there is no <code>BookServiceImpl</code> to write.</p>
+<p><code>grails-core/src/main/groovy/org/grails/core/artefact/DomainClassArtefactHandler.java</code> recognises domain artefacts from <code>grails-app/domain</code> and <code>@Entity</code>.</p>
 </li>
 <li>
-<p>The package is <code>example</code>, not <code>shared</code> or <code>core</code>. This is the <strong>domain</strong> package - it is what the data layer is "about", not what module owns it. The two webapps' UI controllers will live in <code>customer.<strong></code> and <code>admin.</strong></code> so the package separation makes the layering explicit.</p>
+<p><code>grails-domain-class/src/main/groovy/org/grails/plugins/domain/support/DefaultMappingContextFactoryBean.groovy</code> adds every <code>DomainClassArtefactHandler.TYPE</code> artefact to the mapping context.</p>
+</li>
+<li>
+<p><code>grails-data-hibernate5/grails-plugin/src/main/groovy/grails/plugin/hibernate/HibernateGrailsPlugin.groovy</code> collects those same artefacts from <code>grailsApplication.getArtefacts(&#8230;&#8203;)</code> and hands them to <code>HibernateDatastoreSpringInitializer</code>.</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>The plugin&#8217;s <code>build.gradle</code> should already contain <code>apply plugin: 'org.apache.grails.gradle.grails-plugin'</code> (the forge generates this for <code>web_plugin</code>). That is what registers the plugin&#8217;s domain classes and services for GORM auto-discovery in any consumer.</p>
+<p>That is why a sibling plugin&#8217;s <code>Book</code> domain becomes part of the consuming webapp&#8217;s Hibernate model without any manual registration step.</p>
+</div>
+<div class="paragraph">
+<p>Keep <code>apply plugin: 'org.apache.grails.gradle.grails-plugin'</code> in <code>shared-core/build.gradle</code>. In <code>grails-gradle/plugins/src/main/groovy/org/grails/gradle/plugin/core/GrailsPluginGradlePlugin.groovy</code> that Gradle plugin applies <code>java-library</code>, disables <code>bootJar</code> for the plugin project, packages a plain jar, and prepares plugin resources. If you remove it, <code>shared-core</code> stops behaving like a Grails plugin build.</p>
+</div>
+<div class="paragraph">
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>shared-core/build.gradle</p>
+</li>
+<li>
+<p>shared-core/src/main/groovy/example/SharedCoreGrailsPlugin.groovy</p>
+</li>
+<li>
+<p>shared-core/grails-app/domain/example/Book.groovy</p>
+</li>
+<li>
+<p>shared-core/grails-app/services/example/BookService.groovy</p>
+</li>
+</ul>
 </div>
 
 

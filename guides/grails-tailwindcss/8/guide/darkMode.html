@@ -97,11 +97,15 @@ function addJsClass() {
 <p>The <code>@custom-variant dark (&amp;:where(.dark, .dark *));</code> line in <code>input.css</code> made every <code>dark:</code>-prefixed utility opt-in on the presence of the <code>dark</code> class on <code>&lt;html&gt;</code>. Two small bits of markup in <code>main.gsp</code> flip it on and off.</p>
 </div>
 <div class="paragraph">
-<p>The first is a four-line pre-paint script in <code>&lt;head&gt;</code> that runs before any styled content reaches the screen:</p>
+<p>The first is a pre-paint script in <code>&lt;head&gt;</code> that runs before any styled content reaches the screen:</p>
 </div>
 <div class="listingblock">
+<div class="title">grails-app/views/layouts/main.gsp</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="html"><span class="tag">&lt;script&gt;</span>
+<pre class="CodeRay highlight"><code data-lang="html"><span class="error">&lt;</span>%-- Pre-paint dark-mode resolution: read the user's saved choice (or
+     system preference) and apply the `dark` class on <span class="tag">&lt;html&gt;</span> BEFORE
+     the body renders. This avoids the light-to-dark flash on reload. --%<span class="error">&gt;</span>
+<span class="tag">&lt;script&gt;</span>
 <span class="inline">    (<span class="keyword">function</span> () {
         <span class="keyword">var</span> saved = localStorage.getItem(<span class="string"><span class="delimiter">'</span><span class="content">theme</span><span class="delimiter">'</span></span>);
         <span class="keyword">var</span> prefers = window.matchMedia(<span class="string"><span class="delimiter">'</span><span class="content">(prefers-color-scheme: dark)</span><span class="delimiter">'</span></span>).matches;
@@ -109,7 +113,7 @@ function addJsClass() {
             document.documentElement.classList.add(<span class="string"><span class="delimiter">'</span><span class="content">dark</span><span class="delimiter">'</span></span>);
         }
     })();</span>
-<span class="tag">&lt;/script&gt;</span></code></pre>
+<span class="tag">&lt;/script&gt;</span>[]</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -119,24 +123,44 @@ function addJsClass() {
 <p>The second is the toggle button in the navbar plus a click handler at the end of the body that flips the class and writes the new value to <code>localStorage</code>:</p>
 </div>
 <div class="listingblock">
+<div class="title">grails-app/views/layouts/main.gsp</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="html"><span class="tag">&lt;button</span> <span class="attribute-name">id</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">theme-toggle</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">button</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">aria-label</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">Toggle dark mode</span><span class="delimiter">&quot;</span></span>
+<pre class="CodeRay highlight"><code data-lang="html"><span class="tag">&lt;button</span> <span class="attribute-name">id</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">theme-toggle</span><span class="delimiter">&quot;</span></span>
+        <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">button</span><span class="delimiter">&quot;</span></span>
+        <span class="attribute-name">aria-label</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">Toggle dark mode</span><span class="delimiter">&quot;</span></span>
         <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 shadow-sm hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
     <span class="tag">&lt;span</span> <span class="attribute-name">aria-hidden</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">dark:hidden</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span><span class="entity">&amp;#9788;</span><span class="tag">&lt;/span&gt;</span>
     <span class="tag">&lt;span</span> <span class="attribute-name">aria-hidden</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">hidden dark:inline</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span><span class="entity">&amp;#9789;</span><span class="tag">&lt;/span&gt;</span>
-<span class="tag">&lt;/button&gt;</span>
-
-<span class="tag">&lt;script&gt;</span>
+<span class="tag">&lt;/button&gt;</span>[]</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/views/layouts/main.gsp</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="html"><span class="tag">&lt;script&gt;</span>
 <span class="inline">    document.getElementById(<span class="string"><span class="delimiter">'</span><span class="content">theme-toggle</span><span class="delimiter">'</span></span>).addEventListener(<span class="string"><span class="delimiter">'</span><span class="content">click</span><span class="delimiter">'</span></span>, <span class="keyword">function</span> () {
         <span class="keyword">var</span> html = document.documentElement;
         html.classList.toggle(<span class="string"><span class="delimiter">'</span><span class="content">dark</span><span class="delimiter">'</span></span>);
         localStorage.setItem(<span class="string"><span class="delimiter">'</span><span class="content">theme</span><span class="delimiter">'</span></span>, html.classList.contains(<span class="string"><span class="delimiter">'</span><span class="content">dark</span><span class="delimiter">'</span></span>) ? <span class="string"><span class="delimiter">'</span><span class="content">dark</span><span class="delimiter">'</span></span> : <span class="string"><span class="delimiter">'</span><span class="content">light</span><span class="delimiter">'</span></span>);
     });</span>
-<span class="tag">&lt;/script&gt;</span></code></pre>
+<span class="tag">&lt;/script&gt;</span>[]</code></pre>
 </div>
 </div>
 <div class="paragraph">
 <p>Notice the icon swap: the sun glyph is hidden in dark mode (<code>dark:hidden</code>), the moon glyph is hidden in light mode (<code>hidden dark:inline</code>). The same <code>dark:</code>/non-<code>dark:</code> pairing pattern works for any element whose appearance depends on theme.</p>
+</div>
+<div class="paragraph">
+<p>Files touched in this chapter:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>src/main/css/input.css</code></p>
+</li>
+<li>
+<p><code>grails-app/views/layouts/main.gsp</code></p>
+</li>
+</ul>
 </div>
 
 

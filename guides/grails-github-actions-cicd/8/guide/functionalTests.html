@@ -103,7 +103,7 @@ function addJsClass() {
 
 
 <div class="paragraph">
-<p>The <code>functional-test</code> job boots the application against a Testcontainers-managed Postgres and drives it with Geb 8 specs. Because it does not declare a <code>services.postgres</code> block, the runner is a plain Ubuntu VM; Testcontainers spins up Postgres on demand from the test JVM via the local Docker socket (which GitHub-hosted runners expose by default).</p>
+<p>The <code>functional-test</code> job boots the application against a Testcontainers-managed Postgres and drives it with Geb 8 specs that extend <code>ContainerGebSpec</code> (from <code>testFixtures("org.apache.grails:grails-geb")</code>). The browser itself runs in a Selenium-Chrome container started by Testcontainers, so the runner never needs Chrome/Firefox installed on the host. Because the job does not declare a <code>services.postgres</code> block, the runner is a plain Ubuntu VM; Testcontainers spins up both Postgres and Selenium on demand from the test JVM via the local Docker socket (which GitHub-hosted runners expose by default).</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -134,7 +134,7 @@ function addJsClass() {
 <p><code>if: always()</code> on the geb-reports upload is intentional: even on a green run you may want the screenshots from <code>build/geb-reports/</code> to confirm the page rendered as expected. On a red run, those screenshots are how you debug "works on my machine" failures - the runner&#8217;s screenshot of the failed page is usually enough to spot the missing element.</p>
 </div>
 <div class="paragraph">
-<p>The <code>geb-with-webdriver-binaries</code> feature you selected at the forge step downloads matching Chrome/Firefox driver binaries on the fly via <code>webdriver-binaries-gradle-plugin</code>, so no <code>apt-get install</code> of the browsers themselves is needed - the plugin handles both the browser and the driver.</p>
+<p>No <code>apt-get install</code> of Chrome/Firefox is needed - the browser process lives inside the Selenium container Testcontainers pulls (<code>selenium/standalone-chrome</code> by default). The first cold run pulls the image (~200 MB) and is slower; subsequent runs reuse the cached layer. The legacy <code>geb-with-webdriver-binaries</code> forge feature is obsolete in Grails 8 and is not used here.</p>
 </div>
 
 

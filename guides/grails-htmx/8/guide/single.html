@@ -163,6 +163,9 @@
 <div class="paragraph">
 <p>This guide targets Apache Grails 8 / HTMX 2.x.</p>
 </div>
+<div class="paragraph">
+<p>Files touched: none.</p>
+</div>
 
 
 <h2 id="whatYouWillBuild">1.1 What You Will Build</h2>
@@ -180,13 +183,13 @@
 <div class="ulist">
 <ul>
 <li>
-<p>A <code>Task</code> domain with <code>title</code> (required) and <code>done</code> (boolean), with sample data seeded by <code>BootStrap</code> so the page is non-empty on first load.</p>
+<p>A <code>Task</code> domain with <code>title</code> (required) and <code>done</code> (boolean).</p>
 </li>
 <li>
-<p>A <code>TaskController</code> with seven actions: <code>index</code> (full page), <code>search</code> (live filter), <code>create</code> (new task), <code>editForm</code> + <code>update</code> (inline edit), <code>toggle</code> (flip the done flag), <code>delete</code>. Every non-<code>index</code> action returns a tiny GSP partial, not a full page.</p>
+<p>A <code>TaskController</code> with eight actions: <code>index</code> (full page), <code>show</code> (single row), <code>search</code> (live filter), <code>create</code> (new task), <code>editForm</code> + <code>update</code> (inline edit), <code>toggle</code> (flip the done flag), and <code>delete</code>. Every non-<code>index</code> action returns a tiny GSP fragment, not a full page.</p>
 </li>
 <li>
-<p>GSP partials at <code>_task.gsp</code>, <code>_taskRows.gsp</code>, and <code>_taskEdit.gsp</code> that the controller renders via <code>&lt;g:render template="&#8230;&#8203;"/&gt;</code>. One partial per logical state.</p>
+<p>GSP partials at <code>_task.gsp</code>, <code>_taskRows.gsp</code>, <code>_taskEdit.gsp</code>, <code>_taskForm.gsp</code>, and <code>_taskCreated.gsp</code>. The create flow returns one response that refreshes the form and prepends the new row with <code>hx-swap-oob</code>.</p>
 </li>
 <li>
 <p>The four core HTMX attributes (<code>hx-get</code>, <code>hx-post</code>, <code>hx-patch</code>, <code>hx-delete</code>) plus the swap targeting attributes (<code>hx-target</code>, <code>hx-swap</code>).</p>
@@ -198,9 +201,15 @@
 <p>Optimistic delete with confirm via <code>hx-confirm</code> and an outerHTML swap that animates the row out.</p>
 </li>
 <li>
-<p>CSRF token forwarding configured globally so HTMX requests carry the right header on every POST/PATCH/DELETE.</p>
+<p>A CSRF section that distinguishes Grails' built-in <code>useToken</code> / <code>withForm</code> duplicate-submit token support from Spring Security&#8217;s <code>_csrf</code> request attribute and shows how to forward the Spring Security header for HTMX requests when that filter is present.</p>
 </li>
 </ul>
+</div>
+<div class="paragraph">
+<p>Files touched: none.</p>
+</div>
+<div class="paragraph">
+<p>Files touched: none.</p>
 </div>
 
 
@@ -226,6 +235,9 @@
 </li>
 </ul>
 </div>
+<div class="paragraph">
+<p>Files touched: none.</p>
+</div>
 
 
 <h2 id="howto">1.3 How to Complete the Guide</h2>
@@ -249,7 +261,10 @@ cd grails-htmx/complete
 </div>
 </div>
 <div class="paragraph">
-<p><code>initial/</code> is a vanilla Grails 8 starter. <code>complete/</code> adds the Task domain, the controller, the GSP partials, and the HTMX script tag.</p>
+<p><code>initial/</code> is a vanilla Grails 8 web starter. <code>complete/</code> adds the Task domain, the controller, the URL mappings, the GSP partials, the <code>htmx.org</code> webjar dependency, and the asset-pipeline manifest entry that serves <code>htmx.min.js</code>.</p>
+</div>
+<div class="paragraph">
+<p>Files touched: none.</p>
 </div>
 
 
@@ -263,18 +278,79 @@ cd grails-htmx/complete
 
 
 <div class="paragraph">
-<p>Generate a fresh Apache Grails 8 web application from <a href="https://prev-snapshot.grails.org">prev-snapshot.grails.org</a>:</p>
+<p>Open <a href="https://start.grails.org">start.grails.org</a>, pick the <code>web</code> profile, name the application <code>htmxtasks</code>, set the package to <code>example</code>, choose JDK 21, and download the generated zip. Unzip it and <code>cd</code> into the <code>htmxtasks</code> directory.</p>
+</div>
+<div class="paragraph">
+<p>The default <code>web</code> starter already gives you the pieces this guide needs from Grails 8 core:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>GSP support via <code>org.apache.grails:grails-gsp</code>, managed by the Grails BOM.</p>
+</li>
+<li>
+<p>Asset Pipeline support via the <code>cloud.wondrify:asset-pipeline-*</code> modules, with version <code>5.0.32</code> coming from the Grails BOM.</p>
+</li>
+<li>
+<p>Bootstrap and Bootstrap Icons webjars, which the starter&#8217;s asset manifests already require.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>HTMX is not part of the Grails 8 BOM or the <code>web</code> profile starter, so add the htmx webjar yourself:</p>
 </div>
 <div class="listingblock">
+<div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="bash">curl -L -o htmx-app.zip \
-  &quot;https://prev-snapshot.grails.org/create/web/example.htmxtasks?lang=GROOVY&amp;build=GRADLE&amp;test=SPOCK&amp;javaVersion=JDK_21&quot;
-unzip htmx-app.zip
-cd htmxtasks</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
+    implementation <span class="string"><span class="delimiter">'</span><span class="content">org.webjars.npm:htmx.org:2.0.4</span><span class="delimiter">'</span></span>
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>The default <code>web</code> starter ships GSP, the asset pipeline, and Bootstrap 5 webjars - all of which we will reuse.</p>
+<p>Then require the htmx asset in the JavaScript manifest:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/assets/javascripts/application.js</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="javascript"><span class="comment">// This is a manifest file that'll be compiled into application.js.</span>
+<span class="comment">//</span>
+<span class="comment">// Any JavaScript file within this directory can be referenced here using a relative path.</span>
+<span class="comment">//</span>
+<span class="comment">// You're free to add application-wide JavaScript to this file, but it's generally better</span>
+<span class="comment">// to create separate JavaScript files as needed.</span>
+<span class="comment">//</span>
+<span class="comment">//= require webjars/jquery/%/dist/jquery.js</span>
+<span class="comment">//= require webjars/bootstrap/%/dist/js/bootstrap.bundle.js</span>
+<span class="comment">//= require webjars/htmx.org/%/dist/htmx.min.js</span>
+<span class="comment">//= require_self</span>
+
+<span class="keyword">if</span> (<span class="keyword">typeof</span> jQuery !== <span class="string"><span class="delimiter">'</span><span class="content">undefined</span><span class="delimiter">'</span></span>) {
+    (<span class="keyword">function</span>(<span class="predefined">$</span>) {
+        <span class="predefined">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">#spinner</span><span class="delimiter">'</span></span>).ajaxStart(<span class="keyword">function</span>() {
+            <span class="predefined">$</span>(<span class="local-variable">this</span>).fadeIn();
+        }).ajaxStop(<span class="keyword">function</span>() {
+            <span class="predefined">$</span>(<span class="local-variable">this</span>).fadeOut();
+        });
+    })(jQuery);
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Using <code>org.webjars.npm:htmx.org:2.0.4</code> keeps the delivery story consistent with the Grails 8 starter: Asset Pipeline serves the file from the webjar, just as it already does for Bootstrap and jQuery.</p>
+</div>
+<div class="paragraph">
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>build.gradle</code></p>
+</li>
+<li>
+<p><code>grails-app/assets/javascripts/application.js</code></p>
+</li>
+</ul>
 </div>
 
 
@@ -300,9 +376,9 @@ cd htmxtasks</code></pre>
 <span class="annotation">@Entity</span>
 <span class="type">class</span> <span class="class">Task</span> {
 
-    <span class="predefined-type">String</span>  title
+    <span class="predefined-type">String</span> title
     <span class="predefined-type">Boolean</span> done = <span class="predefined-constant">false</span>
-    <span class="predefined-type">Date</span>    dateCreated
+    <span class="predefined-type">Date</span> dateCreated
 
     <span class="directive">static</span> constraints = {
         title <span class="key">blank</span>: <span class="predefined-constant">false</span>, <span class="key">maxSize</span>: <span class="integer">255</span>
@@ -316,7 +392,17 @@ cd htmxtasks</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p><code>title blank: false, maxSize: 255</code> is the only constraint that matters for this guide; we will exercise it via the validation feedback path on inline edit. <code>dateCreated</code> is a GORM-managed timestamp. <code>static mapping { sort 'dateCreated'; order 'desc' }</code> makes new tasks appear at the top of the list.</p>
+<p><code>title blank: false, maxSize: 255</code> is the only constraint that matters for this guide; we will exercise it in both the create form and the inline edit form. <code>dateCreated</code> is a GORM-managed timestamp. <code>static mapping { sort 'dateCreated'; order 'desc' }</code> makes new tasks appear at the top of the list without any controller-side sorting code.</p>
+</div>
+<div class="paragraph">
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>grails-app/domain/example/Task.groovy</code></p>
+</li>
+</ul>
 </div>
 
 
@@ -330,7 +416,36 @@ cd htmxtasks</code></pre>
 
 
 <div class="paragraph">
-<p>HTMX is a single ~14 KB script. The starter&#8217;s layout already loads stylesheets and the Grails javascript bundle; add the HTMX script tag in <code>&lt;head&gt;</code>:</p>
+<p>The Grails 8 <code>web</code> starter already serves frontend libraries through Asset Pipeline and webjars. Follow that same pattern for HTMX instead of adding a CDN <code>&lt;script&gt;</code> tag:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/assets/javascripts/application.js</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="javascript"><span class="comment">// This is a manifest file that'll be compiled into application.js.</span>
+<span class="comment">//</span>
+<span class="comment">// Any JavaScript file within this directory can be referenced here using a relative path.</span>
+<span class="comment">//</span>
+<span class="comment">// You're free to add application-wide JavaScript to this file, but it's generally better</span>
+<span class="comment">// to create separate JavaScript files as needed.</span>
+<span class="comment">//</span>
+<span class="comment">//= require webjars/jquery/%/dist/jquery.js</span>
+<span class="comment">//= require webjars/bootstrap/%/dist/js/bootstrap.bundle.js</span>
+<span class="comment">//= require webjars/htmx.org/%/dist/htmx.min.js</span>
+<span class="comment">//= require_self</span>
+
+<span class="keyword">if</span> (<span class="keyword">typeof</span> jQuery !== <span class="string"><span class="delimiter">'</span><span class="content">undefined</span><span class="delimiter">'</span></span>) {
+    (<span class="keyword">function</span>(<span class="predefined">$</span>) {
+        <span class="predefined">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">#spinner</span><span class="delimiter">'</span></span>).ajaxStart(<span class="keyword">function</span>() {
+            <span class="predefined">$</span>(<span class="local-variable">this</span>).fadeIn();
+        }).ajaxStop(<span class="keyword">function</span>() {
+            <span class="predefined">$</span>(<span class="local-variable">this</span>).fadeOut();
+        });
+    })(jQuery);
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The layout then stays simple. It just loads the compiled <code>application.js</code> bundle and, if Spring Security has exposed a <code>_csrf</code> request attribute, it forwards that token for HTMX requests:</p>
 </div>
 <div class="listingblock">
 <div class="title">grails-app/views/layouts/main.gsp</div>
@@ -344,11 +459,20 @@ cd htmxtasks</code></pre>
     <span class="tag">&lt;asset:link</span> <span class="attribute-name">rel</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">icon</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">href</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">favicon.ico</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">image/x-ico</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
     <span class="tag">&lt;asset:stylesheet</span> <span class="attribute-name">src</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application.css</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
 
-    <span class="error">&lt;</span>%-- HTMX 2.x via CDN. For production, vendor the file under
-         grails-app/assets/javascripts/ and load via asset:javascript. --%<span class="error">&gt;</span>
-    <span class="tag">&lt;script</span> <span class="attribute-name">src</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">https://unpkg.com/htmx.org@2.0.4</span><span class="delimiter">&quot;</span></span>
-            <span class="attribute-name">integrity</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+</span><span class="delimiter">&quot;</span></span>
-            <span class="attribute-name">crossorigin</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">anonymous</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span><span class="tag">&lt;/script&gt;</span>
+    <span class="tag">&lt;g:set</span> <span class="attribute-name">var</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">csrfToken</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">value</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${request.getAttribute('_csrf')}</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;g:if</span> <span class="attribute-name">test</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${csrfToken}</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+        <span class="tag">&lt;meta</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">csrf-header</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">content</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${csrfToken.headerName}</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+        <span class="tag">&lt;meta</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">csrf-token</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">content</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${csrfToken.token}</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+        <span class="tag">&lt;script&gt;</span>
+<span class="inline">            document.addEventListener(<span class="string"><span class="delimiter">'</span><span class="content">htmx:configRequest</span><span class="delimiter">'</span></span>, <span class="keyword">function</span>(event) {
+                const header = document.querySelector(<span class="string"><span class="delimiter">'</span><span class="content">meta[name=&quot;csrf-header&quot;]</span><span class="delimiter">'</span></span>)?.content;
+                const token = document.querySelector(<span class="string"><span class="delimiter">'</span><span class="content">meta[name=&quot;csrf-token&quot;]</span><span class="delimiter">'</span></span>)?.content;
+                <span class="keyword">if</span> (header &amp;&amp; token) {
+                    event.detail.headers[header] = token;
+                }
+            });</span>
+        <span class="tag">&lt;/script&gt;</span>
+    <span class="tag">&lt;/g:if&gt;</span>
 
     <span class="tag">&lt;g:layoutHead</span><span class="tag">/&gt;</span>
 <span class="tag">&lt;/head&gt;</span>
@@ -370,10 +494,23 @@ cd htmxtasks</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>The <code>integrity=</code> attribute uses a Subresource Integrity hash that the browser verifies before executing - protecting you against a CDN compromise. Keep it in sync with the version in the <code>src</code> URL.</p>
+<p>There is no official htmx dependency in the Grails 8 BOM or the <code>web</code> profile itself, but <code>org.webjars.npm:htmx.org:2.0.4</code> works cleanly with the same <code>//= require webjars/&#8230;&#8203;</code> convention the starter already uses for Bootstrap and jQuery.</p>
 </div>
 <div class="paragraph">
-<p>For production, vendor the file under <code>grails-app/assets/javascripts/htmx.min.js</code> and load via <code>&lt;asset:javascript src="htmx.min.js"/&gt;</code> so deployments do not depend on the CDN.</p>
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>build.gradle</code></p>
+</li>
+<li>
+<p><code>grails-app/assets/javascripts/application.js</code></p>
+</li>
+<li>
+<p><code>grails-app/views/layouts/main.gsp</code></p>
+</li>
+</ul>
 </div>
 
 
@@ -398,24 +535,38 @@ cd htmxtasks</code></pre>
 
     <span class="directive">static</span> mappings = {
 
-        <span class="string"><span class="delimiter">'</span><span class="content">/tasks</span><span class="delimiter">'</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">task</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">index</span><span class="delimiter">'</span></span>)
-        <span class="string"><span class="delimiter">'</span><span class="content">/tasks/search</span><span class="delimiter">'</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">task</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">search</span><span class="delimiter">'</span></span>)
-        <span class="string"><span class="delimiter">'</span><span class="content">/tasks</span><span class="delimiter">'</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">task</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">create</span><span class="delimiter">'</span></span>, <span class="key">method</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>)
-        <span class="string"><span class="delimiter">'</span><span class="content">/tasks/$id/edit</span><span class="delimiter">'</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">task</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">editForm</span><span class="delimiter">'</span></span>)
-        <span class="string"><span class="delimiter">'</span><span class="content">/tasks/$id</span><span class="delimiter">'</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">task</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">update</span><span class="delimiter">'</span></span>, <span class="key">method</span>: <span class="string"><span class="delimiter">'</span><span class="content">PATCH</span><span class="delimiter">'</span></span>)
-        <span class="string"><span class="delimiter">'</span><span class="content">/tasks/$id</span><span class="delimiter">'</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">task</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">delete</span><span class="delimiter">'</span></span>, <span class="key">method</span>: <span class="string"><span class="delimiter">'</span><span class="content">DELETE</span><span class="delimiter">'</span></span>)
-        <span class="string"><span class="delimiter">'</span><span class="content">/tasks/$id/toggle</span><span class="delimiter">'</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">task</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">toggle</span><span class="delimiter">'</span></span>, <span class="key">method</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/tasks</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">task</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">index</span><span class="delimiter">'</span></span>, <span class="key">method</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/tasks</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">task</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">create</span><span class="delimiter">'</span></span>, <span class="key">method</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/tasks/search</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">task</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">search</span><span class="delimiter">'</span></span>, <span class="key">method</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/tasks/</span><span class="inline"><span class="inline-delimiter">$</span>id</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">task</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">show</span><span class="delimiter">'</span></span>, <span class="key">method</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/tasks/</span><span class="inline"><span class="inline-delimiter">$</span>id</span><span class="content">/edit</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">task</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">editForm</span><span class="delimiter">'</span></span>, <span class="key">method</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/tasks/</span><span class="inline"><span class="inline-delimiter">$</span>id</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">task</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">update</span><span class="delimiter">'</span></span>, <span class="key">method</span>: <span class="string"><span class="delimiter">'</span><span class="content">PATCH</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/tasks/</span><span class="inline"><span class="inline-delimiter">$</span>id</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">task</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">delete</span><span class="delimiter">'</span></span>, <span class="key">method</span>: <span class="string"><span class="delimiter">'</span><span class="content">DELETE</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/tasks/</span><span class="inline"><span class="inline-delimiter">$</span>id</span><span class="content">/toggle</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">task</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">toggle</span><span class="delimiter">'</span></span>, <span class="key">method</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>)
 
-        <span class="string"><span class="delimiter">'</span><span class="content">/</span><span class="delimiter">'</span></span>(<span class="key">redirect</span>: <span class="string"><span class="delimiter">'</span><span class="content">/tasks</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/</span><span class="delimiter">&quot;</span></span>(<span class="key">redirect</span>: <span class="string"><span class="delimiter">'</span><span class="content">/tasks</span><span class="delimiter">'</span></span>)
 
-        <span class="string"><span class="delimiter">'</span><span class="content">500</span><span class="delimiter">'</span></span>(<span class="key">view</span>: <span class="string"><span class="delimiter">'</span><span class="content">/error</span><span class="delimiter">'</span></span>)
-        <span class="string"><span class="delimiter">'</span><span class="content">404</span><span class="delimiter">'</span></span>(<span class="key">view</span>: <span class="string"><span class="delimiter">'</span><span class="content">/notFound</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">500</span><span class="delimiter">&quot;</span></span>(<span class="key">view</span>: <span class="string"><span class="delimiter">'</span><span class="content">/error</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">404</span><span class="delimiter">&quot;</span></span>(<span class="key">view</span>: <span class="string"><span class="delimiter">'</span><span class="content">/notFound</span><span class="delimiter">'</span></span>)
     }
 }</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>The repetition (<code>/tasks</code> for both index and create, distinguished by method) is intentional: HTMX requests carry their semantics in the HTTP method, exactly as REST does. Using <code>'/tasks'(resources: 'task')</code> would also work, but the explicit-route form makes the surface easier to read for an author who has never seen Grails' resource-mapping shorthand.</p>
+<p>The repetition (<code>/tasks</code> for both index and create, distinguished by method) is intentional: HTMX requests carry their semantics in the HTTP method, exactly as REST does. Using <code>"/tasks"(resources: 'task')</code> would also work, but the explicit-route form makes the surface easier to read for an author who has never seen Grails' resource-mapping shorthand.</p>
+</div>
+<div class="paragraph">
+<p>This is also close to the Grails 8 <code>web</code> profile skeleton, which still shows explicit <code>"/$controller/$action?/$id?(.$format)?"</code> mappings in <code>UrlMappings.groovy</code>.</p>
+</div>
+<div class="paragraph">
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>grails-app/controllers/example/UrlMappings.groovy</code></p>
+</li>
+</ul>
 </div>
 
 
@@ -429,7 +580,7 @@ cd htmxtasks</code></pre>
 
 
 <div class="paragraph">
-<p><code>TaskController</code> has seven actions, but only <code>index</code> returns a full page. Every other action returns a single GSP partial via <code>render template: '&#8230;&#8203;'</code>:</p>
+<p><code>TaskController</code> keeps the full-page render and the fragment renders separate. <code>index</code> uses <code>render view:</code> for the initial page; every HTMX endpoint returns a fragment with <code>render template:</code>:</p>
 </div>
 <div class="listingblock">
 <div class="title">grails-app/controllers/example/TaskController.groovy</div>
@@ -446,67 +597,83 @@ cd htmxtasks</code></pre>
             <span class="key">create</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>, <span class="key">update</span>: <span class="string"><span class="delimiter">'</span><span class="content">PATCH</span><span class="delimiter">'</span></span>, <span class="key">delete</span>: <span class="string"><span class="delimiter">'</span><span class="content">DELETE</span><span class="delimiter">'</span></span>, <span class="key">toggle</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>
     ]
 
-    <span class="comment">/** Full page (index.gsp). */</span>
     <span class="keyword">def</span> <span class="function">index</span>() {
-        respond Task.list(params), <span class="key">model</span>: [<span class="key">tasks</span>: Task.list(params), <span class="key">q</span>: <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>]
+        <span class="predefined-type">List</span>&lt;Task&gt; tasks = Task.list(params)
+        render <span class="key">view</span>: <span class="string"><span class="delimiter">'</span><span class="content">index</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">tasks</span>: tasks, <span class="key">task</span>: <span class="keyword">new</span> Task(), <span class="key">q</span>: <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>]
     }
 
-    <span class="comment">/** Live-search endpoint - returns just the rows partial. */</span>
+    <span class="keyword">def</span> <span class="function">show</span>(<span class="predefined-type">Long</span> id) {
+        Task task = Task.get(id)
+        <span class="keyword">if</span> (!task) {
+            response.status = HttpStatus.NOT_FOUND.value()
+            <span class="keyword">return</span>
+        }
+        render <span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">task</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">task</span>: task]
+    }
+
     <span class="keyword">def</span> <span class="function">search</span>() {
-        <span class="predefined-type">String</span> q = (params.q ?: <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>) <span class="keyword">as</span> <span class="predefined-type">String</span>
+        <span class="predefined-type">String</span> q = (params.q ?: <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>).trim()
         <span class="predefined-type">List</span>&lt;Task&gt; rows = q ? Task.findAllByTitleIlike(<span class="string"><span class="delimiter">&quot;</span><span class="content">%</span><span class="inline"><span class="inline-delimiter">${</span>q<span class="inline-delimiter">}</span></span><span class="content">%</span><span class="delimiter">&quot;</span></span>) : Task.list()
         render <span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">taskRows</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">tasks</span>: rows]
     }
 
-    <span class="comment">/** Add a new task - returns the new row prepended to the list. */</span>
     <span class="annotation">@Transactional</span>
     <span class="keyword">def</span> <span class="function">create</span>() {
-        Task t = <span class="keyword">new</span> Task(<span class="key">title</span>: params.title)
-        <span class="keyword">if</span> (!t.save()) {
+        Task task = <span class="keyword">new</span> Task(<span class="key">title</span>: params.title)
+        <span class="keyword">if</span> (!task.validate()) {
             response.status = HttpStatus.UNPROCESSABLE_ENTITY.value()
-            render <span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">taskForm</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">task</span>: t]
+            render <span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">taskForm</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">task</span>: task]
             <span class="keyword">return</span>
         }
-        render <span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">task</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">task</span>: t]
+        task.save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        render <span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">taskCreated</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">task</span>: task, <span class="key">formTask</span>: <span class="keyword">new</span> Task()]
     }
 
-    <span class="comment">/** Inline-edit endpoint - returns the edit form for a single row. */</span>
     <span class="keyword">def</span> <span class="function">editForm</span>(<span class="predefined-type">Long</span> id) {
-        Task t = Task.get(id)
-        <span class="keyword">if</span> (!t) { response.status = <span class="integer">404</span>; <span class="keyword">return</span> }
-        render <span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">taskEdit</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">task</span>: t]
+        Task task = Task.get(id)
+        <span class="keyword">if</span> (!task) {
+            response.status = HttpStatus.NOT_FOUND.value()
+            <span class="keyword">return</span>
+        }
+        render <span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">taskEdit</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">task</span>: task]
     }
 
-    <span class="comment">/** Apply an inline edit - returns the read-only row partial. */</span>
     <span class="annotation">@Transactional</span>
     <span class="keyword">def</span> <span class="function">update</span>(<span class="predefined-type">Long</span> id) {
-        Task t = Task.get(id)
-        <span class="keyword">if</span> (!t) { response.status = <span class="integer">404</span>; <span class="keyword">return</span> }
-        t.properties = params
-        <span class="keyword">if</span> (!t.save()) {
-            response.status = HttpStatus.UNPROCESSABLE_ENTITY.value()
-            render <span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">taskEdit</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">task</span>: t]
+        Task task = Task.get(id)
+        <span class="keyword">if</span> (!task) {
+            response.status = HttpStatus.NOT_FOUND.value()
             <span class="keyword">return</span>
         }
-        render <span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">task</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">task</span>: t]
+        task.title = params.title
+        <span class="keyword">if</span> (!task.save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)) {
+            response.status = HttpStatus.UNPROCESSABLE_ENTITY.value()
+            render <span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">taskEdit</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">task</span>: task]
+            <span class="keyword">return</span>
+        }
+        render <span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">task</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">task</span>: task]
     }
 
-    <span class="comment">/** Toggle the `done` flag - returns the row partial. */</span>
     <span class="annotation">@Transactional</span>
     <span class="keyword">def</span> <span class="function">toggle</span>(<span class="predefined-type">Long</span> id) {
-        Task t = Task.get(id)
-        <span class="keyword">if</span> (!t) { response.status = <span class="integer">404</span>; <span class="keyword">return</span> }
-        t.done = !t.done
-        t.save()
-        render <span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">task</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">task</span>: t]
+        Task task = Task.get(id)
+        <span class="keyword">if</span> (!task) {
+            response.status = HttpStatus.NOT_FOUND.value()
+            <span class="keyword">return</span>
+        }
+        task.done = !task.done
+        task.save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        render <span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">task</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">task</span>: task]
     }
 
-    <span class="comment">/** Delete - HTMX swaps the row out via hx-target=&quot;closest tr&quot; hx-swap=&quot;outerHTML&quot;. */</span>
     <span class="annotation">@Transactional</span>
     <span class="keyword">def</span> <span class="function">delete</span>(<span class="predefined-type">Long</span> id) {
-        Task t = Task.get(id)
-        <span class="keyword">if</span> (!t) { response.status = <span class="integer">404</span>; <span class="keyword">return</span> }
-        t.delete()
+        Task task = Task.get(id)
+        <span class="keyword">if</span> (!task) {
+            response.status = HttpStatus.NOT_FOUND.value()
+            <span class="keyword">return</span>
+        }
+        task.delete(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
         render <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>
     }
 }</code></pre>
@@ -524,10 +691,29 @@ cd htmxtasks</code></pre>
 <p>The <code>@Transactional(readOnly = true)</code> class annotation flips read-only mode on for the whole controller; individual mutating actions override with their own <code>@Transactional</code>.</p>
 </li>
 <li>
-<p>On a validation failure (<code>!t.save()</code>), the controller returns a 422 with the error fragment. HTMX swaps that fragment into the page, the user sees the error inline, and the form remains in the DOM ready for another attempt.</p>
+<p><code>show(Long id)</code> returns the read-only row fragment. That gives the Cancel button in the edit form a clean endpoint to reload.</p>
 </li>
 <li>
-<p><code>delete</code> returns an empty body. Combined with <code>hx-swap="outerHTML"</code> on the delete button, this removes the row from the DOM.</p>
+<p>On a validation failure the controller returns <code>422 Unprocessable Entity</code> with the same fragment the browser was already showing. HTMX swaps that fragment in place, so the user keeps context and sees the errors inline.</p>
+</li>
+<li>
+<p><code>create()</code> renders <code>_taskCreated.gsp</code>, which combines a fresh form plus an out-of-band prepend of the new row. This avoids hand-written client-side reset logic.</p>
+</li>
+<li>
+<p><code>delete()</code> returns an empty body. Combined with <code>hx-target="closest li"</code> and <code>hx-swap="outerHTML"</code>, that removes the row from the DOM.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>grails-app/controllers/example/TaskController.groovy</code></p>
+</li>
+<li>
+<p><code>grails-app/views/task/_taskCreated.gsp</code></p>
 </li>
 </ul>
 </div>
@@ -559,28 +745,19 @@ cd htmxtasks</code></pre>
 <span class="tag">&lt;main</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">container-lg py-4</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
     <span class="tag">&lt;h1</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">h3 mb-3</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>Tasks<span class="tag">&lt;/h1&gt;</span>
 
-    <span class="error">&lt;</span>%-- Add a task --%<span class="error">&gt;</span>
-    <span class="tag">&lt;form</span> <span class="attribute-name">id</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">taskForm</span><span class="delimiter">&quot;</span></span>
-          <span class="attribute-name">hx-post</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${createLink(controller: 'task', action: 'create')}</span><span class="delimiter">&quot;</span></span>
-          <span class="attribute-name">hx-target</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">#taskList</span><span class="delimiter">&quot;</span></span>
-          <span class="attribute-name">hx-swap</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">afterbegin</span><span class="delimiter">&quot;</span></span>
-          <span class="attribute-name">hx-on::after-request</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">this.reset()</span><span class="delimiter">&quot;</span></span>
-          <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">d-flex gap-2 mb-3</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-        <span class="tag">&lt;input</span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">text</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">title</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">placeholder</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">What needs doing?</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">required</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">form-control</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-        <span class="tag">&lt;button</span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">submit</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">btn btn-primary</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>Add<span class="tag">&lt;/button&gt;</span>
-    <span class="tag">&lt;/form&gt;</span>
+    <span class="tag">&lt;g:render</span> <span class="attribute-name">template</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">taskForm</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">model</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">[task: task]</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
 
     <span class="error">&lt;</span>%-- Live search --%<span class="error">&gt;</span>
     <span class="tag">&lt;input</span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">text</span><span class="delimiter">&quot;</span></span>
-           <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">q</span><span class="delimiter">&quot;</span></span>
+            <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">q</span><span class="delimiter">&quot;</span></span>
+           <span class="attribute-name">value</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${q}</span><span class="delimiter">&quot;</span></span>
            <span class="attribute-name">placeholder</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">Search tasks...</span><span class="delimiter">&quot;</span></span>
            <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">form-control mb-3</span><span class="delimiter">&quot;</span></span>
            <span class="attribute-name">hx-get</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${createLink(controller: 'task', action: 'search')}</span><span class="delimiter">&quot;</span></span>
-           <span class="attribute-name">hx-trigger</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">keyup changed delay:300ms</span><span class="delimiter">&quot;</span></span>
-           <span class="attribute-name">hx-target</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">#taskList</span><span class="delimiter">&quot;</span></span>
-           <span class="attribute-name">hx-swap</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">innerHTML</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+            <span class="attribute-name">hx-trigger</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">keyup changed delay:300ms</span><span class="delimiter">&quot;</span></span>
+            <span class="attribute-name">hx-target</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">#taskList</span><span class="delimiter">&quot;</span></span>
+            <span class="attribute-name">hx-swap</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">innerHTML</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
 
-    <span class="error">&lt;</span>%-- The list. HTMX swaps individual rows in/out of this <span class="tag">&lt;ul&gt;</span>. --%<span class="error">&gt;</span>
     <span class="tag">&lt;ul</span> <span class="attribute-name">id</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">taskList</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">list-group</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
         <span class="tag">&lt;g:render</span> <span class="attribute-name">template</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">taskRows</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">model</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">[tasks: tasks]</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
     <span class="tag">&lt;/ul&gt;</span>
@@ -596,7 +773,7 @@ cd htmxtasks</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p>The <strong>add-task form</strong> posts to <code>/tasks</code> (<code>hx-post</code>) and prepends the response to <code>#taskList</code> (<code>hx-target="#taskList"</code>, <code>hx-swap="afterbegin"</code>). The <code>hx-on::after-request="this.reset()"</code> clears the input after a successful submission.</p>
+<p>The <strong>add-task form</strong> comes from <code>_taskForm.gsp</code>, not raw inline markup in <code>index.gsp</code>. Wrapping it in a partial lets the controller return the same fragment on validation failure and a fresh fragment after success.</p>
 </li>
 <li>
 <p>The <strong>live-search input</strong> fires a <code>GET /tasks/search?q=&#8230;&#8203;</code> whenever the user pauses typing for 300 ms (<code>hx-trigger="keyup changed delay:300ms"</code>). The response replaces the contents of <code>#taskList</code>.</p>
@@ -608,6 +785,19 @@ cd htmxtasks</code></pre>
 </div>
 <div class="paragraph">
 <p>This is the canonical HTMX recipe: render once on the server, then let small fragments shuttle in and out of well-defined slots in the DOM.</p>
+</div>
+<div class="paragraph">
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>grails-app/views/task/index.gsp</code></p>
+</li>
+<li>
+<p><code>grails-app/views/task/_taskForm.gsp</code></p>
+</li>
+</ul>
 </div>
 
 
@@ -644,31 +834,31 @@ cd htmxtasks</code></pre>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="html"><span class="tag">&lt;li</span> <span class="attribute-name">id</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">task-${task.id}</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">list-group-item d-flex align-items-center gap-3${task.done ? ' text-decoration-line-through text-body-secondary' : ''}</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
 
-    <span class="error">&lt;</span>%-- Toggle the done flag with a single round trip --%<span class="error">&gt;</span>
     <span class="tag">&lt;button</span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">button</span><span class="delimiter">&quot;</span></span>
             <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">btn btn-sm ${task.done ? 'btn-success' : 'btn-outline-secondary'}</span><span class="delimiter">&quot;</span></span>
             <span class="attribute-name">hx-post</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${createLink(controller: 'task', action: 'toggle', id: task.id)}</span><span class="delimiter">&quot;</span></span>
             <span class="attribute-name">hx-target</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">closest li</span><span class="delimiter">&quot;</span></span>
             <span class="attribute-name">hx-swap</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">outerHTML</span><span class="delimiter">&quot;</span></span>
+            <span class="attribute-name">aria-pressed</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${task.done}</span><span class="delimiter">&quot;</span></span>
             <span class="attribute-name">aria-label</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">Toggle done</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
         ${task.done ? '\u2713' : '\u00b7'}
     <span class="tag">&lt;/button&gt;</span>
 
-    <span class="tag">&lt;span</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">flex-grow-1</span><span class="delimiter">&quot;</span></span>
-          <span class="attribute-name">hx-get</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${createLink(controller: 'task', action: 'editForm', id: task.id)}</span><span class="delimiter">&quot;</span></span>
-          <span class="attribute-name">hx-target</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">closest li</span><span class="delimiter">&quot;</span></span>
-          <span class="attribute-name">hx-swap</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">outerHTML</span><span class="delimiter">&quot;</span></span>
-          <span class="attribute-name">role</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">button</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">tabindex</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">0</span><span class="delimiter">&quot;</span></span>
-          <span class="attribute-name">title</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">Click to edit</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;button</span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">button</span><span class="delimiter">&quot;</span></span>
+            <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">btn btn-link p-0 text-start text-decoration-none flex-grow-1 ${task.done ? 'text-body-secondary' : 'text-body'}</span><span class="delimiter">&quot;</span></span>
+            <span class="attribute-name">hx-get</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${createLink(controller: 'task', action: 'editForm', id: task.id)}</span><span class="delimiter">&quot;</span></span>
+            <span class="attribute-name">hx-target</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">closest li</span><span class="delimiter">&quot;</span></span>
+            <span class="attribute-name">hx-swap</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">outerHTML</span><span class="delimiter">&quot;</span></span>
+            <span class="attribute-name">title</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">Click to edit</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
         <span class="tag">&lt;g:fieldValue</span> <span class="attribute-name">bean</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${task}</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">field</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">title</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-    <span class="tag">&lt;/span&gt;</span>
+    <span class="tag">&lt;/button&gt;</span>
 
     <span class="tag">&lt;button</span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">button</span><span class="delimiter">&quot;</span></span>
             <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">btn btn-sm btn-outline-danger</span><span class="delimiter">&quot;</span></span>
             <span class="attribute-name">hx-delete</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${createLink(controller: 'task', action: 'delete', id: task.id)}</span><span class="delimiter">&quot;</span></span>
             <span class="attribute-name">hx-target</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">closest li</span><span class="delimiter">&quot;</span></span>
             <span class="attribute-name">hx-swap</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">outerHTML swap:200ms</span><span class="delimiter">&quot;</span></span>
-            <span class="attribute-name">hx-confirm</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">Delete '${task.title.encodeAsHTML()}'?</span><span class="delimiter">&quot;</span></span>
+            <span class="attribute-name">hx-confirm</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">Delete this task?</span><span class="delimiter">&quot;</span></span>
             <span class="attribute-name">aria-label</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">Delete</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
         \u2715
     <span class="tag">&lt;/button&gt;</span>
@@ -684,10 +874,10 @@ cd htmxtasks</code></pre>
 <p>The toggle-done button uses <code>hx-target="closest li"</code> <code>hx-swap="outerHTML"</code>. After the POST, the new HTML replaces <strong>this entire row</strong> in place. The <code>closest</code> modifier walks up the DOM until it finds an <code>&lt;li&gt;</code>.</p>
 </li>
 <li>
-<p>Clicking the title fires a <code>hx-get</code> for the edit form. Same swap target. The result is the inline edit form, replacing the read-only row.</p>
+<p>Clicking the title button fires a <code>hx-get</code> for the edit form. Same swap target. The result is the inline edit form, replacing the read-only row.</p>
 </li>
 <li>
-<p>The delete button uses <code>hx-confirm</code> for an in-browser confirm dialog, <code>hx-swap="outerHTML swap:200ms"</code> for a 200 ms fade-out animation, and a DELETE that returns an empty body.</p>
+<p>The delete button uses <code>hx-confirm</code> for an in-browser confirm dialog, <code>hx-swap="outerHTML swap:200ms"</code> for a 200 ms delayed swap, and a DELETE that returns an empty body.</p>
 </li>
 </ul>
 </div>
@@ -697,16 +887,27 @@ cd htmxtasks</code></pre>
 <div class="listingblock">
 <div class="title">grails-app/views/task/_taskRows.gsp</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="html"><span class="tag">&lt;g:each</span> <span class="attribute-name">in</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${tasks}</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">var</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">task</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-    <span class="tag">&lt;g:render</span> <span class="attribute-name">template</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">task</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">model</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">[task: task]</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-<span class="tag">&lt;/g:each&gt;</span>
+<pre class="CodeRay highlight"><code data-lang="html"><span class="tag">&lt;g:render</span> <span class="attribute-name">template</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">task</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">collection</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${tasks}</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">var</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">task</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
 <span class="tag">&lt;g:if</span> <span class="attribute-name">test</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${!tasks}</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
     <span class="tag">&lt;li</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">list-group-item text-body-secondary</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>No tasks yet. Add one above.<span class="tag">&lt;/li&gt;</span>
 <span class="tag">&lt;/g:if&gt;</span></code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>It iterates <code>_task.gsp</code> and falls back to a placeholder when the list is empty.</p>
+<p>It uses <code>&lt;g:render template="task" collection="${tasks}" var="task"/&gt;</code>, which is the idiomatic Grails way to render one template per element, and falls back to a placeholder when the list is empty.</p>
+</div>
+<div class="paragraph">
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>grails-app/views/task/_task.gsp</code></p>
+</li>
+<li>
+<p><code>grails-app/views/task/_taskRows.gsp</code></p>
+</li>
+</ul>
 </div>
 
 
@@ -726,25 +927,28 @@ cd htmxtasks</code></pre>
 <div class="title">grails-app/views/task/_taskEdit.gsp</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="html"><span class="tag">&lt;li</span> <span class="attribute-name">id</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">task-${task.id}</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">list-group-item</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-    <span class="tag">&lt;form</span> <span class="attribute-name">hx-patch</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${createLink(controller: 'task', action: 'update', id: task.id)}</span><span class="delimiter">&quot;</span></span>
-          <span class="attribute-name">hx-target</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">closest li</span><span class="delimiter">&quot;</span></span>
-          <span class="attribute-name">hx-swap</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">outerHTML</span><span class="delimiter">&quot;</span></span>
-          <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">d-flex gap-2</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-        <span class="tag">&lt;input</span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">text</span><span class="delimiter">&quot;</span></span>
-               <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">title</span><span class="delimiter">&quot;</span></span>
-               <span class="attribute-name">value</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${task.title.encodeAsHTML()}</span><span class="delimiter">&quot;</span></span>
-               <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">form-control</span><span class="delimiter">&quot;</span></span>
-               <span class="attribute-name">autofocus</span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;g:form</span> <span class="attribute-name">controller</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">task</span><span class="delimiter">&quot;</span></span>
+            <span class="attribute-name">action</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">update</span><span class="delimiter">&quot;</span></span>
+            <span class="attribute-name">id</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${task.id}</span><span class="delimiter">&quot;</span></span>
+            <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">d-flex gap-2</span><span class="delimiter">&quot;</span></span>
+            <span class="attribute-name">hx-patch</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${createLink(controller: 'task', action: 'update', id: task.id)}</span><span class="delimiter">&quot;</span></span>
+            <span class="attribute-name">hx-target</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">closest li</span><span class="delimiter">&quot;</span></span>
+            <span class="attribute-name">hx-swap</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">outerHTML</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+        <span class="tag">&lt;g:textField</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">title</span><span class="delimiter">&quot;</span></span>
+                     <span class="attribute-name">value</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${task.title}</span><span class="delimiter">&quot;</span></span>
+                     <span class="attribute-name">maxlength</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">255</span><span class="delimiter">&quot;</span></span>
+                     <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">form-control</span><span class="delimiter">&quot;</span></span>
+                     <span class="attribute-name">autofocus</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">autofocus</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
         <span class="tag">&lt;button</span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">submit</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">btn btn-primary btn-sm</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>Save<span class="tag">&lt;/button&gt;</span>
         <span class="tag">&lt;button</span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">button</span><span class="delimiter">&quot;</span></span>
                 <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">btn btn-outline-secondary btn-sm</span><span class="delimiter">&quot;</span></span>
                 <span class="attribute-name">hx-get</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${createLink(controller: 'task', action: 'show', id: task.id)}</span><span class="delimiter">&quot;</span></span>
                 <span class="attribute-name">hx-target</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">closest li</span><span class="delimiter">&quot;</span></span>
                 <span class="attribute-name">hx-swap</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">outerHTML</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>Cancel<span class="tag">&lt;/button&gt;</span>
-    <span class="tag">&lt;/form&gt;</span>
+    <span class="tag">&lt;/g:form&gt;</span>
     <span class="tag">&lt;g:if</span> <span class="attribute-name">test</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${task.errors?.hasErrors()}</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
         <span class="tag">&lt;ul</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">text-danger small mt-2 mb-0</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-            <span class="tag">&lt;g:eachError</span> <span class="attribute-name">bean</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${task}</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span><span class="tag">&lt;li&gt;</span>${message(error: it).encodeAsHTML()}<span class="tag">&lt;/li&gt;</span><span class="tag">&lt;/g:eachError&gt;</span>
+            <span class="tag">&lt;g:eachError</span> <span class="attribute-name">bean</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${task}</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">field</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">title</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span><span class="tag">&lt;li&gt;</span>${message(error: it).encodeAsHTML()}<span class="tag">&lt;/li&gt;</span><span class="tag">&lt;/g:eachError&gt;</span>
         <span class="tag">&lt;/ul&gt;</span>
     <span class="tag">&lt;/g:if&gt;</span>
 <span class="tag">&lt;/li&gt;</span></code></pre>
@@ -756,13 +960,29 @@ cd htmxtasks</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p>The form&#8217;s <code>hx-patch</code> posts to <code>/tasks/{id}</code> with the PATCH method. The response is either the read-only <code>_task.gsp</code> (success) or the same edit form with the validation errors rendered (failure).</p>
+<p>The form&#8217;s <code>hx-patch</code> posts to <code>/tasks/{id}</code> with the PATCH method. The response is either the read-only <code>_task.gsp</code> on success or the same edit form with validation errors on failure.</p>
 </li>
 <li>
-<p><code>&lt;g:eachError bean="${task}"&gt;</code> renders the field errors inline. Because Grails populates <code>task.errors</code> when <code>save()</code> fails, the same partial template handles both success and failure. The HTTP status (200 vs 422) is what tells HTMX which one - both swap into the same slot.</p>
+<p>Wrapping the markup in <code>&lt;g:form&gt;</code> keeps the snippet idiomatic Grails. If Spring Security CSRF is active, <code>FormTagLib</code> will automatically add its hidden field to this form.</p>
 </li>
 <li>
-<p>The Cancel button does a <code>hx-get</code> for <code>/tasks/{id}</code> (which returns the read-only row partial) so cancelling does not require any new wiring.</p>
+<p><code>&lt;g:eachError bean="${task}" field="title"&gt;</code> renders only the field errors we care about. Because Grails populates <code>task.errors</code> when <code>save()</code> fails, the same partial template handles both failure and re-render.</p>
+</li>
+<li>
+<p>The Cancel button does a <code>hx-get</code> for <code>/tasks/{id}</code> so cancelling reloads the canonical read-only row fragment instead of trying to rebuild it in JavaScript.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>grails-app/views/task/_taskEdit.gsp</code></p>
+</li>
+<li>
+<p><code>grails-app/controllers/example/TaskController.groovy</code></p>
 </li>
 </ul>
 </div>
@@ -820,7 +1040,20 @@ cd htmxtasks</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p><code>findAllByTitleIlike</code> is GORM&#8217;s case-insensitive LIKE; it forwards to a parameterised SQL query, so no SQL injection concerns. The <code>_taskRows.gsp</code> partial handles both the populated and empty states.</p>
+<p><code>findAllByTitleIlike</code> is GORM&#8217;s case-insensitive LIKE. The <code>_taskRows.gsp</code> partial handles both the populated and empty states, so the controller action stays tiny.</p>
+</div>
+<div class="paragraph">
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>grails-app/controllers/example/TaskController.groovy</code></p>
+</li>
+<li>
+<p><code>grails-app/views/task/_taskRows.gsp</code></p>
+</li>
+</ul>
 </div>
 
 
@@ -834,26 +1067,88 @@ cd htmxtasks</code></pre>
 
 
 <div class="paragraph">
-<p>Grails' <code>&lt;g:form&gt;</code> tag automatically inserts a <code>SYNCHRONIZER_TOKEN</code> parameter when the controller declares <code>static withForm = &#8230;&#8203;</code>. HTMX requests do not go through <code>&lt;g:form&gt;</code>, so the token has to be wired in differently.</p>
+<p>There are two different token stories to keep straight in Grails 8.</p>
 </div>
 <div class="paragraph">
-<p>The HTMX configuration block in <code>main.gsp</code> reads the token from a <code>&lt;meta&gt;</code> tag and forwards it as a custom header on every request:</p>
+<p>First, Grails core has the long-standing <code>useToken</code> / <code>withForm</code> mechanism. It is implemented by <code>FormTagLib</code>, <code>Controller.withForm</code>, and <code>SynchronizerTokensHolder</code>, and it is primarily a duplicate-submit token flow:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="html"><span class="tag">&lt;meta</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">csrf-token</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">content</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${useToken().token}</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-<span class="tag">&lt;script&gt;</span>
-<span class="inline">    document.body.addEventListener(<span class="string"><span class="delimiter">'</span><span class="content">htmx:configRequest</span><span class="delimiter">'</span></span>, <span class="keyword">function</span>(evt) {
-        <span class="keyword">var</span> meta = document.querySelector(<span class="string"><span class="delimiter">'</span><span class="content">meta[name=&quot;csrf-token&quot;]</span><span class="delimiter">'</span></span>);
-        <span class="keyword">if</span> (meta) {
-            evt.detail.headers[<span class="string"><span class="delimiter">'</span><span class="content">X-Grails-Csrf-Token</span><span class="delimiter">'</span></span>] = meta.content;
-        }
-    });</span>
-<span class="tag">&lt;/script&gt;</span></code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">&lt;<span class="key">g</span>:form useToken=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span> ...&gt;
+    ...
+&lt;<span class="regexp"><span class="delimiter">/</span><span class="content">g:form&gt;</span></span><span class="error">
+</span>
+withForm {
+    <span class="comment">// valid token</span>
+}.invalidToken {
+    <span class="comment">// invalid or replayed token</span>
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>A matching <code>before</code> interceptor checks the header on every state-changing request and rejects mismatches with a 403. For a sample app the token check is overkill; for a real back-office the few lines of plumbing buy you the same protection <code>&lt;g:form&gt;</code> provides for traditional forms.</p>
+<p>That mechanism works well for normal Grails forms. It is not, by itself, a built-in HTMX-wide CSRF filter for button-driven <code>hx-post</code>, <code>hx-patch</code>, or <code>hx-delete</code> requests.</p>
+</div>
+<div class="paragraph">
+<p>Second, if Spring Security&#8217;s CSRF filter is on the classpath and active, Grails exposes the <code>_csrf</code> request attribute and <code>FormTagLib</code> automatically writes the hidden field into <code>&lt;g:form&gt;</code>. For HTMX requests triggered from links and buttons, forward that header globally:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/views/layouts/main.gsp</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="html"><span class="doctype">&lt;!doctype html&gt;</span>
+<span class="tag">&lt;html</span> <span class="attribute-name">lang</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">en</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+<span class="tag">&lt;head&gt;</span>
+    <span class="tag">&lt;meta</span> <span class="attribute-name">charset</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">utf-8</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;meta</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">viewport</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">content</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">width=device-width, initial-scale=1</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;title&gt;</span><span class="tag">&lt;g:layoutTitle</span> <span class="attribute-name">default</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">Grails + HTMX</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span><span class="tag">&lt;/title&gt;</span>
+    <span class="tag">&lt;asset:link</span> <span class="attribute-name">rel</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">icon</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">href</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">favicon.ico</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">image/x-ico</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;asset:stylesheet</span> <span class="attribute-name">src</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application.css</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+
+    <span class="tag">&lt;g:set</span> <span class="attribute-name">var</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">csrfToken</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">value</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${request.getAttribute('_csrf')}</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;g:if</span> <span class="attribute-name">test</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${csrfToken}</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+        <span class="tag">&lt;meta</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">csrf-header</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">content</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${csrfToken.headerName}</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+        <span class="tag">&lt;meta</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">csrf-token</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">content</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${csrfToken.token}</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+        <span class="tag">&lt;script&gt;</span>
+<span class="inline">            document.addEventListener(<span class="string"><span class="delimiter">'</span><span class="content">htmx:configRequest</span><span class="delimiter">'</span></span>, <span class="keyword">function</span>(event) {
+                const header = document.querySelector(<span class="string"><span class="delimiter">'</span><span class="content">meta[name=&quot;csrf-header&quot;]</span><span class="delimiter">'</span></span>)?.content;
+                const token = document.querySelector(<span class="string"><span class="delimiter">'</span><span class="content">meta[name=&quot;csrf-token&quot;]</span><span class="delimiter">'</span></span>)?.content;
+                <span class="keyword">if</span> (header &amp;&amp; token) {
+                    event.detail.headers[header] = token;
+                }
+            });</span>
+        <span class="tag">&lt;/script&gt;</span>
+    <span class="tag">&lt;/g:if&gt;</span>
+
+    <span class="tag">&lt;g:layoutHead</span><span class="tag">/&gt;</span>
+<span class="tag">&lt;/head&gt;</span>
+<span class="tag">&lt;body&gt;</span>
+
+<span class="tag">&lt;nav</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">navbar navbar-expand-lg bg-body border-bottom shadow-sm</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;div</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">container-lg</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+        <span class="tag">&lt;a</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">navbar-brand</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">href</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${request.contextPath}/</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+            Grails + HTMX
+        <span class="tag">&lt;/a&gt;</span>
+    <span class="tag">&lt;/div&gt;</span>
+<span class="tag">&lt;/nav&gt;</span>
+
+<span class="tag">&lt;g:layoutBody</span><span class="tag">/&gt;</span>
+
+<span class="tag">&lt;asset:javascript</span> <span class="attribute-name">src</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application.js</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+<span class="tag">&lt;/body&gt;</span>
+<span class="tag">&lt;/html&gt;</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This guide&#8217;s layout only adds those <code>&lt;meta&gt;</code> tags and the <code>htmx:configRequest</code> listener when <code>_csrf</code> exists. That keeps the sample app truthful:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>without Spring Security, the app is just a plain Grails 8 sample and the listener is inert;</p>
+</li>
+<li>
+<p>with Spring Security CSRF enabled, HTMX requests automatically carry the expected header name and token value.</p>
+</li>
+</ul>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -863,11 +1158,27 @@ cd htmxtasks</code></pre>
 </td>
 <td class="content">
 <div class="paragraph">
-<p>The <code>Origin</code> and <code>Referer</code> headers also defeat CSRF for fetch-based clients. Modern browsers send them automatically and a same-origin check is one line of interceptor code. Belt-and-braces shops do both; pick the discipline that matches your threat model.</p>
+<p>If you stay entirely inside <code>&lt;g:form&gt;</code> submissions, Grails' form helpers already do the right thing for both token systems. You only need the global HTMX header hook for non-form triggers such as row-level toggle and delete buttons.</p>
 </div>
 </td>
 </tr>
 </table>
+</div>
+<div class="paragraph">
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>grails-app/views/layouts/main.gsp</code></p>
+</li>
+<li>
+<p><code>grails-app/views/task/_taskForm.gsp</code></p>
+</li>
+<li>
+<p><code>grails-app/views/task/_taskEdit.gsp</code></p>
+</li>
+</ul>
 </div>
 
 
@@ -921,6 +1232,9 @@ cd htmxtasks</code></pre>
 <div class="paragraph">
 <p>Most internal back-office apps land squarely in HTMX&#8217;s sweet spot. The <a href="../grails-vite-spa/8/guide/index.html">Grails 8 + Vite SPA guide</a> covers the SPA path for the cases that need it.</p>
 </div>
+<div class="paragraph">
+<p>Files touched: none.</p>
+</div>
 
 
 <h1 id="helpWithGrails">13 Do you need help with Grails?</h1>
@@ -956,6 +1270,9 @@ cd htmxtasks</code></pre>
 </div>
 <div class="paragraph">
 <p>For Grails plugins, see the matching project on <a href="https://github.com/apache?q=grails">the apache org</a> or the plugin&#8217;s own GitHub repository.</p>
+</div>
+<div class="paragraph">
+<p>Files touched: none.</p>
 </div>
 </div>
 </div>

@@ -48,16 +48,19 @@ function addJsClass() {
                         <div class="toc-item" style="margin-left:0"><a href="../guide/runningEach.html"><strong>6</strong><span>Running and Packaging Each Webapp</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/testingPerModule.html"><strong>7</strong><span>Per-Module Testing</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/devReload.html"><strong>7</strong><span>Dev-Mode Auto-Reload Across Projects</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/extractingPlugin.html"><strong>8</strong><span>Extracting a Plugin From a Monolith</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/testingPerModule.html"><strong>8</strong><span>Per-Module Testing</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/failureModes.html"><strong>9</strong><span>Failure Modes</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/extractingPlugin.html"><strong>9</strong><span>Extracting a Plugin From a Monolith</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>10</strong><span>Do you need help with Grails?</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/failureModes.html"><strong>10</strong><span>Failure Modes</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>11</strong><span>Do you need help with Grails?</span></a>
                         </div>
                         
                     </div>
@@ -97,7 +100,7 @@ function addJsClass() {
 
 
 <div class="paragraph">
-<p>A root <code>settings.gradle</code> and a root <code>build.gradle</code> turn three side-by-side Grails projects into one Gradle build:</p>
+<p>A root <code>settings.gradle</code> and a root <code>build.gradle</code> turn the three generated starters into one Gradle build:</p>
 </div>
 <div class="listingblock">
 <div class="title">settings.gradle</div>
@@ -106,13 +109,12 @@ function addJsClass() {
  * Multi-project root settings file.
  *
  * Three modules participate:
- *   shared-core      : Grails Plugin holding the domain model, GORM services,
- *                      and security-config bits the two webapps share.
+ *   shared-core      : Grails plugin holding the domain model and GORM services.
  *   webapp-customer  : customer-facing Grails web app (read-only catalog).
  *   webapp-admin     : back-office Grails web app with full CRUD.
  *
- * Both webapps depend on shared-core via `implementation project(':shared-core')`.
- * GORM picks up the plugin's domain classes automatically.
+ * Both webapps consume shared-core via their `grails { plugins { ... } }` block
+ * so bootRun can request the exploded plugin variant in development.
  */</span>
 
 rootProject.name = <span class="string"><span class="delimiter">'</span><span class="content">grails-multi-module</span><span class="delimiter">'</span></span>
@@ -126,11 +128,9 @@ include <span class="string"><span class="delimiter">'</span><span class="conten
 <div class="title">build.gradle</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">/*
- * Root build script. Per-module build.gradle files keep their own
- * dependency lists; this root file only carries cross-cutting concerns:
- * the JDK release level, the plain-old `useJUnitPlatform()` for every
- * Test task, and the same Apache Grails snapshot repositories every
- * module needs.
+ * Root build script.
+ * Keep per-module dependencies in the generated Grails projects.
+ * This file only centralizes repositories and JUnit Platform.
  */</span>
 
 subprojects {
@@ -141,8 +141,6 @@ subprojects {
             url = <span class="string"><span class="delimiter">'</span><span class="content">https://repository.apache.org/content/groups/snapshots</span><span class="delimiter">'</span></span>
             content {
                 includeVersionByRegex(<span class="string"><span class="delimiter">'</span><span class="content">org[.]apache[.]grails.*</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">.*</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">.*-SNAPSHOT</span><span class="delimiter">'</span></span>)
-            }
-            content {
                 includeVersionByRegex(<span class="string"><span class="delimiter">'</span><span class="content">org[.]apache[.]groovy.*</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">groovy.*</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">.*-SNAPSHOT</span><span class="delimiter">'</span></span>)
             }
             mavenContent { snapshotsOnly() }
@@ -151,40 +149,62 @@ subprojects {
             url = <span class="string"><span class="delimiter">'</span><span class="content">https://repository.apache.org/content/groups/staging</span><span class="delimiter">'</span></span>
             content {
                 includeVersionByRegex(<span class="string"><span class="delimiter">'</span><span class="content">org[.]apache[.]grails[.]gradle</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">grails-publish</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">.*</span><span class="delimiter">'</span></span>)
-            }
-            content {
                 includeVersionByRegex(<span class="string"><span class="delimiter">'</span><span class="content">org[.]apache[.]groovy.*</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">groovy.*</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">.*</span><span class="delimiter">'</span></span>)
             }
             mavenContent { releasesOnly() }
         }
     }
 
-    plugins.withId(<span class="string"><span class="delimiter">'</span><span class="content">groovy</span><span class="delimiter">'</span></span>) {
-        tasks.withType(Test).configureEach {
-            useJUnitPlatform()
-        }
+    tasks.withType(Test).configureEach {
+        useJUnitPlatform()
     }
 }</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Three patterns to point at:</p>
+<p>This root pattern intentionally mirrors two Grails 8 authority sources:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><code>rootProject.name = 'grails-multi-module'</code> is what <code>./gradlew projects</code> shows at the top of the tree. Without it, Gradle uses the directory name, which is fine for this sample but may not match your repo name in a real layout.</p>
+<p><code>grails-forge/grails-forge-core/src/main/java/org/grails/forge/build/gradle/GradleRepository.java</code> for the default starter repositories.</p>
 </li>
 <li>
-<p>The <code>subprojects { repositories { &#8230;&#8203; } }</code> block is where every module&#8217;s Apache Grails snapshot + staging Maven repos live. Avoid the temptation to also put <code>dependencies { &#8230;&#8203; }</code> here - you want each module to declare what it needs explicitly.</p>
-</li>
-<li>
-<p><code>plugins.withId('groovy') { tasks.withType(Test).configureEach { useJUnitPlatform() } }</code> ensures the JUnit 5 runner is used in every module that loads the Groovy plugin (which is every Grails module). Without it, only the Grails 8 starter&#8217;s own build.gradle would have it; the plugin module would default to the Vintage runner.</p>
+<p><code>grails-profiles/base/skeleton/build.gradle</code> plus <code>grails-forge/grails-forge-core/src/main/java/org/grails/forge/feature/build/gradle/templates/buildGradle.rocker.raw</code> for the per-project <code>tasks.withType(Test).configureEach { useJUnitPlatform() }</code> block.</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>The per-module <code>build.gradle</code> files keep their dependency lists. Sharing too aggressively at root level (e.g. <code>dependencies { implementation '&#8230;&#8203;' }</code> inside <code>subprojects</code>) creates surprise transitive dependencies that are hard to debug.</p>
+<p>Three details matter:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>rootProject.name = 'grails-multi-module'</code> gives the whole workspace a stable Gradle identity.</p>
+</li>
+<li>
+<p><code>subprojects { repositories { &#8230;&#8203; } }</code> centralises the same Maven repos every generated Grails 8 module would otherwise repeat. On the live <code>8.0.x</code> line that includes filtered Apache snapshot and staging repos, because the current forge default still adds them for snapshot Grails builds.</p>
+</li>
+<li>
+<p><code>tasks.withType(Test).configureEach { useJUnitPlatform() }</code> is the exact Grails 8 starter pattern. Lifting that block to the root keeps <code>test</code> and <code>integrationTest</code> aligned across all three modules without changing their dependency lists.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Do not move ordinary library dependencies to the root. The generated module builds already know which Grails plugins and starters they need. This root file should only carry cross-cutting build policy.</p>
+</div>
+<div class="paragraph">
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>settings.gradle</p>
+</li>
+<li>
+<p>build.gradle</p>
+</li>
+</ul>
 </div>
 
 

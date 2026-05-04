@@ -48,16 +48,19 @@ function addJsClass() {
                         <div class="toc-item" style="margin-left:0"><a href="../guide/runningEach.html"><strong>6</strong><span>Running and Packaging Each Webapp</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/testingPerModule.html"><strong>7</strong><span>Per-Module Testing</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/devReload.html"><strong>7</strong><span>Dev-Mode Auto-Reload Across Projects</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/extractingPlugin.html"><strong>8</strong><span>Extracting a Plugin From a Monolith</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/testingPerModule.html"><strong>8</strong><span>Per-Module Testing</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/failureModes.html"><strong>9</strong><span>Failure Modes</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/extractingPlugin.html"><strong>9</strong><span>Extracting a Plugin From a Monolith</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>10</strong><span>Do you need help with Grails?</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/failureModes.html"><strong>10</strong><span>Failure Modes</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>11</strong><span>Do you need help with Grails?</span></a>
                         </div>
                         
                     </div>
@@ -109,13 +112,23 @@ function addJsClass() {
 
 
 <div class="paragraph">
-<p>In this guide you will lay out a real-world Grails 8 multi-project build: one shared Grails Plugin (<code>shared-core</code>) holding the domain model, GORM services, and security configuration, plus two separate Grails web apps (<code>webapp-customer</code> and <code>webapp-admin</code>) that consume the plugin.</p>
+<p>In this guide you will assemble a Grails 8 multi-project workspace with three modules: one shared Grails plugin (<code>shared-core</code>) and two Grails web applications (<code>webapp-customer</code>, <code>webapp-admin</code>).</p>
 </div>
 <div class="paragraph">
-<p>This is the canonical shape for products with a customer-facing UI and an admin/back-office UI: the two apps share their data model exactly but differ in screens, authorization rules, and deployment cadence. Each webapp builds its own <code>bootJar</code> with the plugin embedded, so the two apps deploy independently while always staying in sync on the data model.</p>
+<p>The shared module owns the domain model, GORM data services, and plugin-level configuration. The two webapps own their own controllers, views, and deployment lifecycle, but both run against the same compiled plugin jar in production and the same exploded plugin classes in development.</p>
 </div>
 <div class="paragraph">
-<p>This guide targets Apache Grails 8 / JDK 21.</p>
+<p>This is the layout Grails 8 is built to support: plugin code lives in a plain jar, webapps build their own <code>bootJar</code>, and Grails plus Hibernate discover domain artefacts from the plugin at runtime.</p>
+</div>
+<div class="paragraph">
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>None yet</p>
+</li>
+</ul>
 </div>
 
 
@@ -136,23 +149,34 @@ function addJsClass() {
 <pre class="CodeRay highlight"><code data-lang="text">grails-multi-module/
 |-- settings.gradle
 |-- build.gradle
-|-- shared-core/                # Grails Plugin
+|-- shared-core/                # Grails web plugin, packaged as a plain jar
 |   |-- build.gradle
+|   |-- src/main/groovy/example/SharedCoreGrailsPlugin.groovy
 |   `-- grails-app/
 |       |-- domain/example/Book.groovy
 |       `-- services/example/BookService.groovy
 |-- webapp-customer/            # Grails web app (read-only catalog)
-|   |-- build.gradle            # `implementation project(':shared-core')`
+|   |-- build.gradle            # `grails { plugins { implementation project(':shared-core') } }`
 |   `-- grails-app/
 |       `-- controllers/customer/CatalogController.groovy
 `-- webapp-admin/               # Grails web app (CRUD)
-    |-- build.gradle            # `implementation project(':shared-core')`
+    |-- build.gradle            # `grails { plugins { implementation project(':shared-core') } }`
     `-- grails-app/
         `-- controllers/admin/BookController.groovy</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Three modules, one root, two webapps that build to two <code>bootJar`s, one plugin every consumer reuses. Each webapp can be `bootRun</code> independently; both can be built together with <code>./gradlew build</code>.</p>
+<p>Three modules, one root, two deployable <code>bootJar`s, and one shared plugin jar. `shared-core</code> is not a third application. It is the reusable Grails plugin that both webapps compile against, package, and reload from during development.</p>
+</div>
+<div class="paragraph">
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>None yet</p>
+</li>
+</ul>
 </div>
 
 
@@ -174,7 +198,20 @@ function addJsClass() {
 <p>JDK 21</p>
 </li>
 <li>
+<p>Internet access to download three starters from <a href="https://start.grails.org">start.grails.org</a></p>
+</li>
+<li>
 <p>About 45 minutes</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>None yet</p>
 </li>
 </ul>
 </div>
@@ -196,9 +233,9 @@ function addJsClass() {
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="bash">git clone -b grails8 https://github.com/grails-guides/grails-multi-module.git
 cd grails-multi-module/complete
-./gradlew :webapp-customer:bootRun     # http://localhost:8080
-# in a second shell, with the customer port freed:
-./gradlew :webapp-admin:bootRun        # http://localhost:8080</code></pre>
+./gradlew :webapp-customer:bootRun
+# In a second shell:
+./gradlew :webapp-admin:bootRun --args='--server.port=8081'</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -211,6 +248,19 @@ cd grails-multi-module/complete
 </li>
 <li>
 <p><code>complete/</code> - the assembled three-module workspace this guide builds.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Each chapter ends with the paths you should have touched by that point, so you can compare your workspace against the finished sample.</p>
+</div>
+<div class="paragraph">
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>None yet</p>
 </li>
 </ul>
 </div>

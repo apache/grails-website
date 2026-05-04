@@ -48,16 +48,19 @@ function addJsClass() {
                         <div class="toc-item" style="margin-left:0"><a href="../guide/runningEach.html"><strong>6</strong><span>Running and Packaging Each Webapp</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/testingPerModule.html"><strong>7</strong><span>Per-Module Testing</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/devReload.html"><strong>7</strong><span>Dev-Mode Auto-Reload Across Projects</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/extractingPlugin.html"><strong>8</strong><span>Extracting a Plugin From a Monolith</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/testingPerModule.html"><strong>8</strong><span>Per-Module Testing</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/failureModes.html"><strong>9</strong><span>Failure Modes</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/extractingPlugin.html"><strong>9</strong><span>Extracting a Plugin From a Monolith</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>10</strong><span>Do you need help with Grails?</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/failureModes.html"><strong>10</strong><span>Failure Modes</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>11</strong><span>Do you need help with Grails?</span></a>
                         </div>
                         
                     </div>
@@ -97,18 +100,26 @@ function addJsClass() {
 
 
 <div class="paragraph">
-<p>Both webapps consume <code>shared-core</code> via a single line in their <code>dependencies</code> block:</p>
+<p>Each webapp should consume <code>shared-core</code> through the Grails plugin block in its <code>build.gradle</code>, not through a plain <code>dependencies { &#8230;&#8203; }</code> entry:</p>
 </div>
 <div class="listingblock">
+<div class="title">webapp-customer/build.gradle and webapp-admin/build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">implementation project(<span class="string"><span class="delimiter">'</span><span class="content">:shared-core</span><span class="delimiter">'</span></span>)</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">grails {
+    plugins {
+        implementation project(<span class="string"><span class="delimiter">'</span><span class="content">:shared-core</span><span class="delimiter">'</span></span>)
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>That line goes immediately under <code>profile "org.apache.grails.profiles:web"</code> in each webapp&#8217;s <code>build.gradle</code>. Once it is in place, the plugin&#8217;s <code>Book</code> domain and <code>BookService</code> data service are visible to the consumer&#8217;s controllers, services, and GSPs at compile time, <strong>and</strong> GORM treats the consumer&#8217;s persistent context as the place those entities live at runtime.</p>
+<p>That is the Grails-aware multi-project path documented in <code>grails-doc/src/en/guide/plugins/creatingAndInstallingPlugins.adoc</code>. Under the hood, <code>grails-gradle/plugins/src/main/groovy/org/grails/gradle/plugin/core/PluginDefiner.groovy</code> tags project plugin dependencies so <code>bootRun</code> can request the exploded plugin variant, while <code>grails-gradle/plugins/src/main/groovy/org/grails/gradle/plugin/exploded/GrailsExplodedPlugin.groovy</code> publishes that exploded classes/resources variant from the plugin project. A plain <code>dependencies { implementation project(':shared-core') }</code> declaration still compiles, but it bypasses that built-in reload path.</p>
 </div>
 <div class="paragraph">
-<p>Each webapp owns its own controller package. The customer webapp uses <code>customer.*</code>:</p>
+<p>Once wired, the plugin&#8217;s <code>example.Book</code> domain and <code>example.BookService</code> data service are available to both webapps at compile time and runtime.</p>
+</div>
+<div class="paragraph">
+<p>The customer webapp owns its own controller package:</p>
 </div>
 <div class="listingblock">
 <div class="title">webapp-customer/grails-app/controllers/customer/CatalogController.groovy</div>
@@ -149,7 +160,7 @@ function addJsClass() {
 </div>
 </div>
 <div class="paragraph">
-<p>The admin webapp uses <code>admin.*</code>:</p>
+<p>The admin webapp owns a different controller package:</p>
 </div>
 <div class="listingblock">
 <div class="title">webapp-admin/grails-app/controllers/admin/BookController.groovy</div>
@@ -179,23 +190,39 @@ function addJsClass() {
 </div>
 </div>
 <div class="paragraph">
-<p>Three patterns to highlight:</p>
+<p>Three patterns to keep:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>Both controllers reference <code>example.Book</code> and <code>example.BookService</code> from the plugin. Neither one duplicates a single line of domain or service code.</p>
+<p>Both controllers import <code>example.Book</code> and <code>example.BookService</code> from the plugin. The shared data model still has exactly one owner.</p>
 </li>
 <li>
-<p>The customer-side <code>CatalogController</code> is hand-rolled; it deliberately does not extend <code>RestfulController</code>. Customers should not see <code>/v1/books</code> (POST/PUT/DELETE).</p>
+<p>The customer-side <code>CatalogController</code> is intentionally hand-rolled and read-only.</p>
 </li>
 <li>
-<p>The admin-side <code>BookController</code> extends <code>RestfulController&lt;Book&gt;</code>. The full CRUD surface comes for free; the admin webapp picks it up by reference.</p>
+<p>The admin-side <code>BookController</code> extends <code>RestfulController&lt;Book&gt;</code> and gets the CRUD-oriented web surface that belongs only in the admin app.</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>The package separation (<code>customer.<strong></code> vs <code>admin.</strong></code> for controllers, <code>example.<strong></code> for domain/service) is not enforced by Grails; it is a convention. But it is the convention that keeps refactors honest: a piece of code that lives under <code>example.</strong></code> belongs to the data layer, and any UI concern that creeps in there (a controller, a tag library, a flash-message string) is by definition misplaced.</p>
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>webapp-customer/build.gradle</p>
+</li>
+<li>
+<p>webapp-admin/build.gradle</p>
+</li>
+<li>
+<p>webapp-customer/grails-app/controllers/customer/CatalogController.groovy</p>
+</li>
+<li>
+<p>webapp-admin/grails-app/controllers/admin/BookController.groovy</p>
+</li>
+</ul>
 </div>
 
 

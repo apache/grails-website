@@ -2,7 +2,7 @@
                       "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
 <head>
-    <title>8 Extracting a Plugin From a Monolith</title>
+    <title>9 Extracting a Plugin From a Monolith</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
     <link rel="stylesheet" href="../css/guide.css" type="text/css" media="screen, print" title="Style" charset="utf-8" />            
@@ -48,16 +48,19 @@ function addJsClass() {
                         <div class="toc-item" style="margin-left:0"><a href="../guide/runningEach.html"><strong>6</strong><span>Running and Packaging Each Webapp</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/testingPerModule.html"><strong>7</strong><span>Per-Module Testing</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/devReload.html"><strong>7</strong><span>Dev-Mode Auto-Reload Across Projects</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/extractingPlugin.html"><strong>8</strong><span>Extracting a Plugin From a Monolith</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/testingPerModule.html"><strong>8</strong><span>Per-Module Testing</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/failureModes.html"><strong>9</strong><span>Failure Modes</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/extractingPlugin.html"><strong>9</strong><span>Extracting a Plugin From a Monolith</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>10</strong><span>Do you need help with Grails?</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/failureModes.html"><strong>10</strong><span>Failure Modes</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>11</strong><span>Do you need help with Grails?</span></a>
                         </div>
                         
                     </div>
@@ -75,11 +78,11 @@ function addJsClass() {
             <div id="main" class="corner-all">
 
                 
-                    <div class="toc-item prev-left"><a href="../guide/testingPerModule.html">&lt;&lt; <strong>7</strong><span>Per-Module Testing</span></a></div>
+                    <div class="toc-item prev-left"><a href="../guide/testingPerModule.html">&lt;&lt; <strong>8</strong><span>Per-Module Testing</span></a></div>
                 
 
                 
-                    <div class="toc-item next-right"><a href="../guide/failureModes.html"><strong>9</strong><span>Failure Modes</span> >></a></div>
+                    <div class="toc-item next-right"><a href="../guide/failureModes.html"><strong>10</strong><span>Failure Modes</span> >></a></div>
                 
 
 
@@ -87,7 +90,7 @@ function addJsClass() {
 
                 
 
-<h1 id="extractingPlugin">8 Extracting a Plugin From a Monolith</h1>
+<h1 id="extractingPlugin">9 Extracting a Plugin From a Monolith</h1>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-multi-module/v8/guide/extractingPlugin.adoc"'>
@@ -97,40 +100,62 @@ function addJsClass() {
 
 
 <div class="paragraph">
-<p>Most multi-module layouts grow out of a monolith that already exists. The migration from "one Grails app with two areas" to "one shared plugin plus two webapps" is mechanical:</p>
+<p>Most multi-module workspaces start from a monolith that already exists. The split is mechanical if you keep the ownership lines clear.</p>
 </div>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
-<p><strong>Decide what the plugin owns.</strong> Domain classes, GORM data services, security policy beans, and any tag library that emits content the customer and admin pages both render. Anything UI-shaped (controllers, GSPs, JSON views) stays in the consuming webapp.</p>
+<p>Generate <code>shared-core</code> as a Grails <code>web_plugin</code>, not as a plain library project.</p>
 </li>
 <li>
-<p><strong>Generate a Grails 8 plugin</strong> (the forge <code>web_plugin</code> type) into a new <code>shared-core/</code> directory next to the existing app.</p>
+<p>Move only genuinely shared code into the plugin: domain classes, GORM data services, shared taglibs, and reusable Spring beans. Leave <code>Application.groovy</code>, <code>UrlMappings.groovy</code>, controllers, GSPs, JSON views, and <code>BootStrap</code> classes in the webapps.</p>
 </li>
 <li>
-<p><strong>Move (<code>git mv</code>) the chosen files</strong> out of <code>app/grails-app/&#8230;&#8203;</code> into <code>shared-core/grails-app/&#8230;&#8203;</code>. Keep package names. The history follows the rename.</p>
+<p>Keep or recreate the plugin descriptor class (<code>SharedCoreGrailsPlugin.groovy</code>). If the extracted code needs plugin ordering or watched resources, express that there using the normal <code>Plugin</code> conventions.</p>
 </li>
 <li>
-<p><strong>In <code>settings.gradle</code> of the existing app, <code>include 'shared-core'</code>.</strong> In the existing app&#8217;s <code>build.gradle</code>, add <code>implementation project(':shared-core')</code>. Run <code>./gradlew build</code> - it should still pass.</p>
+<p>Wire the original app to the plugin with <code>grails { plugins { implementation project(':shared-core') } }</code>. If you want live reload while the split is in flight, also apply <code>org.apache.grails.gradle.grails-exploded</code> in <code>shared-core/build.gradle</code>.</p>
 </li>
 <li>
-<p><strong>Generate the second webapp</strong> (the forge <code>web</code> type) into <code>webapp-customer/</code>. Add <code>implementation project(':shared-core')</code> to its <code>build.gradle</code>. Move whichever controllers/views logically belong there from the original app.</p>
+<p>Create the second webapp, wire the same plugin, and move the customer-facing or admin-facing controllers and views into their target module.</p>
 </li>
 <li>
-<p><strong>Rename the original app</strong> to <code>webapp-admin/</code> (or whichever role it ended up playing).</p>
+<p>Choose one webapp to own database migrations and startup data changes.</p>
 </li>
 </ol>
 </div>
 <div class="paragraph">
-<p>The third commit on the timeline is a single commit that moves files; the fourth is the wiring change. Reviewers can see exactly what moved without unrelated diffs.</p>
+<p>Keep package names stable while you move files. <code>git mv</code> plus unchanged packages makes the review readable and keeps history attached to the files that actually moved.</p>
+</div>
+<div class="paragraph">
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>settings.gradle</p>
+</li>
+<li>
+<p>shared-core/build.gradle</p>
+</li>
+<li>
+<p>shared-core/src/main/groovy/example/SharedCoreGrailsPlugin.groovy</p>
+</li>
+<li>
+<p>webapp-customer/build.gradle</p>
+</li>
+<li>
+<p>webapp-admin/build.gradle</p>
+</li>
+</ul>
 </div>
 
 
                 <div style="clear:both;margin-top:15px;"></div>
                 
-                    <div class="toc-item prev-left"><a href="../guide/testingPerModule.html">&lt;&lt; <strong>7</strong><span>Per-Module Testing</span></a></div>
+                    <div class="toc-item prev-left"><a href="../guide/testingPerModule.html">&lt;&lt; <strong>8</strong><span>Per-Module Testing</span></a></div>
                 
-                    <div class="toc-item next-right"><a href="../guide/failureModes.html"><strong>9</strong><span>Failure Modes</span> >></a></div>
+                    <div class="toc-item next-right"><a href="../guide/failureModes.html"><strong>10</strong><span>Failure Modes</span> >></a></div>
                 
                 <div style="clear:both"></div>
             </div>

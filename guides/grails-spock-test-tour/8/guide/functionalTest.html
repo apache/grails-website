@@ -2,7 +2,7 @@
                       "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
 <head>
-    <title>7 Geb Functional Tests</title>
+    <title>7 ContainerGebSpec Functional Tests</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
     <link rel="stylesheet" href="../css/guide.css" type="text/css" media="screen, print" title="Style" charset="utf-8" />            
@@ -48,7 +48,7 @@ function addJsClass() {
                         <div class="toc-item" style="margin-left:0"><a href="../guide/integrationTest.html"><strong>6</strong><span>@Integration With @Rollback</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/functionalTest.html"><strong>7</strong><span>Geb Functional Tests</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/functionalTest.html"><strong>7</strong><span>ContainerGebSpec Functional Tests</span></a>
                         </div>
                         
                         <div class="toc-item" style="margin-left:0"><a href="../guide/parameterised.html"><strong>8</strong><span>Parameterised where: Data Tables</span></a>
@@ -87,7 +87,7 @@ function addJsClass() {
 
                 
 
-<h1 id="functionalTest">7 Geb Functional Tests</h1>
+<h1 id="functionalTest">7 ContainerGebSpec Functional Tests</h1>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-spock-test-tour/v8/guide/functionalTest.adoc"'>
@@ -97,22 +97,58 @@ function addJsClass() {
 
 
 <div class="paragraph">
-<p>Functional tests use Geb 8 to drive a real browser against a real booted app. The <code>geb-with-webdriver-binaries</code> feature you selected at the forge step downloads matching Chrome/Firefox driver binaries automatically.</p>
+<p>Functional tests use Geb 8 to drive a real browser against a real booted app. In Grails 8 the canonical (and only fully supported) base class is <code>grails.plugin.geb.ContainerGebSpec</code> from <code>testFixtures("org.apache.grails:grails-geb")</code>, already on the test classpath in the standard <code>web</code> profile. It starts a Selenium-Chrome browser inside a Testcontainers container instead of relying on local WebDriver binaries, so the host&#8217;s only requirement is a running Docker daemon.</p>
 </div>
 <div class="listingblock">
+<div class="title">src/integration-test/groovy/example/BookFunctionalSpec.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="annotation">@Integration</span>
-<span class="type">class</span> <span class="class">BookFunctionalSpec</span> <span class="directive">extends</span> GebSpec {
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
 
-    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">the book index page lists every book</span><span class="delimiter">&quot;</span></span>() {
+<span class="keyword">import</span> <span class="include">grails.plugin.geb.ContainerGebSpec</span>
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+
+<span class="comment">/**
+ * Functional test driven by Geb 8 against a real booted application.
+ *
+ * ContainerGebSpec (from `testFixtures(&quot;org.apache.grails:grails-geb&quot;)`)
+ * starts a Selenium-Chrome container via Testcontainers and points the
+ * browser at the host-side Grails app. No local WebDriver binaries are
+ * installed; the only host requirement is a running Docker daemon.
+ *
+ * @Integration is mandatory: GrailsContainerGebExtension throws at
+ * runtime if the annotation is missing. @Rollback is NOT used here -
+ * functional tests exercise the full HTTP stack and need committed
+ * data.
+ */</span>
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">BookFunctionalSpec</span> <span class="directive">extends</span> ContainerGebSpec {
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">the book index page renders the seeded books</span><span class="delimiter">&quot;</span></span>() {
         <span class="key">when</span>:
         go <span class="string"><span class="delimiter">'</span><span class="content">/books</span><span class="delimiter">'</span></span>
 
         <span class="key">then</span>:
-        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">table.book-list tr</span><span class="delimiter">'</span></span>).size() &gt; <span class="integer">0</span>
+        title.contains(<span class="string"><span class="delimiter">'</span><span class="content">Book</span><span class="delimiter">'</span></span>)
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">table tbody tr</span><span class="delimiter">'</span></span>).size() &gt; <span class="integer">0</span>
     }
 }</code></pre>
 </div>
+</div>
+<div class="paragraph">
+<p>Three patterns to highlight:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>@Integration</code> is <strong>mandatory</strong> for <code>ContainerGebSpec</code>. The Spock extension validates the annotation at runtime and throws <code>IllegalArgumentException: ContainerGebSpec classes must be annotated with @Integration.</code> if it is missing.</p>
+</li>
+<li>
+<p><code>@Rollback</code> is <strong>not</strong> used here. Functional tests exercise the full HTTP stack against committed data, so transactional rollback would hide what the user actually sees.</p>
+</li>
+<li>
+<p>The <code>geb-with-webdriver-binaries</code> forge feature from earlier Grails majors is obsolete. <code>ContainerGebSpec</code> brings its own browser via Testcontainers; adding the legacy feature wires up a second Chrome driver no test ever uses.</p>
+</li>
+</ul>
 </div>
 <div class="paragraph">
 <p>Three keep-it-fast disciplines:</p>
@@ -120,18 +156,21 @@ function addJsClass() {
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Use Testcontainers' Postgres module per-spec</strong>, not a long-running Postgres. The container start is ~3 s once warm; the trade-off is per-spec database isolation.</p>
+<p><strong>Run unit and integration tests first, functional last.</strong> Failure is then localised: if every functional test fails it is because the app would not boot, which is an integration-test problem.</p>
 </li>
 <li>
-<p><strong>Reuse a single browser session</strong> across feature methods in the same spec - Geb does this by default. Re-launching Firefox between every method adds 2 s of overhead per method.</p>
+<p><strong>Reuse a single browser session across feature methods in the same spec</strong> - Geb does this by default. Re-launching Chrome between every method would add real overhead.</p>
 </li>
 <li>
-<p><strong>Run unit and integration tests first</strong>, functional last. Failure is then localised: if every functional test fails, it is because the app would not boot, which is an integration-test problem.</p>
+<p><strong>Let Testcontainers reuse the Selenium image</strong> across runs. The first cold start pulls the image (~200 MB); subsequent runs reuse it.</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>The matching <a href="../grails-github-actions-cicd/8/guide/index.html">CI/CD guide</a> models this as a four-stage job graph (validation &#8594; unit &#8594; integration &#8594; functional) so a broken unit test does not waste 60 seconds on functional runs.</p>
+<p>Functional specs are an order of magnitude slower than integration specs (10-60 s per spec) because the full HTTP stack and a real browser are involved. Use them only for what integration tests genuinely cannot answer: end-to-end user flows, JavaScript-driven interactions, multi-page form journeys.</p>
+</div>
+<div class="paragraph">
+<p>The matching <a href="../grails-github-actions-cicd/8/guide/index.html">CI/CD guide</a> models this as a four-stage job graph (validation &#8594; unit &#8594; integration &#8594; functional) so a broken unit test does not waste 60 seconds on functional runs. The CI runner needs Docker available too; GitHub-hosted Linux runners ship with Docker out of the box.</p>
 </div>
 
 

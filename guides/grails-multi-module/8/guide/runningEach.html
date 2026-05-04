@@ -48,16 +48,19 @@ function addJsClass() {
                         <div class="toc-item" style="margin-left:0"><a href="../guide/runningEach.html"><strong>6</strong><span>Running and Packaging Each Webapp</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/testingPerModule.html"><strong>7</strong><span>Per-Module Testing</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/devReload.html"><strong>7</strong><span>Dev-Mode Auto-Reload Across Projects</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/extractingPlugin.html"><strong>8</strong><span>Extracting a Plugin From a Monolith</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/testingPerModule.html"><strong>8</strong><span>Per-Module Testing</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/failureModes.html"><strong>9</strong><span>Failure Modes</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/extractingPlugin.html"><strong>9</strong><span>Extracting a Plugin From a Monolith</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>10</strong><span>Do you need help with Grails?</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/failureModes.html"><strong>10</strong><span>Failure Modes</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>11</strong><span>Do you need help with Grails?</span></a>
                         </div>
                         
                     </div>
@@ -79,7 +82,7 @@ function addJsClass() {
                 
 
                 
-                    <div class="toc-item next-right"><a href="../guide/testingPerModule.html"><strong>7</strong><span>Per-Module Testing</span> >></a></div>
+                    <div class="toc-item next-right"><a href="../guide/devReload.html"><strong>7</strong><span>Dev-Mode Auto-Reload Across Projects</span> >></a></div>
                 
 
 
@@ -103,35 +106,50 @@ function addJsClass() {
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="bash">./gradlew :webapp-customer:bootRun
 # In another shell:
-./gradlew :webapp-admin:bootRun</code></pre>
+./gradlew :webapp-admin:bootRun --args='--server.port=8081'</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Both default to port 8080, so you cannot run them at the same time without overrides. For dev work you have two cheap options:</p>
+<p>Both generated webapps default to port 8080. Grails 8 documents two accurate override styles:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><code>./gradlew :webapp-admin:bootRun --args='--server.port=8081'</code> - one-shot port override.</p>
+<p><code>--args='--server.port=8081'</code> in <code>grails-doc/src/en/ref/Command Line/bootRun.adoc</code></p>
 </li>
 <li>
-<p>Set <code>server.port: 8081</code> in <code>webapp-admin/grails-app/conf/application.yml</code> so the admin app permanently uses 8081 in dev. The customer app keeps 8080.</p>
+<p><code>-Dgrails.server.port=8081</code> in <code>grails-doc/src/en/guide/gettingStarted/runningAndDebuggingAnApplication.adoc</code></p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>Production deployment uses <code>bootJar</code> instead of <code>bootRun</code>:</p>
+<p>Use either form, but keep it consistent across your team.</p>
+</div>
+<div class="paragraph">
+<p>Production packaging uses <code>bootJar</code> for the two webapps and <code>jar</code> for the plugin:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="bash">./gradlew :webapp-customer:bootJar
-./gradlew :webapp-admin:bootJar
-ls webapp-customer/build/libs/   # webapp-customer-0.1.jar
-ls webapp-admin/build/libs/      # webapp-admin-0.1.jar</code></pre>
+<pre class="CodeRay highlight"><code data-lang="bash">./gradlew :shared-core:jar
+./gradlew :webapp-customer:bootJar
+./gradlew :webapp-admin:bootJar</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Each <code>bootJar</code> embeds the <code>shared-core</code> plugin classes (and only the <strong>transitive</strong> runtime dependencies the plugin actually needs). The two jars deploy independently to different hosts, different containers, different release cadences. The data model they share is the byte-for-byte identical compiled <code>Book.class</code> produced once by the <code>shared-core:compileGroovy</code> task and packaged into both.</p>
+<p><code>shared-core</code> does not produce a deployable <code>bootJar</code>. <code>grails-gradle/plugins/src/main/groovy/org/grails/gradle/plugin/core/GrailsPluginGradlePlugin.groovy</code> disables <code>bootJar</code> and keeps the plain jar as the plugin artifact. The two webapps are the only deployable applications in this workspace.</p>
+</div>
+<div class="paragraph">
+<p>For the day-to-day inner loop where you save a file in <code>shared-core</code> and want a running <code>bootRun</code> to pick it up, the next chapter covers the Grails 8 supported reload path.</p>
+</div>
+<div class="paragraph">
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>None, unless you choose a fixed port in <code>webapp-admin/grails-app/conf/application.yml</code></p>
+</li>
+</ul>
 </div>
 
 
@@ -139,7 +157,7 @@ ls webapp-admin/build/libs/      # webapp-admin-0.1.jar</code></pre>
                 
                     <div class="toc-item prev-left"><a href="../guide/webapps.html">&lt;&lt; <strong>5</strong><span>The Two Webapps Consume shared-core</span></a></div>
                 
-                    <div class="toc-item next-right"><a href="../guide/testingPerModule.html"><strong>7</strong><span>Per-Module Testing</span> >></a></div>
+                    <div class="toc-item next-right"><a href="../guide/devReload.html"><strong>7</strong><span>Dev-Mode Auto-Reload Across Projects</span> >></a></div>
                 
                 <div style="clear:both"></div>
             </div>

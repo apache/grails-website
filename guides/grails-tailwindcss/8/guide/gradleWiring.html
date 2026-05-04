@@ -94,7 +94,7 @@ function addJsClass() {
 
 
 <div class="paragraph">
-<p>A two-task block at the bottom of <code>build.gradle</code> is everything the build needs:</p>
+<p>A small block at the bottom of <code>build.gradle</code> is everything the build needs:</p>
 </div>
 <div class="listingblock">
 <div class="title">build.gradle</div>
@@ -102,22 +102,24 @@ function addJsClass() {
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> npxCmd = org.gradle.internal.os.OperatingSystem.current().isWindows() ? <span class="string"><span class="delimiter">'</span><span class="content">npx.cmd</span><span class="delimiter">'</span></span> : <span class="string"><span class="delimiter">'</span><span class="content">npx</span><span class="delimiter">'</span></span>
 <span class="keyword">def</span> npmCmd = org.gradle.internal.os.OperatingSystem.current().isWindows() ? <span class="string"><span class="delimiter">'</span><span class="content">npm.cmd</span><span class="delimiter">'</span></span> : <span class="string"><span class="delimiter">'</span><span class="content">npm</span><span class="delimiter">'</span></span>
 
-tasks.register(<span class="string"><span class="delimiter">'</span><span class="content">npmInstall</span><span class="delimiter">'</span></span>, Exec) {
-    description = <span class="string"><span class="delimiter">'</span><span class="content">Install npm dependencies (Tailwind CSS 4 CLI)</span><span class="delimiter">'</span></span>
+<span class="keyword">def</span> npmInstall = tasks.register(<span class="string"><span class="delimiter">'</span><span class="content">npmInstall</span><span class="delimiter">'</span></span>, Exec) {
+    description = <span class="string"><span class="delimiter">'</span><span class="content">Install npm dependencies for Tailwind CSS 4</span><span class="delimiter">'</span></span>
     group = <span class="string"><span class="delimiter">'</span><span class="content">tailwind</span><span class="delimiter">'</span></span>
-    inputs.file(<span class="string"><span class="delimiter">'</span><span class="content">package.json</span><span class="delimiter">'</span></span>)
+    inputs.files(<span class="string"><span class="delimiter">'</span><span class="content">package.json</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">package-lock.json</span><span class="delimiter">'</span></span>)
     outputs.dir(<span class="string"><span class="delimiter">'</span><span class="content">node_modules</span><span class="delimiter">'</span></span>)
     commandLine npmCmd, <span class="string"><span class="delimiter">'</span><span class="content">install</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">--no-fund</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">--no-audit</span><span class="delimiter">'</span></span>
 }
 
-tasks.register(<span class="string"><span class="delimiter">'</span><span class="content">tailwindBuild</span><span class="delimiter">'</span></span>, Exec) {
-    description = <span class="string"><span class="delimiter">'</span><span class="content">Compile src/main/css/input.css into grails-app/assets/stylesheets/app.css via the Tailwind 4 CLI</span><span class="delimiter">'</span></span>
+<span class="keyword">def</span> tailwindBuild = tasks.register(<span class="string"><span class="delimiter">'</span><span class="content">tailwindBuild</span><span class="delimiter">'</span></span>, Exec) {
+    description = <span class="string"><span class="delimiter">'</span><span class="content">Compile src/main/css/input.css into grails-app/assets/stylesheets/app.css</span><span class="delimiter">'</span></span>
     group = <span class="string"><span class="delimiter">'</span><span class="content">tailwind</span><span class="delimiter">'</span></span>
-    dependsOn <span class="string"><span class="delimiter">'</span><span class="content">npmInstall</span><span class="delimiter">'</span></span>
-    inputs.file(<span class="string"><span class="delimiter">'</span><span class="content">package.json</span><span class="delimiter">'</span></span>)
-    inputs.file(<span class="string"><span class="delimiter">'</span><span class="content">src/main/css/input.css</span><span class="delimiter">'</span></span>)
+    dependsOn npmInstall
+    inputs.files(<span class="string"><span class="delimiter">'</span><span class="content">package.json</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">package-lock.json</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">src/main/css/input.css</span><span class="delimiter">'</span></span>)
     inputs.dir(<span class="string"><span class="delimiter">'</span><span class="content">grails-app/views</span><span class="delimiter">'</span></span>)
     inputs.dir(<span class="string"><span class="delimiter">'</span><span class="content">grails-app/controllers</span><span class="delimiter">'</span></span>)
+    inputs.dir(<span class="string"><span class="delimiter">'</span><span class="content">grails-app/services</span><span class="delimiter">'</span></span>)
+    inputs.dir(<span class="string"><span class="delimiter">'</span><span class="content">grails-app/taglib</span><span class="delimiter">'</span></span>)
+    inputs.dir(<span class="string"><span class="delimiter">'</span><span class="content">src/main/groovy</span><span class="delimiter">'</span></span>)
     outputs.file(<span class="string"><span class="delimiter">'</span><span class="content">grails-app/assets/stylesheets/app.css</span><span class="delimiter">'</span></span>)
     commandLine npxCmd, <span class="string"><span class="delimiter">'</span><span class="content">@tailwindcss/cli</span><span class="delimiter">'</span></span>,
             <span class="string"><span class="delimiter">'</span><span class="content">-i</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">src/main/css/input.css</span><span class="delimiter">'</span></span>,
@@ -125,39 +127,55 @@ tasks.register(<span class="string"><span class="delimiter">'</span><span class=
             <span class="string"><span class="delimiter">'</span><span class="content">--minify</span><span class="delimiter">'</span></span>
 }
 
-tasks.named(<span class="string"><span class="delimiter">'</span><span class="content">processResources</span><span class="delimiter">'</span></span>).configure { dependsOn <span class="string"><span class="delimiter">'</span><span class="content">tailwindBuild</span><span class="delimiter">'</span></span> }
-tasks.named(<span class="string"><span class="delimiter">'</span><span class="content">compileGroovy</span><span class="delimiter">'</span></span>).configure { dependsOn <span class="string"><span class="delimiter">'</span><span class="content">tailwindBuild</span><span class="delimiter">'</span></span> }</code></pre>
+tasks.named(<span class="string"><span class="delimiter">'</span><span class="content">processResources</span><span class="delimiter">'</span></span>).configure { dependsOn tailwindBuild }
+tasks.named(<span class="string"><span class="delimiter">'</span><span class="content">compileGroovy</span><span class="delimiter">'</span></span>).configure { dependsOn tailwindBuild }</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Two new <code>Exec</code> tasks are added:</p>
+<p>And the asset manifest becomes a one-line include of the generated Tailwind output:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/assets/stylesheets/application.css</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="css"><span class="comment">/*
+ * Asset-pipeline manifest. Pull the Tailwind CLI output into the canonical
+ * application.css bundle the layout already serves.
+ *
+ *= require app
+ */</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Two <code>Exec</code> tasks do the work:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><code>npmInstall</code> runs <code>npm install</code> and caches its result. The <code>outputs.dir('node_modules')</code> declaration plus the <code>inputs.file('package.json')</code> declaration mean Gradle reruns it only when <code>package.json</code> changes.</p>
+<p><code>npmInstall</code> runs <code>npm install</code> and caches its result. The <code>node_modules/</code> output plus the <code>package.json</code> and <code>package-lock.json</code> inputs mean Gradle reruns it only when the Node dependency graph changes.</p>
 </li>
 <li>
-<p><code>tailwindBuild</code> calls <code>npx @tailwindcss/cli</code> with the same <code>-i</code> and <code>-o</code> paths used by the npm scripts. Its <code>inputs</code> cover <code>package.json</code>, the entry CSS, and the two directory trees we declared as <code>@source</code> paths in <code>input.css</code>. Its single output is the compiled <code>app.css</code>.</p>
+<p><code>tailwindBuild</code> calls <code>npx @tailwindcss/cli</code> with the same <code>-i</code> and <code>-o</code> paths used by the npm scripts. Its <code>inputs</code> cover the entry CSS and every directory that the <code>@source</code> directives scan.</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>The two <code>tasks.named</code> lines hook <code>tailwindBuild</code> into the standard Grails build graph so plain <code>./gradlew bootRun</code> (or <code>assemble</code>, or <code>bootJar</code>) regenerates <code>app.css</code> on every cold start. For iterative work without Gradle in the loop, run <code>npm run watch</code> in a second shell.</p>
+<p>The two <code>tasks.named</code> lines hook <code>tailwindBuild</code> into the standard Grails build graph so plain <code>./gradlew bootRun</code>, <code>assemble</code>, or <code>bootJar</code> regenerates <code>app.css</code> before resources and Groovy sources compile. For iterative work without Gradle in the loop, run <code>npm run watch</code> in a second shell.</p>
 </div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
 <div class="paragraph">
-<p>Asset-pipeline manifest: replace the contents of <code>grails-app/assets/stylesheets/application.css</code> with <code>*= require app</code> so the manifest pulls in the Tailwind output instead of the Bootstrap CSS the starter shipped with. The <code>app.css</code> file itself is regenerated on every build, so it is git-ignored.</p>
+<p>The compiled <code>app.css</code> lands inside <code>grails-app/assets/stylesheets/</code>, which is the asset pipeline&#8217;s source directory. The layout still asks for <code>application.css</code> via <code>&lt;asset:stylesheet&gt;</code>, but the manifest now pulls in the Tailwind output instead of the starter&#8217;s Bootstrap CSS. <code>app.css</code> itself is regenerated on every build, so it is git-ignored.</p>
 </div>
-</td>
-</tr>
-</table>
+<div class="paragraph">
+<p>Files touched in this chapter:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>build.gradle</code></p>
+</li>
+<li>
+<p><code>grails-app/assets/stylesheets/application.css</code></p>
+</li>
+</ul>
 </div>
 
 

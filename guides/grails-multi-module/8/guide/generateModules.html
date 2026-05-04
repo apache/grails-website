@@ -48,16 +48,19 @@ function addJsClass() {
                         <div class="toc-item" style="margin-left:0"><a href="../guide/runningEach.html"><strong>6</strong><span>Running and Packaging Each Webapp</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/testingPerModule.html"><strong>7</strong><span>Per-Module Testing</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/devReload.html"><strong>7</strong><span>Dev-Mode Auto-Reload Across Projects</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/extractingPlugin.html"><strong>8</strong><span>Extracting a Plugin From a Monolith</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/testingPerModule.html"><strong>8</strong><span>Per-Module Testing</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/failureModes.html"><strong>9</strong><span>Failure Modes</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/extractingPlugin.html"><strong>9</strong><span>Extracting a Plugin From a Monolith</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>10</strong><span>Do you need help with Grails?</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/failureModes.html"><strong>10</strong><span>Failure Modes</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>11</strong><span>Do you need help with Grails?</span></a>
                         </div>
                         
                     </div>
@@ -97,30 +100,76 @@ function addJsClass() {
 
 
 <div class="paragraph">
-<p>Each of the three modules is a fresh forge zip. The plugin is the <code>web_plugin</code> application type; the two webapps are the <code>web</code> type:</p>
+<p>Open <a href="https://start.grails.org">start.grails.org</a> in three browser tabs and generate three starters with the same baseline settings: JDK 21, Groovy, Gradle, Spock, and package <code>example</code>.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Forge application type</th>
+<th class="tableblock halign-left valign-top">UI label</th>
+<th class="tableblock halign-left valign-top">Application name</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>web_plugin</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Web Plugin</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>shared-core</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>web</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Web Application</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>webapp-customer</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>web</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Web Application</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>webapp-admin</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The naming here is straight from the Grails 8 forge source: <code>ApplicationType.WEB_PLUGIN</code> in <code>grails-forge/grails-forge-core/src/main/java/org/grails/forge/application/ApplicationType.java</code> and the <code>@Named("web_plugin")</code> registry in <code>grails-forge/grails-forge-core/src/main/java/org/grails/forge/application/WebPluginAvailableFeatures.java</code>.</p>
+</div>
+<div class="paragraph">
+<p>Each downloaded archive uses the application name as the zip filename, so unzip the three archives under one parent directory:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="bash">mkdir grails-multi-module &amp;&amp; cd grails-multi-module &amp;&amp; mkdir initial complete &amp;&amp; cd complete
+<pre class="CodeRay highlight"><code data-lang="bash">mkdir grails-multi-module
+cd grails-multi-module
 
-# shared-core - the plugin that holds the shared domain model + services
-curl -L -o p.zip &quot;https://prev-snapshot.grails.org/create/web_plugin/example.shared?lang=GROOVY&amp;build=GRADLE&amp;test=SPOCK&amp;javaVersion=JDK_21&quot;
-unzip p.zip &amp;&amp; mv shared shared-core &amp;&amp; rm p.zip
-
-# webapp-customer - read-only catalog
-curl -L -o c.zip &quot;https://prev-snapshot.grails.org/create/web/example.customer?lang=GROOVY&amp;build=GRADLE&amp;test=SPOCK&amp;javaVersion=JDK_21&quot;
-unzip c.zip &amp;&amp; mv customer webapp-customer &amp;&amp; rm c.zip
-
-# webapp-admin - back-office CRUD
-curl -L -o a.zip &quot;https://prev-snapshot.grails.org/create/web/example.admin?lang=GROOVY&amp;build=GRADLE&amp;test=SPOCK&amp;javaVersion=JDK_21&quot;
-unzip a.zip &amp;&amp; mv admin webapp-admin &amp;&amp; rm a.zip</code></pre>
+unzip ~/Downloads/shared-core.zip
+unzip ~/Downloads/webapp-customer.zip
+unzip ~/Downloads/webapp-admin.zip</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Patch <code>compileJava.options.release = 17</code> to <code>21</code> in each of the three <code>build.gradle</code> files (the forge ships JDK 17 by default even when <code>javaVersion=JDK_21</code> is requested).</p>
+<p>If you selected JDK 21 in the browser, keep the generated <code>compileJava.options.release = 21</code> lines exactly as they are. Grails Forge writes that value from the selected target JDK in <code>grails-forge/grails-forge-core/src/main/java/org/grails/forge/feature/build/gradle/templates/buildGradle.rocker.raw</code>, so there is no Grails 8 era "patch 17 to 21" cleanup step anymore.</p>
 </div>
 <div class="paragraph">
-<p>Each subdirectory is currently a stand-alone Grails project. The next chapter wires them into a single multi-project build.</p>
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>shared-core/build.gradle</p>
+</li>
+<li>
+<p>shared-core/src/main/groovy/example/SharedCoreGrailsPlugin.groovy</p>
+</li>
+<li>
+<p>webapp-customer/build.gradle</p>
+</li>
+<li>
+<p>webapp-admin/build.gradle</p>
+</li>
+</ul>
 </div>
 
 

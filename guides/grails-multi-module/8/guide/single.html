@@ -119,13 +119,15 @@
             
             <div class="toc-item" style="margin-left:0px"><a href="#runningEach"><strong>6</strong><span>Running and Packaging Each Webapp</span></a></div>
             
-            <div class="toc-item" style="margin-left:0px"><a href="#testingPerModule"><strong>7</strong><span>Per-Module Testing</span></a></div>
+            <div class="toc-item" style="margin-left:0px"><a href="#devReload"><strong>7</strong><span>Dev-Mode Auto-Reload Across Projects</span></a></div>
             
-            <div class="toc-item" style="margin-left:0px"><a href="#extractingPlugin"><strong>8</strong><span>Extracting a Plugin From a Monolith</span></a></div>
+            <div class="toc-item" style="margin-left:0px"><a href="#testingPerModule"><strong>8</strong><span>Per-Module Testing</span></a></div>
             
-            <div class="toc-item" style="margin-left:0px"><a href="#failureModes"><strong>9</strong><span>Failure Modes</span></a></div>
+            <div class="toc-item" style="margin-left:0px"><a href="#extractingPlugin"><strong>9</strong><span>Extracting a Plugin From a Monolith</span></a></div>
             
-            <div class="toc-item" style="margin-left:0px"><a href="#helpWithGrails"><strong>10</strong><span>Do you need help with Grails?</span></a></div>
+            <div class="toc-item" style="margin-left:0px"><a href="#failureModes"><strong>10</strong><span>Failure Modes</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#helpWithGrails"><strong>11</strong><span>Do you need help with Grails?</span></a></div>
             
             <div style="clear:both"></div>
         </div>
@@ -149,13 +151,23 @@
 
 
 <div class="paragraph">
-<p>In this guide you will lay out a real-world Grails 8 multi-project build: one shared Grails Plugin (<code>shared-core</code>) holding the domain model, GORM services, and security configuration, plus two separate Grails web apps (<code>webapp-customer</code> and <code>webapp-admin</code>) that consume the plugin.</p>
+<p>In this guide you will assemble a Grails 8 multi-project workspace with three modules: one shared Grails plugin (<code>shared-core</code>) and two Grails web applications (<code>webapp-customer</code>, <code>webapp-admin</code>).</p>
 </div>
 <div class="paragraph">
-<p>This is the canonical shape for products with a customer-facing UI and an admin/back-office UI: the two apps share their data model exactly but differ in screens, authorization rules, and deployment cadence. Each webapp builds its own <code>bootJar</code> with the plugin embedded, so the two apps deploy independently while always staying in sync on the data model.</p>
+<p>The shared module owns the domain model, GORM data services, and plugin-level configuration. The two webapps own their own controllers, views, and deployment lifecycle, but both run against the same compiled plugin jar in production and the same exploded plugin classes in development.</p>
 </div>
 <div class="paragraph">
-<p>This guide targets Apache Grails 8 / JDK 21.</p>
+<p>This is the layout Grails 8 is built to support: plugin code lives in a plain jar, webapps build their own <code>bootJar</code>, and Grails plus Hibernate discover domain artefacts from the plugin at runtime.</p>
+</div>
+<div class="paragraph">
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>None yet</p>
+</li>
+</ul>
 </div>
 
 
@@ -176,23 +188,34 @@
 <pre class="CodeRay highlight"><code data-lang="text">grails-multi-module/
 |-- settings.gradle
 |-- build.gradle
-|-- shared-core/                # Grails Plugin
+|-- shared-core/                # Grails web plugin, packaged as a plain jar
 |   |-- build.gradle
+|   |-- src/main/groovy/example/SharedCoreGrailsPlugin.groovy
 |   `-- grails-app/
 |       |-- domain/example/Book.groovy
 |       `-- services/example/BookService.groovy
 |-- webapp-customer/            # Grails web app (read-only catalog)
-|   |-- build.gradle            # `implementation project(':shared-core')`
+|   |-- build.gradle            # `grails { plugins { implementation project(':shared-core') } }`
 |   `-- grails-app/
 |       `-- controllers/customer/CatalogController.groovy
 `-- webapp-admin/               # Grails web app (CRUD)
-    |-- build.gradle            # `implementation project(':shared-core')`
+    |-- build.gradle            # `grails { plugins { implementation project(':shared-core') } }`
     `-- grails-app/
         `-- controllers/admin/BookController.groovy</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Three modules, one root, two webapps that build to two <code>bootJar`s, one plugin every consumer reuses. Each webapp can be `bootRun</code> independently; both can be built together with <code>./gradlew build</code>.</p>
+<p>Three modules, one root, two deployable <code>bootJar`s, and one shared plugin jar. `shared-core</code> is not a third application. It is the reusable Grails plugin that both webapps compile against, package, and reload from during development.</p>
+</div>
+<div class="paragraph">
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>None yet</p>
+</li>
+</ul>
 </div>
 
 
@@ -214,7 +237,20 @@
 <p>JDK 21</p>
 </li>
 <li>
+<p>Internet access to download three starters from <a href="https://start.grails.org">start.grails.org</a></p>
+</li>
+<li>
 <p>About 45 minutes</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>None yet</p>
 </li>
 </ul>
 </div>
@@ -236,9 +272,9 @@
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="bash">git clone -b grails8 https://github.com/grails-guides/grails-multi-module.git
 cd grails-multi-module/complete
-./gradlew :webapp-customer:bootRun     # http://localhost:8080
-# in a second shell, with the customer port freed:
-./gradlew :webapp-admin:bootRun        # http://localhost:8080</code></pre>
+./gradlew :webapp-customer:bootRun
+# In a second shell:
+./gradlew :webapp-admin:bootRun --args='--server.port=8081'</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -254,6 +290,19 @@ cd grails-multi-module/complete
 </li>
 </ul>
 </div>
+<div class="paragraph">
+<p>Each chapter ends with the paths you should have touched by that point, so you can compare your workspace against the finished sample.</p>
+</div>
+<div class="paragraph">
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>None yet</p>
+</li>
+</ul>
+</div>
 
 
 <h1 id="generateModules">2 Generate the Three Module Starters</h1>
@@ -266,30 +315,76 @@ cd grails-multi-module/complete
 
 
 <div class="paragraph">
-<p>Each of the three modules is a fresh forge zip. The plugin is the <code>web_plugin</code> application type; the two webapps are the <code>web</code> type:</p>
+<p>Open <a href="https://start.grails.org">start.grails.org</a> in three browser tabs and generate three starters with the same baseline settings: JDK 21, Groovy, Gradle, Spock, and package <code>example</code>.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Forge application type</th>
+<th class="tableblock halign-left valign-top">UI label</th>
+<th class="tableblock halign-left valign-top">Application name</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>web_plugin</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Web Plugin</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>shared-core</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>web</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Web Application</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>webapp-customer</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>web</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Web Application</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>webapp-admin</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The naming here is straight from the Grails 8 forge source: <code>ApplicationType.WEB_PLUGIN</code> in <code>grails-forge/grails-forge-core/src/main/java/org/grails/forge/application/ApplicationType.java</code> and the <code>@Named("web_plugin")</code> registry in <code>grails-forge/grails-forge-core/src/main/java/org/grails/forge/application/WebPluginAvailableFeatures.java</code>.</p>
+</div>
+<div class="paragraph">
+<p>Each downloaded archive uses the application name as the zip filename, so unzip the three archives under one parent directory:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="bash">mkdir grails-multi-module &amp;&amp; cd grails-multi-module &amp;&amp; mkdir initial complete &amp;&amp; cd complete
+<pre class="CodeRay highlight"><code data-lang="bash">mkdir grails-multi-module
+cd grails-multi-module
 
-# shared-core - the plugin that holds the shared domain model + services
-curl -L -o p.zip &quot;https://prev-snapshot.grails.org/create/web_plugin/example.shared?lang=GROOVY&amp;build=GRADLE&amp;test=SPOCK&amp;javaVersion=JDK_21&quot;
-unzip p.zip &amp;&amp; mv shared shared-core &amp;&amp; rm p.zip
-
-# webapp-customer - read-only catalog
-curl -L -o c.zip &quot;https://prev-snapshot.grails.org/create/web/example.customer?lang=GROOVY&amp;build=GRADLE&amp;test=SPOCK&amp;javaVersion=JDK_21&quot;
-unzip c.zip &amp;&amp; mv customer webapp-customer &amp;&amp; rm c.zip
-
-# webapp-admin - back-office CRUD
-curl -L -o a.zip &quot;https://prev-snapshot.grails.org/create/web/example.admin?lang=GROOVY&amp;build=GRADLE&amp;test=SPOCK&amp;javaVersion=JDK_21&quot;
-unzip a.zip &amp;&amp; mv admin webapp-admin &amp;&amp; rm a.zip</code></pre>
+unzip ~/Downloads/shared-core.zip
+unzip ~/Downloads/webapp-customer.zip
+unzip ~/Downloads/webapp-admin.zip</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Patch <code>compileJava.options.release = 17</code> to <code>21</code> in each of the three <code>build.gradle</code> files (the forge ships JDK 17 by default even when <code>javaVersion=JDK_21</code> is requested).</p>
+<p>If you selected JDK 21 in the browser, keep the generated <code>compileJava.options.release = 21</code> lines exactly as they are. Grails Forge writes that value from the selected target JDK in <code>grails-forge/grails-forge-core/src/main/java/org/grails/forge/feature/build/gradle/templates/buildGradle.rocker.raw</code>, so there is no Grails 8 era "patch 17 to 21" cleanup step anymore.</p>
 </div>
 <div class="paragraph">
-<p>Each subdirectory is currently a stand-alone Grails project. The next chapter wires them into a single multi-project build.</p>
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>shared-core/build.gradle</p>
+</li>
+<li>
+<p>shared-core/src/main/groovy/example/SharedCoreGrailsPlugin.groovy</p>
+</li>
+<li>
+<p>webapp-customer/build.gradle</p>
+</li>
+<li>
+<p>webapp-admin/build.gradle</p>
+</li>
+</ul>
 </div>
 
 
@@ -303,7 +398,7 @@ unzip a.zip &amp;&amp; mv admin webapp-admin &amp;&amp; rm a.zip</code></pre>
 
 
 <div class="paragraph">
-<p>A root <code>settings.gradle</code> and a root <code>build.gradle</code> turn three side-by-side Grails projects into one Gradle build:</p>
+<p>A root <code>settings.gradle</code> and a root <code>build.gradle</code> turn the three generated starters into one Gradle build:</p>
 </div>
 <div class="listingblock">
 <div class="title">settings.gradle</div>
@@ -312,13 +407,12 @@ unzip a.zip &amp;&amp; mv admin webapp-admin &amp;&amp; rm a.zip</code></pre>
  * Multi-project root settings file.
  *
  * Three modules participate:
- *   shared-core      : Grails Plugin holding the domain model, GORM services,
- *                      and security-config bits the two webapps share.
+ *   shared-core      : Grails plugin holding the domain model and GORM services.
  *   webapp-customer  : customer-facing Grails web app (read-only catalog).
  *   webapp-admin     : back-office Grails web app with full CRUD.
  *
- * Both webapps depend on shared-core via `implementation project(':shared-core')`.
- * GORM picks up the plugin's domain classes automatically.
+ * Both webapps consume shared-core via their `grails { plugins { ... } }` block
+ * so bootRun can request the exploded plugin variant in development.
  */</span>
 
 rootProject.name = <span class="string"><span class="delimiter">'</span><span class="content">grails-multi-module</span><span class="delimiter">'</span></span>
@@ -332,11 +426,9 @@ include <span class="string"><span class="delimiter">'</span><span class="conten
 <div class="title">build.gradle</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">/*
- * Root build script. Per-module build.gradle files keep their own
- * dependency lists; this root file only carries cross-cutting concerns:
- * the JDK release level, the plain-old `useJUnitPlatform()` for every
- * Test task, and the same Apache Grails snapshot repositories every
- * module needs.
+ * Root build script.
+ * Keep per-module dependencies in the generated Grails projects.
+ * This file only centralizes repositories and JUnit Platform.
  */</span>
 
 subprojects {
@@ -347,8 +439,6 @@ subprojects {
             url = <span class="string"><span class="delimiter">'</span><span class="content">https://repository.apache.org/content/groups/snapshots</span><span class="delimiter">'</span></span>
             content {
                 includeVersionByRegex(<span class="string"><span class="delimiter">'</span><span class="content">org[.]apache[.]grails.*</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">.*</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">.*-SNAPSHOT</span><span class="delimiter">'</span></span>)
-            }
-            content {
                 includeVersionByRegex(<span class="string"><span class="delimiter">'</span><span class="content">org[.]apache[.]groovy.*</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">groovy.*</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">.*-SNAPSHOT</span><span class="delimiter">'</span></span>)
             }
             mavenContent { snapshotsOnly() }
@@ -357,40 +447,62 @@ subprojects {
             url = <span class="string"><span class="delimiter">'</span><span class="content">https://repository.apache.org/content/groups/staging</span><span class="delimiter">'</span></span>
             content {
                 includeVersionByRegex(<span class="string"><span class="delimiter">'</span><span class="content">org[.]apache[.]grails[.]gradle</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">grails-publish</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">.*</span><span class="delimiter">'</span></span>)
-            }
-            content {
                 includeVersionByRegex(<span class="string"><span class="delimiter">'</span><span class="content">org[.]apache[.]groovy.*</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">groovy.*</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">.*</span><span class="delimiter">'</span></span>)
             }
             mavenContent { releasesOnly() }
         }
     }
 
-    plugins.withId(<span class="string"><span class="delimiter">'</span><span class="content">groovy</span><span class="delimiter">'</span></span>) {
-        tasks.withType(Test).configureEach {
-            useJUnitPlatform()
-        }
+    tasks.withType(Test).configureEach {
+        useJUnitPlatform()
     }
 }</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Three patterns to point at:</p>
+<p>This root pattern intentionally mirrors two Grails 8 authority sources:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><code>rootProject.name = 'grails-multi-module'</code> is what <code>./gradlew projects</code> shows at the top of the tree. Without it, Gradle uses the directory name, which is fine for this sample but may not match your repo name in a real layout.</p>
+<p><code>grails-forge/grails-forge-core/src/main/java/org/grails/forge/build/gradle/GradleRepository.java</code> for the default starter repositories.</p>
 </li>
 <li>
-<p>The <code>subprojects { repositories { &#8230;&#8203; } }</code> block is where every module&#8217;s Apache Grails snapshot + staging Maven repos live. Avoid the temptation to also put <code>dependencies { &#8230;&#8203; }</code> here - you want each module to declare what it needs explicitly.</p>
-</li>
-<li>
-<p><code>plugins.withId('groovy') { tasks.withType(Test).configureEach { useJUnitPlatform() } }</code> ensures the JUnit 5 runner is used in every module that loads the Groovy plugin (which is every Grails module). Without it, only the Grails 8 starter&#8217;s own build.gradle would have it; the plugin module would default to the Vintage runner.</p>
+<p><code>grails-profiles/base/skeleton/build.gradle</code> plus <code>grails-forge/grails-forge-core/src/main/java/org/grails/forge/feature/build/gradle/templates/buildGradle.rocker.raw</code> for the per-project <code>tasks.withType(Test).configureEach { useJUnitPlatform() }</code> block.</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>The per-module <code>build.gradle</code> files keep their dependency lists. Sharing too aggressively at root level (e.g. <code>dependencies { implementation '&#8230;&#8203;' }</code> inside <code>subprojects</code>) creates surprise transitive dependencies that are hard to debug.</p>
+<p>Three details matter:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>rootProject.name = 'grails-multi-module'</code> gives the whole workspace a stable Gradle identity.</p>
+</li>
+<li>
+<p><code>subprojects { repositories { &#8230;&#8203; } }</code> centralises the same Maven repos every generated Grails 8 module would otherwise repeat. On the live <code>8.0.x</code> line that includes filtered Apache snapshot and staging repos, because the current forge default still adds them for snapshot Grails builds.</p>
+</li>
+<li>
+<p><code>tasks.withType(Test).configureEach { useJUnitPlatform() }</code> is the exact Grails 8 starter pattern. Lifting that block to the root keeps <code>test</code> and <code>integrationTest</code> aligned across all three modules without changing their dependency lists.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Do not move ordinary library dependencies to the root. The generated module builds already know which Grails plugins and starters they need. This root file should only carry cross-cutting build policy.</p>
+</div>
+<div class="paragraph">
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>settings.gradle</p>
+</li>
+<li>
+<p>build.gradle</p>
+</li>
+</ul>
 </div>
 
 
@@ -404,7 +516,50 @@ subprojects {
 
 
 <div class="paragraph">
-<p>The plugin module holds the domain model and the GORM data services. A simple Book domain in <code>shared-core/grails-app/domain/example/Book.groovy</code>:</p>
+<p><code>shared-core</code> is a Grails web plugin, not a plain Groovy library. Keep the generated plugin descriptor class:</p>
+</div>
+<div class="listingblock">
+<div class="title">shared-core/src/main/groovy/example/SharedCoreGrailsPlugin.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.plugins.Plugin</span>
+
+<span class="type">class</span> <span class="class">SharedCoreGrailsPlugin</span> <span class="directive">extends</span> Plugin {
+
+    <span class="keyword">def</span> profiles = [<span class="string"><span class="delimiter">'</span><span class="content">web</span><span class="delimiter">'</span></span>]
+
+    Closure doWithSpring() {
+        { -&gt;
+            <span class="comment">// Optional shared beans go here.</span>
+        }
+    }
+
+    <span class="type">void</span> doWithDynamicMethods() {
+    }
+
+    <span class="type">void</span> doWithApplicationContext() {
+    }
+
+    <span class="type">void</span> onChange(<span class="predefined-type">Map</span>&lt;<span class="predefined-type">String</span>, <span class="predefined-type">Object</span>&gt; event) {
+    }
+
+    <span class="type">void</span> onConfigChange(<span class="predefined-type">Map</span>&lt;<span class="predefined-type">String</span>, <span class="predefined-type">Object</span>&gt; event) {
+    }
+
+    <span class="type">void</span> onShutdown(<span class="predefined-type">Map</span>&lt;<span class="predefined-type">String</span>, <span class="predefined-type">Object</span>&gt; event) {
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>That class name and location are conventions, not decoration. Grails discovers plugins from a class under <code>src/main/groovy/&lt;package&gt;/</code> whose name ends in <code>GrailsPlugin</code> and whose base class is <code>grails.plugins.Plugin</code>. The lifecycle hooks available to you - <code>doWithSpring</code>, <code>doWithApplicationContext</code>, <code>doWithDynamicMethods</code>, <code>onChange</code>, <code>onConfigChange</code>, and <code>onShutdown</code> - come from <code>grails-core/src/main/groovy/grails/plugins/Plugin.groovy</code>.</p>
+</div>
+<div class="paragraph">
+<p>Core Grails plugins use additional descriptor conventions as plain properties on that class: <code>profiles</code>, <code>watchedResources</code>, <code>observe</code>, <code>loadAfter</code>, and <code>pluginExcludes</code>. See <code>grails-domain-class/src/main/groovy/org/grails/plugins/domain/DomainClassGrailsPlugin.groovy</code> and <code>grails-data-hibernate5/grails-plugin/src/main/groovy/grails/plugin/hibernate/HibernateGrailsPlugin.groovy</code> for live Grails 8 examples.</p>
+</div>
+<div class="paragraph">
+<p>The plugin module then owns the shared domain model and GORM data services. Start with a simple <code>Book</code> domain:</p>
 </div>
 <div class="listingblock">
 <div class="title">shared-core/grails-app/domain/example/Book.groovy</div>
@@ -433,7 +588,7 @@ subprojects {
 </div>
 </div>
 <div class="paragraph">
-<p>And a GORM data service that both webapps consume:</p>
+<p>And a GORM data service that both webapps inject:</p>
 </div>
 <div class="listingblock">
 <div class="title">shared-core/grails-app/services/example/BookService.groovy</div>
@@ -457,20 +612,45 @@ subprojects {
 </div>
 </div>
 <div class="paragraph">
-<p>Two things to highlight:</p>
+<p>The domain auto-discovery story in Grails 8 is now easy to verify in source:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>The <code>@Service(Book)</code> interface is auto-implemented by GORM at compile time. The webapps inject <code>BookService bookService</code> directly; there is no <code>BookServiceImpl</code> to write.</p>
+<p><code>grails-core/src/main/groovy/org/grails/core/artefact/DomainClassArtefactHandler.java</code> recognises domain artefacts from <code>grails-app/domain</code> and <code>@Entity</code>.</p>
 </li>
 <li>
-<p>The package is <code>example</code>, not <code>shared</code> or <code>core</code>. This is the <strong>domain</strong> package - it is what the data layer is "about", not what module owns it. The two webapps' UI controllers will live in <code>customer.<strong></code> and <code>admin.</strong></code> so the package separation makes the layering explicit.</p>
+<p><code>grails-domain-class/src/main/groovy/org/grails/plugins/domain/support/DefaultMappingContextFactoryBean.groovy</code> adds every <code>DomainClassArtefactHandler.TYPE</code> artefact to the mapping context.</p>
+</li>
+<li>
+<p><code>grails-data-hibernate5/grails-plugin/src/main/groovy/grails/plugin/hibernate/HibernateGrailsPlugin.groovy</code> collects those same artefacts from <code>grailsApplication.getArtefacts(&#8230;&#8203;)</code> and hands them to <code>HibernateDatastoreSpringInitializer</code>.</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>The plugin&#8217;s <code>build.gradle</code> should already contain <code>apply plugin: 'org.apache.grails.gradle.grails-plugin'</code> (the forge generates this for <code>web_plugin</code>). That is what registers the plugin&#8217;s domain classes and services for GORM auto-discovery in any consumer.</p>
+<p>That is why a sibling plugin&#8217;s <code>Book</code> domain becomes part of the consuming webapp&#8217;s Hibernate model without any manual registration step.</p>
+</div>
+<div class="paragraph">
+<p>Keep <code>apply plugin: 'org.apache.grails.gradle.grails-plugin'</code> in <code>shared-core/build.gradle</code>. In <code>grails-gradle/plugins/src/main/groovy/org/grails/gradle/plugin/core/GrailsPluginGradlePlugin.groovy</code> that Gradle plugin applies <code>java-library</code>, disables <code>bootJar</code> for the plugin project, packages a plain jar, and prepares plugin resources. If you remove it, <code>shared-core</code> stops behaving like a Grails plugin build.</p>
+</div>
+<div class="paragraph">
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>shared-core/build.gradle</p>
+</li>
+<li>
+<p>shared-core/src/main/groovy/example/SharedCoreGrailsPlugin.groovy</p>
+</li>
+<li>
+<p>shared-core/grails-app/domain/example/Book.groovy</p>
+</li>
+<li>
+<p>shared-core/grails-app/services/example/BookService.groovy</p>
+</li>
+</ul>
 </div>
 
 
@@ -484,18 +664,26 @@ subprojects {
 
 
 <div class="paragraph">
-<p>Both webapps consume <code>shared-core</code> via a single line in their <code>dependencies</code> block:</p>
+<p>Each webapp should consume <code>shared-core</code> through the Grails plugin block in its <code>build.gradle</code>, not through a plain <code>dependencies { &#8230;&#8203; }</code> entry:</p>
 </div>
 <div class="listingblock">
+<div class="title">webapp-customer/build.gradle and webapp-admin/build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">implementation project(<span class="string"><span class="delimiter">'</span><span class="content">:shared-core</span><span class="delimiter">'</span></span>)</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">grails {
+    plugins {
+        implementation project(<span class="string"><span class="delimiter">'</span><span class="content">:shared-core</span><span class="delimiter">'</span></span>)
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>That line goes immediately under <code>profile "org.apache.grails.profiles:web"</code> in each webapp&#8217;s <code>build.gradle</code>. Once it is in place, the plugin&#8217;s <code>Book</code> domain and <code>BookService</code> data service are visible to the consumer&#8217;s controllers, services, and GSPs at compile time, <strong>and</strong> GORM treats the consumer&#8217;s persistent context as the place those entities live at runtime.</p>
+<p>That is the Grails-aware multi-project path documented in <code>grails-doc/src/en/guide/plugins/creatingAndInstallingPlugins.adoc</code>. Under the hood, <code>grails-gradle/plugins/src/main/groovy/org/grails/gradle/plugin/core/PluginDefiner.groovy</code> tags project plugin dependencies so <code>bootRun</code> can request the exploded plugin variant, while <code>grails-gradle/plugins/src/main/groovy/org/grails/gradle/plugin/exploded/GrailsExplodedPlugin.groovy</code> publishes that exploded classes/resources variant from the plugin project. A plain <code>dependencies { implementation project(':shared-core') }</code> declaration still compiles, but it bypasses that built-in reload path.</p>
 </div>
 <div class="paragraph">
-<p>Each webapp owns its own controller package. The customer webapp uses <code>customer.*</code>:</p>
+<p>Once wired, the plugin&#8217;s <code>example.Book</code> domain and <code>example.BookService</code> data service are available to both webapps at compile time and runtime.</p>
+</div>
+<div class="paragraph">
+<p>The customer webapp owns its own controller package:</p>
 </div>
 <div class="listingblock">
 <div class="title">webapp-customer/grails-app/controllers/customer/CatalogController.groovy</div>
@@ -536,7 +724,7 @@ subprojects {
 </div>
 </div>
 <div class="paragraph">
-<p>The admin webapp uses <code>admin.*</code>:</p>
+<p>The admin webapp owns a different controller package:</p>
 </div>
 <div class="listingblock">
 <div class="title">webapp-admin/grails-app/controllers/admin/BookController.groovy</div>
@@ -566,23 +754,39 @@ subprojects {
 </div>
 </div>
 <div class="paragraph">
-<p>Three patterns to highlight:</p>
+<p>Three patterns to keep:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>Both controllers reference <code>example.Book</code> and <code>example.BookService</code> from the plugin. Neither one duplicates a single line of domain or service code.</p>
+<p>Both controllers import <code>example.Book</code> and <code>example.BookService</code> from the plugin. The shared data model still has exactly one owner.</p>
 </li>
 <li>
-<p>The customer-side <code>CatalogController</code> is hand-rolled; it deliberately does not extend <code>RestfulController</code>. Customers should not see <code>/v1/books</code> (POST/PUT/DELETE).</p>
+<p>The customer-side <code>CatalogController</code> is intentionally hand-rolled and read-only.</p>
 </li>
 <li>
-<p>The admin-side <code>BookController</code> extends <code>RestfulController&lt;Book&gt;</code>. The full CRUD surface comes for free; the admin webapp picks it up by reference.</p>
+<p>The admin-side <code>BookController</code> extends <code>RestfulController&lt;Book&gt;</code> and gets the CRUD-oriented web surface that belongs only in the admin app.</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>The package separation (<code>customer.<strong></code> vs <code>admin.</strong></code> for controllers, <code>example.<strong></code> for domain/service) is not enforced by Grails; it is a convention. But it is the convention that keeps refactors honest: a piece of code that lives under <code>example.</strong></code> belongs to the data layer, and any UI concern that creeps in there (a controller, a tag library, a flash-message string) is by definition misplaced.</p>
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>webapp-customer/build.gradle</p>
+</li>
+<li>
+<p>webapp-admin/build.gradle</p>
+</li>
+<li>
+<p>webapp-customer/grails-app/controllers/customer/CatalogController.groovy</p>
+</li>
+<li>
+<p>webapp-admin/grails-app/controllers/admin/BookController.groovy</p>
+</li>
+</ul>
 </div>
 
 
@@ -602,39 +806,209 @@ subprojects {
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="bash">./gradlew :webapp-customer:bootRun
 # In another shell:
-./gradlew :webapp-admin:bootRun</code></pre>
+./gradlew :webapp-admin:bootRun --args='--server.port=8081'</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Both default to port 8080, so you cannot run them at the same time without overrides. For dev work you have two cheap options:</p>
+<p>Both generated webapps default to port 8080. Grails 8 documents two accurate override styles:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><code>./gradlew :webapp-admin:bootRun --args='--server.port=8081'</code> - one-shot port override.</p>
+<p><code>--args='--server.port=8081'</code> in <code>grails-doc/src/en/ref/Command Line/bootRun.adoc</code></p>
 </li>
 <li>
-<p>Set <code>server.port: 8081</code> in <code>webapp-admin/grails-app/conf/application.yml</code> so the admin app permanently uses 8081 in dev. The customer app keeps 8080.</p>
+<p><code>-Dgrails.server.port=8081</code> in <code>grails-doc/src/en/guide/gettingStarted/runningAndDebuggingAnApplication.adoc</code></p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>Production deployment uses <code>bootJar</code> instead of <code>bootRun</code>:</p>
+<p>Use either form, but keep it consistent across your team.</p>
+</div>
+<div class="paragraph">
+<p>Production packaging uses <code>bootJar</code> for the two webapps and <code>jar</code> for the plugin:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="bash">./gradlew :webapp-customer:bootJar
-./gradlew :webapp-admin:bootJar
-ls webapp-customer/build/libs/   # webapp-customer-0.1.jar
-ls webapp-admin/build/libs/      # webapp-admin-0.1.jar</code></pre>
+<pre class="CodeRay highlight"><code data-lang="bash">./gradlew :shared-core:jar
+./gradlew :webapp-customer:bootJar
+./gradlew :webapp-admin:bootJar</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Each <code>bootJar</code> embeds the <code>shared-core</code> plugin classes (and only the <strong>transitive</strong> runtime dependencies the plugin actually needs). The two jars deploy independently to different hosts, different containers, different release cadences. The data model they share is the byte-for-byte identical compiled <code>Book.class</code> produced once by the <code>shared-core:compileGroovy</code> task and packaged into both.</p>
+<p><code>shared-core</code> does not produce a deployable <code>bootJar</code>. <code>grails-gradle/plugins/src/main/groovy/org/grails/gradle/plugin/core/GrailsPluginGradlePlugin.groovy</code> disables <code>bootJar</code> and keeps the plain jar as the plugin artifact. The two webapps are the only deployable applications in this workspace.</p>
+</div>
+<div class="paragraph">
+<p>For the day-to-day inner loop where you save a file in <code>shared-core</code> and want a running <code>bootRun</code> to pick it up, the next chapter covers the Grails 8 supported reload path.</p>
+</div>
+<div class="paragraph">
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>None, unless you choose a fixed port in <code>webapp-admin/grails-app/conf/application.yml</code></p>
+</li>
+</ul>
 </div>
 
 
-<h1 id="testingPerModule">7 Per-Module Testing</h1>
+<h1 id="devReload">7 Dev-Mode Auto-Reload Across Projects</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-multi-module/v8/guide/devReload.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Grails 8 already ships a supported cross-project reload path for plugin subprojects. You do not need the manual <code>bootRun</code> classpath patch as the primary recipe.</p>
+</div>
+<div class="paragraph">
+<p>The supported setup has two moving parts:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>the plugin project publishes exploded classes and resources by applying <code>org.apache.grails.gradle.grails-exploded</code></p>
+</li>
+<li>
+<p>the webapp consumes the plugin through <code>grails { plugins { &#8230;&#8203; } }</code>, which lets <code>bootRun</code> request that exploded variant automatically</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>In <code>shared-core/build.gradle</code>, add the exploded plugin:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">apply <span class="key">plugin</span>: <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails.gradle.grails-exploded</span><span class="delimiter">'</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In each webapp <code>build.gradle</code>, keep the plugin dependency inside the <code>grails</code> block:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails {
+    plugins {
+        implementation project(<span class="string"><span class="delimiter">'</span><span class="content">:shared-core</span><span class="delimiter">'</span></span>)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Those two pieces line up exactly with:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>grails-gradle/plugins/src/main/groovy/org/grails/gradle/plugin/exploded/GrailsExplodedPlugin.groovy</code></p>
+</li>
+<li>
+<p><code>grails-gradle/plugins/src/main/groovy/org/grails/gradle/plugin/core/PluginDefiner.groovy</code></p>
+</li>
+<li>
+<p><code>grails-doc/src/en/guide/plugins/creatingAndInstallingPlugins.adoc</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Now keep <code>shared-core</code> compiled in one shell and run whichever webapps you need in the others:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">./gradlew :shared-core:classes --continuous          # shell 1
+./gradlew :webapp-customer:bootRun                   # shell 2
+./gradlew :webapp-admin:bootRun --args='--server.port=8081'  # shell 3</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Save a file under <code>shared-core/grails-app/services/</code> or <code>shared-core/src/main/groovy/</code>, shell 1 recompiles it, and the running webapp restarts from the exploded output directories. No manual classpath surgery is required.</p>
+</div>
+<div class="paragraph">
+<p>What reloads cleanly versus what still needs a full restart:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 37.5%;">
+<col style="width: 12.5%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Change</th>
+<th class="tableblock halign-left valign-top">Reloads?</th>
+<th class="tableblock halign-left valign-top">Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Service or controller method body</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">yes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DevTools restart picks up the new bean classes</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GSP under <code>shared-core/grails-app/views/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">yes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The view layer is resolved from plugin resources during development</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Static asset</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">yes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Served from source/build outputs in dev mode</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Add or change a domain class field</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">no</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hibernate metadata is built once at startup</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Edit <code>application.yml</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">no</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configuration is read at startup</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Edit <code>*GrailsPlugin.groovy</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">no</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Plugin lifecycle hooks run during startup</p></td>
+</tr>
+</tbody>
+</table>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>The older manual <code>bootRun { doFirst { classpath = &#8230;&#8203; } }</code> patch can still work because <code>bootRun</code> ultimately runs with a mutable classpath. But on Grails 8 it is now a fallback for unusual cases, not the guide&#8217;s primary recipe, because the framework already includes a first-class exploded-plugin mechanism.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>shared-core/build.gradle</p>
+</li>
+<li>
+<p>webapp-customer/build.gradle</p>
+</li>
+<li>
+<p>webapp-admin/build.gradle</p>
+</li>
+</ul>
+</div>
+
+
+<h1 id="testingPerModule">8 Per-Module Testing</h1>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-multi-module/v8/guide/testingPerModule.adoc"'>
@@ -649,13 +1023,13 @@ ls webapp-admin/build/libs/      # webapp-admin-0.1.jar</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><code>shared-core</code> has its own integration suite (<code>shared-core/src/integration-test/</code>) that runs against an in-memory H2 datasource and exercises the domain constraints + GORM data service queries directly. No webapp boots.</p>
+<p><code>shared-core</code> keeps its own unit and integration tests focused on the domain model and GORM data services.</p>
 </li>
 <li>
-<p>Each webapp has its own functional suite (<code>webapp-customer/src/integration-test/</code>, <code>webapp-admin/src/integration-test/</code>) that boots the corresponding <code>bootJar</code> and drives it with Geb specs.</p>
+<p><code>webapp-customer</code> keeps its own web and functional tests for the customer-facing UI.</p>
 </li>
 <li>
-<p>Unit tests (Spock-based, no Spring context) live in each module&#8217;s <code>src/test/</code>.</p>
+<p><code>webapp-admin</code> keeps its own CRUD and admin-side functional tests.</p>
 </li>
 </ul>
 </div>
@@ -664,13 +1038,13 @@ ls webapp-admin/build/libs/      # webapp-admin-0.1.jar</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="bash">./gradlew :shared-core:integrationTest
-./gradlew :webapp-customer:integrationTest
-./gradlew :webapp-admin:integrationTest</code></pre>
+<pre class="CodeRay highlight"><code data-lang="bash">./gradlew :shared-core:test :shared-core:integrationTest
+./gradlew :webapp-customer:test :webapp-customer:integrationTest
+./gradlew :webapp-admin:test :webapp-admin:integrationTest</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Or fan out the whole test suite from the root:</p>
+<p>Or fan out the whole suite from the workspace root:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -678,11 +1052,39 @@ ls webapp-admin/build/libs/      # webapp-admin-0.1.jar</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>The matching <a href="../grails-github-actions-cicd/8/guide/index.html">GitHub Actions CI/CD guide</a> shows how to model these as separate jobs in a single workflow so a failing functional test in <code>webapp-admin</code> does not stop the <code>shared-core</code> suite from reporting its result.</p>
+<p>Because the root <code>build.gradle</code> applies <code>tasks.withType(Test).configureEach { useJUnitPlatform() }</code>, every <code>Test</code> task in the workspace follows the same Grails 8 starter pattern as <code>grails-profiles/base/skeleton/build.gradle</code>.</p>
+</div>
+<div class="paragraph">
+<p>The matching <a href="../grails-github-actions-cicd/8/guide/index.html">GitHub Actions CI/CD guide</a> shows how to split these module suites into separate jobs so a failing admin functional test does not hide a passing <code>shared-core</code> result.</p>
+</div>
+<div class="paragraph">
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>shared-core/src/test/groovy/**</p>
+</li>
+<li>
+<p>shared-core/src/integration-test/groovy/**</p>
+</li>
+<li>
+<p>webapp-customer/src/test/groovy/**</p>
+</li>
+<li>
+<p>webapp-customer/src/integration-test/groovy/**</p>
+</li>
+<li>
+<p>webapp-admin/src/test/groovy/**</p>
+</li>
+<li>
+<p>webapp-admin/src/integration-test/groovy/**</p>
+</li>
+</ul>
 </div>
 
 
-<h1 id="extractingPlugin">8 Extracting a Plugin From a Monolith</h1>
+<h1 id="extractingPlugin">9 Extracting a Plugin From a Monolith</h1>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-multi-module/v8/guide/extractingPlugin.adoc"'>
@@ -692,36 +1094,58 @@ ls webapp-admin/build/libs/      # webapp-admin-0.1.jar</code></pre>
 
 
 <div class="paragraph">
-<p>Most multi-module layouts grow out of a monolith that already exists. The migration from "one Grails app with two areas" to "one shared plugin plus two webapps" is mechanical:</p>
+<p>Most multi-module workspaces start from a monolith that already exists. The split is mechanical if you keep the ownership lines clear.</p>
 </div>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
-<p><strong>Decide what the plugin owns.</strong> Domain classes, GORM data services, security policy beans, and any tag library that emits content the customer and admin pages both render. Anything UI-shaped (controllers, GSPs, JSON views) stays in the consuming webapp.</p>
+<p>Generate <code>shared-core</code> as a Grails <code>web_plugin</code>, not as a plain library project.</p>
 </li>
 <li>
-<p><strong>Generate a Grails 8 plugin</strong> (the forge <code>web_plugin</code> type) into a new <code>shared-core/</code> directory next to the existing app.</p>
+<p>Move only genuinely shared code into the plugin: domain classes, GORM data services, shared taglibs, and reusable Spring beans. Leave <code>Application.groovy</code>, <code>UrlMappings.groovy</code>, controllers, GSPs, JSON views, and <code>BootStrap</code> classes in the webapps.</p>
 </li>
 <li>
-<p><strong>Move (<code>git mv</code>) the chosen files</strong> out of <code>app/grails-app/&#8230;&#8203;</code> into <code>shared-core/grails-app/&#8230;&#8203;</code>. Keep package names. The history follows the rename.</p>
+<p>Keep or recreate the plugin descriptor class (<code>SharedCoreGrailsPlugin.groovy</code>). If the extracted code needs plugin ordering or watched resources, express that there using the normal <code>Plugin</code> conventions.</p>
 </li>
 <li>
-<p><strong>In <code>settings.gradle</code> of the existing app, <code>include 'shared-core'</code>.</strong> In the existing app&#8217;s <code>build.gradle</code>, add <code>implementation project(':shared-core')</code>. Run <code>./gradlew build</code> - it should still pass.</p>
+<p>Wire the original app to the plugin with <code>grails { plugins { implementation project(':shared-core') } }</code>. If you want live reload while the split is in flight, also apply <code>org.apache.grails.gradle.grails-exploded</code> in <code>shared-core/build.gradle</code>.</p>
 </li>
 <li>
-<p><strong>Generate the second webapp</strong> (the forge <code>web</code> type) into <code>webapp-customer/</code>. Add <code>implementation project(':shared-core')</code> to its <code>build.gradle</code>. Move whichever controllers/views logically belong there from the original app.</p>
+<p>Create the second webapp, wire the same plugin, and move the customer-facing or admin-facing controllers and views into their target module.</p>
 </li>
 <li>
-<p><strong>Rename the original app</strong> to <code>webapp-admin/</code> (or whichever role it ended up playing).</p>
+<p>Choose one webapp to own database migrations and startup data changes.</p>
 </li>
 </ol>
 </div>
 <div class="paragraph">
-<p>The third commit on the timeline is a single commit that moves files; the fourth is the wiring change. Reviewers can see exactly what moved without unrelated diffs.</p>
+<p>Keep package names stable while you move files. <code>git mv</code> plus unchanged packages makes the review readable and keeps history attached to the files that actually moved.</p>
+</div>
+<div class="paragraph">
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>settings.gradle</p>
+</li>
+<li>
+<p>shared-core/build.gradle</p>
+</li>
+<li>
+<p>shared-core/src/main/groovy/example/SharedCoreGrailsPlugin.groovy</p>
+</li>
+<li>
+<p>webapp-customer/build.gradle</p>
+</li>
+<li>
+<p>webapp-admin/build.gradle</p>
+</li>
+</ul>
 </div>
 
 
-<h1 id="failureModes">9 Failure Modes</h1>
+<h1 id="failureModes">10 Failure Modes</h1>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-multi-module/v8/guide/failureModes.adoc"'>
@@ -731,38 +1155,40 @@ ls webapp-admin/build/libs/      # webapp-admin-0.1.jar</code></pre>
 
 
 <div class="paragraph">
-<p>Three failure modes show up in real multi-module Grails layouts. Recognise them early, address them once.</p>
+<p>Three failure modes show up again and again in real Grails multi-module workspaces.</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Circular plugin dependencies.</strong> If <code>shared-core</code> reaches "up" into either webapp - e.g. via a <code>MessageSource</code> lookup that depends on a webapp&#8217;s <code>i18n/</code> - the build still passes locally (because the consumer is on the classpath at run time) but breaks the moment you try to publish <code>shared-core</code> to a Maven repo. Fix the direction: the plugin should never know about its consumers.</p>
+<p><strong>Circular module dependencies, disguised as plugin wiring.</strong> The <code>dependsOn</code> and <code>loadAfter</code> properties on a Grails plugin descriptor are runtime ordering hints from <code>grails-core/src/main/groovy/grails/plugins/Plugin.groovy</code>. They do not replace Gradle project dependencies. If a webapp depends on <code>shared-core</code>, then <code>shared-core</code> must not depend back on that webapp. Keep the dependency arrow one-way: webapps depend on the plugin.</p>
 </li>
 <li>
-<p><strong>GORM mapping conflicts when the same domain class loads twice.</strong> A common mistake: copying a domain class from <code>shared-core</code> into <code>webapp-admin</code> "just to add an admin-only field". GORM sees two <code>example.Book</code> classes on the classpath, registers both, and either silently picks one or fails at startup. The fix is always the same: the field belongs on <code>shared-core.Book</code>, with <code>nullable: true</code> and an admin-only setter.</p>
+<p><strong>Mapping collisions in the Hibernate model.</strong> Grails 8 collects every domain artefact into the mapping context and Hibernate bootstrap path. You can see that in <code>grails-domain-class/src/main/groovy/org/grails/plugins/domain/support/DefaultMappingContextFactoryBean.groovy</code> and <code>grails-data-hibernate5/grails-plugin/src/main/groovy/grails/plugin/hibernate/HibernateGrailsPlugin.groovy</code>. If the plugin and a webapp both define separate entities that map to the same table or incompatible association metadata, startup fails or the schema becomes ambiguous. Keep one authoritative domain model in <code>shared-core</code>.</p>
 </li>
 <li>
-<p><strong>Two webapps disagree on the schema migration order.</strong> If both webapps run Liquibase changesets at startup, one of them will be racing the other on first deploy. Pick one - typically <code>webapp-admin</code> - to own migrations; the other (<code>webapp-customer</code>) reads the migrated schema with <code>dbCreate: none</code>. Document the discipline; do not rely on lock acquisition from Liquibase for cross-app coordination.</p>
+<p><strong>Both webapps try to run startup migrations.</strong> <code>grails-data-hibernate5/dbmigration/src/main/groovy/org/grails/plugins/databasemigration/DatabaseMigrationGrailsPlugin.groovy</code> runs Liquibase updates at startup when <code>grails.plugin.databasemigration.updateOnStart*</code> flags are enabled. Liquibase locking prevents corruption, but it still leaves startup order and deploy timing to chance. Pick one app to own migrations. Let the other app boot against an already-migrated schema.</p>
 </li>
 </ul>
 </div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
 <div class="paragraph">
-<p><strong>Cross-repo iteration.</strong> If <code>shared-core</code> later moves to its own GitHub repository, <code>includeBuild('../shared-core')</code> in the webapps' <code>settings.gradle</code> still gives you live cross-iteration during development - the consumer compiles against the live source tree, not a published JAR.</p>
+<p>Files touched:</p>
 </div>
-</td>
-</tr>
-</table>
+<div class="ulist">
+<ul>
+<li>
+<p>shared-core/build.gradle</p>
+</li>
+<li>
+<p>webapp-customer/build.gradle</p>
+</li>
+<li>
+<p>webapp-admin/build.gradle</p>
+</li>
+</ul>
 </div>
 
 
-<h1 id="helpWithGrails">10 Do you need help with Grails?</h1>
+<h1 id="helpWithGrails">11 Do you need help with Grails?</h1>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-multi-module/v8/guide/helpWithGrails.adoc"'>
@@ -795,6 +1221,16 @@ ls webapp-admin/build/libs/      # webapp-admin-0.1.jar</code></pre>
 </div>
 <div class="paragraph">
 <p>For Grails plugins, see the matching project on <a href="https://github.com/apache?q=grails">the apache org</a> or the plugin&#8217;s own GitHub repository.</p>
+</div>
+<div class="paragraph">
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>None</p>
+</li>
+</ul>
 </div>
 </div>
 </div>

@@ -106,7 +106,7 @@ function addJsClass() {
 
 
 <div class="paragraph">
-<p><code>TaskController</code> has seven actions, but only <code>index</code> returns a full page. Every other action returns a single GSP partial via <code>render template: '&#8230;&#8203;'</code>:</p>
+<p><code>TaskController</code> keeps the full-page render and the fragment renders separate. <code>index</code> uses <code>render view:</code> for the initial page; every HTMX endpoint returns a fragment with <code>render template:</code>:</p>
 </div>
 <div class="listingblock">
 <div class="title">grails-app/controllers/example/TaskController.groovy</div>
@@ -123,67 +123,83 @@ function addJsClass() {
             <span class="key">create</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>, <span class="key">update</span>: <span class="string"><span class="delimiter">'</span><span class="content">PATCH</span><span class="delimiter">'</span></span>, <span class="key">delete</span>: <span class="string"><span class="delimiter">'</span><span class="content">DELETE</span><span class="delimiter">'</span></span>, <span class="key">toggle</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>
     ]
 
-    <span class="comment">/** Full page (index.gsp). */</span>
     <span class="keyword">def</span> <span class="function">index</span>() {
-        respond Task.list(params), <span class="key">model</span>: [<span class="key">tasks</span>: Task.list(params), <span class="key">q</span>: <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>]
+        <span class="predefined-type">List</span>&lt;Task&gt; tasks = Task.list(params)
+        render <span class="key">view</span>: <span class="string"><span class="delimiter">'</span><span class="content">index</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">tasks</span>: tasks, <span class="key">task</span>: <span class="keyword">new</span> Task(), <span class="key">q</span>: <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>]
     }
 
-    <span class="comment">/** Live-search endpoint - returns just the rows partial. */</span>
+    <span class="keyword">def</span> <span class="function">show</span>(<span class="predefined-type">Long</span> id) {
+        Task task = Task.get(id)
+        <span class="keyword">if</span> (!task) {
+            response.status = HttpStatus.NOT_FOUND.value()
+            <span class="keyword">return</span>
+        }
+        render <span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">task</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">task</span>: task]
+    }
+
     <span class="keyword">def</span> <span class="function">search</span>() {
-        <span class="predefined-type">String</span> q = (params.q ?: <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>) <span class="keyword">as</span> <span class="predefined-type">String</span>
+        <span class="predefined-type">String</span> q = (params.q ?: <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>).trim()
         <span class="predefined-type">List</span>&lt;Task&gt; rows = q ? Task.findAllByTitleIlike(<span class="string"><span class="delimiter">&quot;</span><span class="content">%</span><span class="inline"><span class="inline-delimiter">${</span>q<span class="inline-delimiter">}</span></span><span class="content">%</span><span class="delimiter">&quot;</span></span>) : Task.list()
         render <span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">taskRows</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">tasks</span>: rows]
     }
 
-    <span class="comment">/** Add a new task - returns the new row prepended to the list. */</span>
     <span class="annotation">@Transactional</span>
     <span class="keyword">def</span> <span class="function">create</span>() {
-        Task t = <span class="keyword">new</span> Task(<span class="key">title</span>: params.title)
-        <span class="keyword">if</span> (!t.save()) {
+        Task task = <span class="keyword">new</span> Task(<span class="key">title</span>: params.title)
+        <span class="keyword">if</span> (!task.validate()) {
             response.status = HttpStatus.UNPROCESSABLE_ENTITY.value()
-            render <span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">taskForm</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">task</span>: t]
+            render <span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">taskForm</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">task</span>: task]
             <span class="keyword">return</span>
         }
-        render <span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">task</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">task</span>: t]
+        task.save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        render <span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">taskCreated</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">task</span>: task, <span class="key">formTask</span>: <span class="keyword">new</span> Task()]
     }
 
-    <span class="comment">/** Inline-edit endpoint - returns the edit form for a single row. */</span>
     <span class="keyword">def</span> <span class="function">editForm</span>(<span class="predefined-type">Long</span> id) {
-        Task t = Task.get(id)
-        <span class="keyword">if</span> (!t) { response.status = <span class="integer">404</span>; <span class="keyword">return</span> }
-        render <span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">taskEdit</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">task</span>: t]
+        Task task = Task.get(id)
+        <span class="keyword">if</span> (!task) {
+            response.status = HttpStatus.NOT_FOUND.value()
+            <span class="keyword">return</span>
+        }
+        render <span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">taskEdit</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">task</span>: task]
     }
 
-    <span class="comment">/** Apply an inline edit - returns the read-only row partial. */</span>
     <span class="annotation">@Transactional</span>
     <span class="keyword">def</span> <span class="function">update</span>(<span class="predefined-type">Long</span> id) {
-        Task t = Task.get(id)
-        <span class="keyword">if</span> (!t) { response.status = <span class="integer">404</span>; <span class="keyword">return</span> }
-        t.properties = params
-        <span class="keyword">if</span> (!t.save()) {
-            response.status = HttpStatus.UNPROCESSABLE_ENTITY.value()
-            render <span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">taskEdit</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">task</span>: t]
+        Task task = Task.get(id)
+        <span class="keyword">if</span> (!task) {
+            response.status = HttpStatus.NOT_FOUND.value()
             <span class="keyword">return</span>
         }
-        render <span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">task</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">task</span>: t]
+        task.title = params.title
+        <span class="keyword">if</span> (!task.save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)) {
+            response.status = HttpStatus.UNPROCESSABLE_ENTITY.value()
+            render <span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">taskEdit</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">task</span>: task]
+            <span class="keyword">return</span>
+        }
+        render <span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">task</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">task</span>: task]
     }
 
-    <span class="comment">/** Toggle the `done` flag - returns the row partial. */</span>
     <span class="annotation">@Transactional</span>
     <span class="keyword">def</span> <span class="function">toggle</span>(<span class="predefined-type">Long</span> id) {
-        Task t = Task.get(id)
-        <span class="keyword">if</span> (!t) { response.status = <span class="integer">404</span>; <span class="keyword">return</span> }
-        t.done = !t.done
-        t.save()
-        render <span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">task</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">task</span>: t]
+        Task task = Task.get(id)
+        <span class="keyword">if</span> (!task) {
+            response.status = HttpStatus.NOT_FOUND.value()
+            <span class="keyword">return</span>
+        }
+        task.done = !task.done
+        task.save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        render <span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">task</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">task</span>: task]
     }
 
-    <span class="comment">/** Delete - HTMX swaps the row out via hx-target=&quot;closest tr&quot; hx-swap=&quot;outerHTML&quot;. */</span>
     <span class="annotation">@Transactional</span>
     <span class="keyword">def</span> <span class="function">delete</span>(<span class="predefined-type">Long</span> id) {
-        Task t = Task.get(id)
-        <span class="keyword">if</span> (!t) { response.status = <span class="integer">404</span>; <span class="keyword">return</span> }
-        t.delete()
+        Task task = Task.get(id)
+        <span class="keyword">if</span> (!task) {
+            response.status = HttpStatus.NOT_FOUND.value()
+            <span class="keyword">return</span>
+        }
+        task.delete(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
         render <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>
     }
 }</code></pre>
@@ -201,10 +217,29 @@ function addJsClass() {
 <p>The <code>@Transactional(readOnly = true)</code> class annotation flips read-only mode on for the whole controller; individual mutating actions override with their own <code>@Transactional</code>.</p>
 </li>
 <li>
-<p>On a validation failure (<code>!t.save()</code>), the controller returns a 422 with the error fragment. HTMX swaps that fragment into the page, the user sees the error inline, and the form remains in the DOM ready for another attempt.</p>
+<p><code>show(Long id)</code> returns the read-only row fragment. That gives the Cancel button in the edit form a clean endpoint to reload.</p>
 </li>
 <li>
-<p><code>delete</code> returns an empty body. Combined with <code>hx-swap="outerHTML"</code> on the delete button, this removes the row from the DOM.</p>
+<p>On a validation failure the controller returns <code>422 Unprocessable Entity</code> with the same fragment the browser was already showing. HTMX swaps that fragment in place, so the user keeps context and sees the errors inline.</p>
+</li>
+<li>
+<p><code>create()</code> renders <code>_taskCreated.gsp</code>, which combines a fresh form plus an out-of-band prepend of the new row. This avoids hand-written client-side reset logic.</p>
+</li>
+<li>
+<p><code>delete()</code> returns an empty body. Combined with <code>hx-target="closest li"</code> and <code>hx-swap="outerHTML"</code>, that removes the row from the DOM.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Files touched:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>grails-app/controllers/example/TaskController.groovy</code></p>
+</li>
+<li>
+<p><code>grails-app/views/task/_taskCreated.gsp</code></p>
 </li>
 </ul>
 </div>

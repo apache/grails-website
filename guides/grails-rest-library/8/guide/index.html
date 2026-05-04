@@ -111,7 +111,7 @@
             
             <div class="toc-item" style="margin-left:0px"><a href="#createApp"><strong>2</strong><span>Creating the Application</span></a></div>
             
-            <div class="toc-item" style="margin-left:10px"><a href="#download"><strong>2.1</strong><span>Download a Grails 8 rest_api Starter</span></a></div>
+            <div class="toc-item" style="margin-left:10px"><a href="#download"><strong>2.1</strong><span>Download a Grails 8 Rest API Starter</span></a></div>
             
             <div class="toc-item" style="margin-left:0px"><a href="#domainModel"><strong>3</strong><span>The Book and Author Domain Model</span></a></div>
             
@@ -248,7 +248,7 @@ curl -s http://localhost:8080/v1/books | jq</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p><code>initial/</code> is the vanilla Grails 8 <code>rest_api</code> starter from <code><a href="https://prev-snapshot.grails.org" class="bare">https://prev-snapshot.grails.org</a></code> (with the <code>postgres</code>, <code>testcontainers</code>, <code>views-json</code>, and <code>database-migration</code> features). <code>complete/</code> adds the Book + Author domain model, the controllers, the JSON views, and the bootstrap data.</p>
+<p><code>initial/</code> is the vanilla Grails 8 <code>rest_api</code> starter from <a href="https://start.grails.org">start.grails.org</a> (with the <code>postgres</code>, <code>testcontainers</code>, <code>views-json</code>, and <code>database-migration</code> features). <code>complete/</code> adds the Book + Author domain model, the controllers, the JSON views, and the bootstrap data.</p>
 </div>
 
 
@@ -262,11 +262,11 @@ curl -s http://localhost:8080/v1/books | jq</code></pre>
 
 
 <div class="paragraph">
-<p>Generate a fresh Apache Grails 8 <strong>Rest API</strong> application from <a href="https://prev-snapshot.grails.org">prev-snapshot.grails.org</a>. Pick the <code>rest_api</code> application type (not <code>web</code>); it ships JSON views by default and skips the GSP view layer the regular <code>web</code> profile drags along.</p>
+<p>Generate a fresh Apache Grails 8 <strong>Rest API</strong> application from <a href="https://start.grails.org">start.grails.org</a>. Pick the <code>rest_api</code> application type (not <code>web</code>); it ships JSON views by default and skips the GSP view layer the regular <code>web</code> profile drags along.</p>
 </div>
 
 
-<h2 id="download">2.1 Download a Grails 8 rest_api Starter</h2>
+<h2 id="download">2.1 Download a Grails 8 Rest API Starter</h2>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-rest-library/v8/guide/download.adoc"'>
@@ -275,13 +275,8 @@ curl -s http://localhost:8080/v1/books | jq</code></pre>
 </div>
 
 
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="bash">curl -L -o library.zip \
-  &quot;https://prev-snapshot.grails.org/create/rest_api/example.library?lang=GROOVY&amp;build=GRADLE&amp;test=SPOCK&amp;javaVersion=JDK_21&amp;features=postgres,testcontainers,views-json,database-migration&quot;
-unzip library.zip
-cd library</code></pre>
-</div>
+<div class="paragraph">
+<p>Open <a href="https://start.grails.org">start.grails.org</a>, pick the <code>rest_api</code> profile, name the application <code>library</code>, set the package to <code>example</code>, choose JDK 21, tick the <code>postgres</code>, <code>testcontainers</code>, <code>views-json</code>, and <code>database-migration</code> features, and download the generated zip. Unzip it and <code>cd</code> into the <code>library</code> directory.</p>
 </div>
 <div class="paragraph">
 <p>The <code>rest_api</code> starter is leaner than the <code>web</code> starter: no asset pipeline, no GSP, no Bootstrap webjars. The <code>views-json</code> feature adds the <code>.gson</code> view support and the matching <code>org.apache.grails:grails-views-gson</code> dependency.</p>
@@ -349,7 +344,7 @@ cd library</code></pre>
 
     <span class="directive">static</span> constraints = {
         title       <span class="key">blank</span>: <span class="predefined-constant">false</span>, <span class="key">maxSize</span>: <span class="integer">255</span>
-        isbn        <span class="key">blank</span>: <span class="predefined-constant">false</span>, <span class="key">unique</span>: <span class="predefined-constant">true</span>, <span class="key">matches</span>: <span class="regexp"><span class="delimiter">/</span><span class="content">^(97(8|9))?</span><span class="char">\d</span><span class="content">{9}(</span><span class="char">\d</span><span class="content">|X)</span><span class="content">$</span><span class="delimiter">/</span></span>
+        isbn        <span class="key">blank</span>: <span class="predefined-constant">false</span>, <span class="key">unique</span>: <span class="predefined-constant">true</span>, <span class="key">maxSize</span>: <span class="integer">20</span>, <span class="key">matches</span>: <span class="regexp"><span class="delimiter">/</span><span class="content">^(97(8|9))?</span><span class="char">\d</span><span class="content">{9}(</span><span class="char">\d</span><span class="content">|X)</span><span class="content">$</span><span class="delimiter">/</span></span>
         pageCount   <span class="key">nullable</span>: <span class="predefined-constant">true</span>, <span class="key">min</span>: <span class="integer">1</span>
         publishedOn <span class="key">nullable</span>: <span class="predefined-constant">true</span>
     }
@@ -396,7 +391,6 @@ cd library</code></pre>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
 
-<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
 <span class="keyword">import</span> <span class="include">grails.util.Environment</span>
 <span class="keyword">import</span> <span class="include">org.slf4j.Logger</span>
 <span class="keyword">import</span> <span class="include">org.slf4j.LoggerFactory</span>
@@ -405,7 +399,6 @@ cd library</code></pre>
 
     <span class="directive">private</span> <span class="directive">static</span> <span class="directive">final</span> <span class="predefined-type">Logger</span> log = LoggerFactory.getLogger(BootStrap)
 
-    <span class="annotation">@Transactional</span>
     Closure init = { servletContext -&gt;
 
         <span class="keyword">if</span> (Environment.current == Environment.PRODUCTION) {
@@ -417,23 +410,25 @@ cd library</code></pre>
             <span class="keyword">return</span>
         }
 
-        Author tolkien = <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">J.R.R. Tolkien</span><span class="delimiter">'</span></span>,
-                                    <span class="key">biography</span>: <span class="string"><span class="delimiter">'</span><span class="content">English writer and philologist (1892-1973).</span><span class="delimiter">'</span></span>,
-                                    <span class="key">dateOfBirth</span>: <span class="predefined-type">Date</span>.parse(<span class="string"><span class="delimiter">'</span><span class="content">yyyy-MM-dd</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">1892-01-03</span><span class="delimiter">'</span></span>))
-                                    .save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
-        Author leguin  = <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Ursula K. Le Guin</span><span class="delimiter">'</span></span>,
-                                    <span class="key">biography</span>: <span class="string"><span class="delimiter">'</span><span class="content">American author (1929-2018).</span><span class="delimiter">'</span></span>,
-                                    <span class="key">dateOfBirth</span>: <span class="predefined-type">Date</span>.parse(<span class="string"><span class="delimiter">'</span><span class="content">yyyy-MM-dd</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">1929-10-21</span><span class="delimiter">'</span></span>))
-                                    .save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        Author.withTransaction {
+            Author tolkien = <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">J.R.R. Tolkien</span><span class="delimiter">'</span></span>,
+                                        <span class="key">biography</span>: <span class="string"><span class="delimiter">'</span><span class="content">English writer and philologist (1892-1973).</span><span class="delimiter">'</span></span>,
+                                        <span class="key">dateOfBirth</span>: <span class="predefined-type">Date</span>.parse(<span class="string"><span class="delimiter">'</span><span class="content">yyyy-MM-dd</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">1892-01-03</span><span class="delimiter">'</span></span>))
+                                        .save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+            Author leguin = <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Ursula K. Le Guin</span><span class="delimiter">'</span></span>,
+                                       <span class="key">biography</span>: <span class="string"><span class="delimiter">'</span><span class="content">American author (1929-2018).</span><span class="delimiter">'</span></span>,
+                                       <span class="key">dateOfBirth</span>: <span class="predefined-type">Date</span>.parse(<span class="string"><span class="delimiter">'</span><span class="content">yyyy-MM-dd</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">1929-10-21</span><span class="delimiter">'</span></span>))
+                                       .save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
 
-        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">author</span>: tolkien, <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">The Hobbit</span><span class="delimiter">'</span></span>,                  <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">310</span>,
-                 <span class="key">publishedOn</span>: <span class="predefined-type">Date</span>.parse(<span class="string"><span class="delimiter">'</span><span class="content">yyyy-MM-dd</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">1937-09-21</span><span class="delimiter">'</span></span>)).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
-        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">author</span>: tolkien, <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">The Fellowship of the Ring</span><span class="delimiter">'</span></span>,  <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928210</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">423</span>,
-                 <span class="key">publishedOn</span>: <span class="predefined-type">Date</span>.parse(<span class="string"><span class="delimiter">'</span><span class="content">yyyy-MM-dd</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">1954-07-29</span><span class="delimiter">'</span></span>)).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
-        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">author</span>: leguin,  <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">A Wizard of Earthsea</span><span class="delimiter">'</span></span>,        <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547851402</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">205</span>,
-                 <span class="key">publishedOn</span>: <span class="predefined-type">Date</span>.parse(<span class="string"><span class="delimiter">'</span><span class="content">yyyy-MM-dd</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">1968-11-01</span><span class="delimiter">'</span></span>)).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
-        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">author</span>: leguin,  <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">The Left Hand of Darkness</span><span class="delimiter">'</span></span>,   <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780441478125</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">304</span>,
-                 <span class="key">publishedOn</span>: <span class="predefined-type">Date</span>.parse(<span class="string"><span class="delimiter">'</span><span class="content">yyyy-MM-dd</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">1969-03-01</span><span class="delimiter">'</span></span>)).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+            <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">author</span>: tolkien, <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">The Hobbit</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">310</span>,
+                     <span class="key">publishedOn</span>: <span class="predefined-type">Date</span>.parse(<span class="string"><span class="delimiter">'</span><span class="content">yyyy-MM-dd</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">1937-09-21</span><span class="delimiter">'</span></span>)).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+            <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">author</span>: tolkien, <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">The Fellowship of the Ring</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928210</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">423</span>,
+                     <span class="key">publishedOn</span>: <span class="predefined-type">Date</span>.parse(<span class="string"><span class="delimiter">'</span><span class="content">yyyy-MM-dd</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">1954-07-29</span><span class="delimiter">'</span></span>)).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+            <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">author</span>: leguin, <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">A Wizard of Earthsea</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547851402</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">205</span>,
+                     <span class="key">publishedOn</span>: <span class="predefined-type">Date</span>.parse(<span class="string"><span class="delimiter">'</span><span class="content">yyyy-MM-dd</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">1968-11-01</span><span class="delimiter">'</span></span>)).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+            <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">author</span>: leguin, <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">The Left Hand of Darkness</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780441478125</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">304</span>,
+                     <span class="key">publishedOn</span>: <span class="predefined-type">Date</span>.parse(<span class="string"><span class="delimiter">'</span><span class="content">yyyy-MM-dd</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">1969-03-01</span><span class="delimiter">'</span></span>)).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        }
     }
 
     Closure destroy = { }
@@ -576,19 +571,20 @@ cd library</code></pre>
 
     <span class="directive">static</span> responseFormats = [<span class="string"><span class="delimiter">'</span><span class="content">json</span><span class="delimiter">'</span></span>]
 
-    AuthorController() { <span class="local-variable">super</span>(Author) }
+    AuthorController() {
+        <span class="local-variable">super</span>(Author)
+    }
 
-    <span class="comment">/**
-     * GET /v1/authors?max=20&amp;offset=0&amp;sort=name&amp;order=asc
-     *
-     * Bound `max` defaults to 25 and is hard-capped at 100 so a paginating
-     * client cannot ask for the full table in one request. `offset`,
-     * `sort`, and `order` flow through to the GORM query unchanged.
-     */</span>
     <span class="annotation">@Override</span>
-    <span class="directive">protected</span> <span class="predefined-type">List</span>&lt;Author&gt; listAllResources(<span class="predefined-type">Map</span> params) {
-        params.max = <span class="predefined-type">Math</span>.min(params.int(<span class="string"><span class="delimiter">'</span><span class="content">max</span><span class="delimiter">'</span></span>, <span class="integer">25</span>), <span class="integer">100</span>)
-        Author.list(params)
+    <span class="keyword">def</span> <span class="function">index</span>(<span class="predefined-type">Integer</span> max) {
+        <span class="keyword">if</span> (max != <span class="predefined-constant">null</span> &amp;&amp; max &lt; <span class="integer">0</span>) {
+            max = <span class="predefined-constant">null</span>
+        }
+
+        params.max = <span class="predefined-type">Math</span>.min(max ?: <span class="integer">25</span>, <span class="integer">100</span>)
+        params.offset = <span class="predefined-type">Math</span>.max(params.int(<span class="string"><span class="delimiter">'</span><span class="content">offset</span><span class="delimiter">'</span></span>, <span class="integer">0</span>), <span class="integer">0</span>)
+
+        respond listAllResources(params), <span class="key">model</span>: [<span class="key">authorCount</span>: countResources()]
     }
 }</code></pre>
 </div>
@@ -636,8 +632,12 @@ json {
         name book.author.name
     }
     _links {
-        self   <span class="key">url</span>: g.createLink(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>,   <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">show</span><span class="delimiter">'</span></span>, <span class="key">id</span>: book.id,        <span class="key">absolute</span>: <span class="predefined-constant">true</span>)
-        author <span class="key">url</span>: g.createLink(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">author</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">show</span><span class="delimiter">'</span></span>, <span class="key">id</span>: book.author.id, <span class="key">absolute</span>: <span class="predefined-constant">true</span>)
+        self {
+            href g.link(<span class="key">resource</span>: book, <span class="key">absolute</span>: <span class="predefined-constant">true</span>)
+        }
+        author {
+            href g.link(<span class="key">resource</span>: book.author, <span class="key">absolute</span>: <span class="predefined-constant">true</span>)
+        }
     }
 }</code></pre>
 </div>
@@ -655,14 +655,14 @@ json {
 
 model {
     <span class="predefined-type">Iterable</span>&lt;<span class="predefined-type">Book</span>&gt; bookList
-    <span class="predefined-type">Long</span>           bookCount
+    <span class="predefined-type">Integer</span>        bookCount
 }
 
 json {
-    page    <span class="predefined-type">Math</span>.max(<span class="integer">0</span>, (params.int(<span class="string"><span class="delimiter">'</span><span class="content">offset</span><span class="delimiter">'</span></span>, <span class="integer">0</span>) ?: <span class="integer">0</span>).intdiv(params.int(<span class="string"><span class="delimiter">'</span><span class="content">max</span><span class="delimiter">'</span></span>, <span class="integer">25</span>) ?: <span class="integer">25</span>))
+    page     <span class="predefined-type">Math</span>.max(<span class="integer">0</span>, (params.int(<span class="string"><span class="delimiter">'</span><span class="content">offset</span><span class="delimiter">'</span></span>, <span class="integer">0</span>) ?: <span class="integer">0</span>).intdiv(params.int(<span class="string"><span class="delimiter">'</span><span class="content">max</span><span class="delimiter">'</span></span>, <span class="integer">25</span>)))
     pageSize params.int(<span class="string"><span class="delimiter">'</span><span class="content">max</span><span class="delimiter">'</span></span>, <span class="integer">25</span>)
-    total   bookCount
-    items   bookList.collect { <span class="predefined-type">Book</span> b -&gt; g.render(<span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">book</span>: b]) }
+    total    bookCount
+    items    g.render(<span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>, <span class="key">collection</span>: bookList ?: <span class="type">[]</span>, <span class="type">var</span>: <span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>)
 }</code></pre>
 </div>
 </div>
@@ -722,54 +722,107 @@ json g.render(<span class="key">template</span>: <span class="string"><span clas
 <span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
 <span class="keyword">import</span> <span class="include">grails.rest.RestfulController</span>
 <span class="keyword">import</span> <span class="include">org.springframework.http.HttpStatus</span>
+<span class="keyword">import</span> <span class="include">org.springframework.validation.FieldError</span>
 
 <span class="type">class</span> <span class="class">BookController</span> <span class="directive">extends</span> RestfulController&lt;<span class="predefined-type">Book</span>&gt; {
 
     <span class="directive">static</span> responseFormats = [<span class="string"><span class="delimiter">'</span><span class="content">json</span><span class="delimiter">'</span></span>]
 
-    BookController() { <span class="local-variable">super</span>(<span class="predefined-type">Book</span>) }
+    BookController() {
+        <span class="local-variable">super</span>(<span class="predefined-type">Book</span>)
+    }
+
+    <span class="annotation">@Override</span>
+    <span class="keyword">def</span> <span class="function">index</span>(<span class="predefined-type">Integer</span> max) {
+        <span class="keyword">if</span> (max != <span class="predefined-constant">null</span> &amp;&amp; max &lt; <span class="integer">0</span>) {
+            max = <span class="predefined-constant">null</span>
+        }
+
+        params.max = <span class="predefined-type">Math</span>.min(max ?: <span class="integer">25</span>, <span class="integer">100</span>)
+        params.offset = <span class="predefined-type">Math</span>.max(params.int(<span class="string"><span class="delimiter">'</span><span class="content">offset</span><span class="delimiter">'</span></span>, <span class="integer">0</span>), <span class="integer">0</span>)
+
+        respond listAllResources(params), <span class="key">model</span>: [<span class="key">bookCount</span>: countResources()]
+    }
 
     <span class="annotation">@Override</span>
     <span class="directive">protected</span> <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; listAllResources(<span class="predefined-type">Map</span> params) {
-        params.max = <span class="predefined-type">Math</span>.min(params.int(<span class="string"><span class="delimiter">'</span><span class="content">max</span><span class="delimiter">'</span></span>, <span class="integer">25</span>), <span class="integer">100</span>)
-        <span class="predefined-type">Book</span>.list(params)
+        <span class="predefined-type">Long</span> authorId = params.long(<span class="string"><span class="delimiter">'</span><span class="content">author</span><span class="delimiter">'</span></span>)
+        <span class="predefined-type">Map</span> queryParams = [<span class="key">max</span>: params.max, <span class="key">offset</span>: params.offset, <span class="key">sort</span>: params.sort, <span class="key">order</span>: params.order].findAll { <span class="local-variable">it</span>.value != <span class="predefined-constant">null</span> }
+
+        <span class="keyword">if</span> (authorId != <span class="predefined-constant">null</span>) {
+            <span class="keyword">return</span> <span class="predefined-type">Book</span>.where {
+                author.id == authorId
+            }.list(queryParams)
+        }
+
+        <span class="predefined-type">Book</span>.list(queryParams)
     }
 
-    <span class="comment">/**
-     * POST /v1/books/bulk
-     *
-     * All-or-nothing bulk create. The whole request rolls back on the
-     * first validation failure; the response is a structured 422 with
-     * the field errors of every failing book in the batch.
-     */</span>
+    <span class="annotation">@Override</span>
+    <span class="directive">protected</span> <span class="predefined-type">Integer</span> countResources() {
+        <span class="predefined-type">Long</span> authorId = params.long(<span class="string"><span class="delimiter">'</span><span class="content">author</span><span class="delimiter">'</span></span>)
+        <span class="keyword">if</span> (authorId != <span class="predefined-constant">null</span>) {
+            <span class="keyword">return</span> <span class="predefined-type">Book</span>.where {
+                author.id == authorId
+            }.count() <span class="keyword">as</span> <span class="predefined-type">Integer</span>
+        }
+
+        <span class="predefined-type">Book</span>.count()
+    }
+
     <span class="annotation">@Transactional</span>
     <span class="keyword">def</span> <span class="function">bulkCreate</span>() {
-        <span class="keyword">if</span> (!request.JSON <span class="keyword">instanceof</span> <span class="predefined-type">List</span>) {
+        <span class="keyword">if</span> (!(request.JSON <span class="keyword">instanceof</span> <span class="predefined-type">List</span>)) {
             response.status = HttpStatus.UNPROCESSABLE_ENTITY.value()
-            respond <span class="key">errors</span>: [[<span class="key">message</span>: <span class="string"><span class="delimiter">'</span><span class="content">request body must be a JSON array of Book objects</span><span class="delimiter">'</span></span>]]
+            respond([
+                <span class="key">errors</span>: [[<span class="key">code</span>: <span class="string"><span class="delimiter">'</span><span class="content">invalid.body</span><span class="delimiter">'</span></span>, <span class="key">message</span>: <span class="string"><span class="delimiter">'</span><span class="content">Request body must be a JSON array of book objects</span><span class="delimiter">'</span></span>]]
+            ])
             <span class="keyword">return</span>
         }
 
-        <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; drafts = request.JSON.collect { json -&gt; <span class="keyword">new</span> <span class="predefined-type">Book</span>(json <span class="keyword">as</span> <span class="predefined-type">Map</span>) }
-        <span class="predefined-type">List</span>&lt;<span class="predefined-type">Map</span>&gt; failures = <span class="type">[]</span>
-        drafts.eachWithIndex { <span class="predefined-type">Book</span> b, <span class="type">int</span> i -&gt;
-            <span class="keyword">if</span> (!b.validate()) {
-                failures &lt;&lt; [<span class="key">index</span>: i, <span class="key">errors</span>: b.errors.fieldErrors.collect {
-                    [<span class="key">field</span>: <span class="local-variable">it</span>.field, <span class="key">code</span>: <span class="local-variable">it</span>.code, <span class="key">message</span>: <span class="local-variable">it</span>.defaultMessage]
-                }]
+        <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; drafts = request.JSON.collect { <span class="predefined-type">Object</span> json -&gt;
+            <span class="predefined-type">Book</span> draft = <span class="keyword">new</span> <span class="predefined-type">Book</span>()
+            bindData(draft, json <span class="keyword">as</span> <span class="predefined-type">Map</span>)
+            draft
+        }
+
+        <span class="predefined-type">List</span>&lt;<span class="predefined-type">Map</span>&lt;<span class="predefined-type">String</span>, <span class="predefined-type">Object</span>&gt;&gt; failures = <span class="type">[]</span>
+        drafts.eachWithIndex { <span class="predefined-type">Book</span> draft, <span class="type">int</span> index -&gt;
+            draft.validate()
+            <span class="keyword">if</span> (draft.hasErrors()) {
+                failures &lt;&lt; [
+                    index : index,
+                    <span class="key">errors</span>: draft.errors.allErrors.collect { error -&gt;
+                        <span class="predefined-type">Map</span>&lt;<span class="predefined-type">String</span>, <span class="predefined-type">Object</span>&gt; payload = [
+                            object : error.objectName,
+                            code   : error.code,
+                            <span class="key">message</span>: message(<span class="key">error</span>: error)
+                        ]
+                        <span class="keyword">if</span> (error <span class="keyword">instanceof</span> FieldError) {
+                            payload.field = error.field
+                            payload.rejectedValue = error.rejectedValue
+                            payload.bindingFailure = error.bindingFailure
+                        }
+                        payload
+                    }
+                ]
             }
         }
 
         <span class="keyword">if</span> (failures) {
             transactionStatus.setRollbackOnly()
             response.status = HttpStatus.UNPROCESSABLE_ENTITY.value()
-            respond <span class="key">books</span>: failures
+            respond([<span class="key">books</span>: failures])
             <span class="keyword">return</span>
         }
 
-        drafts*.save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
-        response.status = HttpStatus.CREATED.value()
-        respond <span class="key">books</span>: drafts
+        drafts.each { <span class="predefined-type">Book</span> book -&gt;
+            book.save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        }
+
+        params.max = <span class="predefined-type">Math</span>.max(drafts.size(), <span class="integer">1</span>)
+        params.offset = <span class="integer">0</span>
+        respond drafts, [<span class="key">status</span>: HttpStatus.CREATED, <span class="key">view</span>: <span class="string"><span class="delimiter">'</span><span class="content">index</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">bookCount</span>: drafts.size()]]
     }
 }</code></pre>
 </div>
