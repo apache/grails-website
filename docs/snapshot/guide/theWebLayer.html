@@ -2655,7 +2655,7 @@ This technique for rendering JSON may be ok for very simple responses, but in ge
 <p>The previous section on XML and JSON responses covered simplistic examples of rendering XML and JSON responses. Whilst the XML builder used by Grails is the standard <a href="https://groovy-lang.org/processing-xml.html#_xmlparser_and_xmlslurper">XmlSlurper</a> found in Groovy.</p>
 </div>
 <div class="paragraph">
-<p>For JSON, since Grails 3.1, Grails uses Groovy&#8217;s <a href="https://docs.groovy-lang.org/4.0.31/html/documentation/core-domain-specific-languages.html#_streamingjsonbuilder">StreamingJsonBuilder</a> by default and you can refer to the <a href="https://docs.groovy-lang.org/4.0.31/html/documentation/core-domain-specific-languages.html#_streamingjsonbuilder">Groovy documentation</a> and <a href="https://docs.groovy-lang.org/4.0.31/html/gapi/groovy/json/StreamingJsonBuilder.html">StreamingJsonBuilder</a> API documentation on how to use it.</p>
+<p>For JSON, since Grails 3.1, Grails uses Groovy&#8217;s <a href="https://docs.groovy-lang.org/4.0.32/html/documentation/core-domain-specific-languages.html#_streamingjsonbuilder">StreamingJsonBuilder</a> by default and you can refer to the <a href="https://docs.groovy-lang.org/4.0.32/html/documentation/core-domain-specific-languages.html#_streamingjsonbuilder">Groovy documentation</a> and <a href="https://docs.groovy-lang.org/4.0.32/html/gapi/groovy/json/StreamingJsonBuilder.html">StreamingJsonBuilder</a> API documentation on how to use it.</p>
 </div>
 
 
@@ -4262,7 +4262,10 @@ The section on <a href="#taglibs">Tag Libraries</a> covers how to add your own c
 <div class="sect3">
 <h4 id="_creating_layouts">Creating Layouts</h4>
 <div class="paragraph">
-<p>This product includes software developed by the OpenSymphony Group (<a href="https://github.com/sitemesh" class="bare">https://github.com/sitemesh</a>). The Sitemesh framework is used to provide a decorator engine, to support view layouts. Layouts are located in the <code>grails-app/views/layouts</code> directory. A typical layout can be seen below:</p>
+<p>Grails uses the <a href="https://github.com/sitemesh/sitemesh3">SiteMesh 3</a> framework as its decorator engine to support view layouts. In Grails 7.2 and later, decoration is performed by a Spring MVC <code>ViewResolver</code> rather than a Servlet filter, which improves performance and enables correct support for async controller return types.</p>
+</div>
+<div class="paragraph">
+<p>Layouts are located in the <code>grails-app/views/layouts</code> directory. A typical layout can be seen below:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -4388,17 +4391,32 @@ The section on <a href="#taglibs">Tag Libraries</a> covers how to add your own c
 </div>
 <div class="paragraph">
 <p>If a layout is not located using any of those conventions, the convention of last resort is to look for the application default layout which
-is <code>grails-app/views/layouts/application.gsp</code>.  The name of the application default layout may be changed by defining the property <code>grails.views.layout.default</code>
+is <code>grails-app/views/layouts/application.gsp</code>.  The name of the application default layout may be changed by defining the property <code>grails.sitemesh.default.layout</code>
 in the application configuration as follows:</p>
 </div>
 <div class="listingblock">
 <div class="title">grails-app/conf/application.yml</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails.views.layout.default</span>: <span class="string"><span class="content">myLayoutName</span></span></code></pre>
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">sitemesh</span>:
+        <span class="key">default</span>:
+            <span class="key">layout</span>: <span class="string"><span class="content">myLayoutName</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
 <p>With that property in place, the application default layout will be <code>grails-app/views/layouts/myLayoutName.gsp</code>.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+In Grails 7.2+ the canonical property for the default layout is <code>grails.sitemesh.default.layout</code>. The older <code>grails.views.layout.default</code> key is no longer consulted by the SiteMesh 3 integration.
+</td>
+</tr>
+</table>
 </div>
 </div>
 <div class="sect3">
@@ -4451,6 +4469,29 @@ The content to apply a layout to
 </div>
 <div class="paragraph">
 <p>The resulting content will be provided via the return value of the <a href="../ref/Tags%20-%20GSP/include.html">include</a> tag.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_sitemesh_2_attribution_grails_layout">SiteMesh 2 Attribution (grails-layout)</h4>
+<div class="paragraph">
+<p>The legacy <code>grails-layout</code> plugin remains available for applications that have not yet migrated to the SiteMesh 3 integration. When <code>grails-layout</code> is on the classpath, decoration is provided by SiteMesh 2 and the following attribution applies:</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>This product includes software developed by the OpenSymphony Group (<a href="https://github.com/sitemesh" class="bare">https://github.com/sitemesh</a>). The SiteMesh 2 framework is licensed under the OpenSymphony Software License, Version 1.1.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>This acknowledgment is required by the OpenSymphony Software License when redistributing SiteMesh 2 and applies only to applications that include the <code>grails-layout</code> plugin. Applications using only the SiteMesh 3 integration are not subject to this requirement.</p>
 </div>
 </div>
 
@@ -6241,7 +6282,7 @@ If you supply templates in a plugin you should consider declaring a <code>&lt;%@
 
 
 <div class="paragraph">
-<p>JSON views are written in Groovy, end with the file extension <code>gson</code> and reside in the <code>grails-app/views</code> directory.  They allow rendering of JSON responses using Groovy&#8217;s <a href="https://docs.groovy-lang.org/4.0.31/html/gapi/groovy/json/StreamingJsonBuilder.html">StreamingJsonBuilder</a> by providing a DSL for producing output in the JSON format. A hello world example can be seen below:</p>
+<p>JSON views are written in Groovy, end with the file extension <code>gson</code> and reside in the <code>grails-app/views</code> directory.  They allow rendering of JSON responses using Groovy&#8217;s <a href="https://docs.groovy-lang.org/4.0.32/html/gapi/groovy/json/StreamingJsonBuilder.html">StreamingJsonBuilder</a> by providing a DSL for producing output in the JSON format. A hello world example can be seen below:</p>
 </div>
 <div class="listingblock">
 <div class="title"><code>grails-app/views/hello.gson</code></div>
@@ -6260,7 +6301,7 @@ If you supply templates in a plugin you should consider declaring a <code>&lt;%@
 </div>
 </div>
 <div class="paragraph">
-<p>The <code>json</code> variable is an instance of <a href="https://docs.groovy-lang.org/4.0.31/html/gapi/groovy/json/StreamingJsonBuilder.html">StreamingJsonBuilder</a>. See the <a href="https://docs.groovy-lang.org/4.0.31/html/documentation/core-domain-specific-languages.html#_streamingjsonbuilder">documentation</a> in the Groovy user guide for more information on <code>StreamingJsonBuilder</code>.</p>
+<p>The <code>json</code> variable is an instance of <a href="https://docs.groovy-lang.org/4.0.32/html/gapi/groovy/json/StreamingJsonBuilder.html">StreamingJsonBuilder</a>. See the <a href="https://docs.groovy-lang.org/4.0.32/html/documentation/core-domain-specific-languages.html#_streamingjsonbuilder">documentation</a> in the Groovy user guide for more information on <code>StreamingJsonBuilder</code>.</p>
 </div>
 <div class="paragraph">
 <p>More example usages:</p>
@@ -8225,7 +8266,7 @@ json jsonapi.render(book, [<span class="key">expand</span>: <span class="string"
 <p>The JSON Views plugin registers a bean called <code>jsonTemplateEngine</code> of type <a href="../api/grails/plugin/json/view/JsonViewTemplateEngine.html">JsonViewTemplateEngine</a>.</p>
 </div>
 <div class="paragraph">
-<p>This class is a regular Groovy <a href="https://docs.groovy-lang.org/4.0.31/html/documentation/template-engines.html">TemplateEngine</a>, and you can use the engine to render JSON views outside the scope of an HTTP request.</p>
+<p>This class is a regular Groovy <a href="https://docs.groovy-lang.org/4.0.32/html/documentation/template-engines.html">TemplateEngine</a>, and you can use the engine to render JSON views outside the scope of an HTTP request.</p>
 </div>
 <div class="paragraph">
 <p>For example:</p>
@@ -8726,7 +8767,7 @@ The trait cannot be defined in the same project as you are compilation as it nee
 
 
 <div class="paragraph">
-<p>It is possible to register custom converters to change how a given class is rendered with json views. To do so, create a class that implements <a href="https://docs.groovy-lang.org/4.0.31/html/gapi/groovy.json.JsonGenerator.Converter.html">Converter</a>. Then you must register the class in <code>src/main/resources/META-INF/services/groovy.json.JsonGenerator$Converter</code>.</p>
+<p>It is possible to register custom converters to change how a given class is rendered with json views. To do so, create a class that implements <a href="https://docs.groovy-lang.org/4.0.32/html/gapi/groovy.json.JsonGenerator.Converter.html">Converter</a>. Then you must register the class in <code>src/main/resources/META-INF/services/groovy.json.JsonGenerator$Converter</code>.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -8867,7 +8908,7 @@ If you using the <code>log</code> variable then you will need to enabling loggin
 <p>Markup Views are written in Groovy, end with the file extension <code>gml</code> and reside in the <code>grails-app/views</code> directory.</p>
 </div>
 <div class="paragraph">
-<p>The Markup Views plugin uses Groovy&#8217;s <a href="https://docs.groovy-lang.org/4.0.31/html/documentation/template-engines.html#_the_markuptemplateengine">MarkupTemplateEngine</a> and you can mostly use the <a href="https://docs.groovy-lang.org/4.0.31/html/documentation/template-engines.html#_the_markuptemplateengine">Groovy user guide</a> as a reference for the syntax.</p>
+<p>The Markup Views plugin uses Groovy&#8217;s <a href="https://docs.groovy-lang.org/4.0.32/html/documentation/template-engines.html#_the_markuptemplateengine">MarkupTemplateEngine</a> and you can mostly use the <a href="https://docs.groovy-lang.org/4.0.32/html/documentation/template-engines.html#_the_markuptemplateengine">Groovy user guide</a> as a reference for the syntax.</p>
 </div>
 <div class="paragraph">
 <p>Example Markup View:</p>
@@ -8895,7 +8936,7 @@ cars {
 </div>
 </div>
 <div class="paragraph">
-<p>For further examples see Groovy&#8217;s <a href="https://docs.groovy-lang.org/4.0.31/html/documentation/template-engines.html#_the_markuptemplateengine">MarkupTemplateEngine</a> documentation.</p>
+<p>For further examples see Groovy&#8217;s <a href="https://docs.groovy-lang.org/4.0.32/html/documentation/template-engines.html#_the_markuptemplateengine">MarkupTemplateEngine</a> documentation.</p>
 </div>
 <div class="paragraph">
 <p>All Markup views subclass the <a href="../api/grails/plugin/markup/view/MarkupViewTemplate.html">MarkupViewTemplate</a> class by default.</p>
@@ -9006,7 +9047,7 @@ apply <span class="key">plugin</span>: <span class="string"><span class="delimit
 
 
 <div class="paragraph">
-<p>Markup views configuration can be altered with <code>grails-app/conf/application.yml</code>. Any of the properties within the <a href="../api/grails/plugin/markup/view/MarkupViewConfiguration.html">MarkupViewConfiguration</a> class and Groovy&#8217;s <a href="https://docs.groovy-lang.org/4.0.31/html/gapi/groovy/text/markup/TemplateConfiguration.html">TemplateConfiguration</a> class can be set.</p>
+<p>Markup views configuration can be altered with <code>grails-app/conf/application.yml</code>. Any of the properties within the <a href="../api/grails/plugin/markup/view/MarkupViewConfiguration.html">MarkupViewConfiguration</a> class and Groovy&#8217;s <a href="https://docs.groovy-lang.org/4.0.32/html/gapi/groovy/text/markup/TemplateConfiguration.html">TemplateConfiguration</a> class can be set.</p>
 </div>
 <div class="paragraph">
 <p>For example:</p>

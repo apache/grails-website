@@ -182,19 +182,22 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
                     <div class="toc-item" style="margin-left:0px"><a href="#upgrading80x"><strong>3.1</strong><span>Upgrading from Grails 7 to Grails 8</span></a>
                     </div>
                     
-                    <div class="toc-item" style="margin-left:0px"><a href="#upgrading71x"><strong>3.2</strong><span>Upgrading from Grails 7.0 to Grails 7.1</span></a>
+                    <div class="toc-item" style="margin-left:0px"><a href="#upgrading72x"><strong>3.2</strong><span>Upgrading from Grails 7.1 to Grails 7.2</span></a>
                     </div>
                     
-                    <div class="toc-item" style="margin-left:0px"><a href="#upgrading70x"><strong>3.3</strong><span>Upgrading from Grails 6 to Grails 7.0</span></a>
+                    <div class="toc-item" style="margin-left:0px"><a href="#upgrading71x"><strong>3.3</strong><span>Upgrading from Grails 7.0 to Grails 7.1</span></a>
                     </div>
                     
-                    <div class="toc-item" style="margin-left:0px"><a href="#upgrading60x"><strong>3.4</strong><span>Upgrading from Grails 5 to Grails 6</span></a>
+                    <div class="toc-item" style="margin-left:0px"><a href="#upgrading70x"><strong>3.4</strong><span>Upgrading from Grails 6 to Grails 7.0</span></a>
                     </div>
                     
-                    <div class="toc-item" style="margin-left:0px"><a href="#upgrading50x"><strong>3.5</strong><span>Upgrading from Grails 4 to Grails 5</span></a>
+                    <div class="toc-item" style="margin-left:0px"><a href="#upgrading60x"><strong>3.5</strong><span>Upgrading from Grails 5 to Grails 6</span></a>
                     </div>
                     
-                    <div class="toc-item" style="margin-left:0px"><a href="#upgrading40x"><strong>3.6</strong><span>Upgrading from Grails 3.3.x to Grails 4</span></a>
+                    <div class="toc-item" style="margin-left:0px"><a href="#upgrading50x"><strong>3.6</strong><span>Upgrading from Grails 4 to Grails 5</span></a>
+                    </div>
+                    
+                    <div class="toc-item" style="margin-left:0px"><a href="#upgrading40x"><strong>3.7</strong><span>Upgrading from Grails 3.3.x to Grails 4</span></a>
                     </div>
                     
                 </div>
@@ -1242,7 +1245,137 @@ See <a href="https://github.com/apache/grails-core/pull/15212">PR 15212</a> for 
 </div>
 
 
-<h2 id="upgrading71x">3.2 Upgrading from Grails 7.0 to Grails 7.1</h2>
+<h2 id="upgrading72x">3.2 Upgrading from Grails 7.1 to Grails 7.2</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/upgrading/upgrading72x.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="sect2">
+<h3 id="_upgrade_instructions_for_grails_7_1_to_grails_7_2">Upgrade Instructions for Grails 7.1 to Grails 7.2</h3>
+<div class="paragraph">
+<p>This guide outlines the changes introduced in Grails 7.2 and the steps required to upgrade your application.</p>
+</div>
+<div class="sect3">
+<h4 id="_1_sitemesh_3_filter_less_integration">1. SiteMesh 3 Filter-less Integration</h4>
+<div class="paragraph">
+<p>Grails 7.2 upgrades the SiteMesh 3 integration to a <strong>filter-less</strong> architecture. Decoration is now performed by a Spring MVC <code>ViewResolver</code> rather than a Servlet filter. This change improves performance, eliminates ordering issues with other filters, and correctly supports async controller return types (<code>Callable</code>, <code>@Async</code>).</p>
+</div>
+<div class="sect4">
+<h5 id="_what_changed">What Changed</h5>
+<div class="ulist">
+<ul>
+<li>
+<p>The <code>SiteMeshFilter</code> servlet filter is no longer active. A <code>NoopSitemeshFilter</code> placeholder bean is registered under the <code>sitemesh</code> name to prevent SiteMesh&#8217;s auto-configuration from activating the upstream filter-based integration.</p>
+</li>
+<li>
+<p>Layout resolution and decoration are now handled by <code>Sitemesh3LayoutView</code> (a Spring <code>View</code>) and <code>CaptureAwareContentProcessor</code>.</p>
+</li>
+<li>
+<p>GSP pages populate a <code>Sitemesh3CapturedPage</code> at render time via the <code>grailsLayout</code> capture tag library. SiteMesh no longer parses the raw HTML response to extract head/body/title.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_required_actions">Required Actions</h5>
+<div class="paragraph">
+<p>For most applications <strong>no changes are required</strong>. The filter-less integration is a drop-in replacement: layouts, <code>&lt;g:layoutHead&gt;</code>, <code>&lt;g:layoutTitle&gt;</code>, <code>&lt;g:layoutBody&gt;</code>, <code>&lt;g:pageProperty&gt;</code>, <code>&lt;g:applyLayout&gt;</code>, and layout-by-convention all behave identically to the previous release.</p>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>The guidance below applies <strong>only</strong> when the SiteMesh 3 integration is in use. The legacy <code>grails-layout</code> plugin (SiteMesh 2) remains supported in Grails 7.2 and continues to honor its existing configuration. If your application still depends on <code>grails-layout</code>, leave the SiteMesh 2 properties in place — they remain meaningful for that codepath.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>When using the SiteMesh 3 integration, the following SiteMesh 2-era configuration properties are no longer consulted and can be removed from your <code>application.yml</code> if present:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="comment"># Remove these — no longer used by the SiteMesh 3 integration in Grails 7.2.</span>
+<span class="comment"># (Retain them if your application still uses the grails-layout / SiteMesh 2 plugin.)</span>
+<span class="key">grails.gsp.view.layoutViewResolver</span>: <span class="string"><span class="content">false</span></span>
+<span class="key">sitemesh.filter.order</span>: <span class="string"><span class="content">...</span></span>
+<span class="key">sitemesh.decorator.tagRuleBundles</span>: <span class="string"><span class="content">...</span></span></code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_configuring_the_default_layout">Configuring the Default Layout</h5>
+<div class="paragraph">
+<p>The default layout is still configured via:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">sitemesh</span>:
+        <span class="key">default</span>:
+            <span class="key">layout</span>: <span class="string"><span class="content">application</span></span></code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_layout_cache_tuning_optional">Layout Cache Tuning (Optional)</h5>
+<div class="paragraph">
+<p>In non-development environments, layout paths are cached by controller/action pair. The cache TTL can be tuned independently of the GSP reload interval using a dedicated key:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">sitemesh</span>:
+        <span class="key">layout</span>:
+            <span class="key">cache</span>:
+                <span class="key">interval</span>: <span class="string"><span class="content">5000</span></span>   <span class="comment"># milliseconds, default 5000</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This replaces any reliance on <code>grails.gsp.reload.interval</code> for layout cache expiration in previous snapshots.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_async_controller_support">Async Controller Support</h5>
+<div class="paragraph">
+<p>The filter-less architecture correctly handles Grails controllers that return <code>Callable</code> or use <code>@Async</code>. Previously, async dispatch could cause decoration to run on a different thread from the one that populated the SiteMesh request scope, leading to empty layouts or stale content. This is resolved in 7.2.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_content_blocks">Content Blocks</h5>
+<div class="paragraph">
+<p>Content blocks (the <code>&lt;content tag="&#8230;&#8203;"&gt;</code> pattern) continue to work as before. The GSP preprocessor maps them to <code>&lt;grailsLayout:captureContent tag="&#8230;&#8203;"&gt;</code> at compile time, and the captured buffers are passed directly to the layout without an additional HTML parse.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="xml"><span class="error">&lt;</span>%-- Page --%<span class="error">&gt;</span>
+<span class="tag">&lt;content</span> <span class="attribute-name">tag</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">sidebar</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    ... sidebar content ...
+<span class="tag">&lt;/content&gt;</span>
+
+<span class="error">&lt;</span>%-- Layout --%<span class="error">&gt;</span>
+<span class="tag">&lt;div</span> <span class="attribute-name">id</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">sidebar</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;g:pageProperty</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">page.sidebar</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
+<span class="tag">&lt;/div&gt;</span></code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+
+<h2 id="upgrading71x">3.3 Upgrading from Grails 7.0 to Grails 7.1</h2>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/upgrading/upgrading71x.adoc"'>
@@ -2332,11 +2465,78 @@ grails generate-scaffold-all Book</code></pre>
 <p>See the ../ref/Tags%20-%20GSP/flashMessages.html[flashMessages] tag reference for full details.</p>
 </div>
 </div>
+<div class="sect4">
+<h5 id="_2_12_exception_log_line_includes_per_request_context">2.12 Exception Log Line Includes Per-Request Context</h5>
+<div class="paragraph">
+<p><code>GrailsExceptionResolver</code> now appends a parenthesised clause of per-request context — the current auditor and,
+optionally, the remote client address — to its exception log headline:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>RuntimeException occurred when processing request: [GET] /admin/users/42 (ip: 198.51.100.42, user: alice)</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The auditor entry reuses the same <code>AuditorAware</code> resolution that populates <code>@CreatedBy</code> / <code>@LastModifiedBy</code>
+(see section 2.4), so no second "current user" bean is needed. The IP entry is
+<code>HttpServletRequest.getRemoteAddr()</code> — behind a reverse proxy, set <code>server.forward-headers-strategy: native</code> so
+the address reflects the real client.</p>
+</div>
+<div class="sect5">
+<h6 id="_impact">Impact</h6>
+<div class="paragraph">
+<p>Any log parser, alert rule, or log-aggregation query that matches on the exact exception headline format will
+need to tolerate the optional ` (ip: &lt;value&gt;, user: &lt;value&gt;)` suffix. Both entries are opt-in — the auditor
+entry is gated to avoid writing user identifiers (typically PII) into exception logs without an explicit
+decision, and the remote-address entry is gated for the same reason. Toggle each independently:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">exceptionresolver</span>:
+        <span class="key">logAuditor</span>: <span class="string"><span class="content">true</span></span>        <span class="comment"># add ' user: &lt;value&gt;' when an AuditorAware bean is registered</span>
+        <span class="key">logRemoteAddr</span>: <span class="string"><span class="content">true</span></span>     <span class="comment"># add ' ip: &lt;value&gt;'</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>With both disabled — the default — the headline matches its pre-7.1 form. See the Logging Full Stack Traces
+section of the user guide for details.</p>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_2_13_stacktrace_logger_side_effect_emission">2.13 StackTrace Logger Side-Effect Emission</h5>
+<div class="paragraph">
+<p>Pre-7.1, <code>DefaultStackTraceFilterer.filter(Throwable)</code> emitted the unfiltered stack trace to the dedicated
+<code>StackTrace</code> logger as a side effect of cleaning the trace. The 7.1 PR that fixed duplicate-per-cause logging
+removed this emission, breaking applications that relied on it for non-resolver code paths (for example,
+scheduled jobs that call <code>GrailsUtil.sanitizeRootCause(ex)</code> before logging via their own logger, or custom
+exception handlers that route the cleaned exception elsewhere).</p>
+</div>
+<div class="paragraph">
+<p>The side-effect emission has been restored as the default and is now controlled by a dedicated property:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">exceptionresolver</span>:
+        <span class="key">logFullStackTraceOnFilter</span>: <span class="string"><span class="content">true</span></span>   <span class="comment"># default; preserves pre-7.1 emission</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Set to <code>false</code> to disable the side-effect emission and rely solely on <code>logFullStackTrace</code> for resolver-driven
+output. The two flags interact — if both are enabled, a request exception with N causes produces N+1 <code>StackTrace</code>
+records (one resolver-driven plus one per throwable visited by the recursive filter walk). The Logging Full
+Stack Traces section of the user guide includes a matrix of behaviours for the four flag combinations.</p>
+</div>
+</div>
 </div>
 </div>
 
 
-<h2 id="upgrading70x">3.3 Upgrading from Grails 6 to Grails 7.0</h2>
+<h2 id="upgrading70x">3.4 Upgrading from Grails 6 to Grails 7.0</h2>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/upgrading/upgrading70x.adoc"'>
@@ -3779,7 +3979,7 @@ Applications generated by the Grails Forge automatically use <code>enforcedPlatf
 </div>
 
 
-<h2 id="upgrading60x">3.4 Upgrading from Grails 5 to Grails 6</h2>
+<h2 id="upgrading60x">3.5 Upgrading from Grails 5 to Grails 6</h2>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/upgrading/upgrading60x.adoc"'>
@@ -4092,7 +4292,7 @@ grailsGradlePluginVersion=6.0.0</code></pre>
 </div>
 
 
-<h2 id="upgrading50x">3.5 Upgrading from Grails 4 to Grails 5</h2>
+<h2 id="upgrading50x">3.6 Upgrading from Grails 4 to Grails 5</h2>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/upgrading/upgrading50x.adoc"'>
@@ -4321,7 +4521,7 @@ More information <a href="https://docs.gradle.org/current/userguide/java_library
 </div>
 
 
-<h2 id="upgrading40x">3.6 Upgrading from Grails 3.3.x to Grails 4</h2>
+<h2 id="upgrading40x">3.7 Upgrading from Grails 3.3.x to Grails 4</h2>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/upgrading/upgrading40x.adoc"'>

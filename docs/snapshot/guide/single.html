@@ -186,15 +186,17 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
                             
                             <div class="toc-item" style="margin-left:10px"><a href="#upgrading80x"><strong>3.1</strong><span>Upgrading from Grails 7 to Grails 8</span></a></div>
                             
-                            <div class="toc-item" style="margin-left:10px"><a href="#upgrading71x"><strong>3.2</strong><span>Upgrading from Grails 7.0 to Grails 7.1</span></a></div>
+                            <div class="toc-item" style="margin-left:10px"><a href="#upgrading72x"><strong>3.2</strong><span>Upgrading from Grails 7.1 to Grails 7.2</span></a></div>
                             
-                            <div class="toc-item" style="margin-left:10px"><a href="#upgrading70x"><strong>3.3</strong><span>Upgrading from Grails 6 to Grails 7.0</span></a></div>
+                            <div class="toc-item" style="margin-left:10px"><a href="#upgrading71x"><strong>3.3</strong><span>Upgrading from Grails 7.0 to Grails 7.1</span></a></div>
                             
-                            <div class="toc-item" style="margin-left:10px"><a href="#upgrading60x"><strong>3.4</strong><span>Upgrading from Grails 5 to Grails 6</span></a></div>
+                            <div class="toc-item" style="margin-left:10px"><a href="#upgrading70x"><strong>3.4</strong><span>Upgrading from Grails 6 to Grails 7.0</span></a></div>
                             
-                            <div class="toc-item" style="margin-left:10px"><a href="#upgrading50x"><strong>3.5</strong><span>Upgrading from Grails 4 to Grails 5</span></a></div>
+                            <div class="toc-item" style="margin-left:10px"><a href="#upgrading60x"><strong>3.5</strong><span>Upgrading from Grails 5 to Grails 6</span></a></div>
                             
-                            <div class="toc-item" style="margin-left:10px"><a href="#upgrading40x"><strong>3.6</strong><span>Upgrading from Grails 3.3.x to Grails 4</span></a></div>
+                            <div class="toc-item" style="margin-left:10px"><a href="#upgrading50x"><strong>3.6</strong><span>Upgrading from Grails 4 to Grails 5</span></a></div>
+                            
+                            <div class="toc-item" style="margin-left:10px"><a href="#upgrading40x"><strong>3.7</strong><span>Upgrading from Grails 3.3.x to Grails 4</span></a></div>
                             
                             <div class="toc-item" style="margin-left:0px"><a href="#conf"><strong>4</strong><span>Configuration</span></a></div>
                             
@@ -212,7 +214,9 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
                             
                             <div class="toc-item" style="margin-left:30px"><a href="#maskingRequestParametersFromStacktraceLogs"><strong>4.1.4.2</strong><span>Masking Request Parameters From Stacktrace Logs</span></a></div>
                             
-                            <div class="toc-item" style="margin-left:30px"><a href="#externalLoggingConfiguration"><strong>4.1.4.3</strong><span>External Configuration File</span></a></div>
+                            <div class="toc-item" style="margin-left:30px"><a href="#loggingFullStackTraces"><strong>4.1.4.3</strong><span>Logging Full Stack Traces</span></a></div>
+                            
+                            <div class="toc-item" style="margin-left:30px"><a href="#externalLoggingConfiguration"><strong>4.1.4.4</strong><span>External Configuration File</span></a></div>
                             
                             <div class="toc-item" style="margin-left:20px"><a href="#configGORM"><strong>4.1.5</strong><span>GORM</span></a></div>
                             
@@ -889,7 +893,7 @@ Notable new features are included below.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Groovy 4.0.31</p>
+<p>Groovy 4.0.32</p>
 </li>
 <li>
 <p>Spring Framework 7.0.6</p>
@@ -3311,7 +3315,137 @@ See <a href="https://github.com/apache/grails-core/pull/15212">PR 15212</a> for 
 </div>
 
 
-<h2 id="upgrading71x">3.2 Upgrading from Grails 7.0 to Grails 7.1</h2>
+<h2 id="upgrading72x">3.2 Upgrading from Grails 7.1 to Grails 7.2</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/upgrading/upgrading72x.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="sect2">
+<h3 id="_upgrade_instructions_for_grails_7_1_to_grails_7_2">Upgrade Instructions for Grails 7.1 to Grails 7.2</h3>
+<div class="paragraph">
+<p>This guide outlines the changes introduced in Grails 7.2 and the steps required to upgrade your application.</p>
+</div>
+<div class="sect3">
+<h4 id="_1_sitemesh_3_filter_less_integration">1. SiteMesh 3 Filter-less Integration</h4>
+<div class="paragraph">
+<p>Grails 7.2 upgrades the SiteMesh 3 integration to a <strong>filter-less</strong> architecture. Decoration is now performed by a Spring MVC <code>ViewResolver</code> rather than a Servlet filter. This change improves performance, eliminates ordering issues with other filters, and correctly supports async controller return types (<code>Callable</code>, <code>@Async</code>).</p>
+</div>
+<div class="sect4">
+<h5 id="_what_changed">What Changed</h5>
+<div class="ulist">
+<ul>
+<li>
+<p>The <code>SiteMeshFilter</code> servlet filter is no longer active. A <code>NoopSitemeshFilter</code> placeholder bean is registered under the <code>sitemesh</code> name to prevent SiteMesh&#8217;s auto-configuration from activating the upstream filter-based integration.</p>
+</li>
+<li>
+<p>Layout resolution and decoration are now handled by <code>Sitemesh3LayoutView</code> (a Spring <code>View</code>) and <code>CaptureAwareContentProcessor</code>.</p>
+</li>
+<li>
+<p>GSP pages populate a <code>Sitemesh3CapturedPage</code> at render time via the <code>grailsLayout</code> capture tag library. SiteMesh no longer parses the raw HTML response to extract head/body/title.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_required_actions">Required Actions</h5>
+<div class="paragraph">
+<p>For most applications <strong>no changes are required</strong>. The filter-less integration is a drop-in replacement: layouts, <code>&lt;g:layoutHead&gt;</code>, <code>&lt;g:layoutTitle&gt;</code>, <code>&lt;g:layoutBody&gt;</code>, <code>&lt;g:pageProperty&gt;</code>, <code>&lt;g:applyLayout&gt;</code>, and layout-by-convention all behave identically to the previous release.</p>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>The guidance below applies <strong>only</strong> when the SiteMesh 3 integration is in use. The legacy <code>grails-layout</code> plugin (SiteMesh 2) remains supported in Grails 7.2 and continues to honor its existing configuration. If your application still depends on <code>grails-layout</code>, leave the SiteMesh 2 properties in place — they remain meaningful for that codepath.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>When using the SiteMesh 3 integration, the following SiteMesh 2-era configuration properties are no longer consulted and can be removed from your <code>application.yml</code> if present:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="comment"># Remove these — no longer used by the SiteMesh 3 integration in Grails 7.2.</span>
+<span class="comment"># (Retain them if your application still uses the grails-layout / SiteMesh 2 plugin.)</span>
+<span class="key">grails.gsp.view.layoutViewResolver</span>: <span class="string"><span class="content">false</span></span>
+<span class="key">sitemesh.filter.order</span>: <span class="string"><span class="content">...</span></span>
+<span class="key">sitemesh.decorator.tagRuleBundles</span>: <span class="string"><span class="content">...</span></span></code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_configuring_the_default_layout">Configuring the Default Layout</h5>
+<div class="paragraph">
+<p>The default layout is still configured via:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">sitemesh</span>:
+        <span class="key">default</span>:
+            <span class="key">layout</span>: <span class="string"><span class="content">application</span></span></code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_layout_cache_tuning_optional">Layout Cache Tuning (Optional)</h5>
+<div class="paragraph">
+<p>In non-development environments, layout paths are cached by controller/action pair. The cache TTL can be tuned independently of the GSP reload interval using a dedicated key:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">sitemesh</span>:
+        <span class="key">layout</span>:
+            <span class="key">cache</span>:
+                <span class="key">interval</span>: <span class="string"><span class="content">5000</span></span>   <span class="comment"># milliseconds, default 5000</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This replaces any reliance on <code>grails.gsp.reload.interval</code> for layout cache expiration in previous snapshots.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_async_controller_support">Async Controller Support</h5>
+<div class="paragraph">
+<p>The filter-less architecture correctly handles Grails controllers that return <code>Callable</code> or use <code>@Async</code>. Previously, async dispatch could cause decoration to run on a different thread from the one that populated the SiteMesh request scope, leading to empty layouts or stale content. This is resolved in 7.2.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_content_blocks">Content Blocks</h5>
+<div class="paragraph">
+<p>Content blocks (the <code>&lt;content tag="&#8230;&#8203;"&gt;</code> pattern) continue to work as before. The GSP preprocessor maps them to <code>&lt;grailsLayout:captureContent tag="&#8230;&#8203;"&gt;</code> at compile time, and the captured buffers are passed directly to the layout without an additional HTML parse.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="xml"><span class="error">&lt;</span>%-- Page --%<span class="error">&gt;</span>
+<span class="tag">&lt;content</span> <span class="attribute-name">tag</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">sidebar</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    ... sidebar content ...
+<span class="tag">&lt;/content&gt;</span>
+
+<span class="error">&lt;</span>%-- Layout --%<span class="error">&gt;</span>
+<span class="tag">&lt;div</span> <span class="attribute-name">id</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">sidebar</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;g:pageProperty</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">page.sidebar</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
+<span class="tag">&lt;/div&gt;</span></code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+
+<h2 id="upgrading71x">3.3 Upgrading from Grails 7.0 to Grails 7.1</h2>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/upgrading/upgrading71x.adoc"'>
@@ -4401,11 +4535,78 @@ grails generate-scaffold-all Book</code></pre>
 <p>See the ../ref/Tags%20-%20GSP/flashMessages.html[flashMessages] tag reference for full details.</p>
 </div>
 </div>
+<div class="sect4">
+<h5 id="_2_12_exception_log_line_includes_per_request_context">2.12 Exception Log Line Includes Per-Request Context</h5>
+<div class="paragraph">
+<p><code>GrailsExceptionResolver</code> now appends a parenthesised clause of per-request context — the current auditor and,
+optionally, the remote client address — to its exception log headline:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>RuntimeException occurred when processing request: [GET] /admin/users/42 (ip: 198.51.100.42, user: alice)</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The auditor entry reuses the same <code>AuditorAware</code> resolution that populates <code>@CreatedBy</code> / <code>@LastModifiedBy</code>
+(see section 2.4), so no second "current user" bean is needed. The IP entry is
+<code>HttpServletRequest.getRemoteAddr()</code> — behind a reverse proxy, set <code>server.forward-headers-strategy: native</code> so
+the address reflects the real client.</p>
+</div>
+<div class="sect5">
+<h6 id="_impact">Impact</h6>
+<div class="paragraph">
+<p>Any log parser, alert rule, or log-aggregation query that matches on the exact exception headline format will
+need to tolerate the optional ` (ip: &lt;value&gt;, user: &lt;value&gt;)` suffix. Both entries are opt-in — the auditor
+entry is gated to avoid writing user identifiers (typically PII) into exception logs without an explicit
+decision, and the remote-address entry is gated for the same reason. Toggle each independently:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">exceptionresolver</span>:
+        <span class="key">logAuditor</span>: <span class="string"><span class="content">true</span></span>        <span class="comment"># add ' user: &lt;value&gt;' when an AuditorAware bean is registered</span>
+        <span class="key">logRemoteAddr</span>: <span class="string"><span class="content">true</span></span>     <span class="comment"># add ' ip: &lt;value&gt;'</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>With both disabled — the default — the headline matches its pre-7.1 form. See the Logging Full Stack Traces
+section of the user guide for details.</p>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_2_13_stacktrace_logger_side_effect_emission">2.13 StackTrace Logger Side-Effect Emission</h5>
+<div class="paragraph">
+<p>Pre-7.1, <code>DefaultStackTraceFilterer.filter(Throwable)</code> emitted the unfiltered stack trace to the dedicated
+<code>StackTrace</code> logger as a side effect of cleaning the trace. The 7.1 PR that fixed duplicate-per-cause logging
+removed this emission, breaking applications that relied on it for non-resolver code paths (for example,
+scheduled jobs that call <code>GrailsUtil.sanitizeRootCause(ex)</code> before logging via their own logger, or custom
+exception handlers that route the cleaned exception elsewhere).</p>
+</div>
+<div class="paragraph">
+<p>The side-effect emission has been restored as the default and is now controlled by a dedicated property:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">exceptionresolver</span>:
+        <span class="key">logFullStackTraceOnFilter</span>: <span class="string"><span class="content">true</span></span>   <span class="comment"># default; preserves pre-7.1 emission</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Set to <code>false</code> to disable the side-effect emission and rely solely on <code>logFullStackTrace</code> for resolver-driven
+output. The two flags interact — if both are enabled, a request exception with N causes produces N+1 <code>StackTrace</code>
+records (one resolver-driven plus one per throwable visited by the recursive filter walk). The Logging Full
+Stack Traces section of the user guide includes a matrix of behaviours for the four flag combinations.</p>
+</div>
+</div>
 </div>
 </div>
 
 
-<h2 id="upgrading70x">3.3 Upgrading from Grails 6 to Grails 7.0</h2>
+<h2 id="upgrading70x">3.4 Upgrading from Grails 6 to Grails 7.0</h2>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/upgrading/upgrading70x.adoc"'>
@@ -5848,7 +6049,7 @@ Applications generated by the Grails Forge automatically use <code>enforcedPlatf
 </div>
 
 
-<h2 id="upgrading60x">3.4 Upgrading from Grails 5 to Grails 6</h2>
+<h2 id="upgrading60x">3.5 Upgrading from Grails 5 to Grails 6</h2>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/upgrading/upgrading60x.adoc"'>
@@ -6161,7 +6362,7 @@ grailsGradlePluginVersion=6.0.0</code></pre>
 </div>
 
 
-<h2 id="upgrading50x">3.5 Upgrading from Grails 4 to Grails 5</h2>
+<h2 id="upgrading50x">3.6 Upgrading from Grails 4 to Grails 5</h2>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/upgrading/upgrading50x.adoc"'>
@@ -6390,7 +6591,7 @@ More information <a href="https://docs.gradle.org/current/userguide/java_library
 </div>
 
 
-<h2 id="upgrading40x">3.6 Upgrading from Grails 3.3.x to Grails 4</h2>
+<h2 id="upgrading40x">3.7 Upgrading from Grails 3.3.x to Grails 4</h2>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/upgrading/upgrading40x.adoc"'>
@@ -7197,7 +7398,7 @@ environments {
 <p>Build configuration is generally done via Gradle and the <code>build.gradle</code> file. Runtime configuration is by default specified in YAML in the <code>grails-app/conf/application.yml</code> file.</p>
 </div>
 <div class="paragraph">
-<p>If you prefer to use Grails 2.0-style Groovy configuration then it is possible to specify configuration using Groovy&#8217;s <a href="https://docs.groovy-lang.org/4.0.31/html/documentation/#_configslurper">ConfigSlurper</a> syntax. Two Groovy configuration files are available: <code>grails-app/conf/application.groovy</code> and <code>grails-app/conf/runtime.groovy</code>:</p>
+<p>If you prefer to use Grails 2.0-style Groovy configuration then it is possible to specify configuration using Groovy&#8217;s <a href="https://docs.groovy-lang.org/4.0.32/html/documentation/#_configslurper">ConfigSlurper</a> syntax. Two Groovy configuration files are available: <code>grails-app/conf/application.groovy</code> and <code>grails-app/conf/runtime.groovy</code>:</p>
 </div>
 <div class="olist arabic">
 <ol class="arabic">
@@ -7713,7 +7914,7 @@ qualified name of the artifact.</p>
 <p>Grails 3.3.x simplifies logger names. The next examples illustrate the changes:</p>
 </div>
 <div class="paragraph">
-<p><code>BookController.groovy</code> located at <code>grails-app/controllers/com/company</code> NOT annotated with <code><a href="https://docs.groovy-lang.org/4.0.31/html/gapi/groovy/util/logging/Slf4j.html">@Slf4j</a></code></p>
+<p><code>BookController.groovy</code> located at <code>grails-app/controllers/com/company</code> NOT annotated with <code><a href="https://docs.groovy-lang.org/4.0.32/html/gapi/groovy/util/logging/Slf4j.html">@Slf4j</a></code></p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -7732,7 +7933,7 @@ qualified name of the artifact.</p>
 </tbody>
 </table>
 <div class="paragraph">
-<p><code>BookController.groovy</code> located at <code>grails-app/controllers/com/company</code> annotated with <code><a href="https://docs.groovy-lang.org/4.0.31/html/gapi/groovy/util/logging/Slf4j.html">@Slf4j</a></code></p>
+<p><code>BookController.groovy</code> located at <code>grails-app/controllers/com/company</code> annotated with <code><a href="https://docs.groovy-lang.org/4.0.32/html/gapi/groovy/util/logging/Slf4j.html">@Slf4j</a></code></p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -7751,7 +7952,7 @@ qualified name of the artifact.</p>
 </tbody>
 </table>
 <div class="paragraph">
-<p><code>BookService.groovy</code> located at <code>grails-app/services/com/company</code> NOT annotated with <code><a href="https://docs.groovy-lang.org/4.0.31/html/gapi/groovy/util/logging/Slf4j.html">@Slf4j</a></code></p>
+<p><code>BookService.groovy</code> located at <code>grails-app/services/com/company</code> NOT annotated with <code><a href="https://docs.groovy-lang.org/4.0.32/html/gapi/groovy/util/logging/Slf4j.html">@Slf4j</a></code></p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -7770,7 +7971,7 @@ qualified name of the artifact.</p>
 </tbody>
 </table>
 <div class="paragraph">
-<p><code>BookService.groovy</code> located at <code>grails-app/services/com/company</code> annotated with <code><a href="https://docs.groovy-lang.org/4.0.31/html/gapi/groovy/util/logging/Slf4j.html">@Slf4j</a></code></p>
+<p><code>BookService.groovy</code> located at <code>grails-app/services/com/company</code> annotated with <code><a href="https://docs.groovy-lang.org/4.0.32/html/gapi/groovy/util/logging/Slf4j.html">@Slf4j</a></code></p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -7789,7 +7990,7 @@ qualified name of the artifact.</p>
 </tbody>
 </table>
 <div class="paragraph">
-<p><code>BookDetail.groovy</code> located at <code>src/main/groovy/com/company</code> annotated with <code><a href="https://docs.groovy-lang.org/4.0.31/html/gapi/groovy/util/logging/Slf4j.html">@Slf4j</a></code></p>
+<p><code>BookDetail.groovy</code> located at <code>src/main/groovy/com/company</code> annotated with <code><a href="https://docs.groovy-lang.org/4.0.32/html/gapi/groovy/util/logging/Slf4j.html">@Slf4j</a></code></p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -7848,7 +8049,263 @@ environments.</p>
 </div>
 
 
-<h2 id="externalLoggingConfiguration">4.1.4.3 External Configuration File</h2>
+<h2 id="loggingFullStackTraces">4.1.4.3 Logging Full Stack Traces</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/conf/config/logging/loggingFullStackTraces.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>When a request-handling exception reaches <code>GrailsExceptionResolver</code>, Grails emits a single log record to the
+<code>org.grails.web.errors.GrailsExceptionResolver</code> logger at <code>ERROR</code> level. That record contains the HTTP method and
+request URI alongside a <em>filtered</em> stack trace — framework internals such as <code>java.lang.reflect</code>, <code>jakarta.servlet</code>,
+<code>org.codehaus.groovy.runtime</code>, and similar dispatch/plumbing frames are trimmed out so that application code is the
+first thing visible on the trace.</p>
+</div>
+<div class="paragraph">
+<p>For most operational use the filtered trace is what you want: it surfaces the application frames that actually matter
+and keeps the log readable. For cases that need the untrimmed trace — routing the raw frames to a separate audit
+file, correlating with an APM tool, or debugging dispatcher internals — Grails exposes an opt-in:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">exceptionresolver</span>:
+        <span class="key">logFullStackTrace</span>: <span class="string"><span class="content">true</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The setting defaults to <code>false</code>.</p>
+</div>
+<div class="paragraph">
+<p>When enabled, Grails emits an additional log record to a dedicated logger named <code>StackTrace</code>, containing the
+<em>unfiltered</em> stack trace as it was captured at throw time. This record is written <em>before</em> the filter step runs,
+so no frames are lost. Each request-handling exception therefore produces two log records:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>A <code>StackTrace</code> logger record with the full, unfiltered trace (header <code>Full Stack Trace:</code>).</p>
+</li>
+<li>
+<p>A <code>GrailsExceptionResolver</code> logger record with the filtered trace and the request-context headline
+(<code>&lt;ExceptionType&gt; occurred when processing request: [&lt;METHOD&gt;] &lt;uri&gt;</code>).</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The two records carry different trace content — that is the value of the opt-in. The <code>StackTrace</code> record includes
+every reflection, dispatch, and servlet frame; the <code>GrailsExceptionResolver</code> record shows only application code.</p>
+</div>
+<div class="sect3">
+<h4 id="_routing_the_stacktrace_logger_to_a_separate_appender">Routing the StackTrace Logger To a Separate Appender</h4>
+<div class="paragraph">
+<p>Enabling <code>logFullStackTrace</code> alone will cause the unfiltered trace to appear on whatever appender the root logger
+is configured with — typically the console — in addition to the filtered trace from the resolver logger. If that is
+not what you want, pair the opt-in with a Logback configuration that routes the <code>StackTrace</code> logger to its own
+appender and disables additivity so it does not bubble up to the root:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/logback.xml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="xml"><span class="tag">&lt;appender</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">STACK_FILE</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">ch.qos.logback.core.FileAppender</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;file&gt;</span>logs/stacktraces.log<span class="tag">&lt;/file&gt;</span>
+    <span class="tag">&lt;encoder&gt;</span>
+        <span class="tag">&lt;pattern&gt;</span>%date %msg%n%ex%n<span class="tag">&lt;/pattern&gt;</span>
+    <span class="tag">&lt;/encoder&gt;</span>
+<span class="tag">&lt;/appender&gt;</span>
+
+<span class="tag">&lt;logger</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">StackTrace</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">level</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">ERROR</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">additivity</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">false</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;appender-ref</span> <span class="attribute-name">ref</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">STACK_FILE</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+<span class="tag">&lt;/logger&gt;</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>With this configuration the unfiltered trace is written only to <code>logs/stacktraces.log</code>, which you can rotate and
+retain independently. The console continues to show the concise, filtered resolver record as before.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_suppressing_the_stacktrace_logger">Suppressing the StackTrace Logger</h4>
+<div class="paragraph">
+<p>Setting the <code>StackTrace</code> logger level to <code>OFF</code> in Logback makes the opt-in a no-op, regardless of the
+<code>logFullStackTrace</code> property value:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/logback.xml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="xml"><span class="tag">&lt;logger</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">StackTrace</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">level</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">OFF</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This is useful if the property is enabled in a shared <code>application.yml</code> but a particular environment needs to
+silence the extra record.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_side_effect_emission_from_the_filterer">Side-Effect Emission From the Filterer</h4>
+<div class="paragraph">
+<p>In addition to the resolver-driven emission described above, <code>DefaultStackTraceFilterer.filter(Throwable)</code> emits
+the unfiltered stack trace to the <code>StackTrace</code> logger as a side effect <em>before</em> trimming the trace in place.
+This preserves the pre-7.1 behaviour where any caller of the filterer — <code>GrailsExceptionResolver</code>,
+<code>GroovyPageView.deepSanitize</code>, <code>GrailsUtil.sanitizeRootCause</code>, or custom plugin code — produced a <code>StackTrace</code>
+log record. It means non-resolver code paths (for example, a scheduled job that calls
+<code>GrailsUtil.sanitizeRootCause(ex)</code> before logging via its own logger) continue to populate the <code>StackTrace</code>
+appender without an explicit emission call.</p>
+</div>
+<div class="paragraph">
+<p>The behaviour is enabled by default. To disable the side-effect emission and rely solely on
+<code>logFullStackTrace</code> for resolver-driven output, set:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">exceptionresolver</span>:
+        <span class="key">logFullStackTraceOnFilter</span>: <span class="string"><span class="content">false</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>When the side-effect emission is enabled and <code>logFullStackTrace</code> is also enabled, a request exception produces
+both — one resolver-driven record (top-level exception with the full cause chain) and one record per throwable
+visited by the recursive filter walk. This matches pre-7.1 multiplicity. Pick the combination that suits your
+log-routing setup:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top"><code>logFullStackTrace</code></th>
+<th class="tableblock halign-left valign-top"><code>logFullStackTraceOnFilter</code></th>
+<th class="tableblock halign-left valign-top">Behaviour for a request exception with N causes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>false</code> (default)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code> (default)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N <code>StackTrace</code> records (one per throwable in the chain) + 1 resolver record. Matches pre-7.1 (minus a former
+duplicate "condensed" record).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>false</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 <code>StackTrace</code> record (top-level with full chain) + 1 resolver record. Cleanest output; recommended for new
+deployments that don&#8217;t depend on per-cause emission.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N+1 <code>StackTrace</code> records + 1 resolver record. Highest fidelity, most verbose.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>false</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>false</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 resolver record only. Silent on <code>StackTrace</code>.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="_including_per_request_context_in_the_exception_log">Including Per-Request Context in the Exception Log</h4>
+<div class="paragraph">
+<p>The resolver can append a small parenthesised clause of per-request context — the current user and the remote
+client address — to the exception headline:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>RuntimeException occurred when processing request: [GET] /admin/users/42 (ip: 198.51.100.42, user: alice)
+Stacktrace follows:</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>When both pieces of context apply they share a single clause (<code>(ip: …, user: …)</code>); when only one applies the
+clause collapses to that one entry. When neither applies, the headline is unchanged.</p>
+</div>
+<div class="sect4">
+<h5 id="_current_user">Current User</h5>
+<div class="paragraph">
+<p>When the application has registered an <code>AuditorAware</code> bean (see the GORM audit timestamps section), the resolver
+calls <code>getCurrentAuditor()</code> on that bean and includes ` user: &lt;value&gt;` in the clause, reusing the same auditor
+resolution that populates <code>@CreatedBy</code> and <code>@LastModifiedBy</code> fields. This avoids registering a second "current
+user" bean purely for logging.</p>
+</div>
+<div class="paragraph">
+<p>The appended value is the <code>toString()</code> of whatever the <code>AuditorAware</code> implementation returns — typically a
+username string or a numeric id, depending on the type parameter chosen for the bean. If no <code>AuditorAware</code> bean
+is registered, or if it returns <code>Optional.empty()</code> for the current request (for example, an unauthenticated
+request), no <code>user:</code> entry is emitted.</p>
+</div>
+<div class="paragraph">
+<p>Disabled by default to avoid writing user identifiers (which may be PII — usernames, email addresses, numeric
+ids) into exception logs without an explicit decision. To opt in, set:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">exceptionresolver</span>:
+        <span class="key">logAuditor</span>: <span class="string"><span class="content">true</span></span></code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_remote_client_address">Remote Client Address</h5>
+<div class="paragraph">
+<p>The resolver can also include the remote client address (<code>HttpServletRequest.getRemoteAddr()</code>) as ` ip: &lt;value&gt;`
+in the clause. Disabled by default to avoid writing client IPs into exception logs without an explicit decision.
+To opt in, set:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">exceptionresolver</span>:
+        <span class="key">logRemoteAddr</span>: <span class="string"><span class="content">true</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>When the application is behind a reverse proxy, <code>getRemoteAddr()</code> returns the proxy&#8217;s address, not the real
+client&#8217;s. To see the real client IP in the log, configure the servlet container to honour forwarded headers —
+for Spring Boot embedded Tomcat, set <code>server.forward-headers-strategy: native</code> in <code>application.yml</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">server</span>:
+    <span class="key">forward-headers-strategy</span>: <span class="string"><span class="content">native</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>With that in place, Tomcat&#8217;s <code>RemoteIpValve</code> populates <code>remoteAddr</code> from the <code>X-Forwarded-For</code> header before
+the resolver reads it. The valve only honours the header when the immediate peer is in its trusted-proxy list
+(loopback and RFC 1918 ranges by default; configurable via <code>server.tomcat.remoteip.internal-proxies</code>), so
+spoofed headers on direct requests are ignored.</p>
+</div>
+<div class="sect5">
+<h6 id="_custom_address_resolution">Custom Address Resolution</h6>
+<div class="paragraph">
+<p>Applications that need a different strategy — for example, reading <code>X-Forwarded-For</code> without container-level
+forwarded-header handling — can override <code>GrailsExceptionResolver.resolveRemoteAddr(HttpServletRequest)</code> in a
+subclass and register that subclass as the active resolver bean. The override receives the raw request and
+returns a string that is appended verbatim as <code>ip: &lt;value&gt;</code>; returning <code>null</code> or an empty string omits the
+entry. Be aware that any strategy which trusts request headers without a proxy-trust check is open to header
+spoofing by clients that connect directly to the server.</p>
+</div>
+</div>
+</div>
+</div>
+
+
+<h2 id="externalLoggingConfiguration">4.1.4.4 External Configuration File</h2>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/conf/config/logging/externalLoggingConfiguration.adoc"'>
@@ -8244,7 +8701,7 @@ $ java -jar build/libs/myapp-0.1.war</code></pre>
 <div class="sect2">
 <h3 id="_per_environment_configuration">Per Environment Configuration</h3>
 <div class="paragraph">
-<p>Grails supports the concept of per environment configuration. The <code>application.yml</code> and <code>application.groovy</code> files in the <code>grails-app/conf</code> directory can use per-environment configuration using either YAML or the syntax provided by <a href="https://docs.groovy-lang.org/4.0.31/html/documentation/#_configslurper">ConfigSlurper</a>. As an example consider the following default <code>application.yml</code> definition provided by Grails:</p>
+<p>Grails supports the concept of per environment configuration. The <code>application.yml</code> and <code>application.groovy</code> files in the <code>grails-app/conf</code> directory can use per-environment configuration using either YAML or the syntax provided by <a href="https://docs.groovy-lang.org/4.0.32/html/documentation/#_configslurper">ConfigSlurper</a>. As an example consider the following default <code>application.yml</code> definition provided by Grails:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -15157,7 +15614,7 @@ This technique for rendering JSON may be ok for very simple responses, but in ge
 <p>The previous section on XML and JSON responses covered simplistic examples of rendering XML and JSON responses. Whilst the XML builder used by Grails is the standard <a href="https://groovy-lang.org/processing-xml.html#_xmlparser_and_xmlslurper">XmlSlurper</a> found in Groovy.</p>
 </div>
 <div class="paragraph">
-<p>For JSON, since Grails 3.1, Grails uses Groovy&#8217;s <a href="https://docs.groovy-lang.org/4.0.31/html/documentation/core-domain-specific-languages.html#_streamingjsonbuilder">StreamingJsonBuilder</a> by default and you can refer to the <a href="https://docs.groovy-lang.org/4.0.31/html/documentation/core-domain-specific-languages.html#_streamingjsonbuilder">Groovy documentation</a> and <a href="https://docs.groovy-lang.org/4.0.31/html/gapi/groovy/json/StreamingJsonBuilder.html">StreamingJsonBuilder</a> API documentation on how to use it.</p>
+<p>For JSON, since Grails 3.1, Grails uses Groovy&#8217;s <a href="https://docs.groovy-lang.org/4.0.32/html/documentation/core-domain-specific-languages.html#_streamingjsonbuilder">StreamingJsonBuilder</a> by default and you can refer to the <a href="https://docs.groovy-lang.org/4.0.32/html/documentation/core-domain-specific-languages.html#_streamingjsonbuilder">Groovy documentation</a> and <a href="https://docs.groovy-lang.org/4.0.32/html/gapi/groovy/json/StreamingJsonBuilder.html">StreamingJsonBuilder</a> API documentation on how to use it.</p>
 </div>
 
 
@@ -16764,7 +17221,10 @@ The section on <a href="#taglibs">Tag Libraries</a> covers how to add your own c
 <div class="sect3">
 <h4 id="_creating_layouts">Creating Layouts</h4>
 <div class="paragraph">
-<p>This product includes software developed by the OpenSymphony Group (<a href="https://github.com/sitemesh" class="bare">https://github.com/sitemesh</a>). The Sitemesh framework is used to provide a decorator engine, to support view layouts. Layouts are located in the <code>grails-app/views/layouts</code> directory. A typical layout can be seen below:</p>
+<p>Grails uses the <a href="https://github.com/sitemesh/sitemesh3">SiteMesh 3</a> framework as its decorator engine to support view layouts. In Grails 7.2 and later, decoration is performed by a Spring MVC <code>ViewResolver</code> rather than a Servlet filter, which improves performance and enables correct support for async controller return types.</p>
+</div>
+<div class="paragraph">
+<p>Layouts are located in the <code>grails-app/views/layouts</code> directory. A typical layout can be seen below:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -16890,17 +17350,32 @@ The section on <a href="#taglibs">Tag Libraries</a> covers how to add your own c
 </div>
 <div class="paragraph">
 <p>If a layout is not located using any of those conventions, the convention of last resort is to look for the application default layout which
-is <code>grails-app/views/layouts/application.gsp</code>.  The name of the application default layout may be changed by defining the property <code>grails.views.layout.default</code>
+is <code>grails-app/views/layouts/application.gsp</code>.  The name of the application default layout may be changed by defining the property <code>grails.sitemesh.default.layout</code>
 in the application configuration as follows:</p>
 </div>
 <div class="listingblock">
 <div class="title">grails-app/conf/application.yml</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails.views.layout.default</span>: <span class="string"><span class="content">myLayoutName</span></span></code></pre>
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">sitemesh</span>:
+        <span class="key">default</span>:
+            <span class="key">layout</span>: <span class="string"><span class="content">myLayoutName</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
 <p>With that property in place, the application default layout will be <code>grails-app/views/layouts/myLayoutName.gsp</code>.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+In Grails 7.2+ the canonical property for the default layout is <code>grails.sitemesh.default.layout</code>. The older <code>grails.views.layout.default</code> key is no longer consulted by the SiteMesh 3 integration.
+</td>
+</tr>
+</table>
 </div>
 </div>
 <div class="sect3">
@@ -16953,6 +17428,29 @@ The content to apply a layout to
 </div>
 <div class="paragraph">
 <p>The resulting content will be provided via the return value of the <a href="../ref/Tags%20-%20GSP/include.html">include</a> tag.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_sitemesh_2_attribution_grails_layout">SiteMesh 2 Attribution (grails-layout)</h4>
+<div class="paragraph">
+<p>The legacy <code>grails-layout</code> plugin remains available for applications that have not yet migrated to the SiteMesh 3 integration. When <code>grails-layout</code> is on the classpath, decoration is provided by SiteMesh 2 and the following attribution applies:</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>This product includes software developed by the OpenSymphony Group (<a href="https://github.com/sitemesh" class="bare">https://github.com/sitemesh</a>). The SiteMesh 2 framework is licensed under the OpenSymphony Software License, Version 1.1.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>This acknowledgment is required by the OpenSymphony Software License when redistributing SiteMesh 2 and applies only to applications that include the <code>grails-layout</code> plugin. Applications using only the SiteMesh 3 integration are not subject to this requirement.</p>
 </div>
 </div>
 
@@ -18743,7 +19241,7 @@ If you supply templates in a plugin you should consider declaring a <code>&lt;%@
 
 
 <div class="paragraph">
-<p>JSON views are written in Groovy, end with the file extension <code>gson</code> and reside in the <code>grails-app/views</code> directory.  They allow rendering of JSON responses using Groovy&#8217;s <a href="https://docs.groovy-lang.org/4.0.31/html/gapi/groovy/json/StreamingJsonBuilder.html">StreamingJsonBuilder</a> by providing a DSL for producing output in the JSON format. A hello world example can be seen below:</p>
+<p>JSON views are written in Groovy, end with the file extension <code>gson</code> and reside in the <code>grails-app/views</code> directory.  They allow rendering of JSON responses using Groovy&#8217;s <a href="https://docs.groovy-lang.org/4.0.32/html/gapi/groovy/json/StreamingJsonBuilder.html">StreamingJsonBuilder</a> by providing a DSL for producing output in the JSON format. A hello world example can be seen below:</p>
 </div>
 <div class="listingblock">
 <div class="title"><code>grails-app/views/hello.gson</code></div>
@@ -18762,7 +19260,7 @@ If you supply templates in a plugin you should consider declaring a <code>&lt;%@
 </div>
 </div>
 <div class="paragraph">
-<p>The <code>json</code> variable is an instance of <a href="https://docs.groovy-lang.org/4.0.31/html/gapi/groovy/json/StreamingJsonBuilder.html">StreamingJsonBuilder</a>. See the <a href="https://docs.groovy-lang.org/4.0.31/html/documentation/core-domain-specific-languages.html#_streamingjsonbuilder">documentation</a> in the Groovy user guide for more information on <code>StreamingJsonBuilder</code>.</p>
+<p>The <code>json</code> variable is an instance of <a href="https://docs.groovy-lang.org/4.0.32/html/gapi/groovy/json/StreamingJsonBuilder.html">StreamingJsonBuilder</a>. See the <a href="https://docs.groovy-lang.org/4.0.32/html/documentation/core-domain-specific-languages.html#_streamingjsonbuilder">documentation</a> in the Groovy user guide for more information on <code>StreamingJsonBuilder</code>.</p>
 </div>
 <div class="paragraph">
 <p>More example usages:</p>
@@ -20727,7 +21225,7 @@ json jsonapi.render(book, [<span class="key">expand</span>: <span class="string"
 <p>The JSON Views plugin registers a bean called <code>jsonTemplateEngine</code> of type <a href="../api/grails/plugin/json/view/JsonViewTemplateEngine.html">JsonViewTemplateEngine</a>.</p>
 </div>
 <div class="paragraph">
-<p>This class is a regular Groovy <a href="https://docs.groovy-lang.org/4.0.31/html/documentation/template-engines.html">TemplateEngine</a>, and you can use the engine to render JSON views outside the scope of an HTTP request.</p>
+<p>This class is a regular Groovy <a href="https://docs.groovy-lang.org/4.0.32/html/documentation/template-engines.html">TemplateEngine</a>, and you can use the engine to render JSON views outside the scope of an HTTP request.</p>
 </div>
 <div class="paragraph">
 <p>For example:</p>
@@ -21228,7 +21726,7 @@ The trait cannot be defined in the same project as you are compilation as it nee
 
 
 <div class="paragraph">
-<p>It is possible to register custom converters to change how a given class is rendered with json views. To do so, create a class that implements <a href="https://docs.groovy-lang.org/4.0.31/html/gapi/groovy.json.JsonGenerator.Converter.html">Converter</a>. Then you must register the class in <code>src/main/resources/META-INF/services/groovy.json.JsonGenerator$Converter</code>.</p>
+<p>It is possible to register custom converters to change how a given class is rendered with json views. To do so, create a class that implements <a href="https://docs.groovy-lang.org/4.0.32/html/gapi/groovy.json.JsonGenerator.Converter.html">Converter</a>. Then you must register the class in <code>src/main/resources/META-INF/services/groovy.json.JsonGenerator$Converter</code>.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -21369,7 +21867,7 @@ If you using the <code>log</code> variable then you will need to enabling loggin
 <p>Markup Views are written in Groovy, end with the file extension <code>gml</code> and reside in the <code>grails-app/views</code> directory.</p>
 </div>
 <div class="paragraph">
-<p>The Markup Views plugin uses Groovy&#8217;s <a href="https://docs.groovy-lang.org/4.0.31/html/documentation/template-engines.html#_the_markuptemplateengine">MarkupTemplateEngine</a> and you can mostly use the <a href="https://docs.groovy-lang.org/4.0.31/html/documentation/template-engines.html#_the_markuptemplateengine">Groovy user guide</a> as a reference for the syntax.</p>
+<p>The Markup Views plugin uses Groovy&#8217;s <a href="https://docs.groovy-lang.org/4.0.32/html/documentation/template-engines.html#_the_markuptemplateengine">MarkupTemplateEngine</a> and you can mostly use the <a href="https://docs.groovy-lang.org/4.0.32/html/documentation/template-engines.html#_the_markuptemplateengine">Groovy user guide</a> as a reference for the syntax.</p>
 </div>
 <div class="paragraph">
 <p>Example Markup View:</p>
@@ -21397,7 +21895,7 @@ cars {
 </div>
 </div>
 <div class="paragraph">
-<p>For further examples see Groovy&#8217;s <a href="https://docs.groovy-lang.org/4.0.31/html/documentation/template-engines.html#_the_markuptemplateengine">MarkupTemplateEngine</a> documentation.</p>
+<p>For further examples see Groovy&#8217;s <a href="https://docs.groovy-lang.org/4.0.32/html/documentation/template-engines.html#_the_markuptemplateengine">MarkupTemplateEngine</a> documentation.</p>
 </div>
 <div class="paragraph">
 <p>All Markup views subclass the <a href="../api/grails/plugin/markup/view/MarkupViewTemplate.html">MarkupViewTemplate</a> class by default.</p>
@@ -21508,7 +22006,7 @@ apply <span class="key">plugin</span>: <span class="string"><span class="delimit
 
 
 <div class="paragraph">
-<p>Markup views configuration can be altered with <code>grails-app/conf/application.yml</code>. Any of the properties within the <a href="../api/grails/plugin/markup/view/MarkupViewConfiguration.html">MarkupViewConfiguration</a> class and Groovy&#8217;s <a href="https://docs.groovy-lang.org/4.0.31/html/gapi/groovy/text/markup/TemplateConfiguration.html">TemplateConfiguration</a> class can be set.</p>
+<p>Markup views configuration can be altered with <code>grails-app/conf/application.yml</code>. Any of the properties within the <a href="../api/grails/plugin/markup/view/MarkupViewConfiguration.html">MarkupViewConfiguration</a> class and Groovy&#8217;s <a href="https://docs.groovy-lang.org/4.0.32/html/gapi/groovy/text/markup/TemplateConfiguration.html">TemplateConfiguration</a> class can be set.</p>
 </div>
 <div class="paragraph">
 <p>For example:</p>
@@ -25227,7 +25725,7 @@ To open them in the Groovy editor in Intellij IDEA, double click on the file and
 </div>
 </div>
 <div class="paragraph">
-<p>There is an implicit <code>json</code> variable which is an instance of <a href="https://docs.groovy-lang.org/4.0.31/html/gapi/groovy/json/StreamingJsonBuilder.html">StreamingJsonBuilder</a>.</p>
+<p>There is an implicit <code>json</code> variable which is an instance of <a href="https://docs.groovy-lang.org/4.0.32/html/gapi/groovy/json/StreamingJsonBuilder.html">StreamingJsonBuilder</a>.</p>
 </div>
 <div class="paragraph">
 <p>Example usages:</p>
@@ -25240,7 +25738,7 @@ json([<span class="integer">1</span>,<span class="integer">2</span>,<span class=
 </div>
 </div>
 <div class="paragraph">
-<p>Refer to the API documentation on <a href="https://docs.groovy-lang.org/4.0.31/html/gapi/groovy/json/StreamingJsonBuilder.html">StreamingJsonBuilder</a> for more information about what is possible.</p>
+<p>Refer to the API documentation on <a href="https://docs.groovy-lang.org/4.0.32/html/gapi/groovy/json/StreamingJsonBuilder.html">StreamingJsonBuilder</a> for more information about what is possible.</p>
 </div>
 
 
@@ -29130,7 +29628,7 @@ Since Grails 3.2.8 this is not enabled by default. If you want to enable it agai
 
 
 <div class="paragraph">
-<p>Groovy is a dynamic language and by default Groovy uses a dynamic dispatch mechanism to carry out method calls and property access.  This dynamic dispatch mechanism provides a lot of flexibility and power to the language.  For example, it is possible to dynamically add methods to classes at runtime and it is possible to dynamically replace existing methods at runtime.  Features like these are important and provide a lot of power to the language.  However, there are times when you may want to disable this dynamic dispatch in favor of a more static dispatch mechanism and Groovy provides a way to do that.  The way to tell the Groovy compiler that a particular class should compiled statically is to mark the class with the <a href="https://docs.groovy-lang.org/4.0.31/html/gapi/groovy/transform/CompileStatic.html">groovy.transform.CompileStatic</a> annotation as shown below.</p>
+<p>Groovy is a dynamic language and by default Groovy uses a dynamic dispatch mechanism to carry out method calls and property access.  This dynamic dispatch mechanism provides a lot of flexibility and power to the language.  For example, it is possible to dynamically add methods to classes at runtime and it is possible to dynamically replace existing methods at runtime.  Features like these are important and provide a lot of power to the language.  However, there are times when you may want to disable this dynamic dispatch in favor of a more static dispatch mechanism and Groovy provides a way to do that.  The way to tell the Groovy compiler that a particular class should compiled statically is to mark the class with the <a href="https://docs.groovy-lang.org/4.0.32/html/gapi/groovy/transform/CompileStatic.html">groovy.transform.CompileStatic</a> annotation as shown below.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -29145,7 +29643,7 @@ Since Grails 3.2.8 this is not enabled by default. If you want to enable it agai
 </div>
 </div>
 <div class="paragraph">
-<p>See <a href="https://docs.groovy-lang.org/4.0.31/html/documentation/#_static_compilation">these notes on Groovy static compilation</a> for more details on how <code>CompileStatic</code> works and why you might want to use it.</p>
+<p>See <a href="https://docs.groovy-lang.org/4.0.32/html/documentation/#_static_compilation">these notes on Groovy static compilation</a> for more details on how <code>CompileStatic</code> works and why you might want to use it.</p>
 </div>
 <div class="paragraph">
 <p>One limitation of using <code>CompileStatic</code> is that when you use it you give up access to the power and flexibility offered by dynamic dispatch.  For example, in Grails you would not be able to invoke a GORM dynamic finder from a class that is marked with <code>CompileStatic</code> because the compiler cannot verify that the dynamic finder method exists, because it doesn&#8217;t exist at compile time.  It may be that you want to take advantage of Groovy&#8217;s static compilation benefits without giving up access to dynamic dispatch for Grails specific things like dynamic finders and this is where <a href="../api/grails/compiler/GrailsCompileStatic.html">grails.compiler.GrailsCompileStatic</a> comes in.  <code>GrailsCompileStatic</code> behaves just like <code>CompileStatic</code> but is aware of certain Grails features and allows access to those specific features to be accessed dynamically.</p>
@@ -36341,7 +36839,7 @@ aop {
 <p>Grails supports the notion of property placeholder configuration through an extended version of Spring&#8217;s <a href="https://docs.spring.io/spring-framework/docs/7.0.6/javadoc-api/org/springframework/beans/factory/config/PropertyPlaceholderConfigurer.html">PropertyPlaceholderConfigurer</a>.</p>
 </div>
 <div class="paragraph">
-<p>Settings defined in either <a href="https://docs.groovy-lang.org/4.0.31/html/gapi/groovy/util/ConfigSlurper.html">ConfigSlurper</a> scripts or Java properties files can be used as placeholder values for Spring configuration in <code>grails-app/conf/spring/resources.xml</code> and <code>grails-app/conf/spring/resources.groovy</code>. For example given the following entries in <code>grails-app/conf/application.groovy</code> (or an externalized config):</p>
+<p>Settings defined in either <a href="https://docs.groovy-lang.org/4.0.32/html/gapi/groovy/util/ConfigSlurper.html">ConfigSlurper</a> scripts or Java properties files can be used as placeholder values for Spring configuration in <code>grails-app/conf/spring/resources.xml</code> and <code>grails-app/conf/spring/resources.groovy</code>. For example given the following entries in <code>grails-app/conf/application.groovy</code> (or an externalized config):</p>
 </div>
 <div class="listingblock">
 <div class="content">
