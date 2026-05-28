@@ -69,7 +69,10 @@ function addJsClass() {
                         <div class="toc-item" style="margin-left:0"><a href="../../guide/cleanCrud.html"><strong>13</strong><span>The Result - Clean CRUD GSPs</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../../guide/helpWithGrails.html"><strong>14</strong><span>Do you need help with Grails?</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../../guide/testing.html"><strong>14</strong><span>Testing the Widgets and Wrappers</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../../guide/helpWithGrails.html"><strong>15</strong><span>Do you need help with Grails?</span></a>
                         </div>
                         
                     </div>
@@ -119,6 +122,12 @@ function addJsClass() {
 <span class="type">class</span> <span class="class">BootStrap</span> {
 
     <span class="keyword">def</span> init = { servletContext -&gt;
+      <span class="comment">// Wrap the seed in a transaction so the writes - including the</span>
+      <span class="comment">// many-to-many Book&lt;-&gt;Tag join rows - flush and commit together.</span>
+      <span class="comment">// A bare save() in BootStrap runs outside any transaction, and the</span>
+      <span class="comment">// join table is not reliably persisted; save(flush: true) without a</span>
+      <span class="comment">// transaction throws TransactionRequiredException.</span>
+      <span class="predefined-type">Book</span>.withTransaction {
         Tag fantasy = <span class="keyword">new</span> Tag(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Fantasy</span><span class="delimiter">'</span></span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
         Tag classic = <span class="keyword">new</span> Tag(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Classic</span><span class="delimiter">'</span></span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
         Tag romance = <span class="keyword">new</span> Tag(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Romance</span><span class="delimiter">'</span></span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
@@ -171,11 +180,15 @@ function addJsClass() {
                 <span class="key">author</span>: austen
         )
         pride.addToTags(romance).addToTags(classic).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+      }
     }
 
     <span class="keyword">def</span> destroy = {}
 }</code></pre>
 </div>
+</div>
+<div class="paragraph">
+<p>The seed runs inside a <code>Book.withTransaction { }</code> block. This matters for the <code>Book</code>-<code>Tag</code> many-to-many: a bare <code>save()</code> in <code>BootStrap</code> runs outside any transaction and the join-table rows are not reliably flushed, while <code>save(flush: true)</code> without a transaction throws <code>TransactionRequiredException</code>. Wrapping the whole seed in a transaction lets the books, authors, contact info, and the many-to-many join all commit together.</p>
 </div>
 <div class="paragraph">
 <p>Restart the application with <code>./gradlew bootRun</code>. The H2 database is in-memory by default, so the seed data is recreated on every startup.</p>

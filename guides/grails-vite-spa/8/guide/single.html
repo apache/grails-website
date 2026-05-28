@@ -115,7 +115,7 @@
             
             <div class="toc-item" style="margin-left:0px"><a href="#urlMappings"><strong>4</strong><span>URL Mappings (/api/** vs SPA)</span></a></div>
             
-            <div class="toc-item" style="margin-left:0px"><a href="#spaController"><strong>5</strong><span>The SpaController Forwarder</span></a></div>
+            <div class="toc-item" style="margin-left:0px"><a href="#spaController"><strong>5</strong><span>Serving the SPA Shell</span></a></div>
             
             <div class="toc-item" style="margin-left:0px"><a href="#frontend"><strong>6</strong><span>The Vite/React Frontend</span></a></div>
             
@@ -127,7 +127,9 @@
             
             <div class="toc-item" style="margin-left:0px"><a href="#cors"><strong>10</strong><span>Why CORS Never Appears</span></a></div>
             
-            <div class="toc-item" style="margin-left:0px"><a href="#helpWithGrails"><strong>11</strong><span>Do you need help with Grails?</span></a></div>
+            <div class="toc-item" style="margin-left:0px"><a href="#testing"><strong>11</strong><span>Testing the API and SPA Serving</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#helpWithGrails"><strong>12</strong><span>Do you need help with Grails?</span></a></div>
             
             <div style="clear:both"></div>
         </div>
@@ -488,12 +490,12 @@ json {
 
 model {
     <span class="predefined-type">Iterable</span>&lt;<span class="predefined-type">Book</span>&gt; bookList
-    <span class="predefined-type">Long</span>           bookCount
+    <span class="predefined-type">Integer</span>        bookCount
 }
 
 json {
-    total   bookCount
-    items   bookList.collect { <span class="predefined-type">Book</span> b -&gt; g.render(<span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">book</span>: b]) }
+    total bookCount
+    items g.render(<span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>, <span class="key">collection</span>: bookList ?: <span class="type">[]</span>, <span class="type">var</span>: <span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>)
 }</code></pre>
 </div>
 </div>
@@ -546,6 +548,9 @@ json {
         <span class="comment">// a hard reload to any deep link.</span>
         <span class="string"><span class="delimiter">'</span><span class="content">/</span><span class="delimiter">'</span></span> (<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">spa</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">index</span><span class="delimiter">'</span></span>)
 
+        <span class="comment">// The Vite-built JS/CSS bundle, served same-origin from the classpath.</span>
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/assets/</span><span class="inline"><span class="inline-delimiter">$</span>path</span><span class="content">**</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">asset</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">serve</span><span class="delimiter">'</span></span>)
+
         <span class="comment">// JSON API surface consumed by the Vite/React frontend.</span>
         <span class="string"><span class="delimiter">'</span><span class="content">/api/books</span><span class="delimiter">'</span></span>(<span class="key">resources</span>: <span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>)
 
@@ -561,12 +566,15 @@ json {
 <p><code>/api/books</code> (and any other future <code>/api/**</code> route) hits the JSON controllers.</p>
 </li>
 <li>
-<p>Everything else - <code>/</code>, <code>/books/42</code>, <code>/about</code> - resolves to <code>SpaController.index</code>, which forwards to the bundled <code>index.html</code>. The SPA&#8217;s client-side router takes over from there.</p>
+<p><code>/assets/**</code> resolves to <code>AssetController</code>, which streams the Vite-built JS and CSS bundle from the classpath. The <code>rest-api</code> profile registers no servlet static-resource handler, so without this route the SPA&#8217;s hashed assets would 404 - the page would load its shell but never its script.</p>
+</li>
+<li>
+<p><code>/</code> resolves to <code>SpaController.index</code>, which serves the bundled <code>index.html</code>. The SPA&#8217;s client-side router takes over from there.</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>The forward (rather than a redirect) is what makes deep links survive a browser refresh: a hard reload on <code>/books/42</code> returns the same <code>index.html</code> payload, the SPA boots, and React Router parses the URL.</p>
+<p>Serving <code>index.html</code> from the controller (rather than relying on a static-resource handler) is what makes a hard reload on <code>/</code> return the SPA shell reliably across profiles; the browser then loads the hashed bundle from <code>/assets/**</code> and React boots.</p>
 </div>
 <div class="paragraph">
 <p>The URL-mapping DSL itself is covered in <code>grails-doc/src/en/guide/theWebLayer/urlMappings.adoc</code> and the per-method-routing story in <code>grails-doc/src/en/guide/theWebLayer/urlmappings/restfulMappings.adoc</code>.</p>
@@ -583,7 +591,7 @@ json {
 </div>
 
 
-<h1 id="spaController">5 The SpaController Forwarder</h1>
+<h1 id="spaController">5 Serving the SPA Shell</h1>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-vite-spa/v8/guide/spaController.adoc"'>
@@ -600,23 +608,33 @@ json {
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
 
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Autowired</span>
+<span class="keyword">import</span> <span class="include">org.springframework.core.io.Resource</span>
+<span class="keyword">import</span> <span class="include">org.springframework.core.io.ResourceLoader</span>
+
 <span class="type">class</span> <span class="class">SpaController</span> {
     <span class="directive">static</span> responseFormats = [<span class="string"><span class="delimiter">'</span><span class="content">html</span><span class="delimiter">'</span></span>]
 
+    <span class="annotation">@Autowired</span>
+    ResourceLoader resourceLoader
+
     <span class="comment">/**
-     * Forwards any non-/api request to the SPA's bundled index.html
-     * (which Vite produced into src/main/resources/public/index.html).
-     * Spring Boot auto-serves that file at /; we forward here so client-
-     * side routes like /books/42 survive a browser refresh.
+     * Serves the SPA's bundled index.html (which Vite produced into
+     * src/main/resources/public/index.html and the build copied onto the
+     * classpath). Reading the classpath resource directly is robust across
+     * profiles: a client-side route like /books/42 that hard-reloads to '/'
+     * always gets the SPA shell, which then re-resolves the route in the
+     * browser.
      */</span>
     <span class="keyword">def</span> <span class="function">index</span>() {
-        forward <span class="key">url</span>: <span class="string"><span class="delimiter">'</span><span class="content">/index.html</span><span class="delimiter">'</span></span>
+        Resource indexHtml = resourceLoader.getResource(<span class="string"><span class="delimiter">'</span><span class="content">classpath:public/index.html</span><span class="delimiter">'</span></span>)
+        render(<span class="key">text</span>: indexHtml.inputStream.getText(<span class="string"><span class="delimiter">'</span><span class="content">UTF-8</span><span class="delimiter">'</span></span>), <span class="key">contentType</span>: <span class="string"><span class="delimiter">'</span><span class="content">text/html</span><span class="delimiter">'</span></span>)
     }
 }</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p><code>forward url: '/index.html'</code> re-dispatches inside the same servlet container; the response status, content type, and caching headers all come from the static-resource handler that serves <code>index.html</code>. No HTML duplication, no template engine in the loop.</p>
+<p>The action reads the bundled <code>index.html</code> straight off the classpath (<code>classpath:public/index.html</code> - where the <code>copyFrontendToBackend</code> task placed the Vite output) and renders it as <code>text/html</code>. Reading the resource directly is robust across profiles and environments: a <code>rest-api</code> Grails app does not register a servlet static-resource handler for arbitrary paths, so a <code>forward url: '/index.html'</code> is claimed by Grails' URL mappings and returns a 404 instead of the file. Injecting <code>ResourceLoader</code> and rendering the resource sidesteps that entirely - a client-side route like <code>/books/42</code> that hard-reloads to <code>/</code> always gets the SPA shell, which then re-resolves the route in the browser.</p>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -626,14 +644,11 @@ json {
 </td>
 <td class="content">
 <div class="paragraph">
-<p><strong>Why not a wildcard URL mapping like <code>'/$path<strong>'(controller: 'spa', action: 'index')</code>?</strong> Because URL mappings resolve before static resources. A wildcard mapping would intercept <code>/favicon.ico</code> and <code>/assets/main-abc123.js</code>, returning the SPA&#8217;s <code>index.html</code> instead of the asset. Letting Spring Boot&#8217;s static-resource handler claim everything except <code>/api/</strong></code> and <code>/</code> is the simplest correct shape.</p>
+<p><strong>Why not a wildcard URL mapping like <code>'/$path<strong>'(controller: 'spa', action: 'index')</code>?</strong> Because that would also intercept <code>/api/</strong></code> and <code>/assets/<strong></code>. Mapping only <code>/</code> to the SPA controller, and routing <code>/assets/</strong></code> to the <code>AssetController</code> (next chapter), is the simplest correct shape. The <code>index.html</code> Vite emits references its JS and CSS by hashed <code>/assets/&#8230;&#8203;</code> paths, which the SPA loads as a second request.</p>
 </div>
 </td>
 </tr>
 </table>
-</div>
-<div class="paragraph">
-<p>The <code>forward</code> method available on every Grails controller is the same one the framework uses internally for URL-mapping rewrites; see <code>grails-controllers/src/main/groovy/grails/web/util/WebUtils.java</code> for the underlying implementation and <code>grails-doc/src/en/guide/theWebLayer/controllers/forwarding.adoc</code> for the user-facing reference.</p>
 </div>
 <div class="paragraph">
 <p>Files touched in this chapter:</p>
@@ -1051,7 +1066,359 @@ npm run dev
 </div>
 
 
-<h1 id="helpWithGrails">11 Do you need help with Grails?</h1>
+<h1 id="testing">11 Testing the API and SPA Serving</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-vite-spa/v8/guide/testing.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>The backend is covered at three layers: fast domain and controller unit tests, an <code>@Integration</code> test for persistence against a real database, and functional HTTP tests that exercise the JSON API, the same-origin CORS behaviour, and the SPA-serving path. The integration and functional layers run against a Testcontainers-managed PostgreSQL database; running <code>:backend:integrationTest</code> also triggers the frontend Vite build (via <code>processResources</code> &#8594; <code>copyFrontendToBackend</code>), so the functional tests run against the <strong>actually built</strong> SPA bundle.</p>
+</div>
+<div class="sect1">
+<h2 id="_test_dependencies">Test dependencies</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Testcontainers artifacts are not in the Grails BOM, and a <code>rest-api</code> profile app needs the web testing support for <code>ControllerUnitTest</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">backend/build.gradle (test dependencies)</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">testImplementation <span class="string"><span class="delimiter">&quot;</span><span class="content">org.apache.grails:grails-testing-support-datamapping</span><span class="delimiter">&quot;</span></span>
+testImplementation <span class="string"><span class="delimiter">&quot;</span><span class="content">org.apache.grails:grails-testing-support-views-gson</span><span class="delimiter">&quot;</span></span>
+testImplementation <span class="string"><span class="delimiter">&quot;</span><span class="content">org.apache.grails:grails-testing-support-web</span><span class="delimiter">&quot;</span></span>
+testImplementation <span class="string"><span class="delimiter">&quot;</span><span class="content">org.spockframework:spock-core</span><span class="delimiter">&quot;</span></span>
+testImplementation platform(<span class="string"><span class="delimiter">&quot;</span><span class="content">org.testcontainers:testcontainers-bom:1.20.4</span><span class="delimiter">&quot;</span></span>)
+testImplementation <span class="string"><span class="delimiter">&quot;</span><span class="content">org.testcontainers:postgresql</span><span class="delimiter">&quot;</span></span>
+testImplementation <span class="string"><span class="delimiter">&quot;</span><span class="content">org.testcontainers:spock</span><span class="delimiter">&quot;</span></span>
+testImplementation <span class="string"><span class="delimiter">&quot;</span><span class="content">org.testcontainers:testcontainers</span><span class="delimiter">&quot;</span></span></code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_unit_domain_and_controller">Unit: domain and controller</h2>
+<div class="sectionbody">
+<div class="listingblock">
+<div class="title">backend/src/test/groovy/example/BookSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.testing.gorm.DomainUnitTest</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="comment">/**
+ * Domain constraint unit tests for Book - no Spring context, no database.
+ */</span>
+<span class="type">class</span> <span class="class">BookSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> DomainUnitTest&lt;<span class="predefined-type">Book</span>&gt; {
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">a fully populated book validates</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">expect</span>:
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Dune</span><span class="delimiter">'</span></span>, <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Frank Herbert</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780441013593</span><span class="delimiter">'</span></span>).validate()
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">title, author and isbn are required</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        <span class="predefined-type">Book</span> b = <span class="keyword">new</span> <span class="predefined-type">Book</span>()
+
+        <span class="key">then</span>:
+        !b.validate()
+        b.errors.getFieldError(<span class="string"><span class="delimiter">'</span><span class="content">title</span><span class="delimiter">'</span></span>).code == <span class="string"><span class="delimiter">'</span><span class="content">nullable</span><span class="delimiter">'</span></span>
+        b.errors.getFieldError(<span class="string"><span class="delimiter">'</span><span class="content">author</span><span class="delimiter">'</span></span>).code == <span class="string"><span class="delimiter">'</span><span class="content">nullable</span><span class="delimiter">'</span></span>
+        b.errors.getFieldError(<span class="string"><span class="delimiter">'</span><span class="content">isbn</span><span class="delimiter">'</span></span>).code == <span class="string"><span class="delimiter">'</span><span class="content">nullable</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">isbn must match the ISBN pattern</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        <span class="predefined-type">Book</span> b = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">X</span><span class="delimiter">'</span></span>, <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Y</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">not-an-isbn</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>:
+        !b.validate()
+        b.errors.getFieldError(<span class="string"><span class="delimiter">'</span><span class="content">isbn</span><span class="delimiter">'</span></span>).code == <span class="string"><span class="delimiter">'</span><span class="content">matches.invalid</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">isbn must be unique</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">First</span><span class="delimiter">'</span></span>, <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">A</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780441013593</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">when</span>:
+        <span class="predefined-type">Book</span> dup = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Second</span><span class="delimiter">'</span></span>, <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">B</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780441013593</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>:
+        !dup.validate()
+        dup.errors.getFieldError(<span class="string"><span class="delimiter">'</span><span class="content">isbn</span><span class="delimiter">'</span></span>).code == <span class="string"><span class="delimiter">'</span><span class="content">unique</span><span class="delimiter">'</span></span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The <code>BookController</code> overrides <code>listAllResources</code> to clamp the page size. Because it reads <code>params.int('max', 25)</code>, the spec drives it through the controller&#8217;s <code>GrailsParameterMap</code> (a plain <code>Map</code> has no <code>int()</code> accessor):</p>
+</div>
+<div class="listingblock">
+<div class="title">backend/src/test/groovy/example/BookControllerSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.testing.gorm.DataTest</span>
+<span class="keyword">import</span> <span class="include">grails.testing.web.controllers.ControllerUnitTest</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="comment">/**
+ * Controller unit test for the page-size clamp the overridden
+ * listAllResources applies. It reads params.int('max', 25), so the spec
+ * drives it through the controller's GrailsParameterMap (a plain Map has
+ * no int() accessor). No Spring context boots.
+ */</span>
+<span class="type">class</span> <span class="class">BookControllerSpec</span> <span class="directive">extends</span> Specification
+        <span class="directive">implements</span> ControllerUnitTest&lt;BookController&gt;, DataTest {
+
+    <span class="predefined-type">Class</span><span class="type">[]</span> getDomainClassesToMock() { [<span class="predefined-type">Book</span>] }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">listAllResources clamps max to 100</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        controller.params.max = <span class="string"><span class="delimiter">'</span><span class="content">500</span><span class="delimiter">'</span></span>
+
+        <span class="key">when</span>:
+        controller.listAllResources(controller.params)
+
+        <span class="key">then</span>:
+        controller.params.max == <span class="integer">100</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">listAllResources keeps a max within range</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        controller.params.max = <span class="string"><span class="delimiter">'</span><span class="content">10</span><span class="delimiter">'</span></span>
+
+        <span class="key">when</span>:
+        controller.listAllResources(controller.params)
+
+        <span class="key">then</span>:
+        controller.params.max == <span class="integer">10</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">listAllResources defaults max to 25 when absent</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        controller.listAllResources(controller.params)
+
+        <span class="key">then</span>:
+        controller.params.max == <span class="integer">25</span>
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_integration_persistence_against_a_real_database">Integration: persistence against a real database</h2>
+<div class="sectionbody">
+<div class="listingblock">
+<div class="title">backend/src/integration-test/groovy/example/BookIntegrationSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Rollback</span>
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="comment">/**
+ * @Integration boots the full context against the Testcontainers
+ * PostgreSQL database. @Rollback isolates each method.
+ */</span>
+<span class="annotation">@Integration</span>
+<span class="annotation">@Rollback</span>
+<span class="type">class</span> <span class="class">BookIntegrationSpec</span> <span class="directive">extends</span> Specification {
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">a book round-trips through GORM</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>: <span class="string"><span class="delimiter">'</span><span class="content">an ISBN distinct from the committed functional-test fixtures</span><span class="delimiter">'</span></span>
+        <span class="predefined-type">Book</span> saved = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Dune</span><span class="delimiter">'</span></span>, <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Frank Herbert</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9789999999016</span><span class="delimiter">'</span></span>)
+                .save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">when</span>:
+        <span class="predefined-type">Book</span> reloaded = <span class="predefined-type">Book</span>.get(saved.id)
+
+        <span class="key">then</span>:
+        reloaded.title == <span class="string"><span class="delimiter">'</span><span class="content">Dune</span><span class="delimiter">'</span></span>
+        reloaded.author == <span class="string"><span class="delimiter">'</span><span class="content">Frank Herbert</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">the unique isbn constraint is enforced at the database layer</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">First</span><span class="delimiter">'</span></span>, <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">A</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9789999999023</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">when</span>:
+        <span class="predefined-type">Book</span> dup = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Second</span><span class="delimiter">'</span></span>, <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">B</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9789999999023</span><span class="delimiter">'</span></span>)
+        dup.save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">then</span>:
+        dup.hasErrors()
+        <span class="predefined-type">Book</span>.countByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9789999999023</span><span class="delimiter">'</span></span>) == <span class="integer">1</span>
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_functional_the_api_cors_and_spa_serving_over_real_http">Functional: the API, CORS, and SPA serving over real HTTP</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The functional spec sends real requests with <code>java.net.http.HttpClient</code>. It asserts the JSON envelope shape (<code>{total, items:[{id,title,author,isbn}]}</code> - the <code>items</code> must be nested objects, which is why the JSON view renders the <code>book</code> template with <code>collection:</code> rather than collecting rendered strings), the same-origin layout&#8217;s <strong>absence</strong> of CORS headers, and that both the SPA shell (<code>/</code>) and its hashed JS bundle (<code>/assets/**</code>) are served same-origin:</p>
+</div>
+<div class="listingblock">
+<div class="title">backend/src/integration-test/groovy/example/ApiFunctionalSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">groovy.json.JsonOutput</span>
+<span class="keyword">import</span> <span class="include">groovy.json.JsonSlurper</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Value</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="keyword">import</span> <span class="include">java.net.http.HttpClient</span>
+<span class="keyword">import</span> <span class="include">java.net.http.HttpRequest</span>
+<span class="keyword">import</span> <span class="include">java.net.http.HttpResponse</span>
+
+<span class="comment">/**
+ * Functional tests over real HTTP with java.net.http.HttpClient.
+ *
+ * Covers the JSON API the SPA consumes, the same-origin layout's CORS
+ * behaviour (there is none - and that is the point of the guide), and the
+ * SPA-serving path. The SPA test also exercises the Vite build + copy
+ * integration: integrationTest's processResources runs frontendBuild and
+ * copies dist/ into public/, so GET / serves the built index.html.
+ *
+ * @Rollback is not used (the endpoints commit); the fixture is seeded and
+ * read back inside withNewTransaction blocks with ISBNs unique per test.
+ */</span>
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">ApiFunctionalSpec</span> <span class="directive">extends</span> Specification {
+
+    <span class="annotation">@Value</span>(<span class="string"><span class="delimiter">'</span><span class="content">${local.server.port}</span><span class="delimiter">'</span></span>)
+    <span class="predefined-type">Integer</span> serverPort
+
+    HttpClient client = HttpClient.newHttpClient()
+
+    <span class="directive">private</span> <span class="predefined-type">URI</span> uri(<span class="predefined-type">String</span> path) { <span class="predefined-type">URI</span>.create(<span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="inline"><span class="inline-delimiter">${</span>path<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>) }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">GET /api/books returns the paginated JSON envelope</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">Book</span>.withNewTransaction {
+            <span class="keyword">if</span> (!<span class="predefined-type">Book</span>.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9780441013593</span><span class="delimiter">'</span></span>)) {
+                <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Dune</span><span class="delimiter">'</span></span>, <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Frank Herbert</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780441013593</span><span class="delimiter">'</span></span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+            }
+        }
+
+        <span class="key">when</span>:
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = client.send(
+                HttpRequest.newBuilder(uri(<span class="string"><span class="delimiter">'</span><span class="content">/api/books</span><span class="delimiter">'</span></span>)).GET().build(),
+                HttpResponse.BodyHandlers.ofString())
+        <span class="predefined-type">Map</span> json = <span class="keyword">new</span> JsonSlurper().parseText(resp.body()) <span class="keyword">as</span> <span class="predefined-type">Map</span>
+
+        <span class="key">then</span>:
+        resp.statusCode() == <span class="integer">200</span>
+        resp.headers().firstValue(<span class="string"><span class="delimiter">'</span><span class="content">Content-Type</span><span class="delimiter">'</span></span>).get().contains(<span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+        json.containsKey(<span class="string"><span class="delimiter">'</span><span class="content">total</span><span class="delimiter">'</span></span>)
+        json.items.any { <span class="local-variable">it</span>.isbn == <span class="string"><span class="delimiter">'</span><span class="content">9780441013593</span><span class="delimiter">'</span></span> }
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">POST /api/books creates a book and returns 201</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">String</span> body = JsonOutput.toJson([<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Neuromancer</span><span class="delimiter">'</span></span>, <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">William Gibson</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780441569595</span><span class="delimiter">'</span></span>])
+
+        <span class="key">when</span>:
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = client.send(
+                HttpRequest.newBuilder(uri(<span class="string"><span class="delimiter">'</span><span class="content">/api/books</span><span class="delimiter">'</span></span>))
+                        .header(<span class="string"><span class="delimiter">'</span><span class="content">Content-Type</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+                        .POST(HttpRequest.BodyPublishers.ofString(body)).build(),
+                HttpResponse.BodyHandlers.ofString())
+
+        <span class="key">then</span>:
+        resp.statusCode() == <span class="integer">201</span>
+        <span class="predefined-type">Book</span>.withNewTransaction { <span class="predefined-type">Book</span>.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9780441569595</span><span class="delimiter">'</span></span>) != <span class="predefined-constant">null</span> }
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">POST /api/books with a malformed isbn returns 422</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">String</span> body = JsonOutput.toJson([<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Bad</span><span class="delimiter">'</span></span>, <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Nobody</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">not-an-isbn</span><span class="delimiter">'</span></span>])
+
+        <span class="key">when</span>:
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = client.send(
+                HttpRequest.newBuilder(uri(<span class="string"><span class="delimiter">'</span><span class="content">/api/books</span><span class="delimiter">'</span></span>))
+                        .header(<span class="string"><span class="delimiter">'</span><span class="content">Content-Type</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+                        .POST(HttpRequest.BodyPublishers.ofString(body)).build(),
+                HttpResponse.BodyHandlers.ofString())
+
+        <span class="key">then</span>:
+        resp.statusCode() == <span class="integer">422</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">the API does not emit CORS headers in the same-origin layout</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">a request carries an Origin header as a cross-origin browser would</span><span class="delimiter">'</span></span>
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = client.send(
+                HttpRequest.newBuilder(uri(<span class="string"><span class="delimiter">'</span><span class="content">/api/books</span><span class="delimiter">'</span></span>))
+                        .header(<span class="string"><span class="delimiter">'</span><span class="content">Origin</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">http://evil.example.com</span><span class="delimiter">'</span></span>)
+                        .GET().build(),
+                HttpResponse.BodyHandlers.ofString())
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">no Access-Control-Allow-Origin is returned - grails.cors is not enabled (see the CORS chapter)</span><span class="delimiter">'</span></span>
+        resp.statusCode() == <span class="integer">200</span>
+        resp.headers().firstValue(<span class="string"><span class="delimiter">'</span><span class="content">Access-Control-Allow-Origin</span><span class="delimiter">'</span></span>).isEmpty()
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">GET / serves the built SPA shell with hashed asset references</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">requesting the SPA root (served from the Vite-built index.html)</span><span class="delimiter">'</span></span>
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = client.send(
+                HttpRequest.newBuilder(uri(<span class="string"><span class="delimiter">'</span><span class="content">/</span><span class="delimiter">'</span></span>)).GET().build(),
+                HttpResponse.BodyHandlers.ofString())
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">the built SPA HTML is served from the same origin</span><span class="delimiter">'</span></span>
+        resp.statusCode() == <span class="integer">200</span>
+        resp.headers().firstValue(<span class="string"><span class="delimiter">'</span><span class="content">Content-Type</span><span class="delimiter">'</span></span>).get().contains(<span class="string"><span class="delimiter">'</span><span class="content">text/html</span><span class="delimiter">'</span></span>)
+        resp.body().contains(<span class="string"><span class="delimiter">'</span><span class="content">&lt;div id=&quot;root&quot;&gt;&lt;/div&gt;</span><span class="delimiter">'</span></span>)
+        resp.body().contains(<span class="string"><span class="delimiter">'</span><span class="content">/assets/</span><span class="delimiter">'</span></span>)
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">the hashed JS asset the SPA references is served</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>: <span class="string"><span class="delimiter">'</span><span class="content">the asset path Vite emitted into index.html</span><span class="delimiter">'</span></span>
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; shell = client.send(
+                HttpRequest.newBuilder(uri(<span class="string"><span class="delimiter">'</span><span class="content">/</span><span class="delimiter">'</span></span>)).GET().build(),
+                HttpResponse.BodyHandlers.ofString())
+        <span class="keyword">def</span> m = (shell.body() =~ <span class="regexp"><span class="delimiter">/</span><span class="content">src=&quot;(</span><span class="char">\/</span><span class="content">assets</span><span class="char">\/</span><span class="content">[^&quot;]+</span><span class="content">\.</span><span class="content">js)&quot;</span><span class="delimiter">/</span></span>)
+        <span class="keyword">assert</span> m.find()
+        <span class="predefined-type">String</span> assetPath = m.group(<span class="integer">1</span>)
+
+        <span class="key">when</span>:
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; asset = client.send(
+                HttpRequest.newBuilder(uri(assetPath)).GET().build(),
+                HttpResponse.BodyHandlers.ofString())
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">the static bundle is served from the same origin</span><span class="delimiter">'</span></span>
+        asset.statusCode() == <span class="integer">200</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The SPA-serving assertions are the ones that catch the subtle wiring bugs: a <code>rest-api</code> Grails app registers no servlet static-resource handler, so <code>SpaController</code> reads <code>index.html</code> off the classpath and <code>AssetController</code> streams the <code>/assets/**</code> bundle - without both, the deployed SPA would render an empty shell that never loads its script. The functional test fails loudly if either route regresses.</p>
+</div>
+<div class="paragraph">
+<p>Run it:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">./gradlew :backend:test             # unit - milliseconds, no Docker
+./gradlew :backend:integrationTest  # builds the SPA, boots the app, drives HTTP - Docker + node required</code></pre>
+</div>
+</div>
+</div>
+</div>
+
+
+<h1 id="helpWithGrails">12 Do you need help with Grails?</h1>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-vite-spa/v8/guide/helpWithGrails.adoc"'>

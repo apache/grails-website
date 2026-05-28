@@ -1,0 +1,489 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+                      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+    <title>14 Testing the Widgets and Wrappers</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
+    <link rel="stylesheet" href="../css/guide.css" type="text/css" media="screen, print" title="Style" charset="utf-8" />            
+    <link rel="stylesheet" href="../css/pdf.css" type="text/css" media="print" title="PDF" charset="utf-8"/>
+    <script type="text/javascript">
+function addJsClass() {
+    var classes = document.body.className.split(" ");
+    classes.push("js");
+    document.body.className = classes.join(" ");
+}
+    </script>
+</head>
+
+<body class="body" onload="addJsClass();">
+<div id="navigation">
+    <div class="navTitle">
+        
+        Grails Framework Guide 
+    </div>
+    <div class="navLinks">
+        <ul>
+            <li>
+                <div id="nav-summary" onmouseover="toggleNavSummary(false)" onmouseout="toggleNavSummary(true)">
+                    <a href="../guide/index.html" class="button">Table of contents</a>
+
+                    <div id="nav-summary-childs" style="display:none;">
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/gettingStarted.html"><strong>1</strong><span>Getting Started</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/createApp.html"><strong>2</strong><span>Creating the Application</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/domainModel.html"><strong>3</strong><span>The Book and Author Domain Model</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/scaffolding.html"><strong>4</strong><span>Scaffolding the CRUD Controllers</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/fAllAndFDisplay.html"><strong>5</strong><span>Replacing the GSPs with f:all and f:display</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/fTable.html"><strong>6</strong><span>Replacing list.gsp with f:table</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/templateLookup.html"><strong>7</strong><span>Template Lookup Precedence</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/customDefaultWrapper.html"><strong>8</strong><span>Customising the Default Wrapper</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/customWidgets.html"><strong>9</strong><span>Customising Widgets by Type</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/associationWidgets.html"><strong>10</strong><span>Customising Association Widgets</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/perPropertyOverrides.html"><strong>11</strong><span>Per-Property Overrides</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/customTable.html"><strong>12</strong><span>Customising the Table Template</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/cleanCrud.html"><strong>13</strong><span>The Result - Clean CRUD GSPs</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/testing.html"><strong>14</strong><span>Testing the Widgets and Wrappers</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>15</strong><span>Do you need help with Grails?</span></a>
+                        </div>
+                        
+                    </div>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+
+</div>
+
+<table id="colset" border="0" cellpadding="0" cellspacing="0">
+    <tr>
+        <td id="col1">
+            <div id="main" class="corner-all">
+
+                
+                    <div class="toc-item prev-left"><a href="../guide/cleanCrud.html">&lt;&lt; <strong>13</strong><span>The Result - Clean CRUD GSPs</span></a></div>
+                
+
+                
+                    <div class="toc-item next-right"><a href="../guide/helpWithGrails.html"><strong>15</strong><span>Do you need help with Grails?</span> >></a></div>
+                
+
+
+                
+
+                
+
+<h1 id="testing">14 Testing the Widgets and Wrappers</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-fields-custom-widgets-and-wrappers/v8/guide/testing.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Custom widgets and wrappers render fine "on my machine" right up until a GSP attribute or a template-lookup assumption breaks them silently. The sample app is covered at three layers: domain unit tests, <code>@Integration</code> tests for the associations, and Geb browser tests that prove the custom widgets actually render in a real page.</p>
+</div>
+<div class="sect1">
+<h2 id="_unit_the_domain_constraints">Unit: the domain constraints</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><code>DataTest</code> mocks the associated domains so <code>belongsTo</code>/<code>hasMany</code> are satisfied without a Spring context:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/test/groovy/example/BookSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.testing.gorm.DataTest</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Unroll</span>
+
+<span class="comment">/**
+ * Domain constraint unit tests for Book. DataTest mocks the associated
+ * domains so belongsTo/hasMany are satisfied without a Spring context.
+ */</span>
+<span class="type">class</span> <span class="class">BookSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> DataTest {
+
+    <span class="predefined-type">Class</span><span class="type">[]</span> getDomainClassesToMock() { [Author, <span class="predefined-type">Book</span>, Tag] }
+
+    <span class="directive">private</span> <span class="predefined-type">Book</span> bookWith(<span class="predefined-type">Map</span> overrides = [:]) {
+        Author a = <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">A</span><span class="delimiter">'</span></span>, <span class="key">email</span>: <span class="string"><span class="delimiter">'</span><span class="content">a@example.com</span><span class="delimiter">'</span></span>, <span class="key">bio</span>: <span class="string"><span class="delimiter">'</span><span class="content">bio</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>([<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">T</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>, <span class="key">genre</span>: <span class="string"><span class="delimiter">'</span><span class="content">Fiction</span><span class="delimiter">'</span></span>, <span class="key">description</span>: <span class="string"><span class="delimiter">'</span><span class="content">d</span><span class="delimiter">'</span></span>,
+                  <span class="key">publishedDate</span>: <span class="keyword">new</span> <span class="predefined-type">Date</span>(), <span class="key">priceUSD</span>: <span class="float">9.99</span>G, <span class="key">inStock</span>: <span class="predefined-constant">true</span>, <span class="key">author</span>: a] + overrides)
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">a fully populated book validates</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">expect</span>:
+        bookWith().validate()
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">title and description are required</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        <span class="predefined-type">Book</span> b = bookWith(<span class="key">title</span>: <span class="predefined-constant">null</span>, <span class="key">description</span>: <span class="predefined-constant">null</span>)
+
+        <span class="key">then</span>:
+        !b.validate()
+        b.errors.getFieldError(<span class="string"><span class="delimiter">'</span><span class="content">title</span><span class="delimiter">'</span></span>).code == <span class="string"><span class="delimiter">'</span><span class="content">nullable</span><span class="delimiter">'</span></span>
+        b.errors.getFieldError(<span class="string"><span class="delimiter">'</span><span class="content">description</span><span class="delimiter">'</span></span>).code == <span class="string"><span class="delimiter">'</span><span class="content">nullable</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="annotation">@Unroll</span>
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">isbn '#isbn' isValid=#isValid</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">expect</span>:
+        bookWith(<span class="key">isbn</span>: isbn).validate() == isValid
+
+        <span class="key">where</span>:
+        isbn            || isValid
+        <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span> || <span class="predefined-constant">true</span>
+        <span class="string"><span class="delimiter">'</span><span class="content">0547928227</span><span class="delimiter">'</span></span>    || <span class="predefined-constant">true</span>
+        <span class="string"><span class="delimiter">'</span><span class="content">abc</span><span class="delimiter">'</span></span>           || <span class="predefined-constant">false</span>
+        <span class="string"><span class="delimiter">'</span><span class="content">123</span><span class="delimiter">'</span></span>           || <span class="predefined-constant">false</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">genre must be in the allowed list</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        <span class="predefined-type">Book</span> b = bookWith(<span class="key">genre</span>: <span class="string"><span class="delimiter">'</span><span class="content">Cooking</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>:
+        !b.validate()
+        b.errors.getFieldError(<span class="string"><span class="delimiter">'</span><span class="content">genre</span><span class="delimiter">'</span></span>).code == <span class="string"><span class="delimiter">'</span><span class="content">not.inList</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">priceUSD cannot be negative</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        <span class="predefined-type">Book</span> b = bookWith(<span class="key">priceUSD</span>: -<span class="float">1.00</span>G)
+
+        <span class="key">then</span>:
+        !b.validate()
+        b.errors.getFieldError(<span class="string"><span class="delimiter">'</span><span class="content">priceUSD</span><span class="delimiter">'</span></span>).code == <span class="string"><span class="delimiter">'</span><span class="content">min.notmet</span><span class="delimiter">'</span></span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">src/test/groovy/example/AuthorSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.testing.gorm.DataTest</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="comment">/**
+ * Domain constraint unit tests for Author, including the email/url
+ * constraints and the hasOne ContactInfo / hasMany Book associations.
+ */</span>
+<span class="type">class</span> <span class="class">AuthorSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> DataTest {
+
+    <span class="predefined-type">Class</span><span class="type">[]</span> getDomainClassesToMock() { [Author, <span class="predefined-type">Book</span>, Tag, ContactInfo] }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">a valid author validates</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">expect</span>:
+        <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Tolkien</span><span class="delimiter">'</span></span>, <span class="key">email</span>: <span class="string"><span class="delimiter">'</span><span class="content">jrr@example.com</span><span class="delimiter">'</span></span>, <span class="key">bio</span>: <span class="string"><span class="delimiter">'</span><span class="content">bio</span><span class="delimiter">'</span></span>).validate()
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">email must be well formed</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        Author a = <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">X</span><span class="delimiter">'</span></span>, <span class="key">email</span>: <span class="string"><span class="delimiter">'</span><span class="content">not-an-email</span><span class="delimiter">'</span></span>, <span class="key">bio</span>: <span class="string"><span class="delimiter">'</span><span class="content">bio</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>:
+        !a.validate()
+        a.errors.getFieldError(<span class="string"><span class="delimiter">'</span><span class="content">email</span><span class="delimiter">'</span></span>).code == <span class="string"><span class="delimiter">'</span><span class="content">email.invalid</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">website must be a valid url when present</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        Author a = <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">X</span><span class="delimiter">'</span></span>, <span class="key">email</span>: <span class="string"><span class="delimiter">'</span><span class="content">x@example.com</span><span class="delimiter">'</span></span>, <span class="key">bio</span>: <span class="string"><span class="delimiter">'</span><span class="content">bio</span><span class="delimiter">'</span></span>, <span class="key">website</span>: <span class="string"><span class="delimiter">'</span><span class="content">not a url</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>:
+        !a.validate()
+        a.errors.getFieldError(<span class="string"><span class="delimiter">'</span><span class="content">website</span><span class="delimiter">'</span></span>).code == <span class="string"><span class="delimiter">'</span><span class="content">url.invalid</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">an author owns many books</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        Author a = <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Tolkien</span><span class="delimiter">'</span></span>, <span class="key">email</span>: <span class="string"><span class="delimiter">'</span><span class="content">jrr@example.com</span><span class="delimiter">'</span></span>, <span class="key">bio</span>: <span class="string"><span class="delimiter">'</span><span class="content">bio</span><span class="delimiter">'</span></span>)
+                .save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        a.addToBooks(<span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">The Hobbit</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>, <span class="key">genre</span>: <span class="string"><span class="delimiter">'</span><span class="content">Fiction</span><span class="delimiter">'</span></span>,
+                <span class="key">description</span>: <span class="string"><span class="delimiter">'</span><span class="content">d</span><span class="delimiter">'</span></span>, <span class="key">publishedDate</span>: <span class="keyword">new</span> <span class="predefined-type">Date</span>(), <span class="key">priceUSD</span>: <span class="float">9.99</span>G, <span class="key">inStock</span>: <span class="predefined-constant">true</span>))
+        a.save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">expect</span>:
+        Author.get(a.id).books.size() == <span class="integer">1</span>
+        <span class="comment">// the hasOne ContactInfo association is exercised in LibraryIntegrationSpec,</span>
+        <span class="comment">// where a real datastore sets the inverse side that DataTest's in-memory</span>
+        <span class="comment">// store does not.</span>
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_integration_the_associations_against_a_real_database">Integration: the associations against a real database</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><code>@Integration</code> + <code>@Rollback</code> boots the full context against the in-memory H2 database and asserts on the <code>BootStrap</code> seed - including the <code>Book</code>-<code>Tag</code> many-to-many and the <code>Author</code>-<code>ContactInfo</code> one-to-one:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/integration-test/groovy/example/LibraryIntegrationSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Rollback</span>
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="comment">/**
+ * @Integration boots the full context against the in-memory H2 database.
+ * @Rollback isolates each method. BootStrap seeds two authors and two books
+ * at startup, so these specs assert on that committed seed data and create
+ * their own rows with distinct values.
+ */</span>
+<span class="annotation">@Integration</span>
+<span class="annotation">@Rollback</span>
+<span class="type">class</span> <span class="class">LibraryIntegrationSpec</span> <span class="directive">extends</span> Specification {
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">BootStrap seeded the library</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">expect</span>:
+        <span class="predefined-type">Book</span>.findByTitle(<span class="string"><span class="delimiter">'</span><span class="content">The Hobbit</span><span class="delimiter">'</span></span>) != <span class="predefined-constant">null</span>
+        <span class="predefined-type">Book</span>.findByTitle(<span class="string"><span class="delimiter">'</span><span class="content">Pride and Prejudice</span><span class="delimiter">'</span></span>) != <span class="predefined-constant">null</span>
+        Author.findByName(<span class="string"><span class="delimiter">'</span><span class="content">J.R.R. Tolkien</span><span class="delimiter">'</span></span>) != <span class="predefined-constant">null</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">a book belongs to an author and has many tags</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">Book</span> hobbit = <span class="predefined-type">Book</span>.findByTitle(<span class="string"><span class="delimiter">'</span><span class="content">The Hobbit</span><span class="delimiter">'</span></span>)
+
+        <span class="key">expect</span>:
+        hobbit.author.name == <span class="string"><span class="delimiter">'</span><span class="content">J.R.R. Tolkien</span><span class="delimiter">'</span></span>
+        hobbit.tags*.name.sort() == [<span class="string"><span class="delimiter">'</span><span class="content">Adventure</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Classic</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Fantasy</span><span class="delimiter">'</span></span>]
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">an author has a one-to-one contactInfo</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        Author tolkien = Author.findByName(<span class="string"><span class="delimiter">'</span><span class="content">J.R.R. Tolkien</span><span class="delimiter">'</span></span>)
+
+        <span class="key">expect</span>:
+        tolkien.contactInfo != <span class="predefined-constant">null</span>
+        tolkien.contactInfo.phone == <span class="string"><span class="delimiter">'</span><span class="content">+44 20 7946 0958</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">a new book round-trips with its association</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        Author a = Author.findByName(<span class="string"><span class="delimiter">'</span><span class="content">Jane Austen</span><span class="delimiter">'</span></span>)
+
+        <span class="key">when</span>:
+        <span class="predefined-type">Book</span> b = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Emma</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780141439587</span><span class="delimiter">'</span></span>, <span class="key">genre</span>: <span class="string"><span class="delimiter">'</span><span class="content">Fiction</span><span class="delimiter">'</span></span>,
+                <span class="key">description</span>: <span class="string"><span class="delimiter">'</span><span class="content">A young woman who fancies herself a matchmaker.</span><span class="delimiter">'</span></span>,
+                <span class="key">publishedDate</span>: <span class="keyword">new</span> <span class="predefined-type">Date</span>(), <span class="key">priceUSD</span>: <span class="float">8.50</span>G, <span class="key">inStock</span>: <span class="predefined-constant">true</span>, <span class="key">author</span>: a)
+                .save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">then</span>:
+        <span class="predefined-type">Book</span>.get(b.id).author.name == <span class="string"><span class="delimiter">'</span><span class="content">Jane Austen</span><span class="delimiter">'</span></span>
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_browser_the_custom_widgets_through_geb">Browser: the custom widgets through Geb</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><code>ContainerGebSpec</code> starts a Selenium-Chrome container via Testcontainers and drives the booted app, so only a running Docker daemon is required. These specs are the ones that catch the GSP-level bugs custom widgets are prone to:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/integration-test/groovy/example/LibraryFunctionalSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.plugin.geb.ContainerGebSpec</span>
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+
+<span class="comment">/**
+ * Browser tests for the Fields-plugin UI, driven by Geb 8 against the real
+ * booted app. ContainerGebSpec starts a Selenium-Chrome container via
+ * Testcontainers, so only a running Docker daemon is required. BootStrap
+ * seeds the library at startup, so these read-only specs assert on it.
+ *
+ * The point is to prove the custom widgets and wrappers actually render -
+ * f:table on the index, f:display on the show page (custom isbn widget,
+ * description wrapper), and the custom association widgets on the create form.
+ */</span>
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">LibraryFunctionalSpec</span> <span class="directive">extends</span> ContainerGebSpec {
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">the book index renders the custom f:table with seeded rows</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        go <span class="string"><span class="delimiter">'</span><span class="content">/book/index</span><span class="delimiter">'</span></span>
+
+        <span class="key">then</span>:
+        title == <span class="string"><span class="delimiter">'</span><span class="content">Books</span><span class="delimiter">'</span></span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">table.table-striped</span><span class="delimiter">'</span></span>).size() == <span class="integer">1</span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">table.table-striped thead.table-dark</span><span class="delimiter">'</span></span>).size() == <span class="integer">1</span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">table.table-striped tbody tr</span><span class="delimiter">'</span></span>).size() &gt;= <span class="integer">2</span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">table.table-striped tbody</span><span class="delimiter">'</span></span>).text().contains(<span class="string"><span class="delimiter">'</span><span class="content">The Hobbit</span><span class="delimiter">'</span></span>)
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">table.table-striped tbody</span><span class="delimiter">'</span></span>).text().contains(<span class="string"><span class="delimiter">'</span><span class="content">Pride and Prejudice</span><span class="delimiter">'</span></span>)
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">the book show page renders the custom isbn widget and description wrapper</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>: <span class="string"><span class="delimiter">'</span><span class="content">the seeded Hobbit id</span><span class="delimiter">'</span></span>
+        <span class="predefined-type">Long</span> id = <span class="predefined-type">Book</span>.withNewTransaction { <span class="predefined-type">Book</span>.findByTitle(<span class="string"><span class="delimiter">'</span><span class="content">The Hobbit</span><span class="delimiter">'</span></span>).id }
+
+        <span class="key">when</span>:
+        go <span class="string"><span class="delimiter">&quot;</span><span class="content">/book/show/</span><span class="inline"><span class="inline-delimiter">${</span>id<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">f:display renders the value and the custom isbn display includes its formatted output</span><span class="delimiter">'</span></span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">body</span><span class="delimiter">'</span></span>).text().contains(<span class="string"><span class="delimiter">'</span><span class="content">The Hobbit</span><span class="delimiter">'</span></span>)
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">body</span><span class="delimiter">'</span></span>).text().contains(<span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>)
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">body</span><span class="delimiter">'</span></span>).text().contains(<span class="string"><span class="delimiter">'</span><span class="content">A reluctant hobbit</span><span class="delimiter">'</span></span>)
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">the book create form renders the custom widgets</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        go <span class="string"><span class="delimiter">'</span><span class="content">/book/create</span><span class="delimiter">'</span></span>
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">the custom isbn widget renders with its pattern and help text</span><span class="delimiter">'</span></span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">input</span><span class="delimiter">'</span></span>, <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">isbn</span><span class="delimiter">'</span></span>).size() == <span class="integer">1</span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">input</span><span class="delimiter">'</span></span>, <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">isbn</span><span class="delimiter">'</span></span>).@pattern.contains(<span class="string"><span class="delimiter">'</span><span class="char">\\</span><span class="content">d{13}</span><span class="delimiter">'</span></span>)
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">body</span><span class="delimiter">'</span></span>).text().contains(<span class="string"><span class="delimiter">'</span><span class="content">10 or 13 digits</span><span class="delimiter">'</span></span>)
+
+        <span class="key">and</span>: <span class="string"><span class="delimiter">'</span><span class="content">the manyToOne author widget renders as a select</span><span class="delimiter">'</span></span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">select</span><span class="delimiter">'</span></span>, <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">author.id</span><span class="delimiter">'</span></span>).size() == <span class="integer">1</span>
+
+        <span class="key">and</span>: <span class="string"><span class="delimiter">'</span><span class="content">the manyToMany tags widget renders a checkbox per seeded tag</span><span class="delimiter">'</span></span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">input</span><span class="delimiter">'</span></span>, <span class="key">type</span>: <span class="string"><span class="delimiter">'</span><span class="content">checkbox</span><span class="delimiter">'</span></span>, <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">tags</span><span class="delimiter">'</span></span>).size() == <span class="integer">4</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">the author show page renders the one-to-one contactInfo via its custom display</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">Long</span> id = Author.withNewTransaction { Author.findByName(<span class="string"><span class="delimiter">'</span><span class="content">J.R.R. Tolkien</span><span class="delimiter">'</span></span>).id }
+
+        <span class="key">when</span>:
+        go <span class="string"><span class="delimiter">&quot;</span><span class="content">/author/show/</span><span class="inline"><span class="inline-delimiter">${</span>id<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">f:display renders the hasOne ContactInfo through its toString()</span><span class="delimiter">'</span></span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">body</span><span class="delimiter">'</span></span>).text().contains(<span class="string"><span class="delimiter">'</span><span class="content">J.R.R. Tolkien</span><span class="delimiter">'</span></span>)
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">body</span><span class="delimiter">'</span></span>).text().contains(<span class="string"><span class="delimiter">'</span><span class="content">Contact for J.R.R. Tolkien</span><span class="delimiter">'</span></span>)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The assertions map directly to the customisations earlier in the guide:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>the index page renders the app-wide custom <code>f:table</code> with its dark header and the seeded rows;</p>
+</li>
+<li>
+<p>the show page renders the value through the custom display widgets;</p>
+</li>
+<li>
+<p>the create form renders the per-property ISBN widget (with its <code>pattern</code> and help text), the many-to-one author select, and one many-to-many checkbox per <code>Tag</code>;</p>
+</li>
+<li>
+<p>the author show page renders the one-to-one <code>ContactInfo</code> through its <code>toString()</code>.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>A browser test here is not gold-plating: the custom ISBN widget&#8217;s <code>pattern</code> attribute and the app-wide table&#8217;s <code>domainClass.javaClass.simpleName</code> lookup are both the kind of thing that compiles cleanly and only fails when the page is actually rendered in a request. The Geb layer exercises exactly that path.</p>
+</div>
+<div class="paragraph">
+<p>Run it all:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">./gradlew test             # unit - milliseconds, no Docker
+./gradlew integrationTest  # integration + Geb browser tests - Docker required</code></pre>
+</div>
+</div>
+</div>
+</div>
+
+
+                <div style="clear:both;margin-top:15px;"></div>
+                
+                    <div class="toc-item prev-left"><a href="../guide/cleanCrud.html">&lt;&lt; <strong>13</strong><span>The Result - Clean CRUD GSPs</span></a></div>
+                
+                    <div class="toc-item next-right"><a href="../guide/helpWithGrails.html"><strong>15</strong><span>Do you need help with Grails?</span> >></a></div>
+                
+                <div style="clear:both"></div>
+            </div>
+        </td>
+        <td id="col2">
+            <div class="local clearfix">
+                <div class="local-title" style="text-align: right"><a href="https://travis-ci.org/grails-guides/grails-fields-custom-widgets-and-wrappers"><img src="https://travis-ci.org/grails-guides/grails-fields-custom-widgets-and-wrappers.svg?branch=master" /></a></div>            
+                 <div class="local-title">
+                    <a href="https://github.com/grails-guides/grails-fields-custom-widgets-and-wrappers">
+                    <svg height="35" class="octicon octicon-mark-github" viewBox="0 0 16 16" version="1.1" width="35" aria-hidden="true"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a> &nbsp;&nbsp;Get the Code
+                </div>
+                <div class="menu">
+                    <div class="input-group">                        
+                        <button href="#" onclick="document.getElementById('github-url').value='git@github.com:grails-guides/grails-fields-custom-widgets-and-wrappers.git'" class="codeButton">SSH</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-fields-custom-widgets-and-wrappers.git'" class="codeButton">HTTPS</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-fields-custom-widgets-and-wrappers'" class="codeButton">Subversion</button>
+                    </div>
+       
+                    <div class="input-group">                    
+                        <!-- Target -->
+                        <input id="github-url" value="git@github.com:grails-guides/grails-fields-custom-widgets-and-wrappers.git" type="text" />
+
+                        <!-- Trigger -->
+                        <button class="clipbtn" type="button" data-clipboard-target="#github-url">
+
+                            <img width="13" src="../img/clippy.svg" alt="Copy to clipboard">
+                        </button>       
+
+                    </div>
+                    <div class="input-group">
+                      <a href="https://github.com/grails-guides/grails-fields-custom-widgets-and-wrappers/archive/master.zip" class="downloadButton">Download ZIP</a>
+                    </div>
+                </div>
+            </div>
+        </td>
+    </tr>
+</table>
+
+<div id="footer">
+    
+    
+</div>
+
+<script type="text/javascript" src="../js/docs.js"></script>
+
+</body>
+</html>

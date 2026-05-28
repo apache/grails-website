@@ -141,6 +141,71 @@ function addJsClass() {
 </li>
 </ul>
 </div>
+<div class="paragraph">
+<p>The stage needs at least one real unit test to be meaningful. A tiny domain class gives the suite something to exercise across all three layers:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/domain/example/Message.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.persistence.Entity</span>
+
+<span class="annotation">@Entity</span>
+<span class="type">class</span> <span class="class">Message</span> {
+
+    <span class="predefined-type">String</span> content
+
+    <span class="directive">static</span> constraints = {
+        content <span class="key">blank</span>: <span class="predefined-constant">false</span>, <span class="key">maxSize</span>: <span class="integer">500</span>
+    }
+
+    <span class="predefined-type">String</span> toString() { content }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>DomainUnitTest</code> runs the constraints in milliseconds with no Spring context and no database, so it belongs in the fast <code>unit-test</code> stage:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/test/groovy/example/MessageSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.testing.gorm.DomainUnitTest</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="comment">/**
+ * Unit layer - runs in the `unit-test` CI stage (./gradlew test). No Spring
+ * context, no database; just the domain constraints.
+ */</span>
+<span class="type">class</span> <span class="class">MessageSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> DomainUnitTest&lt;Message&gt; {
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">content is required</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        Message m = <span class="keyword">new</span> Message()
+
+        <span class="key">then</span>:
+        !m.validate()
+        m.errors.getFieldError(<span class="string"><span class="delimiter">'</span><span class="content">content</span><span class="delimiter">'</span></span>).code == <span class="string"><span class="delimiter">'</span><span class="content">nullable</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">content over maxSize is rejected</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        Message m = <span class="keyword">new</span> Message(<span class="key">content</span>: <span class="string"><span class="delimiter">'</span><span class="content">x</span><span class="delimiter">'</span></span> * <span class="integer">501</span>)
+
+        <span class="key">then</span>:
+        !m.validate()
+        m.errors.getFieldError(<span class="string"><span class="delimiter">'</span><span class="content">content</span><span class="delimiter">'</span></span>).code == <span class="string"><span class="delimiter">'</span><span class="content">maxSize.exceeded</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">a short message validates</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">expect</span>:
+        <span class="keyword">new</span> Message(<span class="key">content</span>: <span class="string"><span class="delimiter">'</span><span class="content">hello</span><span class="delimiter">'</span></span>).validate()
+    }
+}</code></pre>
+</div>
+</div>
 
 
                 <div style="clear:both;margin-top:15px;"></div>

@@ -177,7 +177,7 @@
 <p><code>BookService.groovy</code> - an <code>@Service(Book)</code> GORM data service with <code>findByIsbn</code>, <code>countByPageCountGreaterThanEquals</code>, and the standard CRUD methods.</p>
 </li>
 <li>
-<p><code>BookController.groovy</code> - a <code>RestfulController&lt;Book&gt;</code> so the JSON CRUD surface is testable from <code>ControllerUnitTest</code>.</p>
+<p><code>BookController.groovy</code> - a <code>RestfulController&lt;Book&gt;</code> exposing a JSON CRUD surface (testable from <code>ControllerUnitTest</code>) whose <code>index</code> action also renders an HTML table at <code>/books</code> for the functional test to drive.</p>
 </li>
 <li>
 <p>Five spec files exercising the five test layers:</p>
@@ -356,12 +356,31 @@ cd grails-spock-test-tour/complete
 <span class="type">class</span> <span class="class">BookSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> DomainUnitTest&lt;<span class="predefined-type">Book</span>&gt; {
 
     <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">rejects a book with no title</span><span class="delimiter">&quot;</span></span>() {
-        <span class="key">when</span>:
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">title is omitted from the map constructor, so it is null</span><span class="delimiter">'</span></span>
         <span class="predefined-type">Book</span> b = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">310</span>)
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">the nullable constraint - not blank - is what fires for a null value</span><span class="delimiter">'</span></span>
+        !b.validate()
+        b.errors.getFieldError(<span class="string"><span class="delimiter">'</span><span class="content">title</span><span class="delimiter">'</span></span>).code == <span class="string"><span class="delimiter">'</span><span class="content">nullable</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">rejects a blank title</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">a blank string is assigned directly (the map constructor would convert it to null)</span><span class="delimiter">'</span></span>
+        <span class="predefined-type">Book</span> b = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">310</span>)
+        b.title = <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">now the blank constraint fires</span><span class="delimiter">'</span></span>
+        !b.validate()
+        b.errors.getFieldError(<span class="string"><span class="delimiter">'</span><span class="content">title</span><span class="delimiter">'</span></span>).code == <span class="string"><span class="delimiter">'</span><span class="content">blank</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">rejects a title longer than maxSize</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        <span class="predefined-type">Book</span> b = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">x</span><span class="delimiter">'</span></span> * <span class="integer">256</span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">310</span>)
 
         <span class="key">then</span>:
         !b.validate()
-        b.errors.fieldError(<span class="string"><span class="delimiter">'</span><span class="content">title</span><span class="delimiter">'</span></span>).code == <span class="string"><span class="delimiter">'</span><span class="content">blank</span><span class="delimiter">'</span></span>
+        b.errors.getFieldError(<span class="string"><span class="delimiter">'</span><span class="content">title</span><span class="delimiter">'</span></span>).code == <span class="string"><span class="delimiter">'</span><span class="content">maxSize.exceeded</span><span class="delimiter">'</span></span>
     }
 
     <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">rejects a book with a malformed ISBN</span><span class="delimiter">&quot;</span></span>() {
@@ -370,7 +389,7 @@ cd grails-spock-test-tour/complete
 
         <span class="key">then</span>:
         !b.validate()
-        b.errors.fieldError(<span class="string"><span class="delimiter">'</span><span class="content">isbn</span><span class="delimiter">'</span></span>).code == <span class="string"><span class="delimiter">'</span><span class="content">matches.invalid</span><span class="delimiter">'</span></span>
+        b.errors.getFieldError(<span class="string"><span class="delimiter">'</span><span class="content">isbn</span><span class="delimiter">'</span></span>).code == <span class="string"><span class="delimiter">'</span><span class="content">matches.invalid</span><span class="delimiter">'</span></span>
     }
 
     <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">accepts a book with a valid ISBN-13</span><span class="delimiter">&quot;</span></span>() {
@@ -406,7 +425,7 @@ cd grails-spock-test-tour/complete
 <div class="ulist">
 <ul>
 <li>
-<p><code>b.errors.fieldError('title').code == 'blank'</code> checks the <strong>constraint code</strong>, not the localised message. Codes are stable across releases and locales; messages are not.</p>
+<p><code>b.errors.getFieldError('title').code</code> checks the <strong>constraint code</strong>, not the localised message. Codes are stable across releases and locales; messages are not. Note the subtlety the spec demonstrates: omitting <code>title</code> from the map constructor leaves it <code>null</code>, so the <code>nullable</code> code fires - not <code>blank</code>. To exercise the <code>blank</code> constraint you must assign <code>b.title = ''</code> <strong>directly</strong>, because Grails data binding converts an empty string passed through the map constructor into <code>null</code>.</p>
 </li>
 <li>
 <p><code>@Unroll</code> plus a <code>where:</code> data table collapses what would otherwise be five copy-pasted tests into one parameterised spec. The <code>#pageCount</code> token in the test name expands to the actual value, so the IDE&#8217;s run-tree shows each row separately.</p>
@@ -451,10 +470,12 @@ cd grails-spock-test-tour/complete
     <span class="predefined-type">Class</span><span class="type">[]</span> getDomainClassesToMock() { [<span class="predefined-type">Book</span>] }
 
     <span class="type">void</span> setup() {
-        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Short Story</span><span class="delimiter">'</span></span>,  <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780000000001</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">50</span> ).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
-        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Novella</span><span class="delimiter">'</span></span>,      <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780000000002</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">150</span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
-        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Novel</span><span class="delimiter">'</span></span>,        <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780000000003</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">400</span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
-        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Doorstopper</span><span class="delimiter">'</span></span>,  <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780000000004</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">900</span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        <span class="comment">// flush: true forces the in-memory datastore to persist before the</span>
+        <span class="comment">// GORM finders below query it - without it the finders see zero rows.</span>
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Short Story</span><span class="delimiter">'</span></span>,  <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780000000001</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">50</span> ).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Novella</span><span class="delimiter">'</span></span>,      <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780000000002</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">150</span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Novel</span><span class="delimiter">'</span></span>,        <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780000000003</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">400</span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Doorstopper</span><span class="delimiter">'</span></span>,  <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780000000004</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">900</span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
     }
 
     <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">countByPageCountGreaterThanEquals returns the right count</span><span class="delimiter">&quot;</span></span>() {
@@ -536,9 +557,10 @@ cd grails-spock-test-tour/complete
         <span class="predefined-type">Book</span> b = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">The Hobbit</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">310</span>)
                   .save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>, <span class="key">flush</span>: <span class="predefined-constant">true</span>)
 
-        <span class="key">when</span>:
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">RestfulController.show() reads params.id - it takes no argument</span><span class="delimiter">'</span></span>
         request.method = <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>
-        controller.show(b.id)
+        params.id = b.id
+        controller.show()
 
         <span class="key">then</span>:
         response.status == HttpStatus.OK.value()
@@ -548,7 +570,8 @@ cd grails-spock-test-tour/complete
     <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">GET /books/{id} for a missing id returns 404</span><span class="delimiter">&quot;</span></span>() {
         <span class="key">when</span>:
         request.method = <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>
-        controller.show(<span class="integer">99999L</span>)
+        params.id = <span class="integer">99999L</span>
+        controller.show()
 
         <span class="key">then</span>:
         response.status == HttpStatus.NOT_FOUND.value()
@@ -596,7 +619,7 @@ cd grails-spock-test-tour/complete
 
 
 <div class="paragraph">
-<p><code>@Integration</code> boots the full Spring context against a real datasource (whatever the <code>test</code> environment in <code>application.yml</code> configures - H2 by default). <code>@Rollback</code> rolls back every test method&#8217;s database changes so specs stay isolated.</p>
+<p><code>@Integration</code> boots the full Spring context against a real datasource - the <code>test</code> environment here points at a Testcontainers-managed PostgreSQL database (<code>jdbc:tc:postgresql:&#8230;&#8203;</code> in <code>application-test.yml</code>), so the specs run against the same engine as production. <code>@Rollback</code> rolls back every test method&#8217;s database changes so specs stay isolated.</p>
 </div>
 <div class="listingblock">
 <div class="title">src/integration-test/groovy/example/BookIntegrationSpec.groovy</div>
@@ -605,6 +628,7 @@ cd grails-spock-test-tour/complete
 
 <span class="keyword">import</span> <span class="include">grails.gorm.transactions.Rollback</span>
 <span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">grails.validation.ValidationException</span>
 <span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
 
 <span class="comment">/**
@@ -640,15 +664,17 @@ cd grails-spock-test-tour/complete
         reloaded.isbn  == <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>
     }
 
-    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">saving a book with a duplicate isbn fails validation</span><span class="delimiter">&quot;</span></span>() {
-        <span class="key">given</span>:
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">saving a book with a duplicate isbn is rejected</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>: <span class="string"><span class="delimiter">'</span><span class="content">a persisted book, flushed so the unique validator can see it</span><span class="delimiter">'</span></span>
         bookService.save(<span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">First</span><span class="delimiter">'</span></span>,  <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">100</span>))
+        <span class="predefined-type">Book</span>.withSession { <span class="local-variable">it</span>.flush() }
 
-        <span class="key">when</span>:
-        <span class="predefined-type">Book</span> second = bookService.save(<span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Second</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">200</span>))
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">a second book reuses the isbn</span><span class="delimiter">'</span></span>
+        bookService.save(<span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Second</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">200</span>))
 
-        <span class="key">then</span>:
-        second == <span class="predefined-constant">null</span> || second.hasErrors()
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">the @Service save throws a ValidationException (failOnError is implicit) carrying the unique error</span><span class="delimiter">'</span></span>
+        ValidationException ex = thrown()
+        ex.message.contains(<span class="string"><span class="delimiter">'</span><span class="content">unique</span><span class="delimiter">'</span></span>)
     }
 }</code></pre>
 </div>
@@ -665,7 +691,7 @@ cd grails-spock-test-tour/complete
 <p><code>@Rollback</code> is non-negotiable. Without it, the second test sees the first test&#8217;s data and the third test sees both. Specs become order-dependent and impossible to debug.</p>
 </li>
 <li>
-<p>The duplicate-ISBN test deliberately catches the constraint failure inside the second <code>save</code> call rather than letting it throw. <code>unique: true</code> constraint failures surface as <code>errors.hasErrors()</code>, not as exceptions, in GORM 7+.</p>
+<p>The duplicate-ISBN test first <strong>flushes</strong> the persisted book (<code>Book.withSession { it.flush() }</code>) so the <code>unique</code> validator can see it - without the flush the second insert is still pending and validation passes. It then expects the second <code>save</code> to throw: a GORM <code>@Service</code> save applies <code>failOnError</code> semantics, so a <code>unique: true</code> violation surfaces as a thrown <code>grails.validation.ValidationException</code>. (Calling <code>domain.save()</code> directly, without <code>failOnError: true</code>, would instead return <code>null</code> with <code>errors.hasErrors()</code>.)</p>
 </li>
 </ul>
 </div>
@@ -705,21 +731,127 @@ cd grails-spock-test-tour/complete
  * @Integration is mandatory: GrailsContainerGebExtension throws at
  * runtime if the annotation is missing. @Rollback is NOT used here -
  * functional tests exercise the full HTTP stack and need committed
- * data.
+ * data. The fixture is therefore seeded inside its own
+ * withNewTransaction block; a bare GORM call would fail because an
+ * @Integration spec without @Rollback has no ambient Hibernate session.
  */</span>
 <span class="annotation">@Integration</span>
 <span class="type">class</span> <span class="class">BookFunctionalSpec</span> <span class="directive">extends</span> ContainerGebSpec {
 
-    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">the book index page renders the seeded books</span><span class="delimiter">&quot;</span></span>() {
+    <span class="type">void</span> setup() {
+        <span class="predefined-type">Book</span>.withNewTransaction {
+            <span class="keyword">if</span> (!<span class="predefined-type">Book</span>.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9780261103344</span><span class="delimiter">'</span></span>)) {
+                <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">The Hobbit</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780261103344</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">310</span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+            }
+        }
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">the book index page renders the committed books</span><span class="delimiter">&quot;</span></span>() {
         <span class="key">when</span>:
         go <span class="string"><span class="delimiter">'</span><span class="content">/books</span><span class="delimiter">'</span></span>
 
         <span class="key">then</span>:
         title.contains(<span class="string"><span class="delimiter">'</span><span class="content">Book</span><span class="delimiter">'</span></span>)
         <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">table tbody tr</span><span class="delimiter">'</span></span>).size() &gt; <span class="integer">0</span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">table tbody</span><span class="delimiter">'</span></span>).text().contains(<span class="string"><span class="delimiter">'</span><span class="content">The Hobbit</span><span class="delimiter">'</span></span>)
     }
 }</code></pre>
 </div>
+</div>
+<div class="sect1">
+<h2 id="_the_page_the_test_drives">The page the test drives</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><code>go '/books'</code> needs a real HTML page with a table. <code>BookController</code> stays a <code>RestfulController</code> for the JSON CRUD surface, but its <code>index</code> action is overridden so the HTML format renders a GSP while JSON clients keep their collection response:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/controllers/example/BookController.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.rest.RestfulController</span>
+
+<span class="type">class</span> <span class="class">BookController</span> <span class="directive">extends</span> RestfulController&lt;<span class="predefined-type">Book</span>&gt; {
+    <span class="comment">// 'json' keeps the REST CRUD surface; 'html' lets the index action render</span>
+    <span class="comment">// grails-app/views/book/index.gsp so a browser (and the Geb functional</span>
+    <span class="comment">// test) gets a real HTML table at /books.</span>
+    <span class="directive">static</span> responseFormats = [<span class="string"><span class="delimiter">'</span><span class="content">json</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">html</span><span class="delimiter">'</span></span>]
+    BookService bookService
+    BookController() { <span class="local-variable">super</span>(<span class="predefined-type">Book</span>) }
+
+    <span class="comment">// Override index so the HTML format renders the GSP table view (through the</span>
+    <span class="comment">// sitemesh layout) while JSON clients still get the REST collection.</span>
+    <span class="keyword">def</span> <span class="function">index</span>(<span class="predefined-type">Integer</span> max) {
+        params.max = <span class="predefined-type">Math</span>.min(max ?: <span class="integer">100</span>, <span class="integer">100</span>)
+        <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; books = listAllResources(params)
+        withFormat {
+            html { [<span class="key">bookList</span>: books, <span class="key">bookCount</span>: countResources()] }
+            json { respond books, [<span class="key">model</span>: [<span class="key">bookCount</span>: countResources()]] }
+        }
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A <code>resources</code> URL mapping exposes the controller at <code>/books</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/controllers/example/UrlMappings.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="type">class</span> <span class="class">UrlMappings</span> {
+    <span class="directive">static</span> mappings = {
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/books</span><span class="delimiter">&quot;</span></span>(<span class="key">resources</span>: <span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/</span><span class="inline"><span class="inline-delimiter">$</span>namespace</span><span class="content">/</span><span class="inline"><span class="inline-delimiter">$</span>controller</span><span class="content">/</span><span class="inline"><span class="inline-delimiter">$</span>action</span><span class="content">?/</span><span class="inline"><span class="inline-delimiter">$</span>id</span><span class="content">?(.</span><span class="inline"><span class="inline-delimiter">$</span>format</span><span class="content">)?</span><span class="delimiter">&quot;</span></span> {}
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/</span><span class="inline"><span class="inline-delimiter">$</span>controller</span><span class="content">/</span><span class="inline"><span class="inline-delimiter">$</span>action</span><span class="content">?/</span><span class="inline"><span class="inline-delimiter">$</span>id</span><span class="content">?(.</span><span class="inline"><span class="inline-delimiter">$</span>format</span><span class="content">)?</span><span class="delimiter">&quot;</span></span>{
+            constraints {
+                <span class="comment">// apply constraints here</span>
+            }
+        }
+
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/</span><span class="delimiter">&quot;</span></span>(<span class="key">view</span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">/index</span><span class="delimiter">&quot;</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">500</span><span class="delimiter">&quot;</span></span>(<span class="key">view</span>:<span class="string"><span class="delimiter">'</span><span class="content">/error</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">404</span><span class="delimiter">&quot;</span></span>(<span class="key">view</span>:<span class="string"><span class="delimiter">'</span><span class="content">/notFound</span><span class="delimiter">'</span></span>)
+
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>and a minimal GSP renders the table the spec asserts against:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/views/book/index.gsp</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="html"><span class="doctype">&lt;!DOCTYPE html&gt;</span>
+<span class="tag">&lt;html&gt;</span>
+<span class="tag">&lt;head&gt;</span>
+    <span class="tag">&lt;meta</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">layout</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">content</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">main</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;title&gt;</span>Book List<span class="tag">&lt;/title&gt;</span>
+<span class="tag">&lt;/head&gt;</span>
+<span class="tag">&lt;body&gt;</span>
+<span class="tag">&lt;h1&gt;</span>Book List<span class="tag">&lt;/h1&gt;</span>
+<span class="tag">&lt;table&gt;</span>
+    <span class="tag">&lt;thead&gt;</span>
+        <span class="tag">&lt;tr&gt;</span><span class="tag">&lt;th&gt;</span>Title<span class="tag">&lt;/th&gt;</span><span class="tag">&lt;th&gt;</span>ISBN<span class="tag">&lt;/th&gt;</span><span class="tag">&lt;th&gt;</span>Pages<span class="tag">&lt;/th&gt;</span><span class="tag">&lt;/tr&gt;</span>
+    <span class="tag">&lt;/thead&gt;</span>
+    <span class="tag">&lt;tbody&gt;</span>
+        <span class="tag">&lt;g:each</span> <span class="attribute-name">in</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${bookList}</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">var</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">book</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+            <span class="tag">&lt;tr&gt;</span>
+                <span class="tag">&lt;td&gt;</span>${book.title}<span class="tag">&lt;/td&gt;</span>
+                <span class="tag">&lt;td&gt;</span>${book.isbn}<span class="tag">&lt;/td&gt;</span>
+                <span class="tag">&lt;td&gt;</span>${book.pageCount}<span class="tag">&lt;/td&gt;</span>
+            <span class="tag">&lt;/tr&gt;</span>
+        <span class="tag">&lt;/g:each&gt;</span>
+    <span class="tag">&lt;/tbody&gt;</span>
+<span class="tag">&lt;/table&gt;</span>
+<span class="tag">&lt;/body&gt;</span>
+<span class="tag">&lt;/html&gt;</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Because the spec is <code>@Integration</code> <strong>without</strong> <code>@Rollback</code>, it seeds its fixture inside a <code>withNewTransaction</code> block so the row is committed and visible to the browser. A bare GORM call in an un-rolled-back <code>@Integration</code> spec has no ambient Hibernate session and would throw. <code>BootStrap</code> seed data is <strong>not</strong> a substitute here: it does not populate the test database in the integration context, so the spec owns its own fixture.</p>
 </div>
 <div class="paragraph">
 <p>Three patterns to highlight:</p>
@@ -758,6 +890,8 @@ cd grails-spock-test-tour/complete
 </div>
 <div class="paragraph">
 <p>The matching <a href="../grails-github-actions-cicd/8/guide/index.html">CI/CD guide</a> models this as a four-stage job graph (validation &#8594; unit &#8594; integration &#8594; functional) so a broken unit test does not waste 60 seconds on functional runs. The CI runner needs Docker available too; GitHub-hosted Linux runners ship with Docker out of the box.</p>
+</div>
+</div>
 </div>
 
 
@@ -857,7 +991,7 @@ cd grails-spock-test-tour/complete
 
 jacocoTestReport {
     dependsOn test, integrationTest
-    executionData fileTree(buildDir).include(<span class="string"><span class="delimiter">'</span><span class="content">jacoco/*.exec</span><span class="delimiter">'</span></span>)
+    executionData fileTree(layout.buildDirectory.get().asFile).include(<span class="string"><span class="delimiter">'</span><span class="content">jacoco/*.exec</span><span class="delimiter">'</span></span>)
     reports {
         xml.required = <span class="predefined-constant">true</span>       <span class="comment">// for Codecov upload</span>
         html.required = <span class="predefined-constant">true</span>      <span class="comment">// for human inspection</span>

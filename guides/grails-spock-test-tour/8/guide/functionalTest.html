@@ -118,21 +118,127 @@ function addJsClass() {
  * @Integration is mandatory: GrailsContainerGebExtension throws at
  * runtime if the annotation is missing. @Rollback is NOT used here -
  * functional tests exercise the full HTTP stack and need committed
- * data.
+ * data. The fixture is therefore seeded inside its own
+ * withNewTransaction block; a bare GORM call would fail because an
+ * @Integration spec without @Rollback has no ambient Hibernate session.
  */</span>
 <span class="annotation">@Integration</span>
 <span class="type">class</span> <span class="class">BookFunctionalSpec</span> <span class="directive">extends</span> ContainerGebSpec {
 
-    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">the book index page renders the seeded books</span><span class="delimiter">&quot;</span></span>() {
+    <span class="type">void</span> setup() {
+        <span class="predefined-type">Book</span>.withNewTransaction {
+            <span class="keyword">if</span> (!<span class="predefined-type">Book</span>.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9780261103344</span><span class="delimiter">'</span></span>)) {
+                <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">The Hobbit</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780261103344</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">310</span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+            }
+        }
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">the book index page renders the committed books</span><span class="delimiter">&quot;</span></span>() {
         <span class="key">when</span>:
         go <span class="string"><span class="delimiter">'</span><span class="content">/books</span><span class="delimiter">'</span></span>
 
         <span class="key">then</span>:
         title.contains(<span class="string"><span class="delimiter">'</span><span class="content">Book</span><span class="delimiter">'</span></span>)
         <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">table tbody tr</span><span class="delimiter">'</span></span>).size() &gt; <span class="integer">0</span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">table tbody</span><span class="delimiter">'</span></span>).text().contains(<span class="string"><span class="delimiter">'</span><span class="content">The Hobbit</span><span class="delimiter">'</span></span>)
     }
 }</code></pre>
 </div>
+</div>
+<div class="sect1">
+<h2 id="_the_page_the_test_drives">The page the test drives</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><code>go '/books'</code> needs a real HTML page with a table. <code>BookController</code> stays a <code>RestfulController</code> for the JSON CRUD surface, but its <code>index</code> action is overridden so the HTML format renders a GSP while JSON clients keep their collection response:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/controllers/example/BookController.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.rest.RestfulController</span>
+
+<span class="type">class</span> <span class="class">BookController</span> <span class="directive">extends</span> RestfulController&lt;<span class="predefined-type">Book</span>&gt; {
+    <span class="comment">// 'json' keeps the REST CRUD surface; 'html' lets the index action render</span>
+    <span class="comment">// grails-app/views/book/index.gsp so a browser (and the Geb functional</span>
+    <span class="comment">// test) gets a real HTML table at /books.</span>
+    <span class="directive">static</span> responseFormats = [<span class="string"><span class="delimiter">'</span><span class="content">json</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">html</span><span class="delimiter">'</span></span>]
+    BookService bookService
+    BookController() { <span class="local-variable">super</span>(<span class="predefined-type">Book</span>) }
+
+    <span class="comment">// Override index so the HTML format renders the GSP table view (through the</span>
+    <span class="comment">// sitemesh layout) while JSON clients still get the REST collection.</span>
+    <span class="keyword">def</span> <span class="function">index</span>(<span class="predefined-type">Integer</span> max) {
+        params.max = <span class="predefined-type">Math</span>.min(max ?: <span class="integer">100</span>, <span class="integer">100</span>)
+        <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; books = listAllResources(params)
+        withFormat {
+            html { [<span class="key">bookList</span>: books, <span class="key">bookCount</span>: countResources()] }
+            json { respond books, [<span class="key">model</span>: [<span class="key">bookCount</span>: countResources()]] }
+        }
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A <code>resources</code> URL mapping exposes the controller at <code>/books</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/controllers/example/UrlMappings.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="type">class</span> <span class="class">UrlMappings</span> {
+    <span class="directive">static</span> mappings = {
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/books</span><span class="delimiter">&quot;</span></span>(<span class="key">resources</span>: <span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/</span><span class="inline"><span class="inline-delimiter">$</span>namespace</span><span class="content">/</span><span class="inline"><span class="inline-delimiter">$</span>controller</span><span class="content">/</span><span class="inline"><span class="inline-delimiter">$</span>action</span><span class="content">?/</span><span class="inline"><span class="inline-delimiter">$</span>id</span><span class="content">?(.</span><span class="inline"><span class="inline-delimiter">$</span>format</span><span class="content">)?</span><span class="delimiter">&quot;</span></span> {}
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/</span><span class="inline"><span class="inline-delimiter">$</span>controller</span><span class="content">/</span><span class="inline"><span class="inline-delimiter">$</span>action</span><span class="content">?/</span><span class="inline"><span class="inline-delimiter">$</span>id</span><span class="content">?(.</span><span class="inline"><span class="inline-delimiter">$</span>format</span><span class="content">)?</span><span class="delimiter">&quot;</span></span>{
+            constraints {
+                <span class="comment">// apply constraints here</span>
+            }
+        }
+
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/</span><span class="delimiter">&quot;</span></span>(<span class="key">view</span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">/index</span><span class="delimiter">&quot;</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">500</span><span class="delimiter">&quot;</span></span>(<span class="key">view</span>:<span class="string"><span class="delimiter">'</span><span class="content">/error</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">404</span><span class="delimiter">&quot;</span></span>(<span class="key">view</span>:<span class="string"><span class="delimiter">'</span><span class="content">/notFound</span><span class="delimiter">'</span></span>)
+
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>and a minimal GSP renders the table the spec asserts against:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/views/book/index.gsp</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="html"><span class="doctype">&lt;!DOCTYPE html&gt;</span>
+<span class="tag">&lt;html&gt;</span>
+<span class="tag">&lt;head&gt;</span>
+    <span class="tag">&lt;meta</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">layout</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">content</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">main</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;title&gt;</span>Book List<span class="tag">&lt;/title&gt;</span>
+<span class="tag">&lt;/head&gt;</span>
+<span class="tag">&lt;body&gt;</span>
+<span class="tag">&lt;h1&gt;</span>Book List<span class="tag">&lt;/h1&gt;</span>
+<span class="tag">&lt;table&gt;</span>
+    <span class="tag">&lt;thead&gt;</span>
+        <span class="tag">&lt;tr&gt;</span><span class="tag">&lt;th&gt;</span>Title<span class="tag">&lt;/th&gt;</span><span class="tag">&lt;th&gt;</span>ISBN<span class="tag">&lt;/th&gt;</span><span class="tag">&lt;th&gt;</span>Pages<span class="tag">&lt;/th&gt;</span><span class="tag">&lt;/tr&gt;</span>
+    <span class="tag">&lt;/thead&gt;</span>
+    <span class="tag">&lt;tbody&gt;</span>
+        <span class="tag">&lt;g:each</span> <span class="attribute-name">in</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${bookList}</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">var</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">book</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+            <span class="tag">&lt;tr&gt;</span>
+                <span class="tag">&lt;td&gt;</span>${book.title}<span class="tag">&lt;/td&gt;</span>
+                <span class="tag">&lt;td&gt;</span>${book.isbn}<span class="tag">&lt;/td&gt;</span>
+                <span class="tag">&lt;td&gt;</span>${book.pageCount}<span class="tag">&lt;/td&gt;</span>
+            <span class="tag">&lt;/tr&gt;</span>
+        <span class="tag">&lt;/g:each&gt;</span>
+    <span class="tag">&lt;/tbody&gt;</span>
+<span class="tag">&lt;/table&gt;</span>
+<span class="tag">&lt;/body&gt;</span>
+<span class="tag">&lt;/html&gt;</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Because the spec is <code>@Integration</code> <strong>without</strong> <code>@Rollback</code>, it seeds its fixture inside a <code>withNewTransaction</code> block so the row is committed and visible to the browser. A bare GORM call in an un-rolled-back <code>@Integration</code> spec has no ambient Hibernate session and would throw. <code>BootStrap</code> seed data is <strong>not</strong> a substitute here: it does not populate the test database in the integration context, so the spec owns its own fixture.</p>
 </div>
 <div class="paragraph">
 <p>Three patterns to highlight:</p>
@@ -171,6 +277,8 @@ function addJsClass() {
 </div>
 <div class="paragraph">
 <p>The matching <a href="../grails-github-actions-cicd/8/guide/index.html">CI/CD guide</a> models this as a four-stage job graph (validation &#8594; unit &#8594; integration &#8594; functional) so a broken unit test does not waste 60 seconds on functional runs. The CI runner needs Docker available too; GitHub-hosted Linux runners ship with Docker out of the box.</p>
+</div>
+</div>
 </div>
 
 

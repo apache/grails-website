@@ -115,6 +115,283 @@ function addJsClass() {
 </li>
 </ul>
 </div>
+<div class="sect1">
+<h2 id="_shared_core_the_domain_and_data_service">shared-core: the domain and data service</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The plugin owns the model, so its tests own the model&#8217;s behaviour. Both webapps inherit a tested <code>Book</code> and <code>BookService</code> rather than re-testing them:</p>
+</div>
+<div class="listingblock">
+<div class="title">shared-core/src/test/groovy/example/BookSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.testing.gorm.DomainUnitTest</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="comment">/**
+ * Unit test for the Book domain that lives in the shared-core plugin.
+ * Proving the domain's constraints here means both webapps inherit a
+ * tested model - they never redefine it.
+ */</span>
+<span class="type">class</span> <span class="class">BookSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> DomainUnitTest&lt;<span class="predefined-type">Book</span>&gt; {
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">title and isbn are required</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        <span class="predefined-type">Book</span> b = <span class="keyword">new</span> <span class="predefined-type">Book</span>()
+
+        <span class="key">then</span>:
+        !b.validate()
+        b.errors.getFieldError(<span class="string"><span class="delimiter">'</span><span class="content">title</span><span class="delimiter">'</span></span>).code == <span class="string"><span class="delimiter">'</span><span class="content">nullable</span><span class="delimiter">'</span></span>
+        b.errors.getFieldError(<span class="string"><span class="delimiter">'</span><span class="content">isbn</span><span class="delimiter">'</span></span>).code == <span class="string"><span class="delimiter">'</span><span class="content">nullable</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">isbn must match the ISBN pattern and be unique</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">First</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">100</span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">expect</span>:
+        !<span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Bad</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">nope</span><span class="delimiter">'</span></span>).validate()
+
+        <span class="key">and</span>:
+        <span class="predefined-type">Book</span> dup = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Dup</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>)
+        !dup.validate()
+        dup.errors.getFieldError(<span class="string"><span class="delimiter">'</span><span class="content">isbn</span><span class="delimiter">'</span></span>).code == <span class="string"><span class="delimiter">'</span><span class="content">unique</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">a valid book validates</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">expect</span>:
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">The Hobbit</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">310</span>).validate()
+    }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">shared-core/src/test/groovy/example/BookServiceSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.testing.gorm.DataTest</span>
+<span class="keyword">import</span> <span class="include">grails.testing.services.ServiceUnitTest</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="comment">/**
+ * Unit test for the @Service(Book) data service in shared-core. Both
+ * webapps inject this same BookService bean, so testing its query shape
+ * once here covers the admin and customer modules' data access.
+ */</span>
+<span class="type">class</span> <span class="class">BookServiceSpec</span> <span class="directive">extends</span> Specification
+        <span class="directive">implements</span> ServiceUnitTest&lt;BookService&gt;, DataTest {
+
+    <span class="predefined-type">Class</span><span class="type">[]</span> getDomainClassesToMock() { [<span class="predefined-type">Book</span>] }
+
+    <span class="type">void</span> setup() {
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Old</span><span class="delimiter">'</span></span>,   <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780000000001</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">100</span>, <span class="key">publishedOn</span>: <span class="predefined-type">Date</span>.parse(<span class="string"><span class="delimiter">'</span><span class="content">yyyy-MM-dd</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">1990-01-01</span><span class="delimiter">'</span></span>)).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Recent</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780000000002</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">200</span>, <span class="key">publishedOn</span>: <span class="predefined-type">Date</span>.parse(<span class="string"><span class="delimiter">'</span><span class="content">yyyy-MM-dd</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">2020-01-01</span><span class="delimiter">'</span></span>)).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">findByIsbn returns the matching book</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">expect</span>:
+        service.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9780000000002</span><span class="delimiter">'</span></span>).title == <span class="string"><span class="delimiter">'</span><span class="content">Recent</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">count reflects persisted books</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">expect</span>:
+        service.count() == <span class="integer">2</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">countByPublishedOnGreaterThanEquals filters by date</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">expect</span>:
+        service.countByPublishedOnGreaterThanEquals(<span class="predefined-type">Date</span>.parse(<span class="string"><span class="delimiter">'</span><span class="content">yyyy-MM-dd</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">2000-01-01</span><span class="delimiter">'</span></span>)) == <span class="integer">1</span>
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_webapp_admin_the_rest_surface_over_real_http">webapp-admin: the REST surface over real HTTP</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The admin <code>BookController</code> is a <code>RestfulController</code>, so the admin module adds a <code>resources</code> URL mapping to route the REST verbs, then drives it with a functional spec. The <code>Book</code> it persists comes from the plugin - proving the shared model works end to end in a booted app:</p>
+</div>
+<div class="listingblock">
+<div class="title">webapp-admin/grails-app/controllers/example/UrlMappings.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="type">class</span> <span class="class">UrlMappings</span> {
+    <span class="directive">static</span> mappings = {
+        <span class="comment">// REST resource mapping so the admin BookController (a RestfulController)</span>
+        <span class="comment">// routes GET/POST/PUT/DELETE on /books to its CRUD actions.</span>
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/books</span><span class="delimiter">&quot;</span></span>(<span class="key">resources</span>: <span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>)
+
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/</span><span class="inline"><span class="inline-delimiter">$</span>namespace</span><span class="content">/</span><span class="inline"><span class="inline-delimiter">$</span>controller</span><span class="content">/</span><span class="inline"><span class="inline-delimiter">$</span>action</span><span class="content">?/</span><span class="inline"><span class="inline-delimiter">$</span>id</span><span class="content">?(.</span><span class="inline"><span class="inline-delimiter">$</span>format</span><span class="content">)?</span><span class="delimiter">&quot;</span></span> {}
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/</span><span class="inline"><span class="inline-delimiter">$</span>controller</span><span class="content">/</span><span class="inline"><span class="inline-delimiter">$</span>action</span><span class="content">?/</span><span class="inline"><span class="inline-delimiter">$</span>id</span><span class="content">?(.</span><span class="inline"><span class="inline-delimiter">$</span>format</span><span class="content">)?</span><span class="delimiter">&quot;</span></span>{
+            constraints {
+                <span class="comment">// apply constraints here</span>
+            }
+        }
+
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/</span><span class="delimiter">&quot;</span></span>(<span class="key">view</span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">/index</span><span class="delimiter">&quot;</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">500</span><span class="delimiter">&quot;</span></span>(<span class="key">view</span>:<span class="string"><span class="delimiter">'</span><span class="content">/error</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">404</span><span class="delimiter">&quot;</span></span>(<span class="key">view</span>:<span class="string"><span class="delimiter">'</span><span class="content">/notFound</span><span class="delimiter">'</span></span>)
+
+    }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">webapp-admin/src/integration-test/groovy/admin/AdminBookFunctionalSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> admin
+
+<span class="keyword">import</span> <span class="include">example.Book</span>
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">groovy.json.JsonOutput</span>
+<span class="keyword">import</span> <span class="include">groovy.json.JsonSlurper</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Value</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="keyword">import</span> <span class="include">java.net.http.HttpClient</span>
+<span class="keyword">import</span> <span class="include">java.net.http.HttpRequest</span>
+<span class="keyword">import</span> <span class="include">java.net.http.HttpResponse</span>
+
+<span class="comment">/**
+ * Functional test for the admin webapp's REST CRUD over real HTTP. The
+ * Book domain and BookService it persists through both come from the
+ * shared-core plugin - this proves the cross-module reuse works end to end
+ * in a booted app. @Rollback is not used (the endpoint commits), so the
+ * fixture is read back inside withNewTransaction.
+ */</span>
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">AdminBookFunctionalSpec</span> <span class="directive">extends</span> Specification {
+
+    <span class="annotation">@Value</span>(<span class="string"><span class="delimiter">'</span><span class="content">${local.server.port}</span><span class="delimiter">'</span></span>)
+    <span class="predefined-type">Integer</span> serverPort
+
+    HttpClient client = HttpClient.newHttpClient()
+
+    <span class="directive">private</span> <span class="predefined-type">URI</span> uri(<span class="predefined-type">String</span> path) { <span class="predefined-type">URI</span>.create(<span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="inline"><span class="inline-delimiter">${</span>path<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>) }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">POST /book creates a shared-core Book and returns 201</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">String</span> body = JsonOutput.toJson([<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Dune</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780441013593</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">412</span>])
+
+        <span class="key">when</span>:
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = client.send(
+                HttpRequest.newBuilder(uri(<span class="string"><span class="delimiter">'</span><span class="content">/books</span><span class="delimiter">'</span></span>))
+                        .header(<span class="string"><span class="delimiter">'</span><span class="content">Content-Type</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+                        .header(<span class="string"><span class="delimiter">'</span><span class="content">Accept</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+                        .POST(HttpRequest.BodyPublishers.ofString(body)).build(),
+                HttpResponse.BodyHandlers.ofString())
+
+        <span class="key">then</span>:
+        resp.statusCode() == <span class="integer">201</span>
+        <span class="predefined-type">Book</span>.withNewTransaction { <span class="predefined-type">Book</span>.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9780441013593</span><span class="delimiter">'</span></span>)?.title == <span class="string"><span class="delimiter">'</span><span class="content">Dune</span><span class="delimiter">'</span></span> }
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">GET /book lists the shared-core Books as JSON</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">Book</span>.withNewTransaction {
+            <span class="keyword">if</span> (!<span class="predefined-type">Book</span>.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>)) {
+                <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">The Hobbit</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">310</span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+            }
+        }
+
+        <span class="key">when</span>:
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = client.send(
+                HttpRequest.newBuilder(uri(<span class="string"><span class="delimiter">'</span><span class="content">/books.json</span><span class="delimiter">'</span></span>)).GET().build(),
+                HttpResponse.BodyHandlers.ofString())
+        <span class="keyword">def</span> json = <span class="keyword">new</span> JsonSlurper().parseText(resp.body())
+
+        <span class="key">then</span>:
+        resp.statusCode() == <span class="integer">200</span>
+        json*.isbn.contains(<span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>)
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">POST /book with a malformed isbn returns 422</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">String</span> body = JsonOutput.toJson([<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Bad</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">not-an-isbn</span><span class="delimiter">'</span></span>])
+
+        <span class="key">when</span>:
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = client.send(
+                HttpRequest.newBuilder(uri(<span class="string"><span class="delimiter">'</span><span class="content">/books</span><span class="delimiter">'</span></span>))
+                        .header(<span class="string"><span class="delimiter">'</span><span class="content">Content-Type</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+                        .header(<span class="string"><span class="delimiter">'</span><span class="content">Accept</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+                        .POST(HttpRequest.BodyPublishers.ofString(body)).build(),
+                HttpResponse.BodyHandlers.ofString())
+
+        <span class="key">then</span>:
+        resp.statusCode() == <span class="integer">422</span>
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_webapp_customer_the_read_only_catalog">webapp-customer: the read-only catalog</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The customer functional spec drives the hand-rolled <code>CatalogController</code>, which injects the same plugin <code>BookService</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">webapp-customer/src/integration-test/groovy/customer/CatalogFunctionalSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> customer
+
+<span class="keyword">import</span> <span class="include">example.Book</span>
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">groovy.json.JsonSlurper</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Value</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="keyword">import</span> <span class="include">java.net.http.HttpClient</span>
+<span class="keyword">import</span> <span class="include">java.net.http.HttpRequest</span>
+<span class="keyword">import</span> <span class="include">java.net.http.HttpResponse</span>
+
+<span class="comment">/**
+ * Functional test for the customer webapp's read-only catalog over real
+ * HTTP. The CatalogController injects the shared-core BookService and the
+ * Book domain, proving the same shared module backs the customer app too.
+ */</span>
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">CatalogFunctionalSpec</span> <span class="directive">extends</span> Specification {
+
+    <span class="annotation">@Value</span>(<span class="string"><span class="delimiter">'</span><span class="content">${local.server.port}</span><span class="delimiter">'</span></span>)
+    <span class="predefined-type">Integer</span> serverPort
+
+    HttpClient client = HttpClient.newHttpClient()
+
+    <span class="type">void</span> setup() {
+        <span class="predefined-type">Book</span>.withNewTransaction {
+            <span class="keyword">if</span> (!<span class="predefined-type">Book</span>.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>)) {
+                <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">The Hobbit</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">310</span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+            }
+            <span class="keyword">if</span> (!<span class="predefined-type">Book</span>.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9780441013593</span><span class="delimiter">'</span></span>)) {
+                <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Dune</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780441013593</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">412</span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+            }
+        }
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">GET /catalog lists the shared-core Books as JSON</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = client.send(
+                HttpRequest.newBuilder(<span class="predefined-type">URI</span>.create(<span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/catalog.json</span><span class="delimiter">&quot;</span></span>))
+                        .header(<span class="string"><span class="delimiter">'</span><span class="content">Accept</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+                        .GET().build(),
+                HttpResponse.BodyHandlers.ofString())
+        <span class="keyword">def</span> json = <span class="keyword">new</span> JsonSlurper().parseText(resp.body())
+
+        <span class="key">then</span>:
+        resp.statusCode() == <span class="integer">200</span>
+        json*.isbn.contains(<span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>)
+        json*.isbn.contains(<span class="string"><span class="delimiter">'</span><span class="content">9780441013593</span><span class="delimiter">'</span></span>)
+    }
+}</code></pre>
+</div>
+</div>
 <div class="paragraph">
 <p>Run them granularly during development:</p>
 </div>
@@ -163,6 +440,8 @@ function addJsClass() {
 <p>webapp-admin/src/integration-test/groovy/**</p>
 </li>
 </ul>
+</div>
+</div>
 </div>
 
 

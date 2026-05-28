@@ -139,6 +139,53 @@ function addJsClass() {
 </tr>
 </table>
 </div>
+<div class="paragraph">
+<p>An <code>@Integration</code> spec with <code>@Rollback</code> runs against that database in the <code>integration-test</code> stage:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/integration-test/groovy/example/MessageIntegrationSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Rollback</span>
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="comment">/**
+ * Integration layer - runs in the `integration-test` CI stage
+ * (./gradlew integrationTest) against a real PostgreSQL. @Rollback keeps
+ * each method isolated and gives a bare GORM call an ambient session.
+ */</span>
+<span class="annotation">@Integration</span>
+<span class="annotation">@Rollback</span>
+<span class="type">class</span> <span class="class">MessageIntegrationSpec</span> <span class="directive">extends</span> Specification {
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">a message round-trips through GORM</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        Message saved = <span class="keyword">new</span> Message(<span class="key">content</span>: <span class="string"><span class="delimiter">'</span><span class="content">persist me</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">when</span>:
+        Message reloaded = Message.get(saved.id)
+
+        <span class="key">then</span>:
+        reloaded.content == <span class="string"><span class="delimiter">'</span><span class="content">persist me</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">a blank message is rejected by the database layer</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        Message m = <span class="keyword">new</span> Message(<span class="key">content</span>: <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>)
+        m.save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">then</span>:
+        m.hasErrors()
+        Message.get(m.id) == <span class="predefined-constant">null</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Both the DB-integration specs and the Geb functional specs live in <code>src/integration-test</code> so <code>@Integration</code> wires them identically, but they run as two distinct stages. The <code>integrationTest</code> task is narrowed to the <code>*IntegrationSpec</code> classes; the next chapter&#8217;s <code>functionalTest</code> task picks up the <code>*FunctionalSpec</code> classes.</p>
+</div>
 
 
                 <div style="clear:both;margin-top:15px;"></div>

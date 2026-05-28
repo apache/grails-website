@@ -2,7 +2,7 @@
                       "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
 <head>
-    <title>5 The SpaController Forwarder</title>
+    <title>5 Serving the SPA Shell</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
     <link rel="stylesheet" href="../css/guide.css" type="text/css" media="screen, print" title="Style" charset="utf-8" />            
@@ -42,7 +42,7 @@ function addJsClass() {
                         <div class="toc-item" style="margin-left:0"><a href="../guide/urlMappings.html"><strong>4</strong><span>URL Mappings (/api/** vs SPA)</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/spaController.html"><strong>5</strong><span>The SpaController Forwarder</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/spaController.html"><strong>5</strong><span>Serving the SPA Shell</span></a>
                         </div>
                         
                         <div class="toc-item" style="margin-left:0"><a href="../guide/frontend.html"><strong>6</strong><span>The Vite/React Frontend</span></a>
@@ -60,7 +60,10 @@ function addJsClass() {
                         <div class="toc-item" style="margin-left:0"><a href="../guide/cors.html"><strong>10</strong><span>Why CORS Never Appears</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>11</strong><span>Do you need help with Grails?</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/testing.html"><strong>11</strong><span>Testing the API and SPA Serving</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>12</strong><span>Do you need help with Grails?</span></a>
                         </div>
                         
                     </div>
@@ -90,7 +93,7 @@ function addJsClass() {
 
                 
 
-<h1 id="spaController">5 The SpaController Forwarder</h1>
+<h1 id="spaController">5 Serving the SPA Shell</h1>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-vite-spa/v8/guide/spaController.adoc"'>
@@ -107,23 +110,33 @@ function addJsClass() {
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
 
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Autowired</span>
+<span class="keyword">import</span> <span class="include">org.springframework.core.io.Resource</span>
+<span class="keyword">import</span> <span class="include">org.springframework.core.io.ResourceLoader</span>
+
 <span class="type">class</span> <span class="class">SpaController</span> {
     <span class="directive">static</span> responseFormats = [<span class="string"><span class="delimiter">'</span><span class="content">html</span><span class="delimiter">'</span></span>]
 
+    <span class="annotation">@Autowired</span>
+    ResourceLoader resourceLoader
+
     <span class="comment">/**
-     * Forwards any non-/api request to the SPA's bundled index.html
-     * (which Vite produced into src/main/resources/public/index.html).
-     * Spring Boot auto-serves that file at /; we forward here so client-
-     * side routes like /books/42 survive a browser refresh.
+     * Serves the SPA's bundled index.html (which Vite produced into
+     * src/main/resources/public/index.html and the build copied onto the
+     * classpath). Reading the classpath resource directly is robust across
+     * profiles: a client-side route like /books/42 that hard-reloads to '/'
+     * always gets the SPA shell, which then re-resolves the route in the
+     * browser.
      */</span>
     <span class="keyword">def</span> <span class="function">index</span>() {
-        forward <span class="key">url</span>: <span class="string"><span class="delimiter">'</span><span class="content">/index.html</span><span class="delimiter">'</span></span>
+        Resource indexHtml = resourceLoader.getResource(<span class="string"><span class="delimiter">'</span><span class="content">classpath:public/index.html</span><span class="delimiter">'</span></span>)
+        render(<span class="key">text</span>: indexHtml.inputStream.getText(<span class="string"><span class="delimiter">'</span><span class="content">UTF-8</span><span class="delimiter">'</span></span>), <span class="key">contentType</span>: <span class="string"><span class="delimiter">'</span><span class="content">text/html</span><span class="delimiter">'</span></span>)
     }
 }</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p><code>forward url: '/index.html'</code> re-dispatches inside the same servlet container; the response status, content type, and caching headers all come from the static-resource handler that serves <code>index.html</code>. No HTML duplication, no template engine in the loop.</p>
+<p>The action reads the bundled <code>index.html</code> straight off the classpath (<code>classpath:public/index.html</code> - where the <code>copyFrontendToBackend</code> task placed the Vite output) and renders it as <code>text/html</code>. Reading the resource directly is robust across profiles and environments: a <code>rest-api</code> Grails app does not register a servlet static-resource handler for arbitrary paths, so a <code>forward url: '/index.html'</code> is claimed by Grails' URL mappings and returns a 404 instead of the file. Injecting <code>ResourceLoader</code> and rendering the resource sidesteps that entirely - a client-side route like <code>/books/42</code> that hard-reloads to <code>/</code> always gets the SPA shell, which then re-resolves the route in the browser.</p>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -133,14 +146,11 @@ function addJsClass() {
 </td>
 <td class="content">
 <div class="paragraph">
-<p><strong>Why not a wildcard URL mapping like <code>'/$path<strong>'(controller: 'spa', action: 'index')</code>?</strong> Because URL mappings resolve before static resources. A wildcard mapping would intercept <code>/favicon.ico</code> and <code>/assets/main-abc123.js</code>, returning the SPA&#8217;s <code>index.html</code> instead of the asset. Letting Spring Boot&#8217;s static-resource handler claim everything except <code>/api/</strong></code> and <code>/</code> is the simplest correct shape.</p>
+<p><strong>Why not a wildcard URL mapping like <code>'/$path<strong>'(controller: 'spa', action: 'index')</code>?</strong> Because that would also intercept <code>/api/</strong></code> and <code>/assets/<strong></code>. Mapping only <code>/</code> to the SPA controller, and routing <code>/assets/</strong></code> to the <code>AssetController</code> (next chapter), is the simplest correct shape. The <code>index.html</code> Vite emits references its JS and CSS by hashed <code>/assets/&#8230;&#8203;</code> paths, which the SPA loads as a second request.</p>
 </div>
 </td>
 </tr>
 </table>
-</div>
-<div class="paragraph">
-<p>The <code>forward</code> method available on every Grails controller is the same one the framework uses internally for URL-mapping rewrites; see <code>grails-controllers/src/main/groovy/grails/web/util/WebUtils.java</code> for the underlying implementation and <code>grails-doc/src/en/guide/theWebLayer/controllers/forwarding.adoc</code> for the user-facing reference.</p>
 </div>
 <div class="paragraph">
 <p>Files touched in this chapter:</p>

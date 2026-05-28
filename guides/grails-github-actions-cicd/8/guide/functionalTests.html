@@ -136,6 +136,66 @@ function addJsClass() {
 <div class="paragraph">
 <p>No <code>apt-get install</code> of Chrome/Firefox is needed - the browser process lives inside the Selenium container Testcontainers pulls (<code>selenium/standalone-chrome</code> by default). The first cold run pulls the image (~200 MB) and is slower; subsequent runs reuse the cached layer. The legacy <code>geb-with-webdriver-binaries</code> forge feature is obsolete in Grails 8 and is not used here.</p>
 </div>
+<div class="sect1">
+<h2 id="_wiring_the_functionaltest_task">Wiring the functionalTest task</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><code>./gradlew functionalTest</code> is not a built-in Grails task. Grails gives you <code>test</code> (unit) and <code>integrationTest</code>; the functional stage is a second <code>Test</code> task over the same <code>integration-test</code> source set, filtered to the Geb specs. The <code>integrationTest</code> task is filtered the opposite way so the two stages never overlap:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">tasks.named(<span class="string"><span class="delimiter">'</span><span class="content">integrationTest</span><span class="delimiter">'</span></span>, Test) {
+    filter {
+        includeTestsMatching <span class="string"><span class="delimiter">'</span><span class="content">*IntegrationSpec</span><span class="delimiter">'</span></span>
+    }
+}
+
+tasks.register(<span class="string"><span class="delimiter">'</span><span class="content">functionalTest</span><span class="delimiter">'</span></span>, Test) {
+    group = <span class="string"><span class="delimiter">'</span><span class="content">verification</span><span class="delimiter">'</span></span>
+    description = <span class="string"><span class="delimiter">'</span><span class="content">Runs the Geb functional specs against the booted application.</span><span class="delimiter">'</span></span>
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching <span class="string"><span class="delimiter">'</span><span class="content">*FunctionalSpec</span><span class="delimiter">'</span></span>
+    }
+    shouldRunAfter tasks.named(<span class="string"><span class="delimiter">'</span><span class="content">integrationTest</span><span class="delimiter">'</span></span>)
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Reusing the <code>integration-test</code> source set means <code>@Integration</code> boots the app exactly as it does for the integration stage - no separate source-set plumbing - while the name filter keeps the two CI jobs running disjoint sets of specs. The Geb spec itself extends <code>ContainerGebSpec</code> and is named to match the <code>functionalTest</code> filter:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/integration-test/groovy/example/HomePageFunctionalSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.plugin.geb.ContainerGebSpec</span>
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+
+<span class="comment">/**
+ * Functional layer - runs in the `functional-test` CI stage
+ * (./gradlew functionalTest). ContainerGebSpec starts a Selenium-Chrome
+ * container via Testcontainers and drives the booted application; the only
+ * host requirement is a running Docker daemon.
+ */</span>
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">HomePageFunctionalSpec</span> <span class="directive">extends</span> ContainerGebSpec {
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">the home page renders the welcome title</span><span class="delimiter">'</span></span>() {
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">visiting the home page</span><span class="delimiter">'</span></span>
+        go <span class="string"><span class="delimiter">'</span><span class="content">/</span><span class="delimiter">'</span></span>
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">the page title is correct</span><span class="delimiter">'</span></span>
+        title == <span class="string"><span class="delimiter">'</span><span class="content">Welcome to Grails</span><span class="delimiter">'</span></span>
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
 
 
                 <div style="clear:both;margin-top:15px;"></div>

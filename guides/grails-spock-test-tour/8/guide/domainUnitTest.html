@@ -119,12 +119,31 @@ function addJsClass() {
 <span class="type">class</span> <span class="class">BookSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> DomainUnitTest&lt;<span class="predefined-type">Book</span>&gt; {
 
     <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">rejects a book with no title</span><span class="delimiter">&quot;</span></span>() {
-        <span class="key">when</span>:
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">title is omitted from the map constructor, so it is null</span><span class="delimiter">'</span></span>
         <span class="predefined-type">Book</span> b = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">310</span>)
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">the nullable constraint - not blank - is what fires for a null value</span><span class="delimiter">'</span></span>
+        !b.validate()
+        b.errors.getFieldError(<span class="string"><span class="delimiter">'</span><span class="content">title</span><span class="delimiter">'</span></span>).code == <span class="string"><span class="delimiter">'</span><span class="content">nullable</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">rejects a blank title</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">a blank string is assigned directly (the map constructor would convert it to null)</span><span class="delimiter">'</span></span>
+        <span class="predefined-type">Book</span> b = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">310</span>)
+        b.title = <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">now the blank constraint fires</span><span class="delimiter">'</span></span>
+        !b.validate()
+        b.errors.getFieldError(<span class="string"><span class="delimiter">'</span><span class="content">title</span><span class="delimiter">'</span></span>).code == <span class="string"><span class="delimiter">'</span><span class="content">blank</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">rejects a title longer than maxSize</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        <span class="predefined-type">Book</span> b = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">x</span><span class="delimiter">'</span></span> * <span class="integer">256</span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">310</span>)
 
         <span class="key">then</span>:
         !b.validate()
-        b.errors.fieldError(<span class="string"><span class="delimiter">'</span><span class="content">title</span><span class="delimiter">'</span></span>).code == <span class="string"><span class="delimiter">'</span><span class="content">blank</span><span class="delimiter">'</span></span>
+        b.errors.getFieldError(<span class="string"><span class="delimiter">'</span><span class="content">title</span><span class="delimiter">'</span></span>).code == <span class="string"><span class="delimiter">'</span><span class="content">maxSize.exceeded</span><span class="delimiter">'</span></span>
     }
 
     <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">rejects a book with a malformed ISBN</span><span class="delimiter">&quot;</span></span>() {
@@ -133,7 +152,7 @@ function addJsClass() {
 
         <span class="key">then</span>:
         !b.validate()
-        b.errors.fieldError(<span class="string"><span class="delimiter">'</span><span class="content">isbn</span><span class="delimiter">'</span></span>).code == <span class="string"><span class="delimiter">'</span><span class="content">matches.invalid</span><span class="delimiter">'</span></span>
+        b.errors.getFieldError(<span class="string"><span class="delimiter">'</span><span class="content">isbn</span><span class="delimiter">'</span></span>).code == <span class="string"><span class="delimiter">'</span><span class="content">matches.invalid</span><span class="delimiter">'</span></span>
     }
 
     <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">accepts a book with a valid ISBN-13</span><span class="delimiter">&quot;</span></span>() {
@@ -169,7 +188,7 @@ function addJsClass() {
 <div class="ulist">
 <ul>
 <li>
-<p><code>b.errors.fieldError('title').code == 'blank'</code> checks the <strong>constraint code</strong>, not the localised message. Codes are stable across releases and locales; messages are not.</p>
+<p><code>b.errors.getFieldError('title').code</code> checks the <strong>constraint code</strong>, not the localised message. Codes are stable across releases and locales; messages are not. Note the subtlety the spec demonstrates: omitting <code>title</code> from the map constructor leaves it <code>null</code>, so the <code>nullable</code> code fires - not <code>blank</code>. To exercise the <code>blank</code> constraint you must assign <code>b.title = ''</code> <strong>directly</strong>, because Grails data binding converts an empty string passed through the map constructor into <code>null</code>.</p>
 </li>
 <li>
 <p><code>@Unroll</code> plus a <code>where:</code> data table collapses what would otherwise be five copy-pasted tests into one parameterised spec. The <code>#pageCount</code> token in the test name expands to the actual value, so the IDE&#8217;s run-tree shows each row separately.</p>

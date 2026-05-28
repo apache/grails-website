@@ -97,7 +97,7 @@ function addJsClass() {
 
 
 <div class="paragraph">
-<p><code>@Integration</code> boots the full Spring context against a real datasource (whatever the <code>test</code> environment in <code>application.yml</code> configures - H2 by default). <code>@Rollback</code> rolls back every test method&#8217;s database changes so specs stay isolated.</p>
+<p><code>@Integration</code> boots the full Spring context against a real datasource - the <code>test</code> environment here points at a Testcontainers-managed PostgreSQL database (<code>jdbc:tc:postgresql:&#8230;&#8203;</code> in <code>application-test.yml</code>), so the specs run against the same engine as production. <code>@Rollback</code> rolls back every test method&#8217;s database changes so specs stay isolated.</p>
 </div>
 <div class="listingblock">
 <div class="title">src/integration-test/groovy/example/BookIntegrationSpec.groovy</div>
@@ -106,6 +106,7 @@ function addJsClass() {
 
 <span class="keyword">import</span> <span class="include">grails.gorm.transactions.Rollback</span>
 <span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">grails.validation.ValidationException</span>
 <span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
 
 <span class="comment">/**
@@ -141,15 +142,17 @@ function addJsClass() {
         reloaded.isbn  == <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>
     }
 
-    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">saving a book with a duplicate isbn fails validation</span><span class="delimiter">&quot;</span></span>() {
-        <span class="key">given</span>:
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">saving a book with a duplicate isbn is rejected</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>: <span class="string"><span class="delimiter">'</span><span class="content">a persisted book, flushed so the unique validator can see it</span><span class="delimiter">'</span></span>
         bookService.save(<span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">First</span><span class="delimiter">'</span></span>,  <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">100</span>))
+        <span class="predefined-type">Book</span>.withSession { <span class="local-variable">it</span>.flush() }
 
-        <span class="key">when</span>:
-        <span class="predefined-type">Book</span> second = bookService.save(<span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Second</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">200</span>))
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">a second book reuses the isbn</span><span class="delimiter">'</span></span>
+        bookService.save(<span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Second</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">200</span>))
 
-        <span class="key">then</span>:
-        second == <span class="predefined-constant">null</span> || second.hasErrors()
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">the @Service save throws a ValidationException (failOnError is implicit) carrying the unique error</span><span class="delimiter">'</span></span>
+        ValidationException ex = thrown()
+        ex.message.contains(<span class="string"><span class="delimiter">'</span><span class="content">unique</span><span class="delimiter">'</span></span>)
     }
 }</code></pre>
 </div>
@@ -166,7 +169,7 @@ function addJsClass() {
 <p><code>@Rollback</code> is non-negotiable. Without it, the second test sees the first test&#8217;s data and the third test sees both. Specs become order-dependent and impossible to debug.</p>
 </li>
 <li>
-<p>The duplicate-ISBN test deliberately catches the constraint failure inside the second <code>save</code> call rather than letting it throw. <code>unique: true</code> constraint failures surface as <code>errors.hasErrors()</code>, not as exceptions, in GORM 7+.</p>
+<p>The duplicate-ISBN test first <strong>flushes</strong> the persisted book (<code>Book.withSession { it.flush() }</code>) so the <code>unique</code> validator can see it - without the flush the second insert is still pending and validation passes. It then expects the second <code>save</code> to throw: a GORM <code>@Service</code> save applies <code>failOnError</code> semantics, so a <code>unique: true</code> violation surfaces as a thrown <code>grails.validation.ValidationException</code>. (Calling <code>domain.save()</code> directly, without <code>failOnError: true</code>, would instead return <code>null</code> with <code>errors.hasErrors()</code>.)</p>
 </li>
 </ul>
 </div>

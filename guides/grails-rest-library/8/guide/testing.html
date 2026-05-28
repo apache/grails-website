@@ -1,0 +1,566 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+                      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+    <title>11 Testing the API</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
+    <link rel="stylesheet" href="../css/guide.css" type="text/css" media="screen, print" title="Style" charset="utf-8" />            
+    <link rel="stylesheet" href="../css/pdf.css" type="text/css" media="print" title="PDF" charset="utf-8"/>
+    <script type="text/javascript">
+function addJsClass() {
+    var classes = document.body.className.split(" ");
+    classes.push("js");
+    document.body.className = classes.join(" ");
+}
+    </script>
+</head>
+
+<body class="body" onload="addJsClass();">
+<div id="navigation">
+    <div class="navTitle">
+        
+        Grails Framework Guide 
+    </div>
+    <div class="navLinks">
+        <ul>
+            <li>
+                <div id="nav-summary" onmouseover="toggleNavSummary(false)" onmouseout="toggleNavSummary(true)">
+                    <a href="../guide/index.html" class="button">Table of contents</a>
+
+                    <div id="nav-summary-childs" style="display:none;">
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/gettingStarted.html"><strong>1</strong><span>Getting Started</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/createApp.html"><strong>2</strong><span>Creating the Application</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/domainModel.html"><strong>3</strong><span>The Book and Author Domain Model</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/urlMappings.html"><strong>4</strong><span>URL Mappings and v1 Versioning</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/controllers.html"><strong>5</strong><span>RestfulController With a Hard Page Cap</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/jsonViews.html"><strong>6</strong><span>JSON Views</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/validation.html"><strong>7</strong><span>Structured 422 Validation Responses</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/pagination.html"><strong>8</strong><span>Pagination, Sorting, and Filtering</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/bulkCreate.html"><strong>9</strong><span>All-or-Nothing Bulk Create</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/versioning.html"><strong>10</strong><span>URL-Prefix vs Content-Negotiation Versioning</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/testing.html"><strong>11</strong><span>Testing the API</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/runningTheApp.html"><strong>12</strong><span>Running the Application</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>13</strong><span>Do you need help with Grails?</span></a>
+                        </div>
+                        
+                    </div>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+
+</div>
+
+<table id="colset" border="0" cellpadding="0" cellspacing="0">
+    <tr>
+        <td id="col1">
+            <div id="main" class="corner-all">
+
+                
+                    <div class="toc-item prev-left"><a href="../guide/versioning.html">&lt;&lt; <strong>10</strong><span>URL-Prefix vs Content-Negotiation Versioning</span></a></div>
+                
+
+                
+                    <div class="toc-item next-right"><a href="../guide/runningTheApp.html"><strong>12</strong><span>Running the Application</span> >></a></div>
+                
+
+
+                
+
+                
+
+<h1 id="testing">11 Testing the API</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-rest-library/v8/guide/testing.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>The library API ships with a layered Spock suite: fast domain and controller unit tests, <code>@Integration</code> tests against a real database, and functional HTTP tests that drive the JSON endpoints end to end. The integration and functional layers run against a Testcontainers-managed PostgreSQL database, so a Docker daemon is the only host requirement.</p>
+</div>
+<div class="sect1">
+<h2 id="_test_dependencies">Test dependencies</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Testcontainers artifacts are not in the Grails BOM, so they need an explicit <code>testcontainers-bom</code> to resolve a version. The web testing support is required for <code>ControllerUnitTest</code> even in a <code>rest-api</code> profile app:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle (test dependencies)</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">testImplementation <span class="string"><span class="delimiter">&quot;</span><span class="content">org.apache.grails:grails-testing-support-datamapping</span><span class="delimiter">&quot;</span></span>
+testImplementation <span class="string"><span class="delimiter">&quot;</span><span class="content">org.apache.grails:grails-testing-support-views-gson</span><span class="delimiter">&quot;</span></span>
+testImplementation <span class="string"><span class="delimiter">&quot;</span><span class="content">org.apache.grails:grails-testing-support-web</span><span class="delimiter">&quot;</span></span>
+testImplementation <span class="string"><span class="delimiter">&quot;</span><span class="content">org.spockframework:spock-core</span><span class="delimiter">&quot;</span></span>
+testImplementation platform(<span class="string"><span class="delimiter">&quot;</span><span class="content">org.testcontainers:testcontainers-bom:1.20.4</span><span class="delimiter">&quot;</span></span>)
+testImplementation <span class="string"><span class="delimiter">&quot;</span><span class="content">org.testcontainers:postgresql</span><span class="delimiter">&quot;</span></span>
+testImplementation <span class="string"><span class="delimiter">&quot;</span><span class="content">org.testcontainers:spock</span><span class="delimiter">&quot;</span></span>
+testImplementation <span class="string"><span class="delimiter">&quot;</span><span class="content">org.testcontainers:testcontainers</span><span class="delimiter">&quot;</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Because this app uses the database-migration plugin, an empty <code>changelog.groovy</code> means GORM will not auto-create the schema in the test environment. The test profile therefore turns the migration off and lets GORM create the schema directly:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/test/resources/application-test.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">dataSource</span>:
+  <span class="key">url</span>: <span class="string"><span class="content">jdbc:tc:postgresql:12:///postgres</span></span>
+  <span class="key">driverClassName</span>: <span class="string"><span class="content">org.testcontainers.jdbc.ContainerDatabaseDriver</span></span>
+  <span class="key">dbCreate</span>: <span class="string"><span class="content">create-drop</span></span>
+<span class="key">grails</span>:
+  <span class="key">plugin</span>:
+    <span class="key">databasemigration</span>:
+      <span class="key">updateOnStart</span>: <span class="string"><span class="content">false</span></span></code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_unit_domain_constraints_and_controller_paging">Unit: domain constraints and controller paging</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><code>DataTest</code> registers the in-memory datastore for <code>Author</code> and <code>Book</code> so constraint logic runs in milliseconds with no Spring context. <code>Book</code> <code>belongsTo</code> <code>Author</code>, so both classes are mocked:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/test/groovy/example/BookSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.testing.gorm.DataTest</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Unroll</span>
+
+<span class="comment">/**
+ * Domain constraint unit tests for Book. DataTest mocks both Book and its
+ * owning Author so the belongsTo association can be satisfied without a
+ * Spring context or a real database.
+ */</span>
+<span class="type">class</span> <span class="class">BookSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> DataTest {
+
+    <span class="predefined-type">Class</span><span class="type">[]</span> getDomainClassesToMock() { [Author, <span class="predefined-type">Book</span>] }
+
+    <span class="directive">private</span> <span class="predefined-type">Book</span> bookWith(<span class="predefined-type">Map</span> overrides) {
+        Author author = <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Author</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>([<span class="key">author</span>: author, <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">A Title</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">100</span>] + overrides)
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">a fully populated book validates</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">expect</span>:
+        bookWith([:]).validate()
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">author is required</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        <span class="predefined-type">Book</span> b = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">No Author</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>:
+        !b.validate()
+        b.errors.getFieldError(<span class="string"><span class="delimiter">'</span><span class="content">author</span><span class="delimiter">'</span></span>).code == <span class="string"><span class="delimiter">'</span><span class="content">nullable</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">title is required</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        <span class="predefined-type">Book</span> b = bookWith(<span class="key">title</span>: <span class="predefined-constant">null</span>)
+
+        <span class="key">then</span>:
+        !b.validate()
+        b.errors.getFieldError(<span class="string"><span class="delimiter">'</span><span class="content">title</span><span class="delimiter">'</span></span>).code == <span class="string"><span class="delimiter">'</span><span class="content">nullable</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">isbn must match the ISBN pattern</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        <span class="predefined-type">Book</span> b = bookWith(<span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">not-an-isbn</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>:
+        !b.validate()
+        b.errors.getFieldError(<span class="string"><span class="delimiter">'</span><span class="content">isbn</span><span class="delimiter">'</span></span>).code == <span class="string"><span class="delimiter">'</span><span class="content">matches.invalid</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">isbn must be unique</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        bookWith(<span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">when</span>:
+        <span class="predefined-type">Book</span> dup = bookWith(<span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>:
+        !dup.validate()
+        dup.errors.getFieldError(<span class="string"><span class="delimiter">'</span><span class="content">isbn</span><span class="delimiter">'</span></span>).code == <span class="string"><span class="delimiter">'</span><span class="content">unique</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="annotation">@Unroll</span>
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">pageCount #pageCount is #valid</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">expect</span>:
+        bookWith(<span class="key">pageCount</span>: pageCount).validate() == valid
+
+        <span class="key">where</span>:
+        pageCount || valid
+        <span class="predefined-constant">null</span>      || <span class="predefined-constant">true</span>
+        <span class="integer">1</span>         || <span class="predefined-constant">true</span>
+        <span class="integer">500</span>       || <span class="predefined-constant">true</span>
+        <span class="integer">0</span>         || <span class="predefined-constant">false</span>
+        -<span class="integer">5</span>        || <span class="predefined-constant">false</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The <code>RestfulController</code> pagination clamping (default 25, hard cap 100, negative treated as default) is pinned with a <code>ControllerUnitTest</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/test/groovy/example/BookControllerSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.testing.gorm.DataTest</span>
+<span class="keyword">import</span> <span class="include">grails.testing.web.controllers.ControllerUnitTest</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Unroll</span>
+
+<span class="comment">/**
+ * Controller unit test for the pagination clamping the custom index action
+ * applies before it queries. No Spring context, no real database.
+ */</span>
+<span class="type">class</span> <span class="class">BookControllerSpec</span> <span class="directive">extends</span> Specification
+        <span class="directive">implements</span> ControllerUnitTest&lt;BookController&gt;, DataTest {
+
+    <span class="predefined-type">Class</span><span class="type">[]</span> getDomainClassesToMock() { [Author, <span class="predefined-type">Book</span>] }
+
+    <span class="annotation">@Unroll</span>
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">index clamps max #requested to #expected</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        controller.index(requested)
+
+        <span class="key">then</span>:
+        controller.params.max == expected
+
+        <span class="key">where</span>:
+        requested || expected
+        <span class="integer">500</span>       || <span class="integer">100</span>   <span class="comment">// capped at 100</span>
+        <span class="integer">10</span>        || <span class="integer">10</span>    <span class="comment">// within range, untouched</span>
+        <span class="predefined-constant">null</span>      || <span class="integer">25</span>    <span class="comment">// default</span>
+        -<span class="integer">5</span>        || <span class="integer">25</span>    <span class="comment">// negative treated as default</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">index never produces a negative offset</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        controller.params.offset = -<span class="integer">10</span>
+
+        <span class="key">when</span>:
+        controller.index(<span class="integer">25</span>)
+
+        <span class="key">then</span>:
+        controller.params.offset == <span class="integer">0</span>
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_integration_relationships_against_a_real_database">Integration: relationships against a real database</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><code>@Integration</code> with <code>@Rollback</code> boots the full context and isolates each method. <code>BootStrap</code> seeds four books outside production, so these specs use ISBNs that do not collide with the seed set and filter queries by an author they create:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/integration-test/groovy/example/BookIntegrationSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Rollback</span>
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="comment">/**
+ * @Integration boots the full Spring context against the Testcontainers
+ * PostgreSQL database. @Rollback isolates each method, so a bare GORM call
+ * runs inside an ambient session.
+ *
+ * BootStrap seeds four books outside production, so these specs use ISBNs
+ * that do not collide with the seed set and filter queries by an author
+ * they create themselves.
+ */</span>
+<span class="annotation">@Integration</span>
+<span class="annotation">@Rollback</span>
+<span class="type">class</span> <span class="class">BookIntegrationSpec</span> <span class="directive">extends</span> Specification {
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">books are filtered by author with a where query</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        Author tolkien = <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Integration Tolkien</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        Author leguin  = <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Integration Le Guin</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">author</span>: tolkien, <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">TT Book</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9783000000010</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">310</span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">author</span>: leguin,  <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">LG Book</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9783000000027</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">205</span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">when</span>:
+        <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; tolkienBooks = <span class="predefined-type">Book</span>.where { author.id == tolkien.id }.list()
+
+        <span class="key">then</span>:
+        tolkienBooks.size() == <span class="integer">1</span>
+        tolkienBooks.first().title == <span class="string"><span class="delimiter">'</span><span class="content">TT Book</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">pagination returns at most the requested page size</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        Author a = <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Integration Prolific</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        (<span class="integer">1</span>..<span class="integer">5</span>).each { <span class="type">int</span> i -&gt;
+            <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">author</span>: a, <span class="key">title</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Paged </span><span class="inline"><span class="inline-delimiter">${</span>i<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>, <span class="key">isbn</span>: <span class="predefined-type">String</span>.format(<span class="string"><span class="delimiter">'</span><span class="content">978400000000%d</span><span class="delimiter">'</span></span>, i), <span class="key">pageCount</span>: <span class="integer">100</span> + i)
+                .save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        }
+
+        <span class="key">when</span>:
+        <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; firstPage = <span class="predefined-type">Book</span>.where { author.id == a.id }.list(<span class="key">max</span>: <span class="integer">2</span>, <span class="key">offset</span>: <span class="integer">0</span>, <span class="key">sort</span>: <span class="string"><span class="delimiter">'</span><span class="content">title</span><span class="delimiter">'</span></span>, <span class="key">order</span>: <span class="string"><span class="delimiter">'</span><span class="content">asc</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>:
+        firstPage.size() == <span class="integer">2</span>
+        firstPage*.title == [<span class="string"><span class="delimiter">'</span><span class="content">Paged 1</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Paged 2</span><span class="delimiter">'</span></span>]
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">an author's books collection reflects persisted books</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        Author a = <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Integration Author</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        a.addToBooks(<span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">One</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9785000000019</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">100</span>))
+        a.addToBooks(<span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Two</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9785000000026</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">200</span>))
+        a.save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">expect</span>:
+        Author.get(a.id).books.size() == <span class="integer">2</span>
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_functional_the_rest_surface_over_real_http">Functional: the REST surface over real HTTP</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The functional spec sends real requests with <code>java.net.http.HttpClient</code> against the booted app (port injected via <code>@Value('${local.server.port}')</code>). It asserts the paginated envelope, the page-size clamp, and - most importantly - the all-or-nothing <code>bulkCreate</code> contract: a request with one invalid entry returns <code>422</code> and persists <strong>nothing</strong>. <code>@Rollback</code> is not used (the endpoints commit), so the fixture is created and read back inside <code>withNewTransaction</code> blocks:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/integration-test/groovy/example/BookFunctionalSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">groovy.json.JsonOutput</span>
+<span class="keyword">import</span> <span class="include">groovy.json.JsonSlurper</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Value</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="keyword">import</span> <span class="include">java.net.http.HttpClient</span>
+<span class="keyword">import</span> <span class="include">java.net.http.HttpRequest</span>
+<span class="keyword">import</span> <span class="include">java.net.http.HttpResponse</span>
+
+<span class="comment">/**
+ * Functional tests drive the real REST/JSON surface over HTTP with
+ * java.net.http.HttpClient. @Rollback is deliberately NOT used: the
+ * endpoints commit, so the fixture is seeded (and read back) inside
+ * withNewTransaction blocks. BootStrap data is not populated in the
+ * @Integration context, so each spec owns its fixture.
+ */</span>
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">BookFunctionalSpec</span> <span class="directive">extends</span> Specification {
+
+    <span class="annotation">@Value</span>(<span class="string"><span class="delimiter">'</span><span class="content">${local.server.port}</span><span class="delimiter">'</span></span>)
+    <span class="predefined-type">Integer</span> serverPort
+
+    HttpClient client = HttpClient.newHttpClient()
+
+    <span class="predefined-type">Long</span> authorId
+
+    <span class="type">void</span> setup() {
+        <span class="predefined-type">Book</span>.withNewTransaction {
+            Author a = Author.findByName(<span class="string"><span class="delimiter">'</span><span class="content">Functional Author</span><span class="delimiter">'</span></span>) ?: <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Functional Author</span><span class="delimiter">'</span></span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+            authorId = a.id
+            <span class="keyword">if</span> (!<span class="predefined-type">Book</span>.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9781111111113</span><span class="delimiter">'</span></span>)) {
+                <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">author</span>: a, <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Seeded One</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9781111111113</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">100</span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+            }
+            <span class="keyword">if</span> (!<span class="predefined-type">Book</span>.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9782222222226</span><span class="delimiter">'</span></span>)) {
+                <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">author</span>: a, <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Seeded Two</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9782222222226</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">200</span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+            }
+        }
+    }
+
+    <span class="directive">private</span> <span class="predefined-type">URI</span> uri(<span class="predefined-type">String</span> path) { <span class="predefined-type">URI</span>.create(<span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="inline"><span class="inline-delimiter">${</span>path<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>) }
+
+    <span class="directive">private</span> HttpResponse&lt;<span class="predefined-type">String</span>&gt; getJson(<span class="predefined-type">String</span> path) {
+        client.send(HttpRequest.newBuilder(uri(path)).GET().build(), HttpResponse.BodyHandlers.ofString())
+    }
+
+    <span class="directive">private</span> HttpResponse&lt;<span class="predefined-type">String</span>&gt; postJson(<span class="predefined-type">String</span> path, <span class="predefined-type">String</span> body) {
+        client.send(HttpRequest.newBuilder(uri(path))
+                .header(<span class="string"><span class="delimiter">'</span><span class="content">Content-Type</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+                .POST(HttpRequest.BodyPublishers.ofString(body)).build(),
+                HttpResponse.BodyHandlers.ofString())
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">GET /v1/books returns a paginated JSON envelope</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = getJson(<span class="string"><span class="delimiter">'</span><span class="content">/v1/books</span><span class="delimiter">'</span></span>)
+        <span class="predefined-type">Map</span> json = <span class="keyword">new</span> JsonSlurper().parseText(resp.body()) <span class="keyword">as</span> <span class="predefined-type">Map</span>
+
+        <span class="key">then</span>:
+        resp.statusCode() == <span class="integer">200</span>
+        json.containsKey(<span class="string"><span class="delimiter">'</span><span class="content">page</span><span class="delimiter">'</span></span>)
+        json.containsKey(<span class="string"><span class="delimiter">'</span><span class="content">pageSize</span><span class="delimiter">'</span></span>)
+        json.total &gt;= <span class="integer">2</span>
+        json.items.size() &gt;= <span class="integer">2</span>
+        json.items.every { <span class="local-variable">it</span>.title &amp;&amp; <span class="local-variable">it</span>.isbn &amp;&amp; <span class="local-variable">it</span>.author?.name }
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">GET /v1/books?max= clamps the page size to 100</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = getJson(<span class="string"><span class="delimiter">'</span><span class="content">/v1/books?max=500</span><span class="delimiter">'</span></span>)
+        <span class="predefined-type">Map</span> json = <span class="keyword">new</span> JsonSlurper().parseText(resp.body()) <span class="keyword">as</span> <span class="predefined-type">Map</span>
+
+        <span class="key">then</span>:
+        resp.statusCode() == <span class="integer">200</span>
+        json.pageSize == <span class="integer">100</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">POST /v1/books/bulk creates every book and returns 201</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">String</span> body = JsonOutput.toJson([
+            [<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">The Two Towers</span><span class="delimiter">'</span></span>,         <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928203</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">416</span>, <span class="key">author</span>: [<span class="key">id</span>: authorId]],
+            [<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">The Return of the King</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928197</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">432</span>, <span class="key">author</span>: [<span class="key">id</span>: authorId]]
+        ])
+
+        <span class="key">when</span>:
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = postJson(<span class="string"><span class="delimiter">'</span><span class="content">/v1/books/bulk</span><span class="delimiter">'</span></span>, body)
+
+        <span class="key">then</span>:
+        resp.statusCode() == <span class="integer">201</span>
+        <span class="predefined-type">Book</span>.withNewTransaction {
+            <span class="predefined-type">Book</span>.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9780547928203</span><span class="delimiter">'</span></span>) != <span class="predefined-constant">null</span> &amp;&amp; <span class="predefined-type">Book</span>.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9780547928197</span><span class="delimiter">'</span></span>) != <span class="predefined-constant">null</span>
+        }
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">POST /v1/books/bulk rolls back entirely when any entry is invalid</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>: <span class="string"><span class="delimiter">'</span><span class="content">one valid and one invalid entry in the same request</span><span class="delimiter">'</span></span>
+        <span class="type">long</span> before = <span class="predefined-type">Book</span>.withNewTransaction { <span class="predefined-type">Book</span>.count() }
+        <span class="predefined-type">String</span> body = JsonOutput.toJson([
+            [<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Would Be Valid</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780000000086</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">100</span>, <span class="key">author</span>: [<span class="key">id</span>: authorId]],
+            [<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>,               <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">not-an-isbn</span><span class="delimiter">'</span></span>,   <span class="key">author</span>: [<span class="key">id</span>: authorId]]
+        ])
+
+        <span class="key">when</span>:
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = postJson(<span class="string"><span class="delimiter">'</span><span class="content">/v1/books/bulk</span><span class="delimiter">'</span></span>, body)
+        <span class="predefined-type">Map</span> json = <span class="keyword">new</span> JsonSlurper().parseText(resp.body()) <span class="keyword">as</span> <span class="predefined-type">Map</span>
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">a 422 reports the failing index and NOTHING is persisted</span><span class="delimiter">'</span></span>
+        resp.statusCode() == <span class="integer">422</span>
+        json.books.size() == <span class="integer">1</span>
+        json.books.first().index == <span class="integer">1</span>
+        <span class="predefined-type">Book</span>.withNewTransaction { <span class="predefined-type">Book</span>.count() } == before
+        <span class="predefined-type">Book</span>.withNewTransaction { <span class="predefined-type">Book</span>.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9780000000086</span><span class="delimiter">'</span></span>) == <span class="predefined-constant">null</span> }
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">GET /v1/authors returns the authors as JSON</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = getJson(<span class="string"><span class="delimiter">'</span><span class="content">/v1/authors</span><span class="delimiter">'</span></span>)
+        <span class="predefined-type">Map</span> json = <span class="keyword">new</span> JsonSlurper().parseText(resp.body()) <span class="keyword">as</span> <span class="predefined-type">Map</span>
+
+        <span class="key">then</span>:
+        resp.statusCode() == <span class="integer">200</span>
+        json.total &gt;= <span class="integer">1</span>
+        json.items.any { <span class="local-variable">it</span>.name == <span class="string"><span class="delimiter">'</span><span class="content">Functional Author</span><span class="delimiter">'</span></span> }
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Run the suite:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">./gradlew test             # unit - milliseconds, no Docker
+./gradlew integrationTest  # integration + functional - Docker required</code></pre>
+</div>
+</div>
+</div>
+</div>
+
+
+                <div style="clear:both;margin-top:15px;"></div>
+                
+                    <div class="toc-item prev-left"><a href="../guide/versioning.html">&lt;&lt; <strong>10</strong><span>URL-Prefix vs Content-Negotiation Versioning</span></a></div>
+                
+                    <div class="toc-item next-right"><a href="../guide/runningTheApp.html"><strong>12</strong><span>Running the Application</span> >></a></div>
+                
+                <div style="clear:both"></div>
+            </div>
+        </td>
+        <td id="col2">
+            <div class="local clearfix">
+                <div class="local-title" style="text-align: right"><a href="https://travis-ci.org/grails-guides/grails-rest-library"><img src="https://travis-ci.org/grails-guides/grails-rest-library.svg?branch=master" /></a></div>            
+                 <div class="local-title">
+                    <a href="https://github.com/grails-guides/grails-rest-library">
+                    <svg height="35" class="octicon octicon-mark-github" viewBox="0 0 16 16" version="1.1" width="35" aria-hidden="true"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a> &nbsp;&nbsp;Get the Code
+                </div>
+                <div class="menu">
+                    <div class="input-group">                        
+                        <button href="#" onclick="document.getElementById('github-url').value='git@github.com:grails-guides/grails-rest-library.git'" class="codeButton">SSH</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-rest-library.git'" class="codeButton">HTTPS</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-rest-library'" class="codeButton">Subversion</button>
+                    </div>
+       
+                    <div class="input-group">                    
+                        <!-- Target -->
+                        <input id="github-url" value="git@github.com:grails-guides/grails-rest-library.git" type="text" />
+
+                        <!-- Trigger -->
+                        <button class="clipbtn" type="button" data-clipboard-target="#github-url">
+
+                            <img width="13" src="../img/clippy.svg" alt="Copy to clipboard">
+                        </button>       
+
+                    </div>
+                    <div class="input-group">
+                      <a href="https://github.com/grails-guides/grails-rest-library/archive/master.zip" class="downloadButton">Download ZIP</a>
+                    </div>
+                </div>
+            </div>
+        </td>
+    </tr>
+</table>
+
+<div id="footer">
+    
+    
+</div>
+
+<script type="text/javascript" src="../js/docs.js"></script>
+
+</body>
+</html>

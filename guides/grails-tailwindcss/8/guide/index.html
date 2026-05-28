@@ -127,7 +127,9 @@
             
             <div class="toc-item" style="margin-left:0px"><a href="#componentLayer"><strong>8</strong><span>Reusable Component Classes with @apply</span></a></div>
             
-            <div class="toc-item" style="margin-left:0px"><a href="#helpWithGrails"><strong>9</strong><span>Do you need help with Grails?</span></a></div>
+            <div class="toc-item" style="margin-left:0px"><a href="#testing"><strong>9</strong><span>Testing the Tailwind Build</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#helpWithGrails"><strong>10</strong><span>Do you need help with Grails?</span></a></div>
             
             <div style="clear:both"></div>
         </div>
@@ -1125,7 +1127,133 @@ tasks.named(<span class="string"><span class="delimiter">'</span><span class="co
 </div>
 
 
-<h1 id="helpWithGrails">9 Do you need help with Grails?</h1>
+<h1 id="testing">9 Testing the Tailwind Build</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-tailwindcss/v8/guide/testing.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>A CSS build is easy to break silently: a misconfigured <code>@source</code>, a broken Gradle wiring, or an unserved bundle all render as "the page looks unstyled" with no error. A browser test catches every one of those because it asserts on <strong>computed</strong> styles in a real browser, against the real compiled <code>app.css</code>.</p>
+</div>
+<div class="paragraph">
+<p><code>ContainerGebSpec</code> (from <code>testFixtures("org.apache.grails:grails-geb")</code>) starts a Selenium-Chrome container via Testcontainers and drives the booted app; the only host requirement is a running Docker daemon. The Tailwind build runs as part of the normal Gradle build (<code>tailwindBuild</code> is a dependency of <code>processResources</code> and <code>compileGroovy</code>), so by the time the app boots, <code>app.css</code> is compiled and bundled.</p>
+</div>
+<div class="listingblock">
+<div class="title">src/integration-test/groovy/example/TailwindFunctionalSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.plugin.geb.ContainerGebSpec</span>
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+
+<span class="comment">/**
+ * Browser tests proving the Tailwind CSS 4 build is wired end to end:
+ * the compiled app.css is served, its utility and component classes apply
+ * real computed styles, and the class-based dark-mode toggle works and
+ * persists. ContainerGebSpec drives a Selenium-Chrome container via
+ * Testcontainers, so only a running Docker daemon is required.
+ */</span>
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">TailwindFunctionalSpec</span> <span class="directive">extends</span> ContainerGebSpec {
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">the home page renders with the Tailwind title</span><span class="delimiter">'</span></span>() {
+        <span class="key">when</span>:
+        go <span class="string"><span class="delimiter">'</span><span class="content">/</span><span class="delimiter">'</span></span>
+
+        <span class="key">then</span>:
+        title == <span class="string"><span class="delimiter">'</span><span class="content">Welcome to Grails + Tailwind</span><span class="delimiter">'</span></span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">h1</span><span class="delimiter">'</span></span>).text().contains(<span class="string"><span class="delimiter">'</span><span class="content">Welcome to Grails + Tailwind CSS</span><span class="delimiter">'</span></span>)
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">the compiled Tailwind stylesheet is served</span><span class="delimiter">'</span></span>() {
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">reading the stylesheet hrefs the layout emitted</span><span class="delimiter">'</span></span>
+        go <span class="string"><span class="delimiter">'</span><span class="content">/</span><span class="delimiter">'</span></span>
+        <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; hrefs = <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">link</span><span class="delimiter">'</span></span>, <span class="key">rel</span>: <span class="string"><span class="delimiter">'</span><span class="content">stylesheet</span><span class="delimiter">'</span></span>).collect { <span class="local-variable">it</span>.@href }
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">the asset-pipeline application bundle (which requires app.css) is linked</span><span class="delimiter">'</span></span>
+        hrefs.any { <span class="local-variable">it</span>.contains(<span class="string"><span class="delimiter">'</span><span class="content">application.css</span><span class="delimiter">'</span></span>) }
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">the .card component class applies real Tailwind styles</span><span class="delimiter">'</span></span>() {
+        <span class="key">when</span>:
+        go <span class="string"><span class="delimiter">'</span><span class="content">/</span><span class="delimiter">'</span></span>
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">the compiled .card rule gives the section padding and a non-transparent background</span><span class="delimiter">'</span></span>
+        waitFor {
+            <span class="predefined-type">String</span> padding = js.exec(<span class="string"><span class="delimiter">'</span><span class="content">return getComputedStyle(document.querySelector(&quot;.card&quot;)).paddingTop</span><span class="delimiter">'</span></span>) <span class="keyword">as</span> <span class="predefined-type">String</span>
+            padding &amp;&amp; padding != <span class="string"><span class="delimiter">'</span><span class="content">0px</span><span class="delimiter">'</span></span>
+        }
+        <span class="predefined-type">String</span> bg = js.exec(<span class="string"><span class="delimiter">'</span><span class="content">return getComputedStyle(document.querySelector(&quot;.card&quot;)).backgroundColor</span><span class="delimiter">'</span></span>) <span class="keyword">as</span> <span class="predefined-type">String</span>
+        bg &amp;&amp; bg != <span class="string"><span class="delimiter">'</span><span class="content">rgba(0, 0, 0, 0)</span><span class="delimiter">'</span></span> &amp;&amp; bg != <span class="string"><span class="delimiter">'</span><span class="content">transparent</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">the .btn-primary component class applies a blue background</span><span class="delimiter">'</span></span>() {
+        <span class="key">when</span>:
+        go <span class="string"><span class="delimiter">'</span><span class="content">/</span><span class="delimiter">'</span></span>
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">btn-primary resolves to a non-transparent (blue) background from the component layer</span><span class="delimiter">'</span></span>
+        <span class="predefined-type">String</span> bg = js.exec(<span class="string"><span class="delimiter">'</span><span class="content">return getComputedStyle(document.querySelector(&quot;.btn-primary&quot;)).backgroundColor</span><span class="delimiter">'</span></span>) <span class="keyword">as</span> <span class="predefined-type">String</span>
+        bg &amp;&amp; bg != <span class="string"><span class="delimiter">'</span><span class="content">rgba(0, 0, 0, 0)</span><span class="delimiter">'</span></span> &amp;&amp; bg != <span class="string"><span class="delimiter">'</span><span class="content">transparent</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">the dark-mode toggle adds the dark class and persists the choice</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        go <span class="string"><span class="delimiter">'</span><span class="content">/</span><span class="delimiter">'</span></span>
+
+        <span class="key">expect</span>: <span class="string"><span class="delimiter">'</span><span class="content">starts light - no dark class on &lt;html&gt;</span><span class="delimiter">'</span></span>
+        !(js.exec(<span class="string"><span class="delimiter">'</span><span class="content">return document.documentElement.classList.contains(&quot;dark&quot;)</span><span class="delimiter">'</span></span>) <span class="keyword">as</span> <span class="predefined-type">Boolean</span>)
+
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">clicking the toggle</span><span class="delimiter">'</span></span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">#theme-toggle</span><span class="delimiter">'</span></span>).click()
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">the dark class is applied and saved to localStorage</span><span class="delimiter">'</span></span>
+        waitFor { js.exec(<span class="string"><span class="delimiter">'</span><span class="content">return document.documentElement.classList.contains(&quot;dark&quot;)</span><span class="delimiter">'</span></span>) <span class="keyword">as</span> <span class="predefined-type">Boolean</span> }
+        (js.exec(<span class="string"><span class="delimiter">'</span><span class="content">return window.localStorage.getItem(&quot;theme&quot;)</span><span class="delimiter">'</span></span>) <span class="keyword">as</span> <span class="predefined-type">String</span>) == <span class="string"><span class="delimiter">'</span><span class="content">dark</span><span class="delimiter">'</span></span>
+
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">toggling back</span><span class="delimiter">'</span></span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">#theme-toggle</span><span class="delimiter">'</span></span>).click()
+
+        <span class="key">then</span>:
+        waitFor { !(js.exec(<span class="string"><span class="delimiter">'</span><span class="content">return document.documentElement.classList.contains(&quot;dark&quot;)</span><span class="delimiter">'</span></span>) <span class="keyword">as</span> <span class="predefined-type">Boolean</span>) }
+        (js.exec(<span class="string"><span class="delimiter">'</span><span class="content">return window.localStorage.getItem(&quot;theme&quot;)</span><span class="delimiter">'</span></span>) <span class="keyword">as</span> <span class="predefined-type">String</span>) == <span class="string"><span class="delimiter">'</span><span class="content">light</span><span class="delimiter">'</span></span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The assertions go beyond "the page loaded":</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>The stylesheet is served</strong> - the layout&#8217;s <code>application.css</code> bundle (which <code>require`s the compiled `app.css</code>) is linked in the page head.</p>
+</li>
+<li>
+<p><strong>Component classes apply real styles</strong> - <code>getComputedStyle</code> confirms <code>.card</code> has non-zero padding and a non-transparent background, and <code>.btn-primary</code> resolves to a real background colour. If the <code>@apply</code> component layer or the <code>@source</code> scanning silently dropped those rules, the computed style would be the browser default and the test would fail.</p>
+</li>
+<li>
+<p><strong>Dark mode works and persists</strong> - clicking the toggle adds the <code>dark</code> class to <code>&lt;html&gt;</code> and writes <code>theme=dark</code> to <code>localStorage</code>; toggling back reverses both. This exercises the <code>@custom-variant dark</code> configuration end to end.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Run it:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">./gradlew integrationTest   # runs tailwindBuild, boots the app, drives Geb - Docker required</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Because the build wires <code>tailwindBuild</code> ahead of <code>processResources</code>, there is no separate "build the CSS first" step - <code>./gradlew integrationTest</code> compiles the stylesheet, boots the app, and runs the browser assertions in one command.</p>
+</div>
+
+
+<h1 id="helpWithGrails">10 Do you need help with Grails?</h1>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-tailwindcss/v8/guide/helpWithGrails.adoc"'>
