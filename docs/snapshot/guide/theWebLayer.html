@@ -4741,28 +4741,93 @@ cp -R grails-app/views/* /var/www/grails/my-app/grails-app/views</pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Now to create a tag create a Closure property that takes two arguments: the tag attributes and the body content:</p>
+<p>Now create tags using methods. Methods with the conventional <code>Map attrs</code>, <code>Closure body</code>, and <code>Map attrs, Closure body</code> signatures are discovered as tags automatically:</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">SimpleTagLib</span> {
-    <span class="keyword">def</span> simple = { attrs, body -&gt;
-
+    <span class="keyword">def</span> <span class="function">simple</span>(<span class="predefined-type">Map</span> attrs) {
+        out &lt;&lt; attrs.name
     }
 }</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>The <code>attrs</code> argument is a Map of the attributes of the tag, whilst the <code>body</code> argument is a Closure that returns the body content when invoked:</p>
+<p>Closure field-style tags are still supported for backward compatibility, but method-based tags are the recommended syntax.</p>
+</div>
+<div class="paragraph">
+<p>The <code>attrs</code> parameter is a <code>Map</code> of the tag attributes, while the <code>body</code> parameter is the tag body closure:</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">SimpleTagLib</span> {
-    <span class="keyword">def</span> emoticon = { attrs, body -&gt;
+    <span class="keyword">def</span> <span class="function">emoticon</span>(<span class="predefined-type">Map</span> attrs, Closure body) {
        out &lt;&lt; body() &lt;&lt; (attrs.happy == <span class="string"><span class="delimiter">'</span><span class="content">true</span><span class="delimiter">'</span></span> ? <span class="string"><span class="delimiter">&quot;</span><span class="content"> :-)</span><span class="delimiter">&quot;</span></span> : <span class="string"><span class="delimiter">&quot;</span><span class="content"> :-(</span><span class="delimiter">&quot;</span></span>)
     }
 }</code></pre>
 </div>
+</div>
+<div class="paragraph">
+<p>For method-based tags, named attributes can also bind directly to method signature arguments when the method is explicitly marked with <code>@Tag</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.gsp.Tag</span>
+
+<span class="type">class</span> <span class="class">SimpleTagLib</span> {
+    <span class="annotation">@Tag</span>
+    <span class="keyword">def</span> <span class="function">greeting</span>(<span class="predefined-type">String</span> name) {
+        out &lt;&lt; <span class="string"><span class="delimiter">&quot;</span><span class="content">Hello, </span><span class="inline"><span class="inline-delimiter">${</span>name<span class="inline-delimiter">}</span></span><span class="content">!</span><span class="delimiter">&quot;</span></span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Used as:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="xml"><span class="tag">&lt;g:greeting</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">Graeme</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>For tags with strict validation/error handling, keep a <code>Map attrs</code> handler and add typed overloads that delegate to it:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.gsp.Tag</span>
+
+<span class="keyword">def</span> <span class="function">field</span>(<span class="predefined-type">Map</span> attrs) {
+    <span class="comment">// existing validation + rendering path</span>
+}
+
+<span class="annotation">@Tag</span>
+<span class="keyword">def</span> <span class="function">field</span>(<span class="predefined-type">String</span> type, <span class="predefined-type">Map</span> attrs) {
+    attrs.type = type
+    field(attrs)
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Without <code>@Tag</code>, Grails discovers method tags only for the conventional tag signatures <code>def tag(Map attrs)</code>, <code>def tag(Closure body)</code>, and <code>def tag(Map attrs, Closure body)</code>. Zero-argument method tags and typed-parameter method tags must use <code>@Tag</code>. This prevents ordinary helper methods from being exposed as tags accidentally.</p>
+</div>
+<div class="paragraph">
+<p>If a conventional public method should not be exposed as a tag, annotate it with <code>@NotATag</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.gsp.NotATag</span>
+
+<span class="type">class</span> <span class="class">SimpleTagLib</span> {
+    <span class="annotation">@NotATag</span>
+    <span class="keyword">def</span> <span class="function">helper</span>(<span class="predefined-type">Map</span> attrs) {
+        <span class="comment">// not a tag</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Grails applications generated with the Grails Gradle plugins preserve Java and Groovy method parameter names by default. If you compile tag libraries outside the Grails Gradle plugins, enable Java <code>-parameters</code> and Groovy <code>groovyOptions.parameters = true</code> so <code>@Tag</code> methods can bind attributes by parameter name.</p>
 </div>
 <div class="paragraph">
 <p>As demonstrated above there is an implicit <code>out</code> variable that refers to the output <code>Writer</code> which you can use to append content to the response. Then you can reference the tag inside your GSP; no imports are necessary:</p>
@@ -4779,7 +4844,7 @@ cp -R grails-app/views/* /var/www/grails/my-app/grails-app/views</pre>
 <i class="fa icon-note" title="Note"></i>
 </td>
 <td class="content">
-To help IDEs autocomplete tag attributes, you should add Javadoc comments to your tag closures with <code>@attr</code> descriptions. Since taglibs use Groovy code it can be difficult to reliably detect all usable attributes.
+To help IDEs autocomplete tag attributes, add Javadoc comments with <code>@attr</code> descriptions to your tag methods. Since taglibs use Groovy code it can be difficult to reliably detect all usable attributes.
 </td>
 </tr>
 </table>
@@ -4797,7 +4862,7 @@ To help IDEs autocomplete tag attributes, you should add Javadoc comments to you
      * @attr happy whether to show a happy emoticon ('true') or
      * a sad emoticon ('false')
      */</span>
-    <span class="keyword">def</span> emoticon = { attrs, body -&gt;
+    <span class="keyword">def</span> <span class="function">emoticon</span>(<span class="predefined-type">Map</span> attrs, Closure body) {
        out &lt;&lt; body() &lt;&lt; (attrs.happy == <span class="string"><span class="delimiter">'</span><span class="content">true</span><span class="delimiter">'</span></span> ? <span class="string"><span class="delimiter">&quot;</span><span class="content"> :-)</span><span class="delimiter">&quot;</span></span> : <span class="string"><span class="delimiter">&quot;</span><span class="content"> :-(</span><span class="delimiter">&quot;</span></span>)
     }
 }</code></pre>
@@ -4816,7 +4881,7 @@ To help IDEs autocomplete tag attributes, you should add Javadoc comments to you
      * @attr name REQUIRED the field name
      * @attr value the field value
      */</span>
-    <span class="keyword">def</span> passwordField = { attrs -&gt;
+    <span class="keyword">def</span> <span class="function">passwordField</span>(<span class="predefined-type">Map</span> attrs) {
         attrs.type = <span class="string"><span class="delimiter">&quot;</span><span class="content">password</span><span class="delimiter">&quot;</span></span>
         attrs.tagName = <span class="string"><span class="delimiter">&quot;</span><span class="content">passwordField</span><span class="delimiter">&quot;</span></span>
         fieldImpl(out, attrs)
@@ -4894,7 +4959,7 @@ To help IDEs autocomplete tag attributes, you should add Javadoc comments to you
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> dateFormat = { attrs, body -&gt;
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> <span class="function">dateFormat</span>(<span class="predefined-type">Map</span> attrs) {
     out &lt;&lt; <span class="keyword">new</span> java.text.SimpleDateFormat(attrs.format).format(attrs.date)
 }</code></pre>
 </div>
@@ -4908,11 +4973,24 @@ To help IDEs autocomplete tag attributes, you should add Javadoc comments to you
 </div>
 </div>
 <div class="paragraph">
+<p>With method-based tags, attributes may also bind directly to method parameters by name when the method is explicitly marked with <code>@Tag</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.gsp.Tag</span>
+
+<span class="annotation">@Tag</span>
+<span class="keyword">def</span> <span class="function">dateFormat</span>(<span class="predefined-type">String</span> format, <span class="predefined-type">Date</span> date) {
+    out &lt;&lt; <span class="keyword">new</span> java.text.SimpleDateFormat(format).format(date)
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
 <p>With simple tags sometimes you need to write HTML mark-up to the response. One approach would be to embed the content directly:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> formatBook = { attrs, body -&gt;
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> <span class="function">formatBook</span>(<span class="predefined-type">Map</span> attrs) {
     out &lt;&lt; <span class="string"><span class="delimiter">&quot;</span><span class="content">&lt;div id=</span><span class="char">\&quot;</span><span class="inline"><span class="inline-delimiter">${</span>attrs.book.id<span class="inline-delimiter">}</span></span><span class="char">\&quot;</span><span class="content">&gt;</span><span class="delimiter">&quot;</span></span>
     out &lt;&lt; <span class="string"><span class="delimiter">&quot;</span><span class="content">Title : </span><span class="inline"><span class="inline-delimiter">${</span>attrs.book.title<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>
     out &lt;&lt; <span class="string"><span class="delimiter">&quot;</span><span class="content">&lt;/div&gt;</span><span class="delimiter">&quot;</span></span>
@@ -4924,7 +5002,7 @@ To help IDEs autocomplete tag attributes, you should add Javadoc comments to you
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> formatBook = { attrs, body -&gt;
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> <span class="function">formatBook</span>(<span class="predefined-type">Map</span> attrs) {
     out &lt;&lt; render(<span class="key">template</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">bookTemplate</span><span class="delimiter">&quot;</span></span>, <span class="key">model</span>: [<span class="key">book</span>: attrs.book])
 }</code></pre>
 </div>
@@ -4948,7 +5026,7 @@ To help IDEs autocomplete tag attributes, you should add Javadoc comments to you
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> isAdmin = { attrs, body -&gt;
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> <span class="function">isAdmin</span>(<span class="predefined-type">Map</span> attrs, Closure body) {
     <span class="keyword">def</span> user = attrs.user
     <span class="keyword">if</span> (user &amp;&amp; checkUserPrivs(user)) {
         out &lt;&lt; body()
@@ -4982,7 +5060,7 @@ To help IDEs autocomplete tag attributes, you should add Javadoc comments to you
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> repeat = { attrs, body -&gt;
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> <span class="function">repeat</span>(<span class="predefined-type">Map</span> attrs, Closure body) {
     attrs.times?.toInteger()?.times { num -&gt;
         out &lt;&lt; body(num)
     }
@@ -5012,7 +5090,7 @@ To help IDEs autocomplete tag attributes, you should add Javadoc comments to you
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> repeat = { attrs, body -&gt;
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> <span class="function">repeat</span>(<span class="predefined-type">Map</span> attrs, Closure body) {
     <span class="keyword">def</span> <span class="type">var</span> = attrs.var ?: <span class="string"><span class="delimiter">&quot;</span><span class="content">num</span><span class="delimiter">&quot;</span></span>
     attrs.times?.toInteger()?.times { num -&gt;
         out &lt;&lt; body((<span class="type">var</span>):num)
@@ -5072,8 +5150,8 @@ Note the usage of the parenthesis around the variable name. If you omit these Gr
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">SimpleTagLib</span> {
     <span class="directive">static</span> namespace = <span class="string"><span class="delimiter">&quot;</span><span class="content">my</span><span class="delimiter">&quot;</span></span>
 
-    <span class="keyword">def</span> example = { attrs -&gt;
-        <span class="comment">//...</span>
+    <span class="keyword">def</span> <span class="function">example</span>(<span class="predefined-type">Map</span> attrs) {
+        out &lt;&lt; attrs.name
     }
 }</code></pre>
 </div>
@@ -5193,14 +5271,14 @@ This is configured with the <code>grails.gsp.tldScanPattern</code> setting. It a
 <p>A taglib can be used in a GSP as an ordinary tag, or it might be used as a function in other taglibs or GSP expressions.</p>
 </div>
 <div class="paragraph">
-<p>Internally Grails intercepts calls to taglib closures.
+<p>Internally Grails intercepts calls to tag handlers (method-based or closure-based).
 The "out" that is available in a taglib is mapped to a <code>java.io.Writer</code> implementation that writes to a buffer
 that "captures" the output of the taglib call. This buffer is the return value of a tag library call when it&#8217;s
 used as a function.</p>
 </div>
 <div class="paragraph">
 <p>If the tag is listed in the library&#8217;s static <code>returnObjectForTags</code> array, then its return value will be written to
-the output when it&#8217;s used as a normal tag. The return value of the tag lib closure will be returned as-is
+the output when it&#8217;s used as a normal tag. The return value of the tag method/closure will be returned as-is
 if it&#8217;s used as a function in GSP expressions or other taglibs.</p>
 </div>
 <div class="paragraph">
@@ -5213,11 +5291,11 @@ Using "out" to write output in returnObjectForTags is not supported.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">ObjectReturningTagLib</span> {
-        <span class="directive">static</span> namespace = <span class="string"><span class="delimiter">&quot;</span><span class="content">cms</span><span class="delimiter">&quot;</span></span>
-        <span class="directive">static</span> returnObjectForTags = [<span class="string"><span class="delimiter">'</span><span class="content">content</span><span class="delimiter">'</span></span>]
+    <span class="directive">static</span> namespace = <span class="string"><span class="delimiter">&quot;</span><span class="content">cms</span><span class="delimiter">&quot;</span></span>
+    <span class="directive">static</span> returnObjectForTags = [<span class="string"><span class="delimiter">'</span><span class="content">content</span><span class="delimiter">'</span></span>]
 
-        <span class="keyword">def</span> content = { attrs, body -&gt;
-                CmsContent.findByCode(attrs.code)?.content
+    <span class="keyword">def</span> <span class="function">content</span>(<span class="predefined-type">Map</span> attrs) {
+        CmsContent.findByCode(attrs.code)?.content
     }
 }</code></pre>
 </div>

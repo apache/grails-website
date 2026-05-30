@@ -1173,7 +1173,222 @@ The Spring annotations still work, so this is non-blocking, but new code should 
 </div>
 </div>
 <div class="sect3">
-<h4 id="_20_known_plugin_incompatibilities">20. Known Plugin Incompatibilities</h4>
+<h4 id="_20_tag_library_test_cleanup_changes">20. Tag Library Test Cleanup Changes</h4>
+<div class="paragraph">
+<p>Grails 8 removes the <code>purgeTagLibMetaClass</code> test hook used by some web and TagLib unit tests.
+TagLib metaclass cleanup now happens automatically as part of the web test infrastructure, so test specs should delete any custom <code>purgeTagLibMetaClass</code> property or getter.</p>
+</div>
+<div class="paragraph">
+<p>If your tests use <code>TagLibUnitTest</code> and mock additional tag libraries with <code>mockTagLib(&#8230;&#8203;)</code> or <code>mockTagLibs(&#8230;&#8203;)</code>, those mocked tag libraries are rebuilt automatically between feature methods.
+No replacement flag is required.</p>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+Mocked tag libraries are cleared after each feature method.
+If your tests call <code>mockTagLib</code> directly (for example, when implementing <code>GrailsWebUnitTest</code> instead of <code>TagLibUnitTest</code>), move the call from <code>setupSpec()</code> to <code>setup()</code> so the mock is re-applied before every feature.
+<code>TagLibUnitTest</code> handles this automatically, but <code>GrailsWebUnitTest</code> does not.
+</td>
+</tr>
+</table>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">// Before</span>
+<span class="type">class</span> <span class="class">MyTagLibSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> TagLibUnitTest&lt;MyTagLib&gt; {
+    <span class="type">boolean</span> getPurgeTagLibMetaClass() {
+        <span class="predefined-constant">true</span>
+    }
+}
+
+<span class="comment">// After</span>
+<span class="type">class</span> <span class="class">MyTagLibSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> TagLibUnitTest&lt;MyTagLib&gt; {
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_21_method_based_taglib_handlers">21. Method-based TagLib Handlers</h4>
+<div class="paragraph">
+<p>Grails 8 introduces method-based tag handler syntax as the recommended way to define tags. Closure-based handlers are still supported for backward compatibility.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.gsp.Tag</span>
+
+<span class="type">class</span> <span class="class">DemoTagLib</span> {
+    <span class="directive">static</span> namespace = <span class="string"><span class="delimiter">'</span><span class="content">demo</span><span class="delimiter">'</span></span>
+
+    <span class="keyword">def</span> <span class="function">greet</span>(<span class="predefined-type">Map</span> attrs) {
+        out &lt;&lt; <span class="string"><span class="delimiter">&quot;</span><span class="content">Hello, </span><span class="inline"><span class="inline-delimiter">${</span>attrs.name<span class="inline-delimiter">}</span></span><span class="content">!</span><span class="delimiter">&quot;</span></span>
+    }
+
+    <span class="annotation">@Tag</span>
+    <span class="keyword">def</span> <span class="function">greeting</span>(<span class="predefined-type">String</span> name) {
+        out &lt;&lt; <span class="string"><span class="delimiter">&quot;</span><span class="content">Hello, </span><span class="inline"><span class="inline-delimiter">${</span>name<span class="inline-delimiter">}</span></span><span class="content">!</span><span class="delimiter">&quot;</span></span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Method tags with the conventional signatures <code>def tag(Map attrs)</code>, <code>def tag(Closure body)</code>, and <code>def tag(Map attrs, Closure body)</code> are discovered automatically. Zero-argument method tags and method tags that bind named attributes directly to method parameters must use <code>@grails.gsp.Tag</code>; this avoids exposing ordinary public helper methods as tags.</p>
+</div>
+<div class="paragraph">
+<p>Grails Gradle application builds preserve Java and Groovy method parameter names by default (see §21.3 below). If you compile TagLib classes outside those plugins, enable Java <code>-parameters</code> and Groovy <code>groovyOptions.parameters = true</code> so <code>@Tag</code> methods can bind attributes by parameter name.</p>
+</div>
+<div class="paragraph">
+<p>To exclude a conventional public method from being exposed as a tag (for example, a helper that must remain public to satisfy an interface), annotate it with <code>@grails.gsp.NotATag</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.gsp.NotATag</span>
+
+<span class="type">class</span> <span class="class">DemoTagLib</span> {
+    <span class="keyword">def</span> <span class="function">greet</span>(<span class="predefined-type">Map</span> attrs) {
+        out &lt;&lt; <span class="string"><span class="delimiter">&quot;</span><span class="content">Hello, </span><span class="inline"><span class="inline-delimiter">${</span>attrs.name<span class="inline-delimiter">}</span></span><span class="content">!</span><span class="delimiter">&quot;</span></span>
+    }
+
+    <span class="annotation">@NotATag</span>
+    <span class="keyword">def</span> <span class="function">helper</span>(<span class="predefined-type">Map</span> attrs) { <span class="comment">/* ... */</span> }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The compile-time deprecation warning emitted for closure-based tag fields can be silenced by setting the system property <code>grails.taglib.warnDeprecatedClosures=false</code>.</p>
+</div>
+<div class="sect4">
+<h5 id="_21_1_behavior_change_tag_method_registration">21.1 Behavior change: tag method registration</h5>
+<div class="paragraph">
+<p>In Grails 7, the metaclass tag dispatchers registered for the taglib&#8217;s own namespace did not override existing methods. Because method-based tags are now real methods on the TagLib class, those dispatchers must override methods of the same name so that function-style invocation (for example <code>tagLib.myTag(attrs)</code>) returns captured tag output rather than writing directly to <code>out</code>.</p>
+</div>
+<div class="paragraph">
+<p>If a TagLib intentionally defines a method that shares a name with a default-namespace tag in another TagLib, the locally defined method will be shadowed by the tag dispatcher. Rename the helper method or move it behind a different namespace if the previous behavior is required.</p>
+</div>
+<div class="paragraph">
+<p>This shadowing is not reported at runtime by default. To audit which TagLib methods are being overridden by tag dispatchers, enable <code>DEBUG</code> logging for <code>org.grails.taglib.TagLibraryMetaUtils</code> in <code>logback.xml</code> (or <code>logback-spring.xml</code>):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="xml"><span class="tag">&lt;logger</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails.taglib.TagLibraryMetaUtils</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">level</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">DEBUG</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Each override is logged as <code>Registering tag dispatcher &lt;namespace&gt;:&lt;tagName&gt; over existing method &lt;Class&gt;.&lt;method&gt;(&lt;paramTypes&gt;)</code>. Inspect the output after application startup; any entry whose <code>&lt;Class&gt;</code> is one of your own TagLibs identifies a method that has been replaced by the dispatcher.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_21_2_behavior_change_parameter_name_binding_for_map_and_closure_parameters">21.2 Behavior change: parameter-name binding for <code>Map</code> and <code>Closure</code> parameters</h5>
+<div class="paragraph">
+<p>Method-based tag handlers bind attributes to method parameters by parameter name. Two reserved names participate in this resolution:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>A <code>Map</code>-typed parameter named <code>attrs</code> receives the full attributes map.</p>
+</li>
+<li>
+<p>A <code>Closure</code>-typed parameter named <code>body</code> receives the tag body.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>In earlier iterations of the method-based handler implementation, a <code>Closure</code>-typed parameter was bound to the body regardless of its parameter name, while a <code>Map</code>-typed parameter required the literal name <code>attrs</code>. That asymmetry has been removed. Both reserved names are now applied consistently: a <code>Closure</code> parameter named anything other than <code>body</code> is treated as a normal named attribute (and must be supplied by name), just as a <code>Map</code> parameter named anything other than <code>attrs</code> is.</p>
+</div>
+<div class="paragraph">
+<p>If you have method-based tag handlers whose <code>Closure</code> parameter uses a name other than <code>body</code>, rename the parameter so the body binds as expected:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.gsp.Tag</span>
+
+<span class="type">class</span> <span class="class">DemoTagLib</span> {
+
+    <span class="comment">// Will NOT receive the tag body; `renderer` is treated as a named attribute.</span>
+    <span class="annotation">@Tag</span>
+    <span class="keyword">def</span> <span class="function">before</span>(Closure renderer) {
+        out &lt;&lt; renderer.call()
+    }
+
+    <span class="comment">// Receives the tag body.</span>
+    <span class="annotation">@Tag</span>
+    <span class="keyword">def</span> <span class="function">after</span>(Closure body) {
+        out &lt;&lt; body.call()
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If parameter names are not preserved at compile time (see §21.3 below for the <code>preserveParameterNames</code> Gradle extension property), the first <code>Map</code> parameter is bound to <code>attrs</code> and the first <code>Closure</code> parameter is bound to <code>body</code> regardless of declared names, matching the behavior of closure-based tag handlers.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_21_3_grails_gradle_extension_preserves_parameter_names_by_default">21.3 Grails Gradle Extension Preserves Parameter Names By Default</h5>
+<div class="paragraph">
+<p>In Grails 8, the Grails Gradle extension defaults <code>preserveParameterNames</code> to <code>true</code>.
+This configures Groovy compilation to retain method and constructor parameter names in generated class files.</p>
+</div>
+<div class="paragraph">
+<p>This behavior supports framework features that bind by parameter name, including method-based TagLib handlers annotated with <code>@grails.gsp.Tag</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.gsp.Tag</span>
+
+<span class="type">class</span> <span class="class">DemoTagLib</span> {
+    <span class="annotation">@Tag</span>
+    <span class="keyword">def</span> <span class="function">greeting</span>(<span class="predefined-type">String</span> name) {
+        out &lt;&lt; <span class="string"><span class="delimiter">&quot;</span><span class="content">Hello, </span><span class="inline"><span class="inline-delimiter">${</span>name<span class="inline-delimiter">}</span></span><span class="content">!</span><span class="delimiter">&quot;</span></span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If you need the previous Groovy compiler behavior, disable it in <code>build.gradle</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails {
+    preserveParameterNames = <span class="predefined-constant">false</span>
+}</code></pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+This Gradle extension property controls Groovy compilation only (<code>groovyOptions.parameters</code>). Java parameter-name preservation is enabled by the Spring Boot Gradle plugin, which adds <code>-parameters</code> to every <code>JavaCompile</code> task by default since Spring Boot 3.2. Grails 8 applications inherit this through the Spring Boot Gradle plugin and require no additional configuration for Java sources.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>If you compile TagLib classes outside the Grails Gradle plugin (for example, in a standalone Groovy module, a plain Spring Boot application that does not apply <code>org.springframework.boot</code>, or a build that disables the Spring Boot plugin&#8217;s compiler configuration), enable parameter-name preservation explicitly so <code>@grails.gsp.Tag</code> methods can bind attributes by parameter name:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs.add(<span class="string"><span class="delimiter">'</span><span class="content">-parameters</span><span class="delimiter">'</span></span>)
+}
+
+tasks.withType(GroovyCompile).configureEach {
+    groovyOptions.parameters = <span class="predefined-constant">true</span>
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Without these flags, <code>Parameter.getName()</code> returns synthetic names such as <code>arg0</code>, the attribute lookup misses, and the call surfaces as <code>MissingMethodException</code> at runtime. The <code>@Tag</code>-annotated method itself produces no compile-time warning, because preservation is a property of the build, not of the source file.</p>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_22_known_plugin_incompatibilities">22. Known Plugin Incompatibilities</h4>
 <div class="paragraph">
 <p>Some third-party plugins have not yet been updated for Spring Boot 4 / Spring Framework 7 compatibility.
 The following are known blockers at this time:</p>
@@ -1194,7 +1409,7 @@ Applications using <code>grails-sitemesh3</code> should remain on the <code>grai
 <p>Check the <a href="https://github.com/apache/grails-core/issues">Grails issue tracker</a> for the latest status of plugin compatibility.</p>
 </div>
 <div class="sect4">
-<h5 id="_21_custom_json_view_converters">21. Custom JSON View Converters</h5>
+<h5 id="_23_custom_json_view_converters">23. Custom JSON View Converters</h5>
 <div class="paragraph">
 <p>JSON views now use Groovy&#8217;s <code>groovy.json.JsonGenerator</code> implementation instead of the previous Grails-specific
 JSON generator infrastructure.
@@ -1223,7 +1438,7 @@ for <code>render &#8230;&#8203; as JSON</code> and related converter-based rende
 </div>
 </div>
 <div class="sect4">
-<h5 id="_22_rendering_enum_values_as_json">22 Rendering Enum values as JSON</h5>
+<h5 id="_23_rendering_enum_values_as_json">23 Rendering Enum values as JSON</h5>
 <div class="paragraph">
 <p>It is no longer possible to render a single enum value as JSON using the <code>render(Number.ONE as JSON)</code> syntax.
 Previously, rendering an enum value would produce a JSON string with the type and name of the enum value like:</p>
