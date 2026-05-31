@@ -690,7 +690,11 @@ cd grails-htmx/complete
             <span class="keyword">return</span>
         }
         task.delete(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
-        render <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>
+        <span class="keyword">if</span> (Task.count() == <span class="integer">0</span>) {
+            render <span class="key">template</span>: <span class="string"><span class="delimiter">'</span><span class="content">taskRows</span><span class="delimiter">'</span></span>, <span class="key">model</span>: [<span class="key">tasks</span>: <span class="type">[]</span>]
+        } <span class="keyword">else</span> {
+            render <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>
+        }
     }
 }</code></pre>
 </div>
@@ -1362,10 +1366,15 @@ withForm {
     }
 
     <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">tasks list newest first per the domain mapping</span><span class="delimiter">&quot;</span></span>() {
-        <span class="key">given</span>:
-        <span class="keyword">new</span> Task(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Older</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
-        <span class="predefined-type">Thread</span>.sleep(<span class="integer">20</span>)
-        <span class="keyword">new</span> Task(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Newer</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        <span class="key">given</span>: <span class="string"><span class="delimiter">'</span><span class="content">two tasks with explicit, distinct creation timestamps (no wall-clock sleep)</span><span class="delimiter">'</span></span>
+        Task older = <span class="keyword">new</span> Task(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Older</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        Task newer = <span class="keyword">new</span> Task(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Newer</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        <span class="comment">// dateCreated is auto-assigned on insert; autoTimestamp does not touch it on</span>
+        <span class="comment">// update, so overriding it here gives the dateCreated-desc mapping a stable order.</span>
+        older.dateCreated = <span class="keyword">new</span> <span class="predefined-type">Date</span>(<span class="integer">1</span>_000_000L)
+        newer.dateCreated = <span class="keyword">new</span> <span class="predefined-type">Date</span>(<span class="integer">2</span>_000_000L)
+        older.save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        newer.save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
 
         <span class="key">expect</span>:
         Task.list().first().title == <span class="string"><span class="delimiter">'</span><span class="content">Newer</span><span class="delimiter">'</span></span>
@@ -1381,6 +1390,47 @@ withForm {
 
         <span class="key">then</span>:
         Task.get(t.id).done
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">get returns null for non-existent id</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">expect</span>:
+        Task.get(<span class="integer">999</span>) == <span class="predefined-constant">null</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">delete removes the entity from the database</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        Task t = <span class="keyword">new</span> Task(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Delete me</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">when</span>:
+        t.delete(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">then</span>:
+        Task.get(t.id) == <span class="predefined-constant">null</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">blank title is rejected by validation</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        <span class="keyword">new</span> Task(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">then</span>:
+        thrown(grails.validation.ValidationException)
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">null title is rejected by validation</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        <span class="keyword">new</span> Task(<span class="key">title</span>: <span class="predefined-constant">null</span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">then</span>:
+        thrown(grails.validation.ValidationException)
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">search matches titles that contain punctuation characters</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="keyword">new</span> Task(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Foo (bar)</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">expect</span>:
+        Task.findAllByTitleIlike(<span class="string"><span class="delimiter">'</span><span class="content">%foo%</span><span class="delimiter">'</span></span>)*.title == [<span class="string"><span class="delimiter">'</span><span class="content">Foo (bar)</span><span class="delimiter">'</span></span>]
+        Task.findAllByTitleIlike(<span class="string"><span class="delimiter">'</span><span class="content">%(bar)%</span><span class="delimiter">'</span></span>)*.title == [<span class="string"><span class="delimiter">'</span><span class="content">Foo (bar)</span><span class="delimiter">'</span></span>]
     }
 }</code></pre>
 </div>
@@ -1408,6 +1458,8 @@ withForm {
  *
  * Each htmx swap type is exercised: the create OOB prepend, the toggle/edit
  * outerHTML swaps, the live-search innerHTML swap, and the delete removal.
+ * Additional tests cover validation error paths (create/update with blank title),
+ * the inline edit cancel button, and the show fragment endpoint.
  * @Rollback is not used (the endpoints commit); tests use unique titles so
  * they stay independent of rows left by earlier feature methods.
  */</span>
@@ -1509,6 +1561,49 @@ withForm {
 
         <span class="key">then</span>:
         waitFor { !<span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">#taskList</span><span class="delimiter">'</span></span>).text().contains(<span class="string"><span class="delimiter">'</span><span class="content">Deletable task</span><span class="delimiter">'</span></span>) }
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">submitting the empty add form leaves the page intact and focused</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        go <span class="string"><span class="delimiter">'</span><span class="content">/tasks</span><span class="delimiter">'</span></span>
+
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">try to submit with empty title (HTML5 validation blocks it)</span><span class="delimiter">'</span></span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">#taskFormContainer</span><span class="delimiter">'</span></span>).find(<span class="string"><span class="delimiter">'</span><span class="content">button</span><span class="delimiter">'</span></span>, <span class="key">type</span>: <span class="string"><span class="delimiter">'</span><span class="content">submit</span><span class="delimiter">'</span></span>).click()
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">the page stays on the same form, no task list change</span><span class="delimiter">'</span></span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">#taskFormContainer</span><span class="delimiter">'</span></span>).size() == <span class="integer">1</span>
+        !<span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">#taskList</span><span class="delimiter">'</span></span>).text().contains(<span class="string"><span class="delimiter">'</span><span class="content">oops</span><span class="delimiter">'</span></span>)
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">cancelling an inline edit reverts to the task display</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        go <span class="string"><span class="delimiter">'</span><span class="content">/tasks</span><span class="delimiter">'</span></span>
+        addTaskThroughForm(<span class="string"><span class="delimiter">'</span><span class="content">Cancel test task</span><span class="delimiter">'</span></span>)
+        <span class="predefined-type">Long</span> id = Task.withNewTransaction { Task.findByTitle(<span class="string"><span class="delimiter">'</span><span class="content">Cancel test task</span><span class="delimiter">'</span></span>).id }
+
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">open the edit form</span><span class="delimiter">'</span></span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">#task-</span><span class="inline"><span class="inline-delimiter">${</span>id<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>).find(<span class="string"><span class="delimiter">'</span><span class="content">button</span><span class="delimiter">'</span></span>, <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Click to edit</span><span class="delimiter">'</span></span>).click()
+        waitFor { <span class="error">$</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">#task-</span><span class="inline"><span class="inline-delimiter">${</span>id<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>).find(<span class="string"><span class="delimiter">'</span><span class="content">input</span><span class="delimiter">'</span></span>, <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">title</span><span class="delimiter">'</span></span>).size() == <span class="integer">1</span> }
+
+        <span class="key">and</span>: <span class="string"><span class="delimiter">'</span><span class="content">click the Cancel button</span><span class="delimiter">'</span></span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">#task-</span><span class="inline"><span class="inline-delimiter">${</span>id<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>).find(<span class="string"><span class="delimiter">'</span><span class="content">button</span><span class="delimiter">'</span></span>, <span class="key">text</span>: <span class="string"><span class="delimiter">'</span><span class="content">Cancel</span><span class="delimiter">'</span></span>).click()
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">the task display is restored with the original title visible</span><span class="delimiter">'</span></span>
+        waitFor { <span class="error">$</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">#task-</span><span class="inline"><span class="inline-delimiter">${</span>id<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>).find(<span class="string"><span class="delimiter">'</span><span class="content">button</span><span class="delimiter">'</span></span>, <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Click to edit</span><span class="delimiter">'</span></span>).size() == <span class="integer">1</span> }
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">the show endpoint returns a rendered task fragment</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        go <span class="string"><span class="delimiter">'</span><span class="content">/tasks</span><span class="delimiter">'</span></span>
+        addTaskThroughForm(<span class="string"><span class="delimiter">'</span><span class="content">Show endpoint task</span><span class="delimiter">'</span></span>)
+        <span class="predefined-type">Long</span> id = Task.withNewTransaction { Task.findByTitle(<span class="string"><span class="delimiter">'</span><span class="content">Show endpoint task</span><span class="delimiter">'</span></span>).id }
+
+        <span class="key">when</span>:
+        go <span class="string"><span class="delimiter">&quot;</span><span class="content">/tasks/</span><span class="inline"><span class="inline-delimiter">${</span>id<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">the raw fragment contains the task title</span><span class="delimiter">'</span></span>
+        waitFor { <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">li[id=&quot;task-</span><span class="delimiter">'</span></span> + id + <span class="string"><span class="delimiter">'</span><span class="content">&quot;]</span><span class="delimiter">'</span></span>).size() == <span class="integer">1</span> }
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">li[id=&quot;task-</span><span class="delimiter">'</span></span> + id + <span class="string"><span class="delimiter">'</span><span class="content">&quot;]</span><span class="delimiter">'</span></span>).text().contains(<span class="string"><span class="delimiter">'</span><span class="content">Show endpoint task</span><span class="delimiter">'</span></span>)
     }
 }</code></pre>
 </div>

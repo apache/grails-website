@@ -204,9 +204,9 @@ testImplementation <span class="string"><span class="delimiter">&quot;</span><sp
 
 <span class="comment">/**
  * Controller unit test for the page-size clamp the overridden
- * listAllResources applies. It reads params.int('max', 25), so the spec
- * drives it through the controller's GrailsParameterMap (a plain Map has
- * no int() accessor). No Spring context boots.
+ * listAllResources applies and other controller behaviours that
+ * do not require GSON view rendering (which is covered by the
+ * functional HTTP tests in ApiFunctionalSpec).
  */</span>
 <span class="type">class</span> <span class="class">BookControllerSpec</span> <span class="directive">extends</span> Specification
         <span class="directive">implements</span> ControllerUnitTest&lt;BookController&gt;, DataTest {
@@ -434,6 +434,166 @@ testImplementation <span class="string"><span class="delimiter">&quot;</span><sp
 
         <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">the static bundle is served from the same origin</span><span class="delimiter">'</span></span>
         asset.statusCode() == <span class="integer">200</span>
+    }
+
+    <span class="comment">// ---------------------------------------------------------------------------</span>
+    <span class="comment">// Missing CRUD endpoint coverage</span>
+    <span class="comment">// ---------------------------------------------------------------------------</span>
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">GET /api/books/:id returns a single book</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">Book</span>.withNewTransaction {
+            <span class="keyword">if</span> (!<span class="predefined-type">Book</span>.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9780553380954</span><span class="delimiter">'</span></span>)) {
+                <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Foundation</span><span class="delimiter">'</span></span>, <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Isaac Asimov</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780553380954</span><span class="delimiter">'</span></span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+            }
+        }
+        <span class="predefined-type">Long</span> id = <span class="predefined-type">Book</span>.withNewTransaction { <span class="predefined-type">Book</span>.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9780553380954</span><span class="delimiter">'</span></span>).id }
+
+        <span class="key">when</span>:
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = client.send(
+                HttpRequest.newBuilder(uri(<span class="string"><span class="delimiter">&quot;</span><span class="content">/api/books/</span><span class="inline"><span class="inline-delimiter">${</span>id<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>)).GET().build(),
+                HttpResponse.BodyHandlers.ofString())
+        <span class="predefined-type">Map</span> json = <span class="keyword">new</span> JsonSlurper().parseText(resp.body()) <span class="keyword">as</span> <span class="predefined-type">Map</span>
+
+        <span class="key">then</span>:
+        resp.statusCode() == <span class="integer">200</span>
+        json.title == <span class="string"><span class="delimiter">'</span><span class="content">Foundation</span><span class="delimiter">'</span></span>
+        json.author == <span class="string"><span class="delimiter">'</span><span class="content">Isaac Asimov</span><span class="delimiter">'</span></span>
+        json.isbn == <span class="string"><span class="delimiter">'</span><span class="content">9780553380954</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">GET /api/books/:id returns 404 for a non-existent book</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = client.send(
+                HttpRequest.newBuilder(uri(<span class="string"><span class="delimiter">'</span><span class="content">/api/books/999999</span><span class="delimiter">'</span></span>)).GET().build(),
+                HttpResponse.BodyHandlers.ofString())
+
+        <span class="key">then</span>:
+        resp.statusCode() == <span class="integer">404</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">PUT /api/books/:id updates an existing book</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">Book</span>.withNewTransaction {
+            <span class="keyword">if</span> (!<span class="predefined-type">Book</span>.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9780345391803</span><span class="delimiter">'</span></span>)) {
+                <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Hitchhiker</span><span class="delimiter">'</span></span>, <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Douglas Adams</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780345391803</span><span class="delimiter">'</span></span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+            }
+        }
+        <span class="predefined-type">Long</span> id = <span class="predefined-type">Book</span>.withNewTransaction { <span class="predefined-type">Book</span>.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9780345391803</span><span class="delimiter">'</span></span>).id }
+        <span class="predefined-type">String</span> body = JsonOutput.toJson([<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Hitchhikers Guide</span><span class="delimiter">'</span></span>, <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Douglas Adams</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780345391803</span><span class="delimiter">'</span></span>])
+
+        <span class="key">when</span>:
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = client.send(
+                HttpRequest.newBuilder(uri(<span class="string"><span class="delimiter">&quot;</span><span class="content">/api/books/</span><span class="inline"><span class="inline-delimiter">${</span>id<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>))
+                        .header(<span class="string"><span class="delimiter">'</span><span class="content">Content-Type</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+                        .PUT(HttpRequest.BodyPublishers.ofString(body)).build(),
+                HttpResponse.BodyHandlers.ofString())
+
+        <span class="key">then</span>:
+        resp.statusCode() == <span class="integer">200</span>
+        <span class="predefined-type">Book</span>.withNewTransaction {
+            <span class="predefined-type">Book</span>.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9780345391803</span><span class="delimiter">'</span></span>).title == <span class="string"><span class="delimiter">'</span><span class="content">Hitchhikers Guide</span><span class="delimiter">'</span></span>
+        }
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">PUT /api/books/:id with invalid data returns 422</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">Book</span>.withNewTransaction {
+            <span class="keyword">if</span> (!<span class="predefined-type">Book</span>.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9780451524935</span><span class="delimiter">'</span></span>)) {
+                <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">1984</span><span class="delimiter">'</span></span>, <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">George Orwell</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780451524935</span><span class="delimiter">'</span></span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+            }
+        }
+        <span class="predefined-type">Long</span> id = <span class="predefined-type">Book</span>.withNewTransaction { <span class="predefined-type">Book</span>.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9780451524935</span><span class="delimiter">'</span></span>).id }
+        <span class="predefined-type">String</span> body = JsonOutput.toJson([<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>, <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780451524935</span><span class="delimiter">'</span></span>])
+
+        <span class="key">when</span>:
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = client.send(
+                HttpRequest.newBuilder(uri(<span class="string"><span class="delimiter">&quot;</span><span class="content">/api/books/</span><span class="inline"><span class="inline-delimiter">${</span>id<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>))
+                        .header(<span class="string"><span class="delimiter">'</span><span class="content">Content-Type</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+                        .PUT(HttpRequest.BodyPublishers.ofString(body)).build(),
+                HttpResponse.BodyHandlers.ofString())
+
+        <span class="key">then</span>:
+        resp.statusCode() == <span class="integer">422</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">PUT /api/books/:id for non-existent returns 404</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">String</span> body = JsonOutput.toJson([<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Ghost</span><span class="delimiter">'</span></span>, <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Nobody</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780000000000</span><span class="delimiter">'</span></span>])
+
+        <span class="key">when</span>:
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = client.send(
+                HttpRequest.newBuilder(uri(<span class="string"><span class="delimiter">'</span><span class="content">/api/books/999999</span><span class="delimiter">'</span></span>))
+                        .header(<span class="string"><span class="delimiter">'</span><span class="content">Content-Type</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+                        .PUT(HttpRequest.BodyPublishers.ofString(body)).build(),
+                HttpResponse.BodyHandlers.ofString())
+
+        <span class="key">then</span>:
+        resp.statusCode() == <span class="integer">404</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">DELETE /api/books/:id deletes a book and returns 204</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">Book</span>.withNewTransaction {
+            <span class="keyword">if</span> (!<span class="predefined-type">Book</span>.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9780439023481</span><span class="delimiter">'</span></span>)) {
+                <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Mockingjay</span><span class="delimiter">'</span></span>, <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Suzanne Collins</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780439023481</span><span class="delimiter">'</span></span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+            }
+        }
+        <span class="predefined-type">Long</span> id = <span class="predefined-type">Book</span>.withNewTransaction { <span class="predefined-type">Book</span>.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9780439023481</span><span class="delimiter">'</span></span>).id }
+
+        <span class="key">when</span>:
+        HttpResponse&lt;<span class="predefined-type">Void</span>&gt; resp = client.send(
+                HttpRequest.newBuilder(uri(<span class="string"><span class="delimiter">&quot;</span><span class="content">/api/books/</span><span class="inline"><span class="inline-delimiter">${</span>id<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>)).DELETE().build(),
+                HttpResponse.BodyHandlers.discarding())
+
+        <span class="key">then</span>:
+        resp.statusCode() == <span class="integer">204</span>
+        <span class="predefined-type">Book</span>.withNewTransaction { <span class="predefined-type">Book</span>.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9780439023481</span><span class="delimiter">'</span></span>) == <span class="predefined-constant">null</span> }
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">DELETE /api/books/:id for non-existent returns 404</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        HttpResponse&lt;<span class="predefined-type">Void</span>&gt; resp = client.send(
+                HttpRequest.newBuilder(uri(<span class="string"><span class="delimiter">'</span><span class="content">/api/books/999999</span><span class="delimiter">'</span></span>)).DELETE().build(),
+                HttpResponse.BodyHandlers.discarding())
+
+        <span class="key">then</span>:
+        resp.statusCode() == <span class="integer">404</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">POST /api/books with blank title returns 422</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">String</span> body = JsonOutput.toJson([<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>, <span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">Someone</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780140449266</span><span class="delimiter">'</span></span>])
+
+        <span class="key">when</span>:
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = client.send(
+                HttpRequest.newBuilder(uri(<span class="string"><span class="delimiter">'</span><span class="content">/api/books</span><span class="delimiter">'</span></span>))
+                        .header(<span class="string"><span class="delimiter">'</span><span class="content">Content-Type</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+                        .POST(HttpRequest.BodyPublishers.ofString(body)).build(),
+                HttpResponse.BodyHandlers.ofString())
+
+        <span class="key">then</span>:
+        resp.statusCode() == <span class="integer">422</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">GET /assets with path traversal returns 400</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = client.send(
+                HttpRequest.newBuilder(uri(<span class="string"><span class="delimiter">'</span><span class="content">/assets/../../etc/passwd</span><span class="delimiter">'</span></span>)).GET().build(),
+                HttpResponse.BodyHandlers.ofString())
+
+        <span class="key">then</span>:
+        resp.statusCode() == <span class="integer">400</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">GET /assets for a non-existent file returns 404</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = client.send(
+                HttpRequest.newBuilder(uri(<span class="string"><span class="delimiter">'</span><span class="content">/assets/nonexistent-bundle.js</span><span class="delimiter">'</span></span>)).GET().build(),
+                HttpResponse.BodyHandlers.ofString())
+
+        <span class="key">then</span>:
+        resp.statusCode() == <span class="integer">404</span>
     }
 }</code></pre>
 </div>

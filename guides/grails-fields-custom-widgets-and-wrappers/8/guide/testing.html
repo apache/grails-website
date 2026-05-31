@@ -337,12 +337,15 @@ function addJsClass() {
  * Testcontainers, so only a running Docker daemon is required. BootStrap
  * seeds the library at startup, so these read-only specs assert on it.
  *
- * The point is to prove the custom widgets and wrappers actually render -
- * f:table on the index, f:display on the show page (custom isbn widget,
- * description wrapper), and the custom association widgets on the create form.
+ * The point is to prove the custom widgets and wrappers actually render on
+ * EVERY scaffolded page of EVERY domain - not just Book. The app-wide
+ * f:table template and the per-type widgets compile cleanly and only fail
+ * when a real request renders them, so each controller action gets a spec.
  */</span>
 <span class="annotation">@Integration</span>
 <span class="type">class</span> <span class="class">LibraryFunctionalSpec</span> <span class="directive">extends</span> ContainerGebSpec {
+
+    <span class="comment">// ---- Book pages -------------------------------------------------------</span>
 
     <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">the book index renders the custom f:table with seeded rows</span><span class="delimiter">&quot;</span></span>() {
         <span class="key">when</span>:
@@ -386,6 +389,36 @@ function addJsClass() {
         <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">input</span><span class="delimiter">'</span></span>, <span class="key">type</span>: <span class="string"><span class="delimiter">'</span><span class="content">checkbox</span><span class="delimiter">'</span></span>, <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">tags</span><span class="delimiter">'</span></span>).size() == <span class="integer">4</span>
     }
 
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">the book edit form is pre-filled and keeps the optimistic-lock version field</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">Long</span> id = <span class="predefined-type">Book</span>.withNewTransaction { <span class="predefined-type">Book</span>.findByTitle(<span class="string"><span class="delimiter">'</span><span class="content">The Hobbit</span><span class="delimiter">'</span></span>).id }
+
+        <span class="key">when</span>:
+        go <span class="string"><span class="delimiter">&quot;</span><span class="content">/book/edit/</span><span class="inline"><span class="inline-delimiter">${</span>id<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">the custom isbn widget is pre-filled with the persisted value and still carries its pattern</span><span class="delimiter">'</span></span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">input</span><span class="delimiter">'</span></span>, <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">isbn</span><span class="delimiter">'</span></span>).value() == <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">input</span><span class="delimiter">'</span></span>, <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">isbn</span><span class="delimiter">'</span></span>).@pattern.contains(<span class="string"><span class="delimiter">'</span><span class="char">\\</span><span class="content">d{13}</span><span class="delimiter">'</span></span>)
+
+        <span class="key">and</span>: <span class="string"><span class="delimiter">'</span><span class="content">the hidden version field is present so stale updates are rejected</span><span class="delimiter">'</span></span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">input</span><span class="delimiter">'</span></span>, <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">version</span><span class="delimiter">'</span></span>).size() == <span class="integer">1</span>
+    }
+
+    <span class="comment">// ---- Author pages -----------------------------------------------------</span>
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">the author index renders the custom f:table without crashing on a title-less domain</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">rendering the app-wide f:table for a domain class that has no title property</span><span class="delimiter">'</span></span>
+        go <span class="string"><span class="delimiter">'</span><span class="content">/author/index</span><span class="delimiter">'</span></span>
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">the shared template must be domain-agnostic - this is the regression guard for the book.title bug</span><span class="delimiter">'</span></span>
+        title == <span class="string"><span class="delimiter">'</span><span class="content">Authors</span><span class="delimiter">'</span></span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">table.table-striped</span><span class="delimiter">'</span></span>).size() == <span class="integer">1</span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">table.table-striped thead.table-dark</span><span class="delimiter">'</span></span>).size() == <span class="integer">1</span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">table.table-striped tbody tr</span><span class="delimiter">'</span></span>).size() &gt;= <span class="integer">2</span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">table.table-striped tbody</span><span class="delimiter">'</span></span>).text().contains(<span class="string"><span class="delimiter">'</span><span class="content">J.R.R. Tolkien</span><span class="delimiter">'</span></span>)
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">table.table-striped tbody</span><span class="delimiter">'</span></span>).text().contains(<span class="string"><span class="delimiter">'</span><span class="content">Jane Austen</span><span class="delimiter">'</span></span>)
+    }
+
     <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">the author show page renders the one-to-one contactInfo via its custom display</span><span class="delimiter">&quot;</span></span>() {
         <span class="key">given</span>:
         <span class="predefined-type">Long</span> id = Author.withNewTransaction { Author.findByName(<span class="string"><span class="delimiter">'</span><span class="content">J.R.R. Tolkien</span><span class="delimiter">'</span></span>).id }
@@ -397,30 +430,104 @@ function addJsClass() {
         <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">body</span><span class="delimiter">'</span></span>).text().contains(<span class="string"><span class="delimiter">'</span><span class="content">J.R.R. Tolkien</span><span class="delimiter">'</span></span>)
         <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">body</span><span class="delimiter">'</span></span>).text().contains(<span class="string"><span class="delimiter">'</span><span class="content">Contact for J.R.R. Tolkien</span><span class="delimiter">'</span></span>)
     }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">the author create form renders the email, url and textarea widgets from constraints</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        go <span class="string"><span class="delimiter">'</span><span class="content">/author/create</span><span class="delimiter">'</span></span>
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">the String widget dispatcher routes email/url/textarea by constraint</span><span class="delimiter">'</span></span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">input</span><span class="delimiter">'</span></span>, <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">email</span><span class="delimiter">'</span></span>, <span class="key">type</span>: <span class="string"><span class="delimiter">'</span><span class="content">email</span><span class="delimiter">'</span></span>).size() == <span class="integer">1</span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">input</span><span class="delimiter">'</span></span>, <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">website</span><span class="delimiter">'</span></span>, <span class="key">type</span>: <span class="string"><span class="delimiter">'</span><span class="content">url</span><span class="delimiter">'</span></span>).size() == <span class="integer">1</span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">textarea</span><span class="delimiter">'</span></span>, <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">bio</span><span class="delimiter">'</span></span>).size() == <span class="integer">1</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">the author edit form is pre-filled from the persisted author</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">Long</span> id = Author.withNewTransaction { Author.findByName(<span class="string"><span class="delimiter">'</span><span class="content">Jane Austen</span><span class="delimiter">'</span></span>).id }
+
+        <span class="key">when</span>:
+        go <span class="string"><span class="delimiter">&quot;</span><span class="content">/author/edit/</span><span class="inline"><span class="inline-delimiter">${</span>id<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>
+
+        <span class="key">then</span>:
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">input</span><span class="delimiter">'</span></span>, <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">name</span><span class="delimiter">'</span></span>).value() == <span class="string"><span class="delimiter">'</span><span class="content">Jane Austen</span><span class="delimiter">'</span></span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">input</span><span class="delimiter">'</span></span>, <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">email</span><span class="delimiter">'</span></span>, <span class="key">type</span>: <span class="string"><span class="delimiter">'</span><span class="content">email</span><span class="delimiter">'</span></span>).value() == <span class="string"><span class="delimiter">'</span><span class="content">jane@example.com</span><span class="delimiter">'</span></span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">input</span><span class="delimiter">'</span></span>, <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">version</span><span class="delimiter">'</span></span>).size() == <span class="integer">1</span>
+    }
+
+    <span class="comment">// ---- Mutating actions (save / delete) through the UI ------------------</span>
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">creating an author through the form persists it and redirects to show</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="type">int</span> before = Author.withNewTransaction { Author.count() }
+
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">filling and submitting the create form</span><span class="delimiter">'</span></span>
+        go <span class="string"><span class="delimiter">'</span><span class="content">/author/create</span><span class="delimiter">'</span></span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">input</span><span class="delimiter">'</span></span>, <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">name</span><span class="delimiter">'</span></span>).value(<span class="string"><span class="delimiter">'</span><span class="content">Mary Shelley</span><span class="delimiter">'</span></span>)
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">input</span><span class="delimiter">'</span></span>, <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">email</span><span class="delimiter">'</span></span>, <span class="key">type</span>: <span class="string"><span class="delimiter">'</span><span class="content">email</span><span class="delimiter">'</span></span>).value(<span class="string"><span class="delimiter">'</span><span class="content">mary@example.com</span><span class="delimiter">'</span></span>)
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">textarea</span><span class="delimiter">'</span></span>, <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">bio</span><span class="delimiter">'</span></span>) &lt;&lt; <span class="string"><span class="delimiter">'</span><span class="content">English novelist who wrote Frankenstein.</span><span class="delimiter">'</span></span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">button</span><span class="delimiter">'</span></span>, <span class="key">type</span>: <span class="string"><span class="delimiter">'</span><span class="content">submit</span><span class="delimiter">'</span></span>).click()
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">the save action persisted the row and the show page renders it</span><span class="delimiter">'</span></span>
+        waitFor { <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">body</span><span class="delimiter">'</span></span>).text().contains(<span class="string"><span class="delimiter">'</span><span class="content">Mary Shelley</span><span class="delimiter">'</span></span>) }
+        Author.withNewTransaction { Author.count() } == before + <span class="integer">1</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">editing an author through the form updates the persisted row</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>: <span class="string"><span class="delimiter">'</span><span class="content">a throwaway author to edit</span><span class="delimiter">'</span></span>
+        <span class="predefined-type">Long</span> id = Author.withNewTransaction {
+            <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Temp Author</span><span class="delimiter">'</span></span>, <span class="key">email</span>: <span class="string"><span class="delimiter">'</span><span class="content">temp@example.com</span><span class="delimiter">'</span></span>, <span class="key">bio</span>: <span class="string"><span class="delimiter">'</span><span class="content">temp bio</span><span class="delimiter">'</span></span>)
+                    .save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>).id
+        }
+
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">changing the name on the edit form and submitting (update action)</span><span class="delimiter">'</span></span>
+        go <span class="string"><span class="delimiter">&quot;</span><span class="content">/author/edit/</span><span class="inline"><span class="inline-delimiter">${</span>id<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">input</span><span class="delimiter">'</span></span>, <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">name</span><span class="delimiter">'</span></span>).value(<span class="string"><span class="delimiter">'</span><span class="content">Renamed Author</span><span class="delimiter">'</span></span>)
+        <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">button</span><span class="delimiter">'</span></span>, <span class="key">type</span>: <span class="string"><span class="delimiter">'</span><span class="content">submit</span><span class="delimiter">'</span></span>).click()
+
+        <span class="key">then</span>:
+        waitFor { Author.withNewTransaction { Author.get(id).name == <span class="string"><span class="delimiter">'</span><span class="content">Renamed Author</span><span class="delimiter">'</span></span> } }
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">deleting a book through the custom f:table delete form removes the row (delete action)</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>: <span class="string"><span class="delimiter">'</span><span class="content">a throwaway book that sorts last (title asc) so we delete it, not the seed</span><span class="delimiter">'</span></span>
+        <span class="predefined-type">Long</span> id = <span class="predefined-type">Book</span>.withNewTransaction {
+            Author a = Author.findByName(<span class="string"><span class="delimiter">'</span><span class="content">Jane Austen</span><span class="delimiter">'</span></span>)
+            <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Throwaway</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780000000001</span><span class="delimiter">'</span></span>, <span class="key">genre</span>: <span class="string"><span class="delimiter">'</span><span class="content">Fiction</span><span class="delimiter">'</span></span>,
+                    <span class="key">description</span>: <span class="string"><span class="delimiter">'</span><span class="content">temp</span><span class="delimiter">'</span></span>, <span class="key">publishedDate</span>: <span class="keyword">new</span> <span class="predefined-type">Date</span>(), <span class="key">priceUSD</span>: <span class="float">1.00</span>G,
+                    <span class="key">inStock</span>: <span class="predefined-constant">true</span>, <span class="key">author</span>: a).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>).id
+        }
+
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">submitting the last row</span><span class="char">\'</span><span class="content">s DELETE form (g:form method=DELETE renders as POST + _method), bypassing the JS confirm guard</span><span class="delimiter">'</span></span>
+        go <span class="string"><span class="delimiter">'</span><span class="content">/book/index</span><span class="delimiter">'</span></span>
+        js.exec(<span class="string"><span class="delimiter">'</span><span class="content">var b = document.querySelectorAll(&quot;button.btn-outline-danger&quot;); b[b.length - 1].closest(&quot;form&quot;).submit();</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>:
+        waitFor { <span class="predefined-type">Book</span>.withNewTransaction { <span class="predefined-type">Book</span>.get(id) == <span class="predefined-constant">null</span> } }
+    }
 }</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>The assertions map directly to the customisations earlier in the guide:</p>
+<p>The spec covers every scaffolded page and action of <strong>both</strong> domain classes, not just <code>Book</code>:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>the index page renders the app-wide custom <code>f:table</code> with its dark header and the seeded rows;</p>
+<p><code>index</code> - both <code>/book/index</code> and <code>/author/index</code> render the app-wide custom <code>f:table</code> with its dark header and the seeded rows. The <code>/author/index</code> assertion matters most: because <code>&lt;f:table&gt;</code> resolves a single app-wide <code>_table.gsp</code> for every domain class, a <code>book</code>-shaped loop variable or a <code>book.title</code> reference in that template renders <code>/book/index</code> fine but throws <code>No such property: title</code> on <code>/author/index</code>. That spec is the regression guard;</p>
 </li>
 <li>
-<p>the show page renders the value through the custom display widgets;</p>
+<p><code>show</code> - the read-only display widgets render, including the one-to-one <code>ContactInfo</code> through its <code>toString()</code>;</p>
 </li>
 <li>
-<p>the create form renders the per-property ISBN widget (with its <code>pattern</code> and help text), the many-to-one author select, and one many-to-many checkbox per <code>Tag</code>;</p>
+<p><code>create</code> and <code>edit</code> - the per-property ISBN widget (with its <code>pattern</code> and help text), the many-to-one author select, one many-to-many checkbox per <code>Tag</code>, and the constraint-driven email/url/textarea widgets all render, and the edit form is pre-filled and keeps the optimistic-lock <code>version</code> field;</p>
 </li>
 <li>
-<p>the author show page renders the one-to-one <code>ContactInfo</code> through its <code>toString()</code>.</p>
+<p><code>save</code>, <code>update</code>, <code>delete</code> - exercised through the UI: an author is created and updated through its form, and a book is deleted through the custom <code>f:table</code> delete form.</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>A browser test here is not gold-plating: the custom ISBN widget&#8217;s <code>pattern</code> attribute and the app-wide table&#8217;s <code>domainClass.javaClass.simpleName</code> lookup are both the kind of thing that compiles cleanly and only fails when the page is actually rendered in a request. The Geb layer exercises exactly that path.</p>
+<p>A browser test here is not gold-plating: the custom ISBN widget&#8217;s <code>pattern</code> attribute and the app-wide table&#8217;s <code>domainClass.javaClass.simpleName</code> lookup are both the kind of thing that compiles cleanly and only fails when the page is actually rendered in a request. The Geb layer exercises exactly that path - on every page, for every domain class.</p>
 </div>
 <div class="paragraph">
 <p>Run it all:</p>

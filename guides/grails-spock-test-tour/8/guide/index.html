@@ -497,6 +497,55 @@ cd grails-spock-test-tour/complete
         <span class="key">expect</span>:
         service.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9999999999999</span><span class="delimiter">'</span></span>) == <span class="predefined-constant">null</span>
     }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">get returns the book when it exists</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>: <span class="string"><span class="delimiter">'</span><span class="content">the isbn from the setup fixture</span><span class="delimiter">'</span></span>
+        <span class="predefined-type">Book</span> b = <span class="predefined-type">Book</span>.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9780000000001</span><span class="delimiter">'</span></span>)
+
+        <span class="key">expect</span>:
+        service.get(b.id)?.title == <span class="string"><span class="delimiter">'</span><span class="content">Short Story</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">get returns null when the id does not exist</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">expect</span>:
+        service.get(<span class="integer">99999L</span>) == <span class="predefined-constant">null</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">save persists a book and returns it with an id</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        <span class="predefined-type">Book</span> saved = service.save(<span class="keyword">new</span> <span class="predefined-type">Book</span>(
+            <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">New Book</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780000000005</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">200</span>))
+
+        <span class="key">then</span>:
+        saved.id != <span class="predefined-constant">null</span>
+        saved.title == <span class="string"><span class="delimiter">'</span><span class="content">New Book</span><span class="delimiter">'</span></span>
+
+        <span class="key">and</span>: <span class="string"><span class="delimiter">'</span><span class="content">it is visible to a subsequent query</span><span class="delimiter">'</span></span>
+        service.countByPageCountGreaterThanEquals(<span class="integer">0</span>) == <span class="integer">5</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">save rejects a duplicate isbn with ValidationException</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        service.save(<span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Original</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780000000005</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">100</span>))
+        <span class="predefined-type">Book</span>.withSession { <span class="local-variable">it</span>.flush() }
+
+        <span class="key">when</span>:
+        service.save(<span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Duplicate</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780000000005</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">200</span>))
+
+        <span class="key">then</span>:
+        <span class="keyword">def</span> ex = thrown(grails.validation.ValidationException)
+        ex.message.contains(<span class="string"><span class="delimiter">'</span><span class="content">unique</span><span class="delimiter">'</span></span>)
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">list returns all books when called without constraints</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">expect</span>:
+        service.list([:]).size() == <span class="integer">4</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">list respects the max parameter</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">expect</span>:
+        service.list([<span class="key">max</span>: <span class="integer">2</span>]).size() == <span class="integer">2</span>
+    }
 }</code></pre>
 </div>
 </div>
@@ -587,6 +636,108 @@ cd grails-spock-test-tour/complete
 
         <span class="key">then</span>:
         response.status == HttpStatus.UNPROCESSABLE_ENTITY.value()
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">index returns the persisted books in its model</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">First</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">100</span>)
+            .save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Second</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928228</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">200</span>)
+            .save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">the index action builds its model (HTML format returns the model map)</span><span class="delimiter">'</span></span>
+        request.method = <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>
+        <span class="predefined-type">Map</span> model = controller.index(<span class="integer">10</span>)
+
+        <span class="key">then</span>:
+        model.bookCount == <span class="integer">2</span>
+        model.bookList*.title.containsAll([<span class="string"><span class="delimiter">'</span><span class="content">First</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Second</span><span class="delimiter">'</span></span>])
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">POST /books with valid data saves and returns 201</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        request.method = <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>
+        request.json = [<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Valid Book</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928228</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">150</span>]
+
+        <span class="key">when</span>:
+        controller.save()
+
+        <span class="key">then</span>:
+        response.status == HttpStatus.CREATED.value()
+        response.json.title == <span class="string"><span class="delimiter">'</span><span class="content">Valid Book</span><span class="delimiter">'</span></span>
+        response.json.isbn  == <span class="string"><span class="delimiter">'</span><span class="content">9780547928228</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">GET /books/create returns a new transient instance</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        request.method = <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>
+        request.format = <span class="string"><span class="delimiter">'</span><span class="content">json</span><span class="delimiter">'</span></span>
+        controller.create()
+
+        <span class="key">then</span>:
+        response.status == HttpStatus.OK.value()
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">GET /books/{id}/edit returns the book for editing</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">Book</span> b = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Editable</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928228</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">100</span>)
+            .save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">when</span>:
+        request.method = <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>
+        request.format = <span class="string"><span class="delimiter">'</span><span class="content">json</span><span class="delimiter">'</span></span>
+        params.id = b.id
+        controller.edit()
+
+        <span class="key">then</span>:
+        response.status == HttpStatus.OK.value()
+        response.json.title == <span class="string"><span class="delimiter">'</span><span class="content">Editable</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">PUT /books/{id} updates the book</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">Book</span> b = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Original</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928228</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">100</span>)
+            .save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">when</span>:
+        request.method = <span class="string"><span class="delimiter">'</span><span class="content">PUT</span><span class="delimiter">'</span></span>
+        request.json = [<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Updated</span><span class="delimiter">'</span></span>]
+        params.id = b.id
+        controller.update()
+
+        <span class="key">then</span>:
+        response.status == HttpStatus.OK.value()
+        response.json.title == <span class="string"><span class="delimiter">'</span><span class="content">Updated</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">PUT /books/{id} with invalid data returns 422</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">Book</span> b = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Original</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928229</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">100</span>)
+            .save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">when</span>:
+        request.method = <span class="string"><span class="delimiter">'</span><span class="content">PUT</span><span class="delimiter">'</span></span>
+        request.json = [<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>]
+        params.id = b.id
+        controller.update()
+
+        <span class="key">then</span>:
+        response.status == HttpStatus.UNPROCESSABLE_ENTITY.value()
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">DELETE /books/{id} deletes the book</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">Book</span> b = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Deletable</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780547928228</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">100</span>)
+            .save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">when</span>:
+        request.method = <span class="string"><span class="delimiter">'</span><span class="content">DELETE</span><span class="delimiter">'</span></span>
+        params.id = b.id
+        controller.delete()
+
+        <span class="key">then</span>:
+        response.status == HttpStatus.NO_CONTENT.value()
+        <span class="predefined-type">Book</span>.get(b.id) == <span class="predefined-constant">null</span>
     }
 }</code></pre>
 </div>
@@ -755,6 +906,7 @@ cd grails-spock-test-tour/complete
         <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">table tbody tr</span><span class="delimiter">'</span></span>).size() &gt; <span class="integer">0</span>
         <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">table tbody</span><span class="delimiter">'</span></span>).text().contains(<span class="string"><span class="delimiter">'</span><span class="content">The Hobbit</span><span class="delimiter">'</span></span>)
     }
+
 }</code></pre>
 </div>
 </div>
@@ -779,6 +931,14 @@ cd grails-spock-test-tour/complete
     BookService bookService
     BookController() { <span class="local-variable">super</span>(<span class="predefined-type">Book</span>) }
 
+    <span class="comment">// Minimal override so the show action is explicitly registered as a</span>
+    <span class="comment">// controller action (sibling project debugging revealed that inherited</span>
+    <span class="comment">// RestfulController actions can be invisible to the URL-mapping layer);</span>
+    <span class="comment">// it delegates to RestfulController.show() to stay framework-aligned.</span>
+    <span class="keyword">def</span> <span class="function">show</span>() {
+        <span class="local-variable">super</span>.show()
+    }
+
     <span class="comment">// Override index so the HTML format renders the GSP table view (through the</span>
     <span class="comment">// sitemesh layout) while JSON clients still get the REST collection.</span>
     <span class="keyword">def</span> <span class="function">index</span>(<span class="predefined-type">Integer</span> max) {
@@ -789,6 +949,7 @@ cd grails-spock-test-tour/complete
             json { respond books, [<span class="key">model</span>: [<span class="key">bookCount</span>: countResources()]] }
         }
     }
+
 }</code></pre>
 </div>
 </div>

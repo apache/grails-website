@@ -274,7 +274,7 @@ function addJsClass() {
 
     <span class="directive">private</span> <span class="predefined-type">URI</span> uri(<span class="predefined-type">String</span> path) { <span class="predefined-type">URI</span>.create(<span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="inline"><span class="inline-delimiter">${</span>path<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>) }
 
-    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">POST /book creates a shared-core Book and returns 201</span><span class="delimiter">&quot;</span></span>() {
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">POST /books creates a shared-core Book and returns 201</span><span class="delimiter">&quot;</span></span>() {
         <span class="key">given</span>:
         <span class="predefined-type">String</span> body = JsonOutput.toJson([<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Dune</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780441013593</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">412</span>])
 
@@ -291,7 +291,7 @@ function addJsClass() {
         <span class="predefined-type">Book</span>.withNewTransaction { <span class="predefined-type">Book</span>.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9780441013593</span><span class="delimiter">'</span></span>)?.title == <span class="string"><span class="delimiter">'</span><span class="content">Dune</span><span class="delimiter">'</span></span> }
     }
 
-    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">GET /book lists the shared-core Books as JSON</span><span class="delimiter">&quot;</span></span>() {
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">GET /books lists the shared-core Books as JSON</span><span class="delimiter">&quot;</span></span>() {
         <span class="key">given</span>:
         <span class="predefined-type">Book</span>.withNewTransaction {
             <span class="keyword">if</span> (!<span class="predefined-type">Book</span>.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>)) {
@@ -310,7 +310,7 @@ function addJsClass() {
         json*.isbn.contains(<span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>)
     }
 
-    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">POST /book with a malformed isbn returns 422</span><span class="delimiter">&quot;</span></span>() {
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">POST /books with a malformed isbn returns 422</span><span class="delimiter">&quot;</span></span>() {
         <span class="key">given</span>:
         <span class="predefined-type">String</span> body = JsonOutput.toJson([<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Bad</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">not-an-isbn</span><span class="delimiter">'</span></span>])
 
@@ -324,6 +324,82 @@ function addJsClass() {
 
         <span class="key">then</span>:
         resp.statusCode() == <span class="integer">422</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">GET /books/:id shows a single book as JSON</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">Book</span>.withNewTransaction {
+            <span class="keyword">if</span> (!<span class="predefined-type">Book</span>.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9780451524935</span><span class="delimiter">'</span></span>)) {
+                <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">1984</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780451524935</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">328</span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+            }
+        }
+        <span class="comment">// Retrieve the id that was assigned</span>
+        <span class="predefined-type">Long</span> bookId = <span class="predefined-type">Book</span>.withNewTransaction { <span class="predefined-type">Book</span>.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9780451524935</span><span class="delimiter">'</span></span>).id }
+
+        <span class="key">when</span>:
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = client.send(
+                HttpRequest.newBuilder(uri(<span class="string"><span class="delimiter">&quot;</span><span class="content">/books/</span><span class="inline"><span class="inline-delimiter">${</span>bookId<span class="inline-delimiter">}</span></span><span class="content">.json</span><span class="delimiter">&quot;</span></span>)).GET().build(),
+                HttpResponse.BodyHandlers.ofString())
+        <span class="keyword">def</span> json = <span class="keyword">new</span> JsonSlurper().parseText(resp.body())
+
+        <span class="key">then</span>:
+        resp.statusCode() == <span class="integer">200</span>
+        json.isbn == <span class="string"><span class="delimiter">'</span><span class="content">9780451524935</span><span class="delimiter">'</span></span>
+        json.title == <span class="string"><span class="delimiter">'</span><span class="content">1984</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">PUT /books/:id updates an existing book</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">Book</span>.withNewTransaction {
+            <span class="keyword">if</span> (!<span class="predefined-type">Book</span>.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9780141439518</span><span class="delimiter">'</span></span>)) {
+                <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Pride</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780141439518</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">280</span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+            }
+        }
+        <span class="predefined-type">Long</span> bookId = <span class="predefined-type">Book</span>.withNewTransaction { <span class="predefined-type">Book</span>.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9780141439518</span><span class="delimiter">'</span></span>).id }
+        <span class="predefined-type">String</span> updateBody = JsonOutput.toJson([<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Pride and Prejudice</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780141439518</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">432</span>])
+
+        <span class="key">when</span>:
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = client.send(
+                HttpRequest.newBuilder(uri(<span class="string"><span class="delimiter">&quot;</span><span class="content">/books/</span><span class="inline"><span class="inline-delimiter">${</span>bookId<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>))
+                        .header(<span class="string"><span class="delimiter">'</span><span class="content">Content-Type</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+                        .header(<span class="string"><span class="delimiter">'</span><span class="content">Accept</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+                        .PUT(HttpRequest.BodyPublishers.ofString(updateBody)).build(),
+                HttpResponse.BodyHandlers.ofString())
+
+        <span class="key">then</span>:
+        resp.statusCode() == <span class="integer">200</span>
+        <span class="predefined-type">Book</span>.withNewTransaction {
+            <span class="predefined-type">Book</span>.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9780141439518</span><span class="delimiter">'</span></span>).title == <span class="string"><span class="delimiter">'</span><span class="content">Pride and Prejudice</span><span class="delimiter">'</span></span>
+        }
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">DELETE /books/:id removes a book</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">Long</span> bookId = <span class="predefined-type">Book</span>.withNewTransaction {
+            <span class="keyword">def</span> b = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Temp</span><span class="delimiter">'</span></span>, <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780000000999</span><span class="delimiter">'</span></span>, <span class="key">pageCount</span>: <span class="integer">50</span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+            b.id
+        }
+
+        <span class="key">when</span>:
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = client.send(
+                HttpRequest.newBuilder(uri(<span class="string"><span class="delimiter">&quot;</span><span class="content">/books/</span><span class="inline"><span class="inline-delimiter">${</span>bookId<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>))
+                        .header(<span class="string"><span class="delimiter">'</span><span class="content">Accept</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+                        .DELETE().build(),
+                HttpResponse.BodyHandlers.ofString())
+
+        <span class="key">then</span>:
+        resp.statusCode() == <span class="integer">204</span>
+        <span class="predefined-type">Book</span>.withNewTransaction { <span class="predefined-type">Book</span>.get(bookId) == <span class="predefined-constant">null</span> }
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">GET /books/:id returns 404 for a nonexistent id</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = client.send(
+                HttpRequest.newBuilder(uri(<span class="string"><span class="delimiter">'</span><span class="content">/books/99999.json</span><span class="delimiter">'</span></span>)).GET().build(),
+                HttpResponse.BodyHandlers.ofString())
+
+        <span class="key">then</span>:
+        resp.statusCode() == <span class="integer">404</span>
     }
 }</code></pre>
 </div>
@@ -388,6 +464,38 @@ function addJsClass() {
         resp.statusCode() == <span class="integer">200</span>
         json*.isbn.contains(<span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>)
         json*.isbn.contains(<span class="string"><span class="delimiter">'</span><span class="content">9780441013593</span><span class="delimiter">'</span></span>)
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">GET /catalog/show/:id returns a single book as JSON</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">Long</span> bookId = <span class="predefined-type">Book</span>.withNewTransaction {
+            <span class="predefined-type">Book</span>.findByIsbn(<span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>).id
+        }
+
+        <span class="key">when</span>:
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = client.send(
+                HttpRequest.newBuilder(<span class="predefined-type">URI</span>.create(<span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/catalog/show/</span><span class="inline"><span class="inline-delimiter">${</span>bookId<span class="inline-delimiter">}</span></span><span class="content">.json</span><span class="delimiter">&quot;</span></span>))
+                        .header(<span class="string"><span class="delimiter">'</span><span class="content">Accept</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+                        .GET().build(),
+                HttpResponse.BodyHandlers.ofString())
+        <span class="keyword">def</span> json = <span class="keyword">new</span> JsonSlurper().parseText(resp.body())
+
+        <span class="key">then</span>:
+        resp.statusCode() == <span class="integer">200</span>
+        json.title == <span class="string"><span class="delimiter">'</span><span class="content">The Hobbit</span><span class="delimiter">'</span></span>
+        json.isbn == <span class="string"><span class="delimiter">'</span><span class="content">9780547928227</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">GET /catalog/show/:id returns 404 for nonexistent book</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">when</span>:
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = client.send(
+                HttpRequest.newBuilder(<span class="predefined-type">URI</span>.create(<span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/catalog/show/99999.json</span><span class="delimiter">&quot;</span></span>))
+                        .header(<span class="string"><span class="delimiter">'</span><span class="content">Accept</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+                        .GET().build(),
+                HttpResponse.BodyHandlers.ofString())
+
+        <span class="key">then</span>:
+        resp.statusCode() == <span class="integer">404</span>
     }
 }</code></pre>
 </div>
