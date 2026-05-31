@@ -1,0 +1,303 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+                      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+    <title>4 The Customer, Order, and AuditLog Domain Model</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
+    <link rel="stylesheet" href="../css/guide.css" type="text/css" media="screen, print" title="Style" charset="utf-8" />            
+    <link rel="stylesheet" href="../css/pdf.css" type="text/css" media="print" title="PDF" charset="utf-8"/>
+    <script type="text/javascript">
+function addJsClass() {
+    var classes = document.body.className.split(" ");
+    classes.push("js");
+    document.body.className = classes.join(" ");
+}
+    </script>
+</head>
+
+<body class="body" onload="addJsClass();">
+<div id="navigation">
+    <div class="navTitle">
+        
+        Grails Framework Guide 
+    </div>
+    <div class="navLinks">
+        <ul>
+            <li>
+                <div id="nav-summary" onmouseover="toggleNavSummary(false)" onmouseout="toggleNavSummary(true)">
+                    <a href="../guide/index.html" class="button">Table of contents</a>
+
+                    <div id="nav-summary-childs" style="display:none;">
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/gettingStarted.html"><strong>1</strong><span>Getting Started</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/theProblem.html"><strong>2</strong><span>The Missing Pattern</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/createApp.html"><strong>3</strong><span>Creating the Application</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/domainModel.html"><strong>4</strong><span>The Customer, Order, and AuditLog Domain Model</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/eventClass.html"><strong>5</strong><span>The OrderPlacedEvent POGO</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/publishingEvents.html"><strong>6</strong><span>Publishing Events From a Transactional Service</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/transactionalListener.html"><strong>7</strong><span>The First @TransactionalEventListener</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/registeringListeners.html"><strong>8</strong><span>Registering the Listeners (and the Factory That Makes Them Fire)</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/transactionPhases.html"><strong>9</strong><span>The Four TransactionPhase Values</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/multipleListeners.html"><strong>10</strong><span>Fanning Out - A Second Listener</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/asyncDispatch.html"><strong>11</strong><span>Off-Thread Dispatch With @Async</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/vsGormEvents.html"><strong>12</strong><span>vs. GORM Lifecycle Callbacks and @Subscriber</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/integrationTest.html"><strong>13</strong><span>Proving the Contract With an Integration Spec</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/sameTransactionProblem.html"><strong>14</strong><span>When the Side-Effect IS the Transaction</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/workOrderDomainModel.html"><strong>15</strong><span>The CustomerRequest, WorkOrder, and WorkOrderAssignee Domain Model</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/synchronousOrchestration.html"><strong>16</strong><span>Synchronous Orchestration With a Plain @EventListener</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/atomicRollbackTest.html"><strong>17</strong><span>Proving Atomic Rollback With an Integration Spec</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/testingThePattern.html"><strong>18</strong><span>Testing the Pattern Inside and Out</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>19</strong><span>Do you need help with Grails?</span></a>
+                        </div>
+                        
+                    </div>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+
+</div>
+
+<table id="colset" border="0" cellpadding="0" cellspacing="0">
+    <tr>
+        <td id="col1">
+            <div id="main" class="corner-all">
+
+                
+                    <div class="toc-item prev-left"><a href="../guide/createApp.html">&lt;&lt; <strong>3</strong><span>Creating the Application</span></a></div>
+                
+
+                
+                    <div class="toc-item next-right"><a href="../guide/eventClass.html"><strong>5</strong><span>The OrderPlacedEvent POGO</span> >></a></div>
+                
+
+
+                
+
+                
+
+<h1 id="domainModel">4 The Customer, Order, and AuditLog Domain Model</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-transactional-events/v8/guide/domainModel.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Three domains model the example. <code>Customer</code> carries a denormalised <code>lifetimeValue</code>. <code>Order</code> belongs to a <code>Customer</code>. <code>AuditLog</code> is a flat append-only record of business events.</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/domain/example/Customer.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.persistence.Entity</span>
+
+<span class="annotation">@Entity</span>
+<span class="type">class</span> <span class="class">Customer</span> {
+
+    <span class="predefined-type">String</span> name
+    <span class="predefined-type">String</span> email
+    <span class="predefined-type">BigDecimal</span> lifetimeValue = <span class="predefined-type">BigDecimal</span>.ZERO
+
+    <span class="directive">static</span> constraints = {
+        name          <span class="key">blank</span>: <span class="predefined-constant">false</span>, <span class="key">maxSize</span>: <span class="integer">255</span>
+        email         <span class="key">email</span>: <span class="predefined-constant">true</span>, <span class="key">unique</span>: <span class="predefined-constant">true</span>, <span class="key">maxSize</span>: <span class="integer">255</span>
+        lifetimeValue <span class="key">min</span>: <span class="predefined-type">BigDecimal</span>.ZERO
+    }
+
+    <span class="directive">static</span> mapping = {
+        lifetimeValue <span class="key">scale</span>: <span class="integer">2</span>, <span class="key">precision</span>: <span class="integer">19</span>
+    }
+
+    <span class="predefined-type">String</span> toString() { name }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/domain/example/Order.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.persistence.Entity</span>
+
+<span class="annotation">@Entity</span>
+<span class="type">class</span> <span class="class">Order</span> {
+
+    Customer customer
+    <span class="predefined-type">BigDecimal</span> total
+    <span class="predefined-type">Date</span> dateCreated
+
+    <span class="directive">static</span> belongsTo = [<span class="key">customer</span>: Customer]
+
+    <span class="directive">static</span> constraints = {
+        total <span class="key">min</span>: <span class="keyword">new</span> <span class="predefined-type">BigDecimal</span>(<span class="string"><span class="delimiter">'</span><span class="content">0.01</span><span class="delimiter">'</span></span>)
+    }
+
+    <span class="directive">static</span> mapping = {
+        <span class="comment">// 'order' is reserved in most SQL dialects</span>
+        table <span class="string"><span class="delimiter">'</span><span class="content">orders</span><span class="delimiter">'</span></span>
+        total <span class="key">scale</span>: <span class="integer">2</span>, <span class="key">precision</span>: <span class="integer">19</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/domain/example/AuditLog.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.persistence.Entity</span>
+
+<span class="annotation">@Entity</span>
+<span class="type">class</span> <span class="class">AuditLog</span> {
+
+    <span class="predefined-type">String</span> eventType
+    <span class="predefined-type">Long</span> orderId
+    <span class="predefined-type">Long</span> customerId
+    <span class="predefined-type">BigDecimal</span> orderTotal
+    <span class="predefined-type">Date</span> occurredAt
+
+    <span class="directive">static</span> constraints = {
+        eventType  <span class="key">blank</span>: <span class="predefined-constant">false</span>, <span class="key">maxSize</span>: <span class="integer">64</span>
+        orderId    <span class="key">min</span>: <span class="integer">1L</span>
+        customerId <span class="key">min</span>: <span class="integer">1L</span>
+        orderTotal <span class="key">min</span>: <span class="keyword">new</span> <span class="predefined-type">BigDecimal</span>(<span class="string"><span class="delimiter">'</span><span class="content">0.01</span><span class="delimiter">'</span></span>)
+        occurredAt <span class="key">nullable</span>: <span class="predefined-constant">false</span>
+    }
+
+    <span class="directive">static</span> mapping = {
+        orderTotal <span class="key">scale</span>: <span class="integer">2</span>, <span class="key">precision</span>: <span class="integer">19</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A few choices to point at:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>Customer.lifetimeValue</code> defaults to <code>BigDecimal.ZERO</code> and is constrained <code>min: BigDecimal.ZERO</code>. The <code>CustomerLifetimeValueListener</code> you&#8217;ll write later is the only writer; the field never gets edited from <code>OrderService</code> or from a controller. That single-writer property is what makes the listener pattern composable - if any other listener wrote to the same field, you&#8217;d have a race.</p>
+</li>
+<li>
+<p><code>Order</code> declares <code>static mapping = { table 'orders' }</code> because <code>order</code> is a reserved word in most SQL dialects (it&#8217;s the keyword in <code>ORDER BY</code>). Without the override the schema-generation either quotes the table name aggressively or fails outright depending on the database.</p>
+</li>
+<li>
+<p><code>AuditLog</code> deliberately does <strong>not</strong> use a foreign key to <code>Order</code> or <code>Customer</code>. It stores raw IDs and the snapshotted total. Audit history must survive the deletion of the rows it describes, and it must survive schema migrations that change the shape of <code>Order</code>.</p>
+</li>
+<li>
+<p>Validation lives on the domains, not on the event class or the listeners. A listener receiving a malformed event is a programmer error; a listener receiving a well-formed event that fails domain validation is a domain change that needs a real migration.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Files touched in this chapter:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>grails-app/domain/example/Customer.groovy</code></p>
+</li>
+<li>
+<p><code>grails-app/domain/example/Order.groovy</code></p>
+</li>
+<li>
+<p><code>grails-app/domain/example/AuditLog.groovy</code></p>
+</li>
+</ul>
+</div>
+
+
+                <div style="clear:both;margin-top:15px;"></div>
+                
+                    <div class="toc-item prev-left"><a href="../guide/createApp.html">&lt;&lt; <strong>3</strong><span>Creating the Application</span></a></div>
+                
+                    <div class="toc-item next-right"><a href="../guide/eventClass.html"><strong>5</strong><span>The OrderPlacedEvent POGO</span> >></a></div>
+                
+                <div style="clear:both"></div>
+            </div>
+        </td>
+        <td id="col2">
+            <div class="local clearfix">
+                <div class="local-title" style="text-align: right"><a href="https://travis-ci.org/grails-guides/grails-transactional-events"><img src="https://travis-ci.org/grails-guides/grails-transactional-events.svg?branch=master" /></a></div>            
+                 <div class="local-title">
+                    <a href="https://github.com/grails-guides/grails-transactional-events">
+                    <svg height="35" class="octicon octicon-mark-github" viewBox="0 0 16 16" version="1.1" width="35" aria-hidden="true"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a> &nbsp;&nbsp;Get the Code
+                </div>
+                <div class="menu">
+                    <div class="input-group">                        
+                        <button href="#" onclick="document.getElementById('github-url').value='git@github.com:grails-guides/grails-transactional-events.git'" class="codeButton">SSH</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-transactional-events.git'" class="codeButton">HTTPS</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-transactional-events'" class="codeButton">Subversion</button>
+                    </div>
+       
+                    <div class="input-group">                    
+                        <!-- Target -->
+                        <input id="github-url" value="git@github.com:grails-guides/grails-transactional-events.git" type="text" />
+
+                        <!-- Trigger -->
+                        <button class="clipbtn" type="button" data-clipboard-target="#github-url">
+
+                            <img width="13" src="../img/clippy.svg" alt="Copy to clipboard">
+                        </button>       
+
+                    </div>
+                    <div class="input-group">
+                      <a href="https://github.com/grails-guides/grails-transactional-events/archive/master.zip" class="downloadButton">Download ZIP</a>
+                    </div>
+                </div>
+            </div>
+        </td>
+    </tr>
+</table>
+
+<div id="footer">
+    
+    
+</div>
+
+<script type="text/javascript" src="../js/docs.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,389 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+                      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+    <title>17 Proving Atomic Rollback With an Integration Spec</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
+    <link rel="stylesheet" href="../css/guide.css" type="text/css" media="screen, print" title="Style" charset="utf-8" />            
+    <link rel="stylesheet" href="../css/pdf.css" type="text/css" media="print" title="PDF" charset="utf-8"/>
+    <script type="text/javascript">
+function addJsClass() {
+    var classes = document.body.className.split(" ");
+    classes.push("js");
+    document.body.className = classes.join(" ");
+}
+    </script>
+</head>
+
+<body class="body" onload="addJsClass();">
+<div id="navigation">
+    <div class="navTitle">
+        
+        Grails Framework Guide 
+    </div>
+    <div class="navLinks">
+        <ul>
+            <li>
+                <div id="nav-summary" onmouseover="toggleNavSummary(false)" onmouseout="toggleNavSummary(true)">
+                    <a href="../guide/index.html" class="button">Table of contents</a>
+
+                    <div id="nav-summary-childs" style="display:none;">
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/gettingStarted.html"><strong>1</strong><span>Getting Started</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/theProblem.html"><strong>2</strong><span>The Missing Pattern</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/createApp.html"><strong>3</strong><span>Creating the Application</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/domainModel.html"><strong>4</strong><span>The Customer, Order, and AuditLog Domain Model</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/eventClass.html"><strong>5</strong><span>The OrderPlacedEvent POGO</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/publishingEvents.html"><strong>6</strong><span>Publishing Events From a Transactional Service</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/transactionalListener.html"><strong>7</strong><span>The First @TransactionalEventListener</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/registeringListeners.html"><strong>8</strong><span>Registering the Listeners (and the Factory That Makes Them Fire)</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/transactionPhases.html"><strong>9</strong><span>The Four TransactionPhase Values</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/multipleListeners.html"><strong>10</strong><span>Fanning Out - A Second Listener</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/asyncDispatch.html"><strong>11</strong><span>Off-Thread Dispatch With @Async</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/vsGormEvents.html"><strong>12</strong><span>vs. GORM Lifecycle Callbacks and @Subscriber</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/integrationTest.html"><strong>13</strong><span>Proving the Contract With an Integration Spec</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/sameTransactionProblem.html"><strong>14</strong><span>When the Side-Effect IS the Transaction</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/workOrderDomainModel.html"><strong>15</strong><span>The CustomerRequest, WorkOrder, and WorkOrderAssignee Domain Model</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/synchronousOrchestration.html"><strong>16</strong><span>Synchronous Orchestration With a Plain @EventListener</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/atomicRollbackTest.html"><strong>17</strong><span>Proving Atomic Rollback With an Integration Spec</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/testingThePattern.html"><strong>18</strong><span>Testing the Pattern Inside and Out</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>19</strong><span>Do you need help with Grails?</span></a>
+                        </div>
+                        
+                    </div>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+
+</div>
+
+<table id="colset" border="0" cellpadding="0" cellspacing="0">
+    <tr>
+        <td id="col1">
+            <div id="main" class="corner-all">
+
+                
+                    <div class="toc-item prev-left"><a href="../guide/synchronousOrchestration.html">&lt;&lt; <strong>16</strong><span>Synchronous Orchestration With a Plain @EventListener</span></a></div>
+                
+
+                
+                    <div class="toc-item next-right"><a href="../guide/testingThePattern.html"><strong>18</strong><span>Testing the Pattern Inside and Out</span> >></a></div>
+                
+
+
+                
+
+                
+
+<h1 id="atomicRollbackTest">17 Proving Atomic Rollback With an Integration Spec</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-transactional-events/v8/guide/atomicRollbackTest.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>The whole promise of this pattern is atomicity: on a mid-orchestration failure, <strong>nothing</strong> persists. Like the <code>AFTER_COMMIT</code> contract, that property is invisible to unit tests - it only shows up against a real <code>PlatformTransactionManager</code> committing or rolling back a real database transaction. A Grails <code>@Integration</code> Spock spec is again the right layer.</p>
+</div>
+<div class="listingblock">
+<div class="title">src/integration-test/groovy/example/WorkOrderAssignmentIntegrationSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="comment">/**
+ * Integration spec that proves the same-transaction orchestration is atomic:
+ *
+ *   1. On success, the assignment, the WorkOrder status, and the
+ *      CustomerRequest status all commit together.
+ *   2. On a failure raised mid-orchestration (the listener rejecting an
+ *      illegal request transition), EVERY change rolls back - no assignee
+ *      row, the WorkOrder is still OPEN, the CustomerRequest is untouched.
+ *
+ * As in OrderServiceIntegrationSpec, each method drives its own committed
+ * transactions via withNewTransaction { ... } and asserts in fresh
+ * transactions, so the assertions read committed database state rather than
+ * mutated first-level-cache instances.
+ */</span>
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">WorkOrderAssignmentIntegrationSpec</span> <span class="directive">extends</span> Specification {
+
+    WorkOrderAssignmentService workOrderAssignmentService
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">assigning an employee atomically plans the work order and advances the request</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">Long</span><span class="type">[]</span> ids = createScenario(CustomerRequestStatus.SUBMITTED)
+        <span class="predefined-type">Long</span> requestId = ids[<span class="integer">0</span>]
+        <span class="predefined-type">Long</span> workOrderId = ids[<span class="integer">1</span>]
+
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">an employee is assigned inside a transaction that commits</span><span class="delimiter">'</span></span>
+        WorkOrderAssignee assignee = <span class="predefined-constant">null</span>
+        WorkOrder.withNewTransaction {
+            assignee = workOrderAssignmentService.assignEmployee(workOrderId, <span class="string"><span class="delimiter">'</span><span class="content">Dana Reed</span><span class="delimiter">'</span></span>)
+        }
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">all three changes committed as one unit</span><span class="delimiter">'</span></span>
+        assignee.id != <span class="predefined-constant">null</span>
+        WorkOrder.withNewTransaction { WorkOrder.get(workOrderId).status } == WorkOrderStatus.PLANNED
+        CustomerRequest.withNewTransaction { CustomerRequest.get(requestId).status } == CustomerRequestStatus.IN_PROGRESS
+
+        <span class="key">cleanup</span>:
+        deleteScenario(workOrderId, requestId)
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">a failure mid-orchestration rolls every change back</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>: <span class="string"><span class="delimiter">'</span><span class="content">a work order whose customer request is already closed</span><span class="delimiter">'</span></span>
+        <span class="predefined-type">Long</span><span class="type">[]</span> ids = createScenario(CustomerRequestStatus.COMPLETED)
+        <span class="predefined-type">Long</span> requestId = ids[<span class="integer">0</span>]
+        <span class="predefined-type">Long</span> workOrderId = ids[<span class="integer">1</span>]
+        <span class="type">long</span> assigneesBefore = countAssignees(workOrderId)
+
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">assigning an employee triggers an illegal request transition</span><span class="delimiter">'</span></span>
+        WorkOrder.withNewTransaction {
+            workOrderAssignmentService.assignEmployee(workOrderId, <span class="string"><span class="delimiter">'</span><span class="content">Dana Reed</span><span class="delimiter">'</span></span>)
+        }
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">the orchestration threw</span><span class="delimiter">'</span></span>
+        thrown(<span class="exception">IllegalStateException</span>)
+
+        <span class="key">and</span>: <span class="string"><span class="delimiter">'</span><span class="content">nothing persisted - no assignee, both statuses unchanged</span><span class="delimiter">'</span></span>
+        countAssignees(workOrderId) == assigneesBefore
+        WorkOrder.withNewTransaction { WorkOrder.get(workOrderId).status } == WorkOrderStatus.OPEN
+        CustomerRequest.withNewTransaction { CustomerRequest.get(requestId).status } == CustomerRequestStatus.COMPLETED
+
+        <span class="key">cleanup</span>:
+        deleteScenario(workOrderId, requestId)
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">assigning a second employee to an already-planned work order does not re-run the cascade</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>: <span class="string"><span class="delimiter">'</span><span class="content">a work order already planned by a first assignment</span><span class="delimiter">'</span></span>
+        <span class="predefined-type">Long</span><span class="type">[]</span> ids = createScenario(CustomerRequestStatus.SUBMITTED)
+        <span class="predefined-type">Long</span> requestId = ids[<span class="integer">0</span>]
+        <span class="predefined-type">Long</span> workOrderId = ids[<span class="integer">1</span>]
+        WorkOrder.withNewTransaction {
+            workOrderAssignmentService.assignEmployee(workOrderId, <span class="string"><span class="delimiter">'</span><span class="content">Dana Reed</span><span class="delimiter">'</span></span>)
+        }
+
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">a second employee is assigned</span><span class="delimiter">'</span></span>
+        WorkOrder.withNewTransaction {
+            workOrderAssignmentService.assignEmployee(workOrderId, <span class="string"><span class="delimiter">'</span><span class="content">Sam Ortiz</span><span class="delimiter">'</span></span>)
+        }
+
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">both assignees exist, but the OPEN/SUBMITTED guards make the status changes a no-op</span><span class="delimiter">'</span></span>
+        countAssignees(workOrderId) == <span class="integer">2</span>
+        WorkOrder.withNewTransaction { WorkOrder.get(workOrderId).status } == WorkOrderStatus.PLANNED
+        CustomerRequest.withNewTransaction { CustomerRequest.get(requestId).status } == CustomerRequestStatus.IN_PROGRESS
+
+        <span class="key">cleanup</span>:
+        deleteScenario(workOrderId, requestId)
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">a cancelled request also blocks the assignment and rolls everything back</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">Long</span><span class="type">[]</span> ids = createScenario(CustomerRequestStatus.CANCELLED)
+        <span class="predefined-type">Long</span> requestId = ids[<span class="integer">0</span>]
+        <span class="predefined-type">Long</span> workOrderId = ids[<span class="integer">1</span>]
+        <span class="type">long</span> assigneesBefore = countAssignees(workOrderId)
+
+        <span class="key">when</span>:
+        WorkOrder.withNewTransaction {
+            workOrderAssignmentService.assignEmployee(workOrderId, <span class="string"><span class="delimiter">'</span><span class="content">Dana Reed</span><span class="delimiter">'</span></span>)
+        }
+
+        <span class="key">then</span>:
+        thrown(<span class="exception">IllegalStateException</span>)
+
+        <span class="key">and</span>:
+        countAssignees(workOrderId) == assigneesBefore
+        WorkOrder.withNewTransaction { WorkOrder.get(workOrderId).status } == WorkOrderStatus.OPEN
+        CustomerRequest.withNewTransaction { CustomerRequest.get(requestId).status } == CustomerRequestStatus.CANCELLED
+
+        <span class="key">cleanup</span>:
+        deleteScenario(workOrderId, requestId)
+    }
+
+    <span class="directive">private</span> <span class="predefined-type">Long</span><span class="type">[]</span> createScenario(CustomerRequestStatus requestStatus) {
+        <span class="predefined-type">Long</span> requestId = <span class="predefined-constant">null</span>
+        <span class="predefined-type">Long</span> workOrderId = <span class="predefined-constant">null</span>
+        CustomerRequest.withNewTransaction {
+            CustomerRequest request = <span class="keyword">new</span> CustomerRequest(
+                    <span class="key">summary</span>: <span class="string"><span class="delimiter">'</span><span class="content">Replace the rooftop HVAC unit</span><span class="delimiter">'</span></span>, <span class="key">status</span>: requestStatus)
+                    .save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+            WorkOrder workOrder = <span class="keyword">new</span> WorkOrder(
+                    <span class="key">customerRequest</span>: request, <span class="key">description</span>: <span class="string"><span class="delimiter">'</span><span class="content">Site survey and install</span><span class="delimiter">'</span></span>)
+                    .save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+            requestId = request.id
+            workOrderId = workOrder.id
+        }
+        [requestId, workOrderId] <span class="keyword">as</span> <span class="predefined-type">Long</span><span class="type">[]</span>
+    }
+
+    <span class="directive">private</span> <span class="type">long</span> countAssignees(<span class="predefined-type">Long</span> workOrderId) {
+        WorkOrderAssignee.withNewTransaction {
+            WorkOrderAssignee.where { workOrder.id == workOrderId }.count()
+        }
+    }
+
+    <span class="directive">private</span> <span class="type">void</span> deleteScenario(<span class="predefined-type">Long</span> workOrderId, <span class="predefined-type">Long</span> requestId) {
+        WorkOrder.withNewTransaction {
+            WorkOrder workOrder = WorkOrder.get(workOrderId)
+            <span class="keyword">if</span> (workOrder) {
+                WorkOrderAssignee.findAllByWorkOrder(workOrder)*.delete()
+                workOrder.delete(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+            }
+            CustomerRequest.get(requestId)?.delete(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        }
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The two methods pin down the contract from both sides:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>The happy path proves the writes commit as one unit.</strong> A <code>SUBMITTED</code> request with an <code>OPEN</code> work order gets an assignee; afterwards the work order is <code>PLANNED</code> and the request is <code>IN_PROGRESS</code>. All three landed.</p>
+</li>
+<li>
+<p><strong>The failure path proves the writes roll back as one unit.</strong> The scenario starts the request <code>COMPLETED</code> - a terminal state. Assigning an employee inserts the assignee and flips the work order to <code>PLANNED</code>, then the listener&#8217;s <code>isTerminal()</code> guard throws. The <code>thrown(IllegalStateException)</code> block catches it; the <code>and:</code> block then proves the rollback was total: no assignee row, the work order is <strong>still</strong> <code>OPEN</code>, the request is <strong>still</strong> <code>COMPLETED</code>.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>That second assertion - work order back to <code>OPEN</code> after the listener had set it <code>PLANNED</code> - is the heart of the test. The status change was made, in memory, in the session, and then <strong>undone</strong> by the rollback, because it never belonged to a committed transaction.</p>
+</div>
+<div class="paragraph">
+<p>A few details that differ from the <code>AFTER_COMMIT</code> spec earlier in this guide:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>The failure is raised naturally, not simulated.</strong> The earlier spec called <code>status.setRollbackOnly()</code> to model a user-initiated rollback, because for <code>AFTER_COMMIT</code> the <strong>whole point</strong> was that the listener never ran. Here the listener is supposed to run, and its own business guard is what fails the transaction - so the test triggers the real exception path rather than faking a rollback.</p>
+</li>
+<li>
+<p><strong>Assertions read committed state in fresh transactions.</strong> Each <code>then:</code>/<code>and:</code> check wraps its read in <code>withNewTransaction { &#8230;&#8203; }</code>. After a rollback, the mutated-then-discarded instances may still be cached on the session that ran the service call; reading in a new transaction guarantees the assertion sees what actually committed to the database, not a stale first-level-cache copy.</p>
+</li>
+<li>
+<p><strong>Setup and cleanup commit explicitly.</strong> As before, the spec is not <code>@Rollback</code> - it opens its own committed transactions with <code>withNewTransaction</code> and tears the rows down in <code>cleanup:</code> in dependency order (assignees, then the work order, then the request).</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Run the spec:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">./gradlew integrationTest --tests example.WorkOrderAssignmentIntegrationSpec</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Both methods should pass. Together with <code>OrderServiceIntegrationSpec</code>, the app now demonstrates both halves of the pattern: <code>AFTER_COMMIT</code> for side-effects that react to a durable commit, and a synchronous <code>@EventListener</code> for cross-domain orchestration that is part of the atomic unit of work.</p>
+</div>
+<div class="paragraph">
+<p>Files touched in this chapter:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>src/integration-test/groovy/example/WorkOrderAssignmentIntegrationSpec.groovy</code></p>
+</li>
+</ul>
+</div>
+
+
+                <div style="clear:both;margin-top:15px;"></div>
+                
+                    <div class="toc-item prev-left"><a href="../guide/synchronousOrchestration.html">&lt;&lt; <strong>16</strong><span>Synchronous Orchestration With a Plain @EventListener</span></a></div>
+                
+                    <div class="toc-item next-right"><a href="../guide/testingThePattern.html"><strong>18</strong><span>Testing the Pattern Inside and Out</span> >></a></div>
+                
+                <div style="clear:both"></div>
+            </div>
+        </td>
+        <td id="col2">
+            <div class="local clearfix">
+                <div class="local-title" style="text-align: right"><a href="https://travis-ci.org/grails-guides/grails-transactional-events"><img src="https://travis-ci.org/grails-guides/grails-transactional-events.svg?branch=master" /></a></div>            
+                 <div class="local-title">
+                    <a href="https://github.com/grails-guides/grails-transactional-events">
+                    <svg height="35" class="octicon octicon-mark-github" viewBox="0 0 16 16" version="1.1" width="35" aria-hidden="true"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a> &nbsp;&nbsp;Get the Code
+                </div>
+                <div class="menu">
+                    <div class="input-group">                        
+                        <button href="#" onclick="document.getElementById('github-url').value='git@github.com:grails-guides/grails-transactional-events.git'" class="codeButton">SSH</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-transactional-events.git'" class="codeButton">HTTPS</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-transactional-events'" class="codeButton">Subversion</button>
+                    </div>
+       
+                    <div class="input-group">                    
+                        <!-- Target -->
+                        <input id="github-url" value="git@github.com:grails-guides/grails-transactional-events.git" type="text" />
+
+                        <!-- Trigger -->
+                        <button class="clipbtn" type="button" data-clipboard-target="#github-url">
+
+                            <img width="13" src="../img/clippy.svg" alt="Copy to clipboard">
+                        </button>       
+
+                    </div>
+                    <div class="input-group">
+                      <a href="https://github.com/grails-guides/grails-transactional-events/archive/master.zip" class="downloadButton">Download ZIP</a>
+                    </div>
+                </div>
+            </div>
+        </td>
+    </tr>
+</table>
+
+<div id="footer">
+    
+    
+</div>
+
+<script type="text/javascript" src="../js/docs.js"></script>
+
+</body>
+</html>

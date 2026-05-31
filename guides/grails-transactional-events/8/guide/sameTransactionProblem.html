@@ -1,0 +1,260 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+                      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+    <title>14 When the Side-Effect IS the Transaction</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
+    <link rel="stylesheet" href="../css/guide.css" type="text/css" media="screen, print" title="Style" charset="utf-8" />            
+    <link rel="stylesheet" href="../css/pdf.css" type="text/css" media="print" title="PDF" charset="utf-8"/>
+    <script type="text/javascript">
+function addJsClass() {
+    var classes = document.body.className.split(" ");
+    classes.push("js");
+    document.body.className = classes.join(" ");
+}
+    </script>
+</head>
+
+<body class="body" onload="addJsClass();">
+<div id="navigation">
+    <div class="navTitle">
+        
+        Grails Framework Guide 
+    </div>
+    <div class="navLinks">
+        <ul>
+            <li>
+                <div id="nav-summary" onmouseover="toggleNavSummary(false)" onmouseout="toggleNavSummary(true)">
+                    <a href="../guide/index.html" class="button">Table of contents</a>
+
+                    <div id="nav-summary-childs" style="display:none;">
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/gettingStarted.html"><strong>1</strong><span>Getting Started</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/theProblem.html"><strong>2</strong><span>The Missing Pattern</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/createApp.html"><strong>3</strong><span>Creating the Application</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/domainModel.html"><strong>4</strong><span>The Customer, Order, and AuditLog Domain Model</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/eventClass.html"><strong>5</strong><span>The OrderPlacedEvent POGO</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/publishingEvents.html"><strong>6</strong><span>Publishing Events From a Transactional Service</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/transactionalListener.html"><strong>7</strong><span>The First @TransactionalEventListener</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/registeringListeners.html"><strong>8</strong><span>Registering the Listeners (and the Factory That Makes Them Fire)</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/transactionPhases.html"><strong>9</strong><span>The Four TransactionPhase Values</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/multipleListeners.html"><strong>10</strong><span>Fanning Out - A Second Listener</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/asyncDispatch.html"><strong>11</strong><span>Off-Thread Dispatch With @Async</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/vsGormEvents.html"><strong>12</strong><span>vs. GORM Lifecycle Callbacks and @Subscriber</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/integrationTest.html"><strong>13</strong><span>Proving the Contract With an Integration Spec</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/sameTransactionProblem.html"><strong>14</strong><span>When the Side-Effect IS the Transaction</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/workOrderDomainModel.html"><strong>15</strong><span>The CustomerRequest, WorkOrder, and WorkOrderAssignee Domain Model</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/synchronousOrchestration.html"><strong>16</strong><span>Synchronous Orchestration With a Plain @EventListener</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/atomicRollbackTest.html"><strong>17</strong><span>Proving Atomic Rollback With an Integration Spec</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/testingThePattern.html"><strong>18</strong><span>Testing the Pattern Inside and Out</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>19</strong><span>Do you need help with Grails?</span></a>
+                        </div>
+                        
+                    </div>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+
+</div>
+
+<table id="colset" border="0" cellpadding="0" cellspacing="0">
+    <tr>
+        <td id="col1">
+            <div id="main" class="corner-all">
+
+                
+                    <div class="toc-item prev-left"><a href="../guide/integrationTest.html">&lt;&lt; <strong>13</strong><span>Proving the Contract With an Integration Spec</span></a></div>
+                
+
+                
+                    <div class="toc-item next-right"><a href="../guide/workOrderDomainModel.html"><strong>15</strong><span>The CustomerRequest, WorkOrder, and WorkOrderAssignee Domain Model</span> >></a></div>
+                
+
+
+                
+
+                
+
+<h1 id="sameTransactionProblem">14 When the Side-Effect IS the Transaction</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-transactional-events/v8/guide/sameTransactionProblem.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Everything up to this point has been about side-effects that run <strong>after</strong> the commit. <code>AFTER_COMMIT</code> is the right phase when the side-effect must not be able to undo the originating change: an audit row, a confirmation email, a search-index refresh. The originating order has durably committed; the listener reacts to a fact.</p>
+</div>
+<div class="paragraph">
+<p>There is a second, equally common shape that <code>AFTER_COMMIT</code> is the <strong>wrong</strong> tool for: cross-domain changes that are part of the <strong>same unit of work</strong>. Not "react to a committed fact" but "this whole thing happens, or none of it does."</p>
+</div>
+<div class="paragraph">
+<p>Take a field-service workflow with three domains:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>CustomerRequest</code> - what the customer asked for.</p>
+</li>
+<li>
+<p><code>WorkOrder</code> - a unit of work under a request.</p>
+</li>
+<li>
+<p><code>WorkOrderAssignee</code> - the join that puts an employee on a work order.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The rule the business cares about: <strong>when an employee is assigned to a work order, the work order becomes <code>PLANNED</code>, and because the work order is now planned, the originating customer request becomes <code>IN_PROGRESS</code>.</strong> Three writes - the assignment, the work-order status, the request status - that must be atomic. If the request can&#8217;t legally move to <code>IN_PROGRESS</code> (it was already cancelled, say), the assignment and the work-order status change must roll back too. You do not want a <code>PLANNED</code> work order hanging off a <code>CANCELLED</code> request because two of the three writes landed and the third didn&#8217;t.</p>
+</div>
+<div class="paragraph">
+<p><code>AFTER_COMMIT</code> cannot express this. By the time an <code>AFTER_COMMIT</code> listener runs, the assignment has <strong>already committed</strong>; its <code>REQUIRES_NEW</code> transaction is a separate unit of work, and a failure there leaves the assignment durably persisted with no way to walk it back. The same property that makes <code>AFTER_COMMIT</code> correct for emails - "the original is already safe" - makes it wrong for orchestration.</p>
+</div>
+<div class="paragraph">
+<p>The fix is the listener you have <strong>not</strong> used yet: a plain <code>@EventListener</code>, with no transaction phase, consuming an event that the publisher fires from <strong>inside</strong> its <code>@Transactional</code> method. Spring&#8217;s default event multicaster is synchronous, so the listener runs inline - on the publisher&#8217;s thread, inside the publisher&#8217;s transaction, sharing the publisher&#8217;s Hibernate session - before <code>publishEvent(&#8230;&#8203;)</code> returns. Reads see in-flight, uncommitted state. Writes join the same commit. An exception unwinds the whole operation.</p>
+</div>
+<div class="paragraph">
+<p>This is the mirror image of the first half of the guide, and it reuses the same machinery (<code>ApplicationEventPublisher</code>, a POGO event, a listener bean in <code>grails-app/services/</code>). The only thing that changes is the listener annotation - and that one change moves the listener from "after the transaction" to "inside the transaction."</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top"><code>@TransactionalEventListener(AFTER_COMMIT)</code></th>
+<th class="tableblock halign-left valign-top">plain <code>@EventListener</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fires after the publisher&#8217;s commit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fires inline, the instant <code>publishEvent(&#8230;&#8203;)</code> is called</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Runs in a <strong>new</strong> transaction / session (needs <code>REQUIRES_NEW</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Runs in the publisher&#8217;s transaction / session</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reads committed data only</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reads in-flight, uncommitted data</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Listener failure cannot undo the original</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Listener failure rolls the whole operation back</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Audit, email, webhooks, projections</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Atomic cross-domain orchestration</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The rest of this part builds the work-order example end to end and proves the atomicity with an integration spec.</p>
+</div>
+<div class="paragraph">
+<p>Files touched in this chapter:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>None</p>
+</li>
+</ul>
+</div>
+
+
+                <div style="clear:both;margin-top:15px;"></div>
+                
+                    <div class="toc-item prev-left"><a href="../guide/integrationTest.html">&lt;&lt; <strong>13</strong><span>Proving the Contract With an Integration Spec</span></a></div>
+                
+                    <div class="toc-item next-right"><a href="../guide/workOrderDomainModel.html"><strong>15</strong><span>The CustomerRequest, WorkOrder, and WorkOrderAssignee Domain Model</span> >></a></div>
+                
+                <div style="clear:both"></div>
+            </div>
+        </td>
+        <td id="col2">
+            <div class="local clearfix">
+                <div class="local-title" style="text-align: right"><a href="https://travis-ci.org/grails-guides/grails-transactional-events"><img src="https://travis-ci.org/grails-guides/grails-transactional-events.svg?branch=master" /></a></div>            
+                 <div class="local-title">
+                    <a href="https://github.com/grails-guides/grails-transactional-events">
+                    <svg height="35" class="octicon octicon-mark-github" viewBox="0 0 16 16" version="1.1" width="35" aria-hidden="true"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a> &nbsp;&nbsp;Get the Code
+                </div>
+                <div class="menu">
+                    <div class="input-group">                        
+                        <button href="#" onclick="document.getElementById('github-url').value='git@github.com:grails-guides/grails-transactional-events.git'" class="codeButton">SSH</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-transactional-events.git'" class="codeButton">HTTPS</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-transactional-events'" class="codeButton">Subversion</button>
+                    </div>
+       
+                    <div class="input-group">                    
+                        <!-- Target -->
+                        <input id="github-url" value="git@github.com:grails-guides/grails-transactional-events.git" type="text" />
+
+                        <!-- Trigger -->
+                        <button class="clipbtn" type="button" data-clipboard-target="#github-url">
+
+                            <img width="13" src="../img/clippy.svg" alt="Copy to clipboard">
+                        </button>       
+
+                    </div>
+                    <div class="input-group">
+                      <a href="https://github.com/grails-guides/grails-transactional-events/archive/master.zip" class="downloadButton">Download ZIP</a>
+                    </div>
+                </div>
+            </div>
+        </td>
+    </tr>
+</table>
+
+<div id="footer">
+    
+    
+</div>
+
+<script type="text/javascript" src="../js/docs.js"></script>
+
+</body>
+</html>

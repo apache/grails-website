@@ -1,0 +1,319 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+                      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+    <title>11 Off-Thread Dispatch With @Async</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
+    <link rel="stylesheet" href="../css/guide.css" type="text/css" media="screen, print" title="Style" charset="utf-8" />            
+    <link rel="stylesheet" href="../css/pdf.css" type="text/css" media="print" title="PDF" charset="utf-8"/>
+    <script type="text/javascript">
+function addJsClass() {
+    var classes = document.body.className.split(" ");
+    classes.push("js");
+    document.body.className = classes.join(" ");
+}
+    </script>
+</head>
+
+<body class="body" onload="addJsClass();">
+<div id="navigation">
+    <div class="navTitle">
+        
+        Grails Framework Guide 
+    </div>
+    <div class="navLinks">
+        <ul>
+            <li>
+                <div id="nav-summary" onmouseover="toggleNavSummary(false)" onmouseout="toggleNavSummary(true)">
+                    <a href="../guide/index.html" class="button">Table of contents</a>
+
+                    <div id="nav-summary-childs" style="display:none;">
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/gettingStarted.html"><strong>1</strong><span>Getting Started</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/theProblem.html"><strong>2</strong><span>The Missing Pattern</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/createApp.html"><strong>3</strong><span>Creating the Application</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/domainModel.html"><strong>4</strong><span>The Customer, Order, and AuditLog Domain Model</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/eventClass.html"><strong>5</strong><span>The OrderPlacedEvent POGO</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/publishingEvents.html"><strong>6</strong><span>Publishing Events From a Transactional Service</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/transactionalListener.html"><strong>7</strong><span>The First @TransactionalEventListener</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/registeringListeners.html"><strong>8</strong><span>Registering the Listeners (and the Factory That Makes Them Fire)</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/transactionPhases.html"><strong>9</strong><span>The Four TransactionPhase Values</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/multipleListeners.html"><strong>10</strong><span>Fanning Out - A Second Listener</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/asyncDispatch.html"><strong>11</strong><span>Off-Thread Dispatch With @Async</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/vsGormEvents.html"><strong>12</strong><span>vs. GORM Lifecycle Callbacks and @Subscriber</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/integrationTest.html"><strong>13</strong><span>Proving the Contract With an Integration Spec</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/sameTransactionProblem.html"><strong>14</strong><span>When the Side-Effect IS the Transaction</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/workOrderDomainModel.html"><strong>15</strong><span>The CustomerRequest, WorkOrder, and WorkOrderAssignee Domain Model</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/synchronousOrchestration.html"><strong>16</strong><span>Synchronous Orchestration With a Plain @EventListener</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/atomicRollbackTest.html"><strong>17</strong><span>Proving Atomic Rollback With an Integration Spec</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/testingThePattern.html"><strong>18</strong><span>Testing the Pattern Inside and Out</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>19</strong><span>Do you need help with Grails?</span></a>
+                        </div>
+                        
+                    </div>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+
+</div>
+
+<table id="colset" border="0" cellpadding="0" cellspacing="0">
+    <tr>
+        <td id="col1">
+            <div id="main" class="corner-all">
+
+                
+                    <div class="toc-item prev-left"><a href="../guide/multipleListeners.html">&lt;&lt; <strong>10</strong><span>Fanning Out - A Second Listener</span></a></div>
+                
+
+                
+                    <div class="toc-item next-right"><a href="../guide/vsGormEvents.html"><strong>12</strong><span>vs. GORM Lifecycle Callbacks and @Subscriber</span> >></a></div>
+                
+
+
+                
+
+                
+
+<h1 id="asyncDispatch">11 Off-Thread Dispatch With @Async</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-transactional-events/v8/guide/asyncDispatch.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>The third listener stands in for "send a confirmation email" - exactly the kind of side-effect you don&#8217;t want to do on the caller&#8217;s thread. Composing <code>@Async</code> with <code>@TransactionalEventListener</code> hands the listener body to Spring&#8217;s task executor <strong>after</strong> the commit lands.</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/services/example/NotificationListener.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">example.events.OrderPlacedEvent</span>
+<span class="keyword">import</span> <span class="include">org.slf4j.Logger</span>
+<span class="keyword">import</span> <span class="include">org.slf4j.LoggerFactory</span>
+<span class="keyword">import</span> <span class="include">org.springframework.scheduling.annotation.Async</span>
+<span class="keyword">import</span> <span class="include">org.springframework.transaction.event.TransactionPhase</span>
+<span class="keyword">import</span> <span class="include">org.springframework.transaction.event.TransactionalEventListener</span>
+
+<span class="comment">/**
+ * Off-thread side-effect: stand-in for sending a confirmation email.
+ *
+ * @Async dispatches the listener body to Spring's task executor instead
+ * of running it on the caller's thread. The transaction-phase binding
+ * is still synchronous - Spring waits for AFTER_COMMIT, then hands the
+ * event to the executor. The listener body therefore has NO inherited
+ * transaction; if it needs the database it must open its own via
+ * @Transactional(propagation = REQUIRES_NEW).
+ *
+ * Exceptions thrown from an @Async listener are NOT propagated to the
+ * publisher - see Spring's AsyncUncaughtExceptionHandler.
+ *
+ * @EnableAsync must be present on Application.groovy for @Async to take
+ * effect; without it the annotation is silently a no-op.
+ */</span>
+<span class="type">class</span> <span class="class">NotificationListener</span> {
+
+    <span class="directive">private</span> <span class="directive">static</span> <span class="directive">final</span> <span class="predefined-type">Logger</span> log = LoggerFactory.getLogger(<span class="predefined-type">NotificationListener</span>)
+
+    <span class="annotation">@Async</span>
+    <span class="annotation">@TransactionalEventListener</span>(phase = TransactionPhase.AFTER_COMMIT)
+    <span class="type">void</span> onOrderPlaced(OrderPlacedEvent event) {
+        log.info(<span class="string"><span class="delimiter">'</span><span class="content">Off-thread: sending confirmation email for order {} (total {})</span><span class="delimiter">'</span></span>,
+                event.orderId, event.total)
+        <span class="comment">// Real implementation would call emailService.send(...)</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Two pieces of wiring this listener needs:</p>
+</div>
+<div class="paragraph">
+<p><code>@EnableAsync</code> somewhere in your Spring configuration. The typical home is the <code>Application</code> class:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/init/example/Application.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.boot.GrailsApp</span>
+<span class="keyword">import</span> <span class="include">grails.boot.config.GrailsAutoConfiguration</span>
+<span class="keyword">import</span> <span class="include">grails.plugins.metadata.PluginSource</span>
+<span class="keyword">import</span> <span class="include">org.springframework.scheduling.annotation.EnableAsync</span>
+
+<span class="annotation">@PluginSource</span>
+<span class="annotation">@EnableAsync</span>
+<span class="type">class</span> <span class="class">Application</span> <span class="directive">extends</span> GrailsAutoConfiguration {
+    <span class="directive">static</span> <span class="type">void</span> main(<span class="predefined-type">String</span><span class="type">[]</span> args) {
+        GrailsApp.run(Application, args)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Without <code>@EnableAsync</code>, the <code>@Async</code> annotation is silently a no-op and the listener runs on the publisher&#8217;s thread.</p>
+</div>
+<div class="paragraph">
+<p>The composition order with <code>@TransactionalEventListener</code> is exact:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>The publisher&#8217;s transaction commits.</p>
+</li>
+<li>
+<p>Spring&#8217;s <code>TransactionSynchronizationManager</code> fires the AFTER_COMMIT callback.</p>
+</li>
+<li>
+<p>The callback dispatches the event to listener method references.</p>
+</li>
+<li>
+<p>Because this listener method is also <code>@Async</code>, the call is handed to the <code>taskExecutor</code> bean instead of running on the synchronization thread.</p>
+</li>
+<li>
+<p>The executor thread invokes <code>onOrderPlaced(&#8230;&#8203;)</code> with no inherited transaction context.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The "no inherited transaction context" point is important. If the async listener needs database access, it must open its own transaction with <code>@Transactional(propagation = REQUIRES_NEW)</code> on the listener method, exactly like the <code>CustomerLifetimeValueListener</code> did. Forgetting this and writing GORM code directly in an <code>@Async</code> listener body produces an enigmatic <code>org.hibernate.HibernateException: No Session found for current thread</code> from a stack frame that has nothing else to do with persistence.</p>
+</div>
+<div class="paragraph">
+<p>A few footguns:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Exception handling is detached.</strong> Exceptions thrown from an async listener don&#8217;t reach the publisher. They land in Spring&#8217;s <code>AsyncUncaughtExceptionHandler</code> - the default implementation, <code>SimpleAsyncUncaughtExceptionHandler</code>, logs them at <code>ERROR</code> level. For listeners that drive critical infrastructure, install an explicit handler so failures fan out to your alerting pipeline instead of getting buried in the log.</p>
+</li>
+<li>
+<p><strong>Return values are detached.</strong> Don&#8217;t return a value from an async listener expecting Spring to publish it as a follow-up event - that mechanism (<code>@EventListener</code> returning a value to be auto-published) does not compose with async dispatch. Inject <code>ApplicationEventPublisher</code> and call <code>publishEvent(&#8230;&#8203;)</code> explicitly if you need a follow-up event.</p>
+</li>
+<li>
+<p><strong>Thread-pool tuning matters.</strong> The default <code>taskExecutor</code> is sized for development. For production, declare a <code>ThreadPoolTaskExecutor</code> bean with a bounded queue and a sensible rejection policy - otherwise a burst of orders can pile up an unbounded queue of pending notification work.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>References:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="https://docs.spring.io/spring-framework/docs/6.2.x/javadoc-api/org/springframework/context/event/EventListener.html"><code>@EventListener</code> javadoc - "Asynchronous Listeners" section</a></p>
+</li>
+<li>
+<p><a href="https://docs.spring.io/spring-framework/docs/6.2.x/javadoc-api/org/springframework/scheduling/annotation/EnableAsync.html"><code>@EnableAsync</code> javadoc</a></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Files touched in this chapter:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>grails-app/services/example/NotificationListener.groovy</code></p>
+</li>
+<li>
+<p><code>grails-app/init/example/Application.groovy</code> (add <code>@EnableAsync</code>)</p>
+</li>
+</ul>
+</div>
+
+
+                <div style="clear:both;margin-top:15px;"></div>
+                
+                    <div class="toc-item prev-left"><a href="../guide/multipleListeners.html">&lt;&lt; <strong>10</strong><span>Fanning Out - A Second Listener</span></a></div>
+                
+                    <div class="toc-item next-right"><a href="../guide/vsGormEvents.html"><strong>12</strong><span>vs. GORM Lifecycle Callbacks and @Subscriber</span> >></a></div>
+                
+                <div style="clear:both"></div>
+            </div>
+        </td>
+        <td id="col2">
+            <div class="local clearfix">
+                <div class="local-title" style="text-align: right"><a href="https://travis-ci.org/grails-guides/grails-transactional-events"><img src="https://travis-ci.org/grails-guides/grails-transactional-events.svg?branch=master" /></a></div>            
+                 <div class="local-title">
+                    <a href="https://github.com/grails-guides/grails-transactional-events">
+                    <svg height="35" class="octicon octicon-mark-github" viewBox="0 0 16 16" version="1.1" width="35" aria-hidden="true"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a> &nbsp;&nbsp;Get the Code
+                </div>
+                <div class="menu">
+                    <div class="input-group">                        
+                        <button href="#" onclick="document.getElementById('github-url').value='git@github.com:grails-guides/grails-transactional-events.git'" class="codeButton">SSH</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-transactional-events.git'" class="codeButton">HTTPS</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-transactional-events'" class="codeButton">Subversion</button>
+                    </div>
+       
+                    <div class="input-group">                    
+                        <!-- Target -->
+                        <input id="github-url" value="git@github.com:grails-guides/grails-transactional-events.git" type="text" />
+
+                        <!-- Trigger -->
+                        <button class="clipbtn" type="button" data-clipboard-target="#github-url">
+
+                            <img width="13" src="../img/clippy.svg" alt="Copy to clipboard">
+                        </button>       
+
+                    </div>
+                    <div class="input-group">
+                      <a href="https://github.com/grails-guides/grails-transactional-events/archive/master.zip" class="downloadButton">Download ZIP</a>
+                    </div>
+                </div>
+            </div>
+        </td>
+    </tr>
+</table>
+
+<div id="footer">
+    
+    
+</div>
+
+<script type="text/javascript" src="../js/docs.js"></script>
+
+</body>
+</html>

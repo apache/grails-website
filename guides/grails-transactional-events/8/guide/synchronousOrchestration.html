@@ -1,0 +1,395 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+                      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+    <title>16 Synchronous Orchestration With a Plain @EventListener</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
+    <link rel="stylesheet" href="../css/guide.css" type="text/css" media="screen, print" title="Style" charset="utf-8" />            
+    <link rel="stylesheet" href="../css/pdf.css" type="text/css" media="print" title="PDF" charset="utf-8"/>
+    <script type="text/javascript">
+function addJsClass() {
+    var classes = document.body.className.split(" ");
+    classes.push("js");
+    document.body.className = classes.join(" ");
+}
+    </script>
+</head>
+
+<body class="body" onload="addJsClass();">
+<div id="navigation">
+    <div class="navTitle">
+        
+        Grails Framework Guide 
+    </div>
+    <div class="navLinks">
+        <ul>
+            <li>
+                <div id="nav-summary" onmouseover="toggleNavSummary(false)" onmouseout="toggleNavSummary(true)">
+                    <a href="../guide/index.html" class="button">Table of contents</a>
+
+                    <div id="nav-summary-childs" style="display:none;">
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/gettingStarted.html"><strong>1</strong><span>Getting Started</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/theProblem.html"><strong>2</strong><span>The Missing Pattern</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/createApp.html"><strong>3</strong><span>Creating the Application</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/domainModel.html"><strong>4</strong><span>The Customer, Order, and AuditLog Domain Model</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/eventClass.html"><strong>5</strong><span>The OrderPlacedEvent POGO</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/publishingEvents.html"><strong>6</strong><span>Publishing Events From a Transactional Service</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/transactionalListener.html"><strong>7</strong><span>The First @TransactionalEventListener</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/registeringListeners.html"><strong>8</strong><span>Registering the Listeners (and the Factory That Makes Them Fire)</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/transactionPhases.html"><strong>9</strong><span>The Four TransactionPhase Values</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/multipleListeners.html"><strong>10</strong><span>Fanning Out - A Second Listener</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/asyncDispatch.html"><strong>11</strong><span>Off-Thread Dispatch With @Async</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/vsGormEvents.html"><strong>12</strong><span>vs. GORM Lifecycle Callbacks and @Subscriber</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/integrationTest.html"><strong>13</strong><span>Proving the Contract With an Integration Spec</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/sameTransactionProblem.html"><strong>14</strong><span>When the Side-Effect IS the Transaction</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/workOrderDomainModel.html"><strong>15</strong><span>The CustomerRequest, WorkOrder, and WorkOrderAssignee Domain Model</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/synchronousOrchestration.html"><strong>16</strong><span>Synchronous Orchestration With a Plain @EventListener</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/atomicRollbackTest.html"><strong>17</strong><span>Proving Atomic Rollback With an Integration Spec</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/testingThePattern.html"><strong>18</strong><span>Testing the Pattern Inside and Out</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>19</strong><span>Do you need help with Grails?</span></a>
+                        </div>
+                        
+                    </div>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+
+</div>
+
+<table id="colset" border="0" cellpadding="0" cellspacing="0">
+    <tr>
+        <td id="col1">
+            <div id="main" class="corner-all">
+
+                
+                    <div class="toc-item prev-left"><a href="../guide/workOrderDomainModel.html">&lt;&lt; <strong>15</strong><span>The CustomerRequest, WorkOrder, and WorkOrderAssignee Domain Model</span></a></div>
+                
+
+                
+                    <div class="toc-item next-right"><a href="../guide/atomicRollbackTest.html"><strong>17</strong><span>Proving Atomic Rollback With an Integration Spec</span> >></a></div>
+                
+
+
+                
+
+                
+
+<h1 id="synchronousOrchestration">16 Synchronous Orchestration With a Plain @EventListener</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-transactional-events/v8/guide/synchronousOrchestration.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>The event is another plain POGO, identical in spirit to <code>OrderPlacedEvent</code>: immutable, carrying IDs rather than entity references.</p>
+</div>
+<div class="listingblock">
+<div class="title">src/main/groovy/example/events/EmployeeAssignedEvent.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.events
+
+<span class="keyword">import</span> <span class="include">groovy.transform.Immutable</span>
+
+<span class="comment">/**
+ * Published by WorkOrderAssignmentService the moment a WorkOrderAssignee is
+ * created. Unlike OrderPlacedEvent (consumed AFTER_COMMIT), this event is
+ * consumed SYNCHRONOUSLY, inside the publisher's transaction, by a plain
+ * @EventListener. It still carries IDs rather than entity references, but
+ * the listener that handles it runs in the same Hibernate session, so a
+ * WorkOrder.get(workOrderId) returns the live, in-flight instance.
+ */</span>
+<span class="annotation">@Immutable</span>
+<span class="type">class</span> <span class="class">EmployeeAssignedEvent</span> {
+    <span class="predefined-type">Long</span> workOrderId
+    <span class="predefined-type">Long</span> assigneeId
+    <span class="predefined-type">String</span> employeeName
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The publisher is also familiar - a <code>@Transactional</code> service that persists, then publishes.</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/services/example/WorkOrderAssignmentService.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">example.events.EmployeeAssignedEvent</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Autowired</span>
+<span class="keyword">import</span> <span class="include">org.springframework.context.ApplicationEventPublisher</span>
+
+<span class="comment">/**
+ * Assigns an employee to a work order. The persistence work and the event
+ * publish both happen inside one @Transactional method.
+ *
+ * Contrast with OrderService: there the listeners run AFTER this method
+ * commits, in their own transactions. Here the event is consumed by a plain
+ * @EventListener, which Spring dispatches SYNCHRONOUSLY at the publishEvent
+ * call - on this thread, inside this transaction, before this method returns.
+ * So the assignee insert, plus every change the listener makes, are one
+ * atomic unit: they all commit together or all roll back together.
+ */</span>
+<span class="annotation">@Transactional</span>
+<span class="type">class</span> <span class="class">WorkOrderAssignmentService</span> {
+
+    <span class="annotation">@Autowired</span>
+    ApplicationEventPublisher applicationEventPublisher
+
+    WorkOrderAssignee assignEmployee(<span class="predefined-type">Long</span> workOrderId, <span class="predefined-type">String</span> employeeName) {
+        WorkOrder workOrder = WorkOrder.get(workOrderId)
+        <span class="keyword">if</span> (!workOrder) {
+            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="exception">IllegalArgumentException</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">Unknown work order: </span><span class="inline"><span class="inline-delimiter">${</span>workOrderId<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>)
+        }
+
+        WorkOrderAssignee assignee = <span class="keyword">new</span> WorkOrderAssignee(
+                <span class="key">workOrder</span>: workOrder, <span class="key">employeeName</span>: employeeName)
+                .save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+
+        <span class="comment">// Synchronous dispatch: the @EventListener for this event runs inline,</span>
+        <span class="comment">// right here, inside this transaction and Hibernate session. If it</span>
+        <span class="comment">// throws, the exception propagates back through this call and rolls</span>
+        <span class="comment">// the whole method - including the assignee insert above - back.</span>
+        applicationEventPublisher.publishEvent(
+                <span class="keyword">new</span> EmployeeAssignedEvent(workOrder.id, assignee.id, employeeName))
+
+        assignee
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This file is byte-for-byte the same <strong>shape</strong> as <code>OrderService</code>: inject <code>ApplicationEventPublisher</code>, do the persistence, call <code>publishEvent(&#8230;&#8203;)</code>, return. The publisher does not know or care who listens. The difference is entirely on the listener side.</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/services/example/WorkOrderAssignmentListener.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">example.events.EmployeeAssignedEvent</span>
+<span class="keyword">import</span> <span class="include">org.springframework.context.event.EventListener</span>
+
+<span class="comment">/**
+ * Synchronous, in-transaction orchestration.
+ *
+ * The annotation is a plain @EventListener - NOT @TransactionalEventListener.
+ * Because WorkOrderAssignmentService publishes the event from inside its
+ * @Transactional method, Spring's default (synchronous) multicaster invokes
+ * this method inline, on the publisher's thread, inside the publisher's
+ * transaction and Hibernate session.
+ *
+ * Three consequences make this the right tool for atomic cross-domain work:
+ *
+ *   1. Reads see in-flight data. WorkOrder.get(...) returns the managed
+ *      instance from the current session - including the assignee that was
+ *      added moments ago in this same transaction.
+ *   2. Writes join the same commit. Mutating WorkOrder and CustomerRequest
+ *      here flushes as part of the publisher's commit.
+ *   3. Failure rolls everything back. Any exception thrown here propagates
+ *      out through publishEvent(...) and unwinds the entire operation - the
+ *      assignee insert included.
+ *
+ * Note what is deliberately absent: there is NO @Transactional on this class.
+ * The listener does not open or manage a transaction of its own - it runs
+ * inside the one the publisher already started, which is the whole point.
+ * (Adding Grails' @Transactional here would also be actively harmful: it is a
+ * compile-time AST transform that relocates the method body, which hides the
+ * @EventListener annotation from Spring's listener scanner so the listener
+ * never registers.)
+ */</span>
+<span class="type">class</span> <span class="class">WorkOrderAssignmentListener</span> {
+
+    <span class="annotation">@EventListener</span>
+    <span class="type">void</span> onEmployeeAssigned(EmployeeAssignedEvent event) {
+        WorkOrder workOrder = WorkOrder.get(event.workOrderId)
+
+        <span class="comment">// An assigned work order is ready to be planned.</span>
+        <span class="keyword">if</span> (workOrder.status == WorkOrderStatus.OPEN) {
+            workOrder.status = WorkOrderStatus.PLANNED
+            workOrder.save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        }
+
+        <span class="comment">// Planning work means the originating request is now in progress.</span>
+        <span class="comment">// This read sees the WorkOrder transition made one statement ago,</span>
+        <span class="comment">// because both run in the same transaction.</span>
+        CustomerRequest request = workOrder.customerRequest
+        <span class="keyword">if</span> (request.status.terminal) {
+            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="exception">IllegalStateException</span>(
+                    <span class="string"><span class="delimiter">&quot;</span><span class="content">Cannot start work on request </span><span class="inline"><span class="inline-delimiter">${</span>request.id<span class="inline-delimiter">}</span></span><span class="content">: it is </span><span class="inline"><span class="inline-delimiter">${</span>request.status<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>)
+        }
+        <span class="keyword">if</span> (request.status == CustomerRequestStatus.SUBMITTED) {
+            request.status = CustomerRequestStatus.IN_PROGRESS
+            request.save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        }
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The single annotation that changes everything is <code>@EventListener</code> instead of <code>@TransactionalEventListener(AFTER_COMMIT)</code>. Walk through what that buys you:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>It fires synchronously, inline, now.</strong> Spring&#8217;s default <code>ApplicationEventMulticaster</code> is <code>SimpleApplicationEventMulticaster</code>, which invokes listeners directly on the calling thread. The call stack is <code>assignEmployee(&#8230;&#8203;)</code> &#8594; <code>publishEvent(&#8230;&#8203;)</code> &#8594; <code>onEmployeeAssigned(&#8230;&#8203;)</code> &#8594; back. No commit has happened yet; the publisher&#8217;s <code>@Transactional</code> method has not even returned.</p>
+</li>
+<li>
+<p><strong>It runs in the publisher&#8217;s transaction and session.</strong> No <code>REQUIRES_NEW</code>. The <code>@Transactional</code> here uses the default <code>REQUIRED</code> propagation, which <strong>joins</strong> the publisher&#8217;s active transaction rather than starting a new one. That shared transaction is the entire point - it is why the listener&#8217;s writes commit with the assignment and roll back with it.</p>
+</li>
+<li>
+<p><strong>Its reads see in-flight state.</strong> <code>WorkOrder.get(event.workOrderId)</code> returns the managed instance from the current session, with the <code>WorkOrderAssignee</code> that was inserted moments ago already attached. When the listener flips the work order to <code>PLANNED</code> and then reads <code>workOrder.customerRequest</code>, it is reading uncommitted, transaction-local data - exactly what you cannot do from an <code>AFTER_COMMIT</code> listener.</p>
+</li>
+<li>
+<p><strong>Its failures roll the operation back.</strong> The <code>isTerminal()</code> guard throws <code>IllegalStateException</code> for a closed request. That exception propagates out through <code>publishEvent(&#8230;&#8203;)</code>, out of <code>assignEmployee(&#8230;&#8203;)</code>, and Grails' transactional advice marks the transaction for rollback. The assignee insert, the work-order status change, and any partial request change are all discarded together.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>A note on <code>save(failOnError: true)</code>. Strictly, dirty-checking would flush the mutated <code>WorkOrder</code> and <code>CustomerRequest</code> at commit without an explicit <code>save</code>. Calling <code>save(failOnError: true)</code> is deliberate anyway: it runs validation <strong>now</strong>, at the business step, and turns a constraint violation into a thrown exception that participates in the same rollback - rather than a silent <code>null</code> return or a deferred flush exception surfacing at commit time from a confusing stack frame.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>This pattern depends on <strong>synchronous</strong> delivery. Do not put <code>@Async</code> on this listener: an async listener runs on a different thread with no inherited transaction, its writes would land in (or fail to find) a separate transaction, and - critically - an exception it throws would go to Spring&#8217;s <code>AsyncUncaughtExceptionHandler</code> instead of rolling the publisher back. Synchronous in-transaction orchestration and <code>@Async</code> are mutually exclusive by design.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p><strong>Single listener vs. a chain of events.</strong> The example does both status transitions in one listener. You <strong>can</strong> model the cascade as a chain - have this listener publish a <code>WorkOrderPlannedEvent</code> that a second synchronous listener consumes to advance the request - and because every listener in the chain is synchronous, the whole chain runs depth-first inside the one transaction and rolls back as a unit. Reach for chaining only when the intermediate event (<code>WorkOrderPlannedEvent</code>) is independently meaningful to <strong>other</strong> consumers. Otherwise a single listener is clearer and avoids the chain&#8217;s sharp edges: listener ordering, and the fact that Spring does no cycle detection, so a listener that (directly or transitively) re-publishes its own trigger will recurse until the stack overflows.</p>
+</div>
+<div class="paragraph">
+<p><strong>Why not <code>@TransactionalEventListener(BEFORE_COMMIT)</code>?</strong> It also runs in the publisher&#8217;s transaction and would also roll back on failure, so it can do atomic work. But it fires at a different time - after the service method body has fully returned, while the commit is being prepared - not at the business step that published the event. That makes it a transaction-lifecycle hook (good for last-moment validation or derived totals computed from the final state of the transaction), not the natural home for causal, mid-method orchestration that wants to read and react to in-flight state immediately. Lead with the plain <code>@EventListener</code>; reach for <code>BEFORE_COMMIT</code> only when you specifically need the deferred, just-before-commit timing.</p>
+</div>
+<div class="paragraph">
+<p>References:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="https://docs.spring.io/spring-framework/reference/6.2/core/beans/context-introduction.html">Spring Framework Reference - Application Events</a> (synchronous delivery; publishing events from listener methods)</p>
+</li>
+<li>
+<p><a href="https://docs.spring.io/spring-framework/docs/6.2.x/javadoc-api/org/springframework/context/event/EventListener.html"><code>@EventListener</code> javadoc</a> (async exceptions are not propagated to the caller)</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Files touched in this chapter:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>src/main/groovy/example/events/EmployeeAssignedEvent.groovy</code></p>
+</li>
+<li>
+<p><code>grails-app/services/example/WorkOrderAssignmentService.groovy</code></p>
+</li>
+<li>
+<p><code>grails-app/services/example/WorkOrderAssignmentListener.groovy</code></p>
+</li>
+</ul>
+</div>
+
+
+                <div style="clear:both;margin-top:15px;"></div>
+                
+                    <div class="toc-item prev-left"><a href="../guide/workOrderDomainModel.html">&lt;&lt; <strong>15</strong><span>The CustomerRequest, WorkOrder, and WorkOrderAssignee Domain Model</span></a></div>
+                
+                    <div class="toc-item next-right"><a href="../guide/atomicRollbackTest.html"><strong>17</strong><span>Proving Atomic Rollback With an Integration Spec</span> >></a></div>
+                
+                <div style="clear:both"></div>
+            </div>
+        </td>
+        <td id="col2">
+            <div class="local clearfix">
+                <div class="local-title" style="text-align: right"><a href="https://travis-ci.org/grails-guides/grails-transactional-events"><img src="https://travis-ci.org/grails-guides/grails-transactional-events.svg?branch=master" /></a></div>            
+                 <div class="local-title">
+                    <a href="https://github.com/grails-guides/grails-transactional-events">
+                    <svg height="35" class="octicon octicon-mark-github" viewBox="0 0 16 16" version="1.1" width="35" aria-hidden="true"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a> &nbsp;&nbsp;Get the Code
+                </div>
+                <div class="menu">
+                    <div class="input-group">                        
+                        <button href="#" onclick="document.getElementById('github-url').value='git@github.com:grails-guides/grails-transactional-events.git'" class="codeButton">SSH</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-transactional-events.git'" class="codeButton">HTTPS</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-transactional-events'" class="codeButton">Subversion</button>
+                    </div>
+       
+                    <div class="input-group">                    
+                        <!-- Target -->
+                        <input id="github-url" value="git@github.com:grails-guides/grails-transactional-events.git" type="text" />
+
+                        <!-- Trigger -->
+                        <button class="clipbtn" type="button" data-clipboard-target="#github-url">
+
+                            <img width="13" src="../img/clippy.svg" alt="Copy to clipboard">
+                        </button>       
+
+                    </div>
+                    <div class="input-group">
+                      <a href="https://github.com/grails-guides/grails-transactional-events/archive/master.zip" class="downloadButton">Download ZIP</a>
+                    </div>
+                </div>
+            </div>
+        </td>
+    </tr>
+</table>
+
+<div id="footer">
+    
+    
+</div>
+
+<script type="text/javascript" src="../js/docs.js"></script>
+
+</body>
+</html>
