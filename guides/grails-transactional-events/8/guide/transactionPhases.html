@@ -51,7 +51,7 @@ function addJsClass() {
                         <div class="toc-item" style="margin-left:0"><a href="../guide/transactionalListener.html"><strong>7</strong><span>The First @TransactionalEventListener</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/registeringListeners.html"><strong>8</strong><span>Registering the Listeners (and the Factory That Makes Them Fire)</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/registeringListeners.html"><strong>8</strong><span>The One Bean That Makes the Listeners Fire</span></a>
                         </div>
                         
                         <div class="toc-item" style="margin-left:0"><a href="../guide/transactionPhases.html"><strong>9</strong><span>The Four TransactionPhase Values</span></a>
@@ -102,7 +102,7 @@ function addJsClass() {
             <div id="main" class="corner-all">
 
                 
-                    <div class="toc-item prev-left"><a href="../guide/registeringListeners.html">&lt;&lt; <strong>8</strong><span>Registering the Listeners (and the Factory That Makes Them Fire)</span></a></div>
+                    <div class="toc-item prev-left"><a href="../guide/registeringListeners.html">&lt;&lt; <strong>8</strong><span>The One Bean That Makes the Listeners Fire</span></a></div>
                 
 
                 
@@ -174,7 +174,7 @@ function addJsClass() {
 <p><strong><code>BEFORE_COMMIT</code> listeners run inside the publisher&#8217;s transaction.</strong> Anything the listener does to GORM is part of the same database commit. This is occasionally exactly what you want (e.g. derived totals) but it&#8217;s a sharp edge - a listener exception unwinds the originating service call. For cross-domain orchestration that must share the transaction, a plain <code>@EventListener</code> (no phase) is usually the clearer tool, because it fires inline at the business step rather than deferred to commit time - the second half of this guide builds exactly that.</p>
 </li>
 <li>
-<p><strong><code>AFTER_COMMIT</code> listeners run *after</strong> the publisher&#8217;s transaction commits.* The original transaction has already concluded by the time the listener fires - Spring is in the middle of draining its synchronization callbacks before tearing the transaction context down. The listener body is therefore not "in" a usable transaction; any database work must open a fresh one via <code>@Transactional(propagation = REQUIRES_NEW)</code>.</p>
+<p><strong><code>AFTER_COMMIT</code> listeners run *after</strong> the publisher&#8217;s transaction commits.* The original transaction has already concluded by the time the listener fires - Spring is in the middle of draining its synchronization callbacks before tearing the transaction context down. The listener body is therefore not "in" a usable transaction; any database work must open a fresh one with <code>withNewTransaction { &#8230;&#8203; }</code>. Reach for <code>withNewTransaction</code>, not <code>@Transactional(REQUIRES_NEW)</code>: on a listener method that annotation&#8217;s AST transform would hide the listener from Spring (see <em>The First @TransactionalEventListener</em>).</p>
 </li>
 <li>
 <p><strong>Listener execution order is unspecified.</strong> Spring does not guarantee the order in which two <code>AFTER_COMMIT</code> listeners for the same event fire. If you need ordering, use <code>@Order(&#8230;&#8203;)</code> on the listener methods, but better: design the listeners so the order does not matter.</p>
@@ -211,7 +211,7 @@ function addJsClass() {
 
                 <div style="clear:both;margin-top:15px;"></div>
                 
-                    <div class="toc-item prev-left"><a href="../guide/registeringListeners.html">&lt;&lt; <strong>8</strong><span>Registering the Listeners (and the Factory That Makes Them Fire)</span></a></div>
+                    <div class="toc-item prev-left"><a href="../guide/registeringListeners.html">&lt;&lt; <strong>8</strong><span>The One Bean That Makes the Listeners Fire</span></a></div>
                 
                     <div class="toc-item next-right"><a href="../guide/multipleListeners.html"><strong>10</strong><span>Fanning Out - A Second Listener</span> >></a></div>
                 

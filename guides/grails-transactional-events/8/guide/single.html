@@ -123,7 +123,7 @@
             
             <div class="toc-item" style="margin-left:0px"><a href="#transactionalListener"><strong>7</strong><span>The First @TransactionalEventListener</span></a></div>
             
-            <div class="toc-item" style="margin-left:0px"><a href="#registeringListeners"><strong>8</strong><span>Registering the Listeners (and the Factory That Makes Them Fire)</span></a></div>
+            <div class="toc-item" style="margin-left:0px"><a href="#registeringListeners"><strong>8</strong><span>The One Bean That Makes the Listeners Fire</span></a></div>
             
             <div class="toc-item" style="margin-left:0px"><a href="#transactionPhases"><strong>9</strong><span>The Four TransactionPhase Values</span></a></div>
             
@@ -207,13 +207,13 @@
 <div class="ulist">
 <ul>
 <li>
-<p><code>CustomerLifetimeValueListener</code> - bumps <code>Customer.lifetimeValue</code> after commit.</p>
+<p><code>CustomerLifetimeValueService</code> - bumps <code>Customer.lifetimeValue</code> after commit.</p>
 </li>
 <li>
-<p><code>AuditListener</code> - writes an <code>AuditLog</code> row after commit.</p>
+<p><code>AuditService</code> - writes an <code>AuditLog</code> row after commit.</p>
 </li>
 <li>
-<p><code>NotificationListener</code> - dispatched off-thread via <code>@Async</code> after commit (a stand-in for sending email).</p>
+<p><code>NotificationService</code> - dispatched off-thread via <code>@Async</code> after commit (a stand-in for sending email).</p>
 </li>
 </ul>
 </div>
@@ -241,7 +241,7 @@
 <p>A <code>WorkOrderAssignmentService.assignEmployee(&#8230;&#8203;)</code> that creates an assignment and publishes an <code>EmployeeAssignedEvent</code> from inside its <code>@Transactional</code> method.</p>
 </li>
 <li>
-<p>A <code>WorkOrderAssignmentListener</code> annotated with a plain <code>@EventListener</code> (no transaction phase) that runs <strong>synchronously, inside the publisher&#8217;s transaction</strong> - reading in-flight state, cascading the <code>WorkOrder</code> to <code>PLANNED</code> and the <code>CustomerRequest</code> to <code>IN_PROGRESS</code>, and rolling all three writes back together on failure.</p>
+<p>A <code>WorkOrderPlanningService</code> annotated with a plain <code>@EventListener</code> (no transaction phase) that runs <strong>synchronously, inside the publisher&#8217;s transaction</strong> - reading in-flight state, cascading the <code>WorkOrder</code> to <code>PLANNED</code> and the <code>CustomerRequest</code> to <code>IN_PROGRESS</code>, and rolling all three writes back together on failure.</p>
 </li>
 <li>
 <p>A Spock <code>@Integration</code> spec that proves the atomicity from both sides: all three changes commit as one unit on success, and a failure raised mid-orchestration leaves nothing persisted.</p>
@@ -534,7 +534,7 @@ cd grails-transactional-events</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><code>Customer.lifetimeValue</code> defaults to <code>BigDecimal.ZERO</code> and is constrained <code>min: BigDecimal.ZERO</code>. The <code>CustomerLifetimeValueListener</code> you&#8217;ll write later is the only writer; the field never gets edited from <code>OrderService</code> or from a controller. That single-writer property is what makes the listener pattern composable - if any other listener wrote to the same field, you&#8217;d have a race.</p>
+<p><code>Customer.lifetimeValue</code> defaults to <code>BigDecimal.ZERO</code> and is constrained <code>min: BigDecimal.ZERO</code>. The <code>CustomerLifetimeValueService</code> you&#8217;ll write later is the only writer; the field never gets edited from <code>OrderService</code> or from a controller. That single-writer property is what makes the listener pattern composable - if any other listener wrote to the same field, you&#8217;d have a race.</p>
 </li>
 <li>
 <p><code>Order</code> declares <code>static mapping = { table 'orders' }</code> because <code>order</code> is a reserved word in most SQL dialects (it&#8217;s the keyword in <code>ORDER BY</code>). Without the override the schema-generation either quotes the table name aggressively or fails outright depending on the database.</p>
@@ -723,7 +723,7 @@ cd grails-transactional-events</code></pre>
 <p>The first listener bumps <code>Customer.lifetimeValue</code> after an order commits.</p>
 </div>
 <div class="listingblock">
-<div class="title">grails-app/services/example/CustomerLifetimeValueListener.groovy</div>
+<div class="title">grails-app/services/example/CustomerLifetimeValueService.groovy</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
 
@@ -734,20 +734,19 @@ cd grails-transactional-events</code></pre>
 <span class="comment">/**
  * Updates Customer.lifetimeValue after an order commits.
  *
- * Registered as a Spring bean in grails-app/conf/spring/resources.groovy -
- * Grails only auto-registers grails-app/services/ classes whose name ends in
- * 'Service', and this one ends in 'Listener'. That registration (plus the
- * TransactionalEventListenerFactory bean resources.groovy also declares) is
- * what lets Spring wire the @TransactionalEventListener method.
+ * An ordinary Grails service: because the class name ends in 'Service', Grails
+ * auto-registers it as a Spring bean, and Spring scans its
+ * @TransactionalEventListener method - no manual wiring. It carries no
+ * @Transactional of its own, so Grails applies no transactional proxy.
  *
- * The AFTER_COMMIT callback runs after the publisher's transaction has
- * already committed, so this method opens its OWN transaction for the GORM
- * write via withNewTransaction { }. An @Transactional(REQUIRES_NEW)
- * annotation does NOT work here: a bean registered in resources.groovy is not
- * wrapped in Grails' transactional proxy, so the annotation is ignored and
- * the save fails with &quot;no transaction is in progress&quot;.
+ * The AFTER_COMMIT callback runs after the publisher's transaction has already
+ * committed, so this method opens its OWN transaction for the GORM write via
+ * withNewTransaction { }. Do not reach for @Transactional(REQUIRES_NEW) to make
+ * that declarative: Grails' @Transactional is an AST transform that relocates
+ * the method body and would hide @TransactionalEventListener from Spring's
+ * scanner, so the listener would never fire.
  */</span>
-<span class="type">class</span> <span class="class">CustomerLifetimeValueListener</span> {
+<span class="type">class</span> <span class="class">CustomerLifetimeValueService</span> {
 
     <span class="annotation">@TransactionalEventListener</span>(phase = TransactionPhase.AFTER_COMMIT)
     <span class="type">void</span> onOrderPlaced(OrderPlacedEvent event) {
@@ -768,13 +767,13 @@ cd grails-transactional-events</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p>The class lives in <code>grails-app/services/</code>, but because its name ends in <code>Listener</code> rather than <code>Service</code>, Grails does <strong>not</strong> auto-register it as a Spring bean. You wire it up explicitly in <code>resources.groovy</code> - covered in the next chapter. Once it is a bean (and a <code>TransactionalEventListenerFactory</code> is present), Spring&#8217;s <code>EventListenerMethodProcessor</code> scans its methods and registers the <code>@TransactionalEventListener</code>.</p>
+<p>It is an ordinary Grails service. Because the class name ends in <code>Service</code>, Grails auto-registers it as a Spring bean with no configuration, and Spring&#8217;s <code>EventListenerMethodProcessor</code> scans its methods and registers the <code>@TransactionalEventListener</code>. The only extra wiring the pattern needs - a <code>TransactionalEventListenerFactory</code> bean - is covered in the next chapter.</p>
 </li>
 <li>
 <p><code>@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)</code> binds the listener to the <strong>publisher&#8217;s</strong> transaction synchronization. When <code>OrderService.placeOrder(&#8230;&#8203;)</code> commits, Spring&#8217;s <code>TransactionSynchronizationManager</code> fires the <code>afterCommit()</code> callback that drains the buffered events into this method. If <code>placeOrder(&#8230;&#8203;)</code> rolls back, the buffered event is discarded and the method below is never called.</p>
 </li>
 <li>
-<p>The listener does its GORM write inside <code>Customer.withNewTransaction { &#8230;&#8203; }</code>. The publisher&#8217;s transaction has <strong>already committed</strong> by the time an AFTER_COMMIT listener runs - Spring is draining its after-commit callbacks before tearing the original transaction context down - so there is no transaction to piggy-back on and any GORM work needs a fresh one. <code>withNewTransaction</code> opens it programmatically. An <code>@Transactional(propagation = REQUIRES_NEW)</code> annotation would read more declaratively but does <strong>not</strong> work on a bean registered in <code>resources.groovy</code>: such a bean is not wrapped in Grails' transactional proxy, so the annotation is silently ignored and the <code>save</code> fails with <code>no transaction is in progress</code>.</p>
+<p>The listener does its GORM write inside <code>Customer.withNewTransaction { &#8230;&#8203; }</code>. The publisher&#8217;s transaction has <strong>already committed</strong> by the time an AFTER_COMMIT listener runs - Spring is draining its after-commit callbacks before tearing the original transaction context down - so there is no transaction to piggy-back on and any GORM work needs a fresh one. <code>withNewTransaction</code> opens it programmatically. An <code>@Transactional(propagation = REQUIRES_NEW)</code> annotation would read more declaratively, but you <strong>cannot</strong> use it here: Grails' <code>@Transactional</code> is a compile-time AST transform that relocates the method body, which hides the <code>@TransactionalEventListener</code> annotation from Spring&#8217;s listener scanner - so the listener would never fire at all. <code>withNewTransaction</code> keeps the annotation where Spring can see it.</p>
 </li>
 <li>
 <p>The method parameter type <code>OrderPlacedEvent</code> is how Spring picks which listener to call for which event. A second listener that accepts <code>CustomerRegisteredEvent</code> won&#8217;t see `OrderPlacedEvent`s, and vice versa. The event-to-listener wiring is implicit in the parameter type.</p>
@@ -793,13 +792,13 @@ cd grails-transactional-events</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><code>grails-app/services/example/CustomerLifetimeValueListener.groovy</code></p>
+<p><code>grails-app/services/example/CustomerLifetimeValueService.groovy</code></p>
 </li>
 </ul>
 </div>
 
 
-<h1 id="registeringListeners">8 Registering the Listeners (and the Factory That Makes Them Fire)</h1>
+<h1 id="registeringListeners">8 The One Bean That Makes the Listeners Fire</h1>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-transactional-events/v8/guide/registeringListeners.adoc"'>
@@ -809,68 +808,79 @@ cd grails-transactional-events</code></pre>
 
 
 <div class="paragraph">
-<p>There is a wiring step that is easy to miss and fails <strong>silently</strong> when you do: the listener beans have to be registered, and <code>@TransactionalEventListener</code> needs one extra bean before Spring will honour it.</p>
+<p>The listeners are ordinary services, so there is nothing to register by hand. Grails wires every class under <code>grails-app/services/</code> whose name ends in <code>Service</code> as a Spring bean automatically, and Spring&#8217;s <code>EventListenerMethodProcessor</code> scans those beans for <code>@EventListener</code> / <code>@TransactionalEventListener</code> methods. Giving the listeners <code>Service</code> names is what buys that: registration is convention, not configuration.</p>
 </div>
-<div class="sect1">
-<h2 id="_grails_appservices_does_not_auto_register_a_class_unless_it_ends_in_service">grails-app/services/ does not auto-register a class unless it ends in <code>Service</code></h2>
-<div class="sectionbody">
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="title">Two ways to make a listener a bean</div>
 <div class="paragraph">
-<p>Grails turns a class under <code>grails-app/services/</code> into a Spring bean only when its name ends in <code>Service</code>. Our listeners are named <code>&#8230;&#8203;Listener</code>, so Grails does <strong>not</strong> register them. A class that is never a bean is never scanned by Spring&#8217;s <code>EventListenerMethodProcessor</code>, so its <code>@EventListener</code> / <code>@TransactionalEventListener</code> methods are never wired - and nothing warns you. The publisher calls <code>publishEvent(&#8230;&#8203;)</code>, no listener runs, and the only symptom is a side-effect that quietly never happens.</p>
+<p>The <code>Service</code> suffix is the lightest option, but it is not the only one. A class auto-registers only when it is a Grails artefact, and for <code>grails-app/services/</code> that means the name <strong>must</strong> end in <code>Service</code> - a class called <code>OrderAuditListener</code> in that directory is silently ignored.</p>
 </div>
 <div class="paragraph">
-<p>Register the listeners explicitly:</p>
+<p>The alternative is to treat the listener as a plain Spring component: put it under <code>src/main/groovy</code>, annotate it <code>@Component</code>, and tell Spring which package to scan from your <code>Application</code> class.</p>
 </div>
 <div class="listingblock">
-<div class="title">grails-app/conf/spring/resources.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">// Place your Spring DSL code here</span>
-beans = {
-    <span class="comment">// Grails only auto-registers a class under grails-app/services/ as a</span>
-    <span class="comment">// Spring bean when its name ends in 'Service'. These listener classes end</span>
-    <span class="comment">// in 'Listener', so Grails does NOT register them - which means Spring's</span>
-    <span class="comment">// EventListenerMethodProcessor never scans their @EventListener /</span>
-    <span class="comment">// @TransactionalEventListener methods and the listeners silently never</span>
-    <span class="comment">// fire. Registering them explicitly here makes them beans so their</span>
-    <span class="comment">// listener methods are wired at startup.</span>
-    customerLifetimeValueListener(example.CustomerLifetimeValueListener)
-    auditListener(example.AuditListener)
-    notificationListener(example.NotificationListener)
-    workOrderAssignmentListener(example.WorkOrderAssignmentListener)
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.boot.config.GrailsAutoConfiguration</span>
+<span class="keyword">import</span> <span class="include">org.springframework.context.annotation.ComponentScan</span>
 
-    <span class="comment">// @TransactionalEventListener (the AFTER_COMMIT listeners) is only honored</span>
-    <span class="comment">// when a TransactionalEventListenerFactory bean exists. Spring normally</span>
-    <span class="comment">// contributes one through @EnableTransactionManagement, but a plain Grails</span>
-    <span class="comment">// app does not register it, so the AFTER_COMMIT listeners would silently</span>
-    <span class="comment">// never fire even though plain @EventListener beans do. Declaring it here</span>
-    <span class="comment">// is what makes the transaction-bound phases work.</span>
-    transactionalEventListenerFactory(org.springframework.transaction.event.TransactionalEventListenerFactory)
-}</code></pre>
+<span class="annotation">@ComponentScan</span>(<span class="string"><span class="delimiter">'</span><span class="content">example</span><span class="delimiter">'</span></span>) <i class="conum" data-value="1"></i><b>(1)</b>
+<span class="type">class</span> <span class="class">Application</span> <span class="directive">extends</span> GrailsAutoConfiguration { <span class="comment">/* ... */</span> }</code></pre>
 </div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td><code>@ComponentScan</code> tells Spring to look for <code>@Component</code>, <code>@Configuration</code>, and related classes in the given package. If no package is given, the package of the annotated class is used as the root.</td>
+</tr>
+</table>
 </div>
 <div class="paragraph">
-<p>(You could instead rename the classes to end in <code>Service</code> - <code>AuditListenerService</code> - and let Grails auto-register them. The explicit <code>resources.groovy</code> registration is clearer about intent and keeps the descriptive <code>Listener</code> names.)</p>
+<p>A default Grails <code>Application</code> scans only the <code>grails-app/</code> artefact directories, so plain <code>@Component</code> classes under <code>src/main/groovy</code> stay invisible until you add <code>@ComponentScan</code> (or override <code>packageNames()</code>). If your app keeps any non-artefact components under <code>src/main/groovy</code>, it is worth adding <code>@ComponentScan('your.package')</code> to <code>Application</code> once, up front - then anything you drop there later is wired with no further ceremony. This guide keeps the listeners as <code>Service</code> classes because they need no annotation at all.</p>
 </div>
+</td>
+</tr>
+</table>
 </div>
+<div class="paragraph">
+<p>There is exactly one bean you <strong>do</strong> have to declare, and forgetting it fails <strong>silently</strong>.</p>
 </div>
 <div class="sect1">
 <h2 id="_transactionaleventlistener_needs_a_transactionaleventlistenerfactory_bean"><code>@TransactionalEventListener</code> needs a <code>TransactionalEventListenerFactory</code> bean</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Registering the bean is enough for a <strong>plain</strong> <code>@EventListener</code> to fire. It is <strong>not</strong> enough for <code>@TransactionalEventListener</code>. The transaction-phase-bound variant is only processed when a <code>TransactionalEventListenerFactory</code> bean exists in the context. In a standard Spring Boot application <code>@EnableTransactionManagement</code> contributes that factory automatically; in this Grails application it is not registered by default, so every <code>@TransactionalEventListener</code> is silently ignored until you declare it yourself - which is the last bean in the <code>resources.groovy</code> above.</p>
+<p>A plain <code>@EventListener</code> fires as soon as its class is a bean. <code>@TransactionalEventListener</code> does not: the transaction-phase-bound variant is only processed when a <code>TransactionalEventListenerFactory</code> bean exists in the context. A standard Spring Boot application contributes one automatically through <code>@EnableTransactionManagement</code>. Grails does <strong>not</strong> use <code>@EnableTransactionManagement</code> - it drives transactions through GORM&#8217;s own <code>@Transactional</code> AST transform - so that factory is never registered, and every <code>@TransactionalEventListener</code> is silently ignored until you declare it yourself:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/spring/resources.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">beans = {
+    <span class="comment">// The listeners are ordinary services, so Grails auto-registers them - no</span>
+    <span class="comment">// wiring needed there. This is the one bean the pattern does need: Grails</span>
+    <span class="comment">// uses GORM's @Transactional, not Spring's @EnableTransactionManagement, so</span>
+    <span class="comment">// it never registers a TransactionalEventListenerFactory, and without one</span>
+    <span class="comment">// every @TransactionalEventListener silently no-ops. Declaring it here is</span>
+    <span class="comment">// what makes the AFTER_COMMIT phases fire.</span>
+    transactionalEventListenerFactory(org.springframework.transaction.event.TransactionalEventListenerFactory)
+}</code></pre>
+</div>
 </div>
 <div class="paragraph">
-<p>The failure modes are worth committing to memory because they are all silent:</p>
+<p>That single line is the only wiring the pattern needs. The failure modes are worth committing to memory because they are both silent:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Listener class not a <code>Spring</code> bean</strong> (wrong suffix, not in <code>resources.groovy</code>) &#8594; neither <code>@EventListener</code> nor <code>@TransactionalEventListener</code> fires.</p>
+<p><strong>No <code>TransactionalEventListenerFactory</code></strong> &#8594; plain <code>@EventListener</code> beans still fire, but every <code>@TransactionalEventListener</code> is ignored. This is the confusing one: the synchronous orchestration listener in the second half of this guide works, while the AFTER_COMMIT listeners appear dead.</p>
 </li>
 <li>
-<p><strong>Bean registered but no <code>TransactionalEventListenerFactory</code></strong> &#8594; plain <code>@EventListener</code> fires, every <code>@TransactionalEventListener</code> is ignored. This is the confusing one: the synchronous orchestration listener in the second half of this guide works, while the AFTER_COMMIT listeners appear dead.</p>
-</li>
-<li>
-<p><strong>Both in place</strong> &#8594; everything fires.</p>
+<p><strong>Factory in place</strong> &#8594; everything fires.</p>
 </li>
 </ul>
 </div>
@@ -951,7 +961,7 @@ beans = {
 <p><strong><code>BEFORE_COMMIT</code> listeners run inside the publisher&#8217;s transaction.</strong> Anything the listener does to GORM is part of the same database commit. This is occasionally exactly what you want (e.g. derived totals) but it&#8217;s a sharp edge - a listener exception unwinds the originating service call. For cross-domain orchestration that must share the transaction, a plain <code>@EventListener</code> (no phase) is usually the clearer tool, because it fires inline at the business step rather than deferred to commit time - the second half of this guide builds exactly that.</p>
 </li>
 <li>
-<p><strong><code>AFTER_COMMIT</code> listeners run *after</strong> the publisher&#8217;s transaction commits.* The original transaction has already concluded by the time the listener fires - Spring is in the middle of draining its synchronization callbacks before tearing the transaction context down. The listener body is therefore not "in" a usable transaction; any database work must open a fresh one via <code>@Transactional(propagation = REQUIRES_NEW)</code>.</p>
+<p><strong><code>AFTER_COMMIT</code> listeners run *after</strong> the publisher&#8217;s transaction commits.* The original transaction has already concluded by the time the listener fires - Spring is in the middle of draining its synchronization callbacks before tearing the transaction context down. The listener body is therefore not "in" a usable transaction; any database work must open a fresh one with <code>withNewTransaction { &#8230;&#8203; }</code>. Reach for <code>withNewTransaction</code>, not <code>@Transactional(REQUIRES_NEW)</code>: on a listener method that annotation&#8217;s AST transform would hide the listener from Spring (see <em>The First @TransactionalEventListener</em>).</p>
 </li>
 <li>
 <p><strong>Listener execution order is unspecified.</strong> Spring does not guarantee the order in which two <code>AFTER_COMMIT</code> listeners for the same event fire. If you need ordering, use <code>@Order(&#8230;&#8203;)</code> on the listener methods, but better: design the listeners so the order does not matter.</p>
@@ -999,7 +1009,7 @@ beans = {
 <p>The whole point of the pattern is that fanning out is cheap: a new side-effect is a new class, not an edit to <code>OrderService</code>. Here&#8217;s a second listener that writes an <code>AuditLog</code> row.</p>
 </div>
 <div class="listingblock">
-<div class="title">grails-app/services/example/AuditListener.groovy</div>
+<div class="title">grails-app/services/example/AuditService.groovy</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
 
@@ -1010,16 +1020,17 @@ beans = {
 <span class="comment">/**
  * Persists an AuditLog row for every committed order.
  *
- * A separate listener class - not a method on OrderService - keeps the
- * &quot;place an order&quot; concern decoupled from the &quot;record audit history&quot;
- * concern. Adding another committed-only side-effect later means a new
- * class, not an edit to OrderService.
+ * A separate service - not a method on OrderService - keeps the &quot;place an
+ * order&quot; concern decoupled from the &quot;record audit history&quot; concern. Adding
+ * another committed-only side-effect later means a new service, not an edit to
+ * OrderService.
  *
- * Like CustomerLifetimeValueListener, it is registered in resources.groovy
- * and does its GORM write inside withNewTransaction { } because the
- * AFTER_COMMIT callback fires after the publisher's transaction has committed.
+ * Like CustomerLifetimeValueService it is auto-registered by Grails (its name
+ * ends in 'Service') and does its GORM write inside withNewTransaction { }
+ * because the AFTER_COMMIT callback fires after the publisher's transaction
+ * has committed.
  */</span>
-<span class="type">class</span> <span class="class">AuditListener</span> {
+<span class="type">class</span> <span class="class">AuditService</span> {
 
     <span class="annotation">@TransactionalEventListener</span>(phase = TransactionPhase.AFTER_COMMIT)
     <span class="type">void</span> onOrderPlaced(OrderPlacedEvent event) {
@@ -1037,7 +1048,7 @@ beans = {
 </div>
 </div>
 <div class="paragraph">
-<p>Notice that this file is independent of <code>CustomerLifetimeValueListener</code>. They share nothing - no inheritance, no interface. Adding a third side-effect tomorrow - a webhook, a search-index refresh, a metrics counter - means writing a <code>WebhookListener</code> class and adding one line to <code>resources.groovy</code> to register it as a bean. Spring then wires both against the <code>OrderPlacedEvent</code> type and calls both (in unspecified order) when an order commits; the publisher never changes.</p>
+<p>Notice that this file is independent of <code>CustomerLifetimeValueService</code>. They share nothing - no inheritance, no interface. Adding a third side-effect tomorrow - a webhook, a search-index refresh, a metrics counter - means writing a <code>WebhookService</code> class and nothing else: Grails auto-registers it, and Spring wires both against the <code>OrderPlacedEvent</code> type and calls both (in unspecified order) when an order commits; the publisher never changes.</p>
 </div>
 <div class="paragraph">
 <p><code>AuditLog</code> snapshots the data it needs at event-time: <code>orderTotal</code> is copied from the event, not looked up by querying the (now-detached) <code>Order</code>. That decoupling has a few benefits:</p>
@@ -1064,7 +1075,7 @@ beans = {
 <div class="ulist">
 <ul>
 <li>
-<p><code>grails-app/services/example/AuditListener.groovy</code></p>
+<p><code>grails-app/services/example/AuditService.groovy</code></p>
 </li>
 </ul>
 </div>
@@ -1083,13 +1094,11 @@ beans = {
 <p>The third listener stands in for "send a confirmation email" - exactly the kind of side-effect you don&#8217;t want to do on the caller&#8217;s thread. Composing <code>@Async</code> with <code>@TransactionalEventListener</code> hands the listener body to Spring&#8217;s task executor <strong>after</strong> the commit lands.</p>
 </div>
 <div class="listingblock">
-<div class="title">grails-app/services/example/NotificationListener.groovy</div>
+<div class="title">grails-app/services/example/NotificationService.groovy</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
 
 <span class="keyword">import</span> <span class="include">example.events.OrderPlacedEvent</span>
-<span class="keyword">import</span> <span class="include">org.slf4j.Logger</span>
-<span class="keyword">import</span> <span class="include">org.slf4j.LoggerFactory</span>
 <span class="keyword">import</span> <span class="include">org.springframework.scheduling.annotation.Async</span>
 <span class="keyword">import</span> <span class="include">org.springframework.transaction.event.TransactionPhase</span>
 <span class="keyword">import</span> <span class="include">org.springframework.transaction.event.TransactionalEventListener</span>
@@ -1097,22 +1106,21 @@ beans = {
 <span class="comment">/**
  * Off-thread side-effect: stand-in for sending a confirmation email.
  *
- * @Async dispatches the listener body to Spring's task executor instead
- * of running it on the caller's thread. The transaction-phase binding
- * is still synchronous - Spring waits for AFTER_COMMIT, then hands the
- * event to the executor. The listener body therefore has NO inherited
- * transaction; if it needs the database it must open its own via
- * @Transactional(propagation = REQUIRES_NEW).
+ * An ordinary Grails service, auto-registered by name - which also means Grails
+ * injects a `log` (SLF4J) property for free, so the class declares none of its
+ * own. @Async dispatches the listener body to Spring's task executor instead of
+ * running it on the caller's thread. The transaction-phase binding is still
+ * synchronous - Spring waits for AFTER_COMMIT, then hands the event to the
+ * executor. The body therefore has NO inherited transaction; if it needs the
+ * database it must open its own via withNewTransaction { }.
  *
  * Exceptions thrown from an @Async listener are NOT propagated to the
  * publisher - see Spring's AsyncUncaughtExceptionHandler.
  *
- * @EnableAsync must be present on Application.groovy for @Async to take
- * effect; without it the annotation is silently a no-op.
+ * @EnableAsync must be present on Application for @Async to take effect;
+ * without it the annotation is silently a no-op.
  */</span>
-<span class="type">class</span> <span class="class">NotificationListener</span> {
-
-    <span class="directive">private</span> <span class="directive">static</span> <span class="directive">final</span> <span class="predefined-type">Logger</span> log = LoggerFactory.getLogger(<span class="predefined-type">NotificationListener</span>)
+<span class="type">class</span> <span class="class">NotificationService</span> {
 
     <span class="annotation">@Async</span>
     <span class="annotation">@TransactionalEventListener</span>(phase = TransactionPhase.AFTER_COMMIT)
@@ -1175,7 +1183,7 @@ beans = {
 </ol>
 </div>
 <div class="paragraph">
-<p>The "no inherited transaction context" point is important. If the async listener needs database access, it must open its own transaction with <code>@Transactional(propagation = REQUIRES_NEW)</code> on the listener method, exactly like the <code>CustomerLifetimeValueListener</code> did. Forgetting this and writing GORM code directly in an <code>@Async</code> listener body produces an enigmatic <code>org.hibernate.HibernateException: No Session found for current thread</code> from a stack frame that has nothing else to do with persistence.</p>
+<p>The "no inherited transaction context" point is important. If the async listener needs database access, it must open its own transaction with <code>withNewTransaction { }</code>, exactly like the <code>CustomerLifetimeValueService</code> did - and for the same reason it can&#8217;t be declared with <code>@Transactional</code>: that annotation&#8217;s AST transform would hide the listener method from Spring. Forgetting this and writing GORM code directly in an <code>@Async</code> listener body produces an enigmatic <code>org.hibernate.HibernateException: No Session found for current thread</code> from a stack frame that has nothing else to do with persistence.</p>
 </div>
 <div class="paragraph">
 <p>A few footguns:</p>
@@ -1212,7 +1220,7 @@ beans = {
 <div class="ulist">
 <ul>
 <li>
-<p><code>grails-app/services/example/NotificationListener.groovy</code></p>
+<p><code>grails-app/services/example/NotificationService.groovy</code></p>
 </li>
 <li>
 <p><code>grails-app/init/example/Application.groovy</code> (add <code>@EnableAsync</code>)</p>
@@ -1455,7 +1463,7 @@ beans = {
 <p><strong>Why the <code>cleanup:</code> block uses <code>withNewTransaction</code> again.</strong> The test ran outside the integration-test transaction wrapper, so there is no automatic rollback to lean on. The cleanup must explicitly delete the rows the test created, in their own transaction, in the right order (<code>AuditLog</code> rows first because they reference <code>orderId</code>, then <code>Order</code>, then <code>Customer</code>).</p>
 </li>
 <li>
-<p><strong>Why the async <code>NotificationListener</code> is not asserted on.</strong> It logs only - there is nothing in the database to assert against. Testing that an <code>@Async</code> listener actually ran requires either an <code>awaitility</code>-style poll or replacing the executor with a synchronous one in the test profile. The two non-async listeners are sufficient to demonstrate the AFTER_COMMIT contract.</p>
+<p><strong>Why the async <code>NotificationService</code> is not asserted on.</strong> It logs only - there is nothing in the database to assert against. Testing that an <code>@Async</code> listener actually ran requires either an <code>awaitility</code>-style poll or replacing the executor with a synchronous one in the test profile. The two non-async listeners are sufficient to demonstrate the AFTER_COMMIT contract.</p>
 </li>
 </ul>
 </div>
@@ -1517,13 +1525,13 @@ beans = {
 <p>The rule the business cares about: <strong>when an employee is assigned to a work order, the work order becomes <code>PLANNED</code>, and because the work order is now planned, the originating customer request becomes <code>IN_PROGRESS</code>.</strong> Three writes - the assignment, the work-order status, the request status - that must be atomic. If the request can&#8217;t legally move to <code>IN_PROGRESS</code> (it was already cancelled, say), the assignment and the work-order status change must roll back too. You do not want a <code>PLANNED</code> work order hanging off a <code>CANCELLED</code> request because two of the three writes landed and the third didn&#8217;t.</p>
 </div>
 <div class="paragraph">
-<p><code>AFTER_COMMIT</code> cannot express this. By the time an <code>AFTER_COMMIT</code> listener runs, the assignment has <strong>already committed</strong>; its <code>REQUIRES_NEW</code> transaction is a separate unit of work, and a failure there leaves the assignment durably persisted with no way to walk it back. The same property that makes <code>AFTER_COMMIT</code> correct for emails - "the original is already safe" - makes it wrong for orchestration.</p>
+<p><code>AFTER_COMMIT</code> cannot express this. By the time an <code>AFTER_COMMIT</code> listener runs, the assignment has <strong>already committed</strong>; the fresh <code>withNewTransaction</code> it would open is a separate unit of work, and a failure there leaves the assignment durably persisted with no way to walk it back. The same property that makes <code>AFTER_COMMIT</code> correct for emails - "the original is already safe" - makes it wrong for orchestration.</p>
 </div>
 <div class="paragraph">
 <p>The fix is the listener you have <strong>not</strong> used yet: a plain <code>@EventListener</code>, with no transaction phase, consuming an event that the publisher fires from <strong>inside</strong> its <code>@Transactional</code> method. Spring&#8217;s default event multicaster is synchronous, so the listener runs inline - on the publisher&#8217;s thread, inside the publisher&#8217;s transaction, sharing the publisher&#8217;s Hibernate session - before <code>publishEvent(&#8230;&#8203;)</code> returns. Reads see in-flight, uncommitted state. Writes join the same commit. An exception unwinds the whole operation.</p>
 </div>
 <div class="paragraph">
-<p>This is the mirror image of the first half of the guide, and it reuses the same machinery (<code>ApplicationEventPublisher</code>, a POGO event, a listener bean in <code>grails-app/services/</code>). The only thing that changes is the listener annotation - and that one change moves the listener from "after the transaction" to "inside the transaction."</p>
+<p>This is the mirror image of the first half of the guide, and it reuses the same machinery (<code>ApplicationEventPublisher</code>, a POGO event, a listener service in <code>grails-app/services/</code>). The only thing that changes is the listener annotation - and that one change moves the listener from "after the transaction" to "inside the transaction."</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -1542,7 +1550,7 @@ beans = {
 <td class="tableblock halign-left valign-top"><p class="tableblock">Fires inline, the instant <code>publishEvent(&#8230;&#8203;)</code> is called</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Runs in a <strong>new</strong> transaction / session (needs <code>REQUIRES_NEW</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Runs in a <strong>new</strong> transaction / session (opened with <code>withNewTransaction</code>)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Runs in the publisher&#8217;s transaction / session</p></td>
 </tr>
 <tr>
@@ -1859,7 +1867,7 @@ beans = {
 <p>This file is byte-for-byte the same <strong>shape</strong> as <code>OrderService</code>: inject <code>ApplicationEventPublisher</code>, do the persistence, call <code>publishEvent(&#8230;&#8203;)</code>, return. The publisher does not know or care who listens. The difference is entirely on the listener side.</p>
 </div>
 <div class="listingblock">
-<div class="title">grails-app/services/example/WorkOrderAssignmentListener.groovy</div>
+<div class="title">grails-app/services/example/WorkOrderPlanningService.groovy</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
 
@@ -1869,32 +1877,18 @@ beans = {
 <span class="comment">/**
  * Synchronous, in-transaction orchestration.
  *
- * The annotation is a plain @EventListener - NOT @TransactionalEventListener.
- * Because WorkOrderAssignmentService publishes the event from inside its
- * @Transactional method, Spring's default (synchronous) multicaster invokes
- * this method inline, on the publisher's thread, inside the publisher's
- * transaction and Hibernate session.
+ * A plain @EventListener (NOT @TransactionalEventListener) runs inline on the
+ * publisher's thread, inside the publisher's transaction and Hibernate session:
+ * reads see in-flight state, writes join the same commit, and a thrown
+ * exception rolls the whole operation back.
  *
- * Three consequences make this the right tool for atomic cross-domain work:
- *
- *   1. Reads see in-flight data. WorkOrder.get(...) returns the managed
- *      instance from the current session - including the assignee that was
- *      added moments ago in this same transaction.
- *   2. Writes join the same commit. Mutating WorkOrder and CustomerRequest
- *      here flushes as part of the publisher's commit.
- *   3. Failure rolls everything back. Any exception thrown here propagates
- *      out through publishEvent(...) and unwinds the entire operation - the
- *      assignee insert included.
- *
- * Note what is deliberately absent: there is NO @Transactional on this class.
- * The listener does not open or manage a transaction of its own - it runs
- * inside the one the publisher already started, which is the whole point.
- * (Adding Grails' @Transactional here would also be actively harmful: it is a
- * compile-time AST transform that relocates the method body, which hides the
- * @EventListener annotation from Spring's listener scanner so the listener
- * never registers.)
+ * It is an ordinary Grails service (auto-registered by name) but deliberately
+ * carries NO @Transactional: Grails' @Transactional is a compile-time AST
+ * transform that relocates the method body and would hide @EventListener from
+ * Spring's scanner, so the listener would never register. It needs no
+ * transaction of its own anyway - it runs inside the one the publisher started.
  */</span>
-<span class="type">class</span> <span class="class">WorkOrderAssignmentListener</span> {
+<span class="type">class</span> <span class="class">WorkOrderPlanningService</span> {
 
     <span class="annotation">@EventListener</span>
     <span class="type">void</span> onEmployeeAssigned(EmployeeAssignedEvent event) {
@@ -1931,7 +1925,7 @@ beans = {
 <p><strong>It fires synchronously, inline, now.</strong> Spring&#8217;s default <code>ApplicationEventMulticaster</code> is <code>SimpleApplicationEventMulticaster</code>, which invokes listeners directly on the calling thread. The call stack is <code>assignEmployee(&#8230;&#8203;)</code> &#8594; <code>publishEvent(&#8230;&#8203;)</code> &#8594; <code>onEmployeeAssigned(&#8230;&#8203;)</code> &#8594; back. No commit has happened yet; the publisher&#8217;s <code>@Transactional</code> method has not even returned.</p>
 </li>
 <li>
-<p><strong>It runs in the publisher&#8217;s transaction and session.</strong> No <code>REQUIRES_NEW</code>. The <code>@Transactional</code> here uses the default <code>REQUIRED</code> propagation, which <strong>joins</strong> the publisher&#8217;s active transaction rather than starting a new one. That shared transaction is the entire point - it is why the listener&#8217;s writes commit with the assignment and roll back with it.</p>
+<p><strong>It runs in the publisher&#8217;s transaction and session.</strong> The listener service itself carries no <code>@Transactional</code> - it runs inline inside the publisher&#8217;s <code>@Transactional</code> (default <code>REQUIRED</code>) method, so its GORM work simply <strong>joins</strong> that active transaction rather than starting a new one. That shared transaction is the entire point - it is why the listener&#8217;s writes commit with the assignment and roll back with it.</p>
 </li>
 <li>
 <p><strong>Its reads see in-flight state.</strong> <code>WorkOrder.get(event.workOrderId)</code> returns the managed instance from the current session, with the <code>WorkOrderAssignee</code> that was inserted moments ago already attached. When the listener flips the work order to <code>PLANNED</code> and then reads <code>workOrder.customerRequest</code>, it is reading uncommitted, transaction-local data - exactly what you cannot do from an <code>AFTER_COMMIT</code> listener.</p>
@@ -1989,7 +1983,7 @@ beans = {
 <p><code>grails-app/services/example/WorkOrderAssignmentService.groovy</code></p>
 </li>
 <li>
-<p><code>grails-app/services/example/WorkOrderAssignmentListener.groovy</code></p>
+<p><code>grails-app/services/example/WorkOrderPlanningService.groovy</code></p>
 </li>
 </ul>
 </div>

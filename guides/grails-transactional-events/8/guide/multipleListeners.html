@@ -51,7 +51,7 @@ function addJsClass() {
                         <div class="toc-item" style="margin-left:0"><a href="../guide/transactionalListener.html"><strong>7</strong><span>The First @TransactionalEventListener</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/registeringListeners.html"><strong>8</strong><span>Registering the Listeners (and the Factory That Makes Them Fire)</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/registeringListeners.html"><strong>8</strong><span>The One Bean That Makes the Listeners Fire</span></a>
                         </div>
                         
                         <div class="toc-item" style="margin-left:0"><a href="../guide/transactionPhases.html"><strong>9</strong><span>The Four TransactionPhase Values</span></a>
@@ -127,7 +127,7 @@ function addJsClass() {
 <p>The whole point of the pattern is that fanning out is cheap: a new side-effect is a new class, not an edit to <code>OrderService</code>. Here&#8217;s a second listener that writes an <code>AuditLog</code> row.</p>
 </div>
 <div class="listingblock">
-<div class="title">grails-app/services/example/AuditListener.groovy</div>
+<div class="title">grails-app/services/example/AuditService.groovy</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
 
@@ -138,16 +138,17 @@ function addJsClass() {
 <span class="comment">/**
  * Persists an AuditLog row for every committed order.
  *
- * A separate listener class - not a method on OrderService - keeps the
- * &quot;place an order&quot; concern decoupled from the &quot;record audit history&quot;
- * concern. Adding another committed-only side-effect later means a new
- * class, not an edit to OrderService.
+ * A separate service - not a method on OrderService - keeps the &quot;place an
+ * order&quot; concern decoupled from the &quot;record audit history&quot; concern. Adding
+ * another committed-only side-effect later means a new service, not an edit to
+ * OrderService.
  *
- * Like CustomerLifetimeValueListener, it is registered in resources.groovy
- * and does its GORM write inside withNewTransaction { } because the
- * AFTER_COMMIT callback fires after the publisher's transaction has committed.
+ * Like CustomerLifetimeValueService it is auto-registered by Grails (its name
+ * ends in 'Service') and does its GORM write inside withNewTransaction { }
+ * because the AFTER_COMMIT callback fires after the publisher's transaction
+ * has committed.
  */</span>
-<span class="type">class</span> <span class="class">AuditListener</span> {
+<span class="type">class</span> <span class="class">AuditService</span> {
 
     <span class="annotation">@TransactionalEventListener</span>(phase = TransactionPhase.AFTER_COMMIT)
     <span class="type">void</span> onOrderPlaced(OrderPlacedEvent event) {
@@ -165,7 +166,7 @@ function addJsClass() {
 </div>
 </div>
 <div class="paragraph">
-<p>Notice that this file is independent of <code>CustomerLifetimeValueListener</code>. They share nothing - no inheritance, no interface. Adding a third side-effect tomorrow - a webhook, a search-index refresh, a metrics counter - means writing a <code>WebhookListener</code> class and adding one line to <code>resources.groovy</code> to register it as a bean. Spring then wires both against the <code>OrderPlacedEvent</code> type and calls both (in unspecified order) when an order commits; the publisher never changes.</p>
+<p>Notice that this file is independent of <code>CustomerLifetimeValueService</code>. They share nothing - no inheritance, no interface. Adding a third side-effect tomorrow - a webhook, a search-index refresh, a metrics counter - means writing a <code>WebhookService</code> class and nothing else: Grails auto-registers it, and Spring wires both against the <code>OrderPlacedEvent</code> type and calls both (in unspecified order) when an order commits; the publisher never changes.</p>
 </div>
 <div class="paragraph">
 <p><code>AuditLog</code> snapshots the data it needs at event-time: <code>orderTotal</code> is copied from the event, not looked up by querying the (now-detached) <code>Order</code>. That decoupling has a few benefits:</p>
@@ -192,7 +193,7 @@ function addJsClass() {
 <div class="ulist">
 <ul>
 <li>
-<p><code>grails-app/services/example/AuditListener.groovy</code></p>
+<p><code>grails-app/services/example/AuditService.groovy</code></p>
 </li>
 </ul>
 </div>

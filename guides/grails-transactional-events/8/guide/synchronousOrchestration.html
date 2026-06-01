@@ -51,7 +51,7 @@ function addJsClass() {
                         <div class="toc-item" style="margin-left:0"><a href="../guide/transactionalListener.html"><strong>7</strong><span>The First @TransactionalEventListener</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/registeringListeners.html"><strong>8</strong><span>Registering the Listeners (and the Factory That Makes Them Fire)</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/registeringListeners.html"><strong>8</strong><span>The One Bean That Makes the Listeners Fire</span></a>
                         </div>
                         
                         <div class="toc-item" style="margin-left:0"><a href="../guide/transactionPhases.html"><strong>9</strong><span>The Four TransactionPhase Values</span></a>
@@ -205,7 +205,7 @@ function addJsClass() {
 <p>This file is byte-for-byte the same <strong>shape</strong> as <code>OrderService</code>: inject <code>ApplicationEventPublisher</code>, do the persistence, call <code>publishEvent(&#8230;&#8203;)</code>, return. The publisher does not know or care who listens. The difference is entirely on the listener side.</p>
 </div>
 <div class="listingblock">
-<div class="title">grails-app/services/example/WorkOrderAssignmentListener.groovy</div>
+<div class="title">grails-app/services/example/WorkOrderPlanningService.groovy</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
 
@@ -215,32 +215,18 @@ function addJsClass() {
 <span class="comment">/**
  * Synchronous, in-transaction orchestration.
  *
- * The annotation is a plain @EventListener - NOT @TransactionalEventListener.
- * Because WorkOrderAssignmentService publishes the event from inside its
- * @Transactional method, Spring's default (synchronous) multicaster invokes
- * this method inline, on the publisher's thread, inside the publisher's
- * transaction and Hibernate session.
+ * A plain @EventListener (NOT @TransactionalEventListener) runs inline on the
+ * publisher's thread, inside the publisher's transaction and Hibernate session:
+ * reads see in-flight state, writes join the same commit, and a thrown
+ * exception rolls the whole operation back.
  *
- * Three consequences make this the right tool for atomic cross-domain work:
- *
- *   1. Reads see in-flight data. WorkOrder.get(...) returns the managed
- *      instance from the current session - including the assignee that was
- *      added moments ago in this same transaction.
- *   2. Writes join the same commit. Mutating WorkOrder and CustomerRequest
- *      here flushes as part of the publisher's commit.
- *   3. Failure rolls everything back. Any exception thrown here propagates
- *      out through publishEvent(...) and unwinds the entire operation - the
- *      assignee insert included.
- *
- * Note what is deliberately absent: there is NO @Transactional on this class.
- * The listener does not open or manage a transaction of its own - it runs
- * inside the one the publisher already started, which is the whole point.
- * (Adding Grails' @Transactional here would also be actively harmful: it is a
- * compile-time AST transform that relocates the method body, which hides the
- * @EventListener annotation from Spring's listener scanner so the listener
- * never registers.)
+ * It is an ordinary Grails service (auto-registered by name) but deliberately
+ * carries NO @Transactional: Grails' @Transactional is a compile-time AST
+ * transform that relocates the method body and would hide @EventListener from
+ * Spring's scanner, so the listener would never register. It needs no
+ * transaction of its own anyway - it runs inside the one the publisher started.
  */</span>
-<span class="type">class</span> <span class="class">WorkOrderAssignmentListener</span> {
+<span class="type">class</span> <span class="class">WorkOrderPlanningService</span> {
 
     <span class="annotation">@EventListener</span>
     <span class="type">void</span> onEmployeeAssigned(EmployeeAssignedEvent event) {
@@ -277,7 +263,7 @@ function addJsClass() {
 <p><strong>It fires synchronously, inline, now.</strong> Spring&#8217;s default <code>ApplicationEventMulticaster</code> is <code>SimpleApplicationEventMulticaster</code>, which invokes listeners directly on the calling thread. The call stack is <code>assignEmployee(&#8230;&#8203;)</code> &#8594; <code>publishEvent(&#8230;&#8203;)</code> &#8594; <code>onEmployeeAssigned(&#8230;&#8203;)</code> &#8594; back. No commit has happened yet; the publisher&#8217;s <code>@Transactional</code> method has not even returned.</p>
 </li>
 <li>
-<p><strong>It runs in the publisher&#8217;s transaction and session.</strong> No <code>REQUIRES_NEW</code>. The <code>@Transactional</code> here uses the default <code>REQUIRED</code> propagation, which <strong>joins</strong> the publisher&#8217;s active transaction rather than starting a new one. That shared transaction is the entire point - it is why the listener&#8217;s writes commit with the assignment and roll back with it.</p>
+<p><strong>It runs in the publisher&#8217;s transaction and session.</strong> The listener service itself carries no <code>@Transactional</code> - it runs inline inside the publisher&#8217;s <code>@Transactional</code> (default <code>REQUIRED</code>) method, so its GORM work simply <strong>joins</strong> that active transaction rather than starting a new one. That shared transaction is the entire point - it is why the listener&#8217;s writes commit with the assignment and roll back with it.</p>
 </li>
 <li>
 <p><strong>Its reads see in-flight state.</strong> <code>WorkOrder.get(event.workOrderId)</code> returns the managed instance from the current session, with the <code>WorkOrderAssignee</code> that was inserted moments ago already attached. When the listener flips the work order to <code>PLANNED</code> and then reads <code>workOrder.customerRequest</code>, it is reading uncommitted, transaction-local data - exactly what you cannot do from an <code>AFTER_COMMIT</code> listener.</p>
@@ -335,7 +321,7 @@ function addJsClass() {
 <p><code>grails-app/services/example/WorkOrderAssignmentService.groovy</code></p>
 </li>
 <li>
-<p><code>grails-app/services/example/WorkOrderAssignmentListener.groovy</code></p>
+<p><code>grails-app/services/example/WorkOrderPlanningService.groovy</code></p>
 </li>
 </ul>
 </div>

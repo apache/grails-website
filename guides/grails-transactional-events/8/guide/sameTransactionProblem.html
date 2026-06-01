@@ -51,7 +51,7 @@ function addJsClass() {
                         <div class="toc-item" style="margin-left:0"><a href="../guide/transactionalListener.html"><strong>7</strong><span>The First @TransactionalEventListener</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/registeringListeners.html"><strong>8</strong><span>Registering the Listeners (and the Factory That Makes Them Fire)</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/registeringListeners.html"><strong>8</strong><span>The One Bean That Makes the Listeners Fire</span></a>
                         </div>
                         
                         <div class="toc-item" style="margin-left:0"><a href="../guide/transactionPhases.html"><strong>9</strong><span>The Four TransactionPhase Values</span></a>
@@ -149,13 +149,13 @@ function addJsClass() {
 <p>The rule the business cares about: <strong>when an employee is assigned to a work order, the work order becomes <code>PLANNED</code>, and because the work order is now planned, the originating customer request becomes <code>IN_PROGRESS</code>.</strong> Three writes - the assignment, the work-order status, the request status - that must be atomic. If the request can&#8217;t legally move to <code>IN_PROGRESS</code> (it was already cancelled, say), the assignment and the work-order status change must roll back too. You do not want a <code>PLANNED</code> work order hanging off a <code>CANCELLED</code> request because two of the three writes landed and the third didn&#8217;t.</p>
 </div>
 <div class="paragraph">
-<p><code>AFTER_COMMIT</code> cannot express this. By the time an <code>AFTER_COMMIT</code> listener runs, the assignment has <strong>already committed</strong>; its <code>REQUIRES_NEW</code> transaction is a separate unit of work, and a failure there leaves the assignment durably persisted with no way to walk it back. The same property that makes <code>AFTER_COMMIT</code> correct for emails - "the original is already safe" - makes it wrong for orchestration.</p>
+<p><code>AFTER_COMMIT</code> cannot express this. By the time an <code>AFTER_COMMIT</code> listener runs, the assignment has <strong>already committed</strong>; the fresh <code>withNewTransaction</code> it would open is a separate unit of work, and a failure there leaves the assignment durably persisted with no way to walk it back. The same property that makes <code>AFTER_COMMIT</code> correct for emails - "the original is already safe" - makes it wrong for orchestration.</p>
 </div>
 <div class="paragraph">
 <p>The fix is the listener you have <strong>not</strong> used yet: a plain <code>@EventListener</code>, with no transaction phase, consuming an event that the publisher fires from <strong>inside</strong> its <code>@Transactional</code> method. Spring&#8217;s default event multicaster is synchronous, so the listener runs inline - on the publisher&#8217;s thread, inside the publisher&#8217;s transaction, sharing the publisher&#8217;s Hibernate session - before <code>publishEvent(&#8230;&#8203;)</code> returns. Reads see in-flight, uncommitted state. Writes join the same commit. An exception unwinds the whole operation.</p>
 </div>
 <div class="paragraph">
-<p>This is the mirror image of the first half of the guide, and it reuses the same machinery (<code>ApplicationEventPublisher</code>, a POGO event, a listener bean in <code>grails-app/services/</code>). The only thing that changes is the listener annotation - and that one change moves the listener from "after the transaction" to "inside the transaction."</p>
+<p>This is the mirror image of the first half of the guide, and it reuses the same machinery (<code>ApplicationEventPublisher</code>, a POGO event, a listener service in <code>grails-app/services/</code>). The only thing that changes is the listener annotation - and that one change moves the listener from "after the transaction" to "inside the transaction."</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -174,7 +174,7 @@ function addJsClass() {
 <td class="tableblock halign-left valign-top"><p class="tableblock">Fires inline, the instant <code>publishEvent(&#8230;&#8203;)</code> is called</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Runs in a <strong>new</strong> transaction / session (needs <code>REQUIRES_NEW</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Runs in a <strong>new</strong> transaction / session (opened with <code>withNewTransaction</code>)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Runs in the publisher&#8217;s transaction / session</p></td>
 </tr>
 <tr>

@@ -51,7 +51,7 @@ function addJsClass() {
                         <div class="toc-item" style="margin-left:0"><a href="../guide/transactionalListener.html"><strong>7</strong><span>The First @TransactionalEventListener</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/registeringListeners.html"><strong>8</strong><span>Registering the Listeners (and the Factory That Makes Them Fire)</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/registeringListeners.html"><strong>8</strong><span>The One Bean That Makes the Listeners Fire</span></a>
                         </div>
                         
                         <div class="toc-item" style="margin-left:0"><a href="../guide/transactionPhases.html"><strong>9</strong><span>The Four TransactionPhase Values</span></a>
@@ -127,13 +127,11 @@ function addJsClass() {
 <p>The third listener stands in for "send a confirmation email" - exactly the kind of side-effect you don&#8217;t want to do on the caller&#8217;s thread. Composing <code>@Async</code> with <code>@TransactionalEventListener</code> hands the listener body to Spring&#8217;s task executor <strong>after</strong> the commit lands.</p>
 </div>
 <div class="listingblock">
-<div class="title">grails-app/services/example/NotificationListener.groovy</div>
+<div class="title">grails-app/services/example/NotificationService.groovy</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
 
 <span class="keyword">import</span> <span class="include">example.events.OrderPlacedEvent</span>
-<span class="keyword">import</span> <span class="include">org.slf4j.Logger</span>
-<span class="keyword">import</span> <span class="include">org.slf4j.LoggerFactory</span>
 <span class="keyword">import</span> <span class="include">org.springframework.scheduling.annotation.Async</span>
 <span class="keyword">import</span> <span class="include">org.springframework.transaction.event.TransactionPhase</span>
 <span class="keyword">import</span> <span class="include">org.springframework.transaction.event.TransactionalEventListener</span>
@@ -141,22 +139,21 @@ function addJsClass() {
 <span class="comment">/**
  * Off-thread side-effect: stand-in for sending a confirmation email.
  *
- * @Async dispatches the listener body to Spring's task executor instead
- * of running it on the caller's thread. The transaction-phase binding
- * is still synchronous - Spring waits for AFTER_COMMIT, then hands the
- * event to the executor. The listener body therefore has NO inherited
- * transaction; if it needs the database it must open its own via
- * @Transactional(propagation = REQUIRES_NEW).
+ * An ordinary Grails service, auto-registered by name - which also means Grails
+ * injects a `log` (SLF4J) property for free, so the class declares none of its
+ * own. @Async dispatches the listener body to Spring's task executor instead of
+ * running it on the caller's thread. The transaction-phase binding is still
+ * synchronous - Spring waits for AFTER_COMMIT, then hands the event to the
+ * executor. The body therefore has NO inherited transaction; if it needs the
+ * database it must open its own via withNewTransaction { }.
  *
  * Exceptions thrown from an @Async listener are NOT propagated to the
  * publisher - see Spring's AsyncUncaughtExceptionHandler.
  *
- * @EnableAsync must be present on Application.groovy for @Async to take
- * effect; without it the annotation is silently a no-op.
+ * @EnableAsync must be present on Application for @Async to take effect;
+ * without it the annotation is silently a no-op.
  */</span>
-<span class="type">class</span> <span class="class">NotificationListener</span> {
-
-    <span class="directive">private</span> <span class="directive">static</span> <span class="directive">final</span> <span class="predefined-type">Logger</span> log = LoggerFactory.getLogger(<span class="predefined-type">NotificationListener</span>)
+<span class="type">class</span> <span class="class">NotificationService</span> {
 
     <span class="annotation">@Async</span>
     <span class="annotation">@TransactionalEventListener</span>(phase = TransactionPhase.AFTER_COMMIT)
@@ -219,7 +216,7 @@ function addJsClass() {
 </ol>
 </div>
 <div class="paragraph">
-<p>The "no inherited transaction context" point is important. If the async listener needs database access, it must open its own transaction with <code>@Transactional(propagation = REQUIRES_NEW)</code> on the listener method, exactly like the <code>CustomerLifetimeValueListener</code> did. Forgetting this and writing GORM code directly in an <code>@Async</code> listener body produces an enigmatic <code>org.hibernate.HibernateException: No Session found for current thread</code> from a stack frame that has nothing else to do with persistence.</p>
+<p>The "no inherited transaction context" point is important. If the async listener needs database access, it must open its own transaction with <code>withNewTransaction { }</code>, exactly like the <code>CustomerLifetimeValueService</code> did - and for the same reason it can&#8217;t be declared with <code>@Transactional</code>: that annotation&#8217;s AST transform would hide the listener method from Spring. Forgetting this and writing GORM code directly in an <code>@Async</code> listener body produces an enigmatic <code>org.hibernate.HibernateException: No Session found for current thread</code> from a stack frame that has nothing else to do with persistence.</p>
 </div>
 <div class="paragraph">
 <p>A few footguns:</p>
@@ -256,7 +253,7 @@ function addJsClass() {
 <div class="ulist">
 <ul>
 <li>
-<p><code>grails-app/services/example/NotificationListener.groovy</code></p>
+<p><code>grails-app/services/example/NotificationService.groovy</code></p>
 </li>
 <li>
 <p><code>grails-app/init/example/Application.groovy</code> (add <code>@EnableAsync</code>)</p>

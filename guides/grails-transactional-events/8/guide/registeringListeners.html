@@ -2,7 +2,7 @@
                       "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
 <head>
-    <title>8 Registering the Listeners (and the Factory That Makes Them Fire)</title>
+    <title>8 The One Bean That Makes the Listeners Fire</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
     <link rel="stylesheet" href="../css/guide.css" type="text/css" media="screen, print" title="Style" charset="utf-8" />            
@@ -51,7 +51,7 @@ function addJsClass() {
                         <div class="toc-item" style="margin-left:0"><a href="../guide/transactionalListener.html"><strong>7</strong><span>The First @TransactionalEventListener</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/registeringListeners.html"><strong>8</strong><span>Registering the Listeners (and the Factory That Makes Them Fire)</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/registeringListeners.html"><strong>8</strong><span>The One Bean That Makes the Listeners Fire</span></a>
                         </div>
                         
                         <div class="toc-item" style="margin-left:0"><a href="../guide/transactionPhases.html"><strong>9</strong><span>The Four TransactionPhase Values</span></a>
@@ -114,7 +114,7 @@ function addJsClass() {
 
                 
 
-<h1 id="registeringListeners">8 Registering the Listeners (and the Factory That Makes Them Fire)</h1>
+<h1 id="registeringListeners">8 The One Bean That Makes the Listeners Fire</h1>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-transactional-events/v8/guide/registeringListeners.adoc"'>
@@ -124,68 +124,79 @@ function addJsClass() {
 
 
 <div class="paragraph">
-<p>There is a wiring step that is easy to miss and fails <strong>silently</strong> when you do: the listener beans have to be registered, and <code>@TransactionalEventListener</code> needs one extra bean before Spring will honour it.</p>
+<p>The listeners are ordinary services, so there is nothing to register by hand. Grails wires every class under <code>grails-app/services/</code> whose name ends in <code>Service</code> as a Spring bean automatically, and Spring&#8217;s <code>EventListenerMethodProcessor</code> scans those beans for <code>@EventListener</code> / <code>@TransactionalEventListener</code> methods. Giving the listeners <code>Service</code> names is what buys that: registration is convention, not configuration.</p>
 </div>
-<div class="sect1">
-<h2 id="_grails_appservices_does_not_auto_register_a_class_unless_it_ends_in_service">grails-app/services/ does not auto-register a class unless it ends in <code>Service</code></h2>
-<div class="sectionbody">
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="title">Two ways to make a listener a bean</div>
 <div class="paragraph">
-<p>Grails turns a class under <code>grails-app/services/</code> into a Spring bean only when its name ends in <code>Service</code>. Our listeners are named <code>&#8230;&#8203;Listener</code>, so Grails does <strong>not</strong> register them. A class that is never a bean is never scanned by Spring&#8217;s <code>EventListenerMethodProcessor</code>, so its <code>@EventListener</code> / <code>@TransactionalEventListener</code> methods are never wired - and nothing warns you. The publisher calls <code>publishEvent(&#8230;&#8203;)</code>, no listener runs, and the only symptom is a side-effect that quietly never happens.</p>
+<p>The <code>Service</code> suffix is the lightest option, but it is not the only one. A class auto-registers only when it is a Grails artefact, and for <code>grails-app/services/</code> that means the name <strong>must</strong> end in <code>Service</code> - a class called <code>OrderAuditListener</code> in that directory is silently ignored.</p>
 </div>
 <div class="paragraph">
-<p>Register the listeners explicitly:</p>
+<p>The alternative is to treat the listener as a plain Spring component: put it under <code>src/main/groovy</code>, annotate it <code>@Component</code>, and tell Spring which package to scan from your <code>Application</code> class.</p>
 </div>
 <div class="listingblock">
-<div class="title">grails-app/conf/spring/resources.groovy</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">// Place your Spring DSL code here</span>
-beans = {
-    <span class="comment">// Grails only auto-registers a class under grails-app/services/ as a</span>
-    <span class="comment">// Spring bean when its name ends in 'Service'. These listener classes end</span>
-    <span class="comment">// in 'Listener', so Grails does NOT register them - which means Spring's</span>
-    <span class="comment">// EventListenerMethodProcessor never scans their @EventListener /</span>
-    <span class="comment">// @TransactionalEventListener methods and the listeners silently never</span>
-    <span class="comment">// fire. Registering them explicitly here makes them beans so their</span>
-    <span class="comment">// listener methods are wired at startup.</span>
-    customerLifetimeValueListener(example.CustomerLifetimeValueListener)
-    auditListener(example.AuditListener)
-    notificationListener(example.NotificationListener)
-    workOrderAssignmentListener(example.WorkOrderAssignmentListener)
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.boot.config.GrailsAutoConfiguration</span>
+<span class="keyword">import</span> <span class="include">org.springframework.context.annotation.ComponentScan</span>
 
-    <span class="comment">// @TransactionalEventListener (the AFTER_COMMIT listeners) is only honored</span>
-    <span class="comment">// when a TransactionalEventListenerFactory bean exists. Spring normally</span>
-    <span class="comment">// contributes one through @EnableTransactionManagement, but a plain Grails</span>
-    <span class="comment">// app does not register it, so the AFTER_COMMIT listeners would silently</span>
-    <span class="comment">// never fire even though plain @EventListener beans do. Declaring it here</span>
-    <span class="comment">// is what makes the transaction-bound phases work.</span>
-    transactionalEventListenerFactory(org.springframework.transaction.event.TransactionalEventListenerFactory)
-}</code></pre>
+<span class="annotation">@ComponentScan</span>(<span class="string"><span class="delimiter">'</span><span class="content">example</span><span class="delimiter">'</span></span>) <i class="conum" data-value="1"></i><b>(1)</b>
+<span class="type">class</span> <span class="class">Application</span> <span class="directive">extends</span> GrailsAutoConfiguration { <span class="comment">/* ... */</span> }</code></pre>
 </div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td><code>@ComponentScan</code> tells Spring to look for <code>@Component</code>, <code>@Configuration</code>, and related classes in the given package. If no package is given, the package of the annotated class is used as the root.</td>
+</tr>
+</table>
 </div>
 <div class="paragraph">
-<p>(You could instead rename the classes to end in <code>Service</code> - <code>AuditListenerService</code> - and let Grails auto-register them. The explicit <code>resources.groovy</code> registration is clearer about intent and keeps the descriptive <code>Listener</code> names.)</p>
+<p>A default Grails <code>Application</code> scans only the <code>grails-app/</code> artefact directories, so plain <code>@Component</code> classes under <code>src/main/groovy</code> stay invisible until you add <code>@ComponentScan</code> (or override <code>packageNames()</code>). If your app keeps any non-artefact components under <code>src/main/groovy</code>, it is worth adding <code>@ComponentScan('your.package')</code> to <code>Application</code> once, up front - then anything you drop there later is wired with no further ceremony. This guide keeps the listeners as <code>Service</code> classes because they need no annotation at all.</p>
 </div>
+</td>
+</tr>
+</table>
 </div>
+<div class="paragraph">
+<p>There is exactly one bean you <strong>do</strong> have to declare, and forgetting it fails <strong>silently</strong>.</p>
 </div>
 <div class="sect1">
 <h2 id="_transactionaleventlistener_needs_a_transactionaleventlistenerfactory_bean"><code>@TransactionalEventListener</code> needs a <code>TransactionalEventListenerFactory</code> bean</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Registering the bean is enough for a <strong>plain</strong> <code>@EventListener</code> to fire. It is <strong>not</strong> enough for <code>@TransactionalEventListener</code>. The transaction-phase-bound variant is only processed when a <code>TransactionalEventListenerFactory</code> bean exists in the context. In a standard Spring Boot application <code>@EnableTransactionManagement</code> contributes that factory automatically; in this Grails application it is not registered by default, so every <code>@TransactionalEventListener</code> is silently ignored until you declare it yourself - which is the last bean in the <code>resources.groovy</code> above.</p>
+<p>A plain <code>@EventListener</code> fires as soon as its class is a bean. <code>@TransactionalEventListener</code> does not: the transaction-phase-bound variant is only processed when a <code>TransactionalEventListenerFactory</code> bean exists in the context. A standard Spring Boot application contributes one automatically through <code>@EnableTransactionManagement</code>. Grails does <strong>not</strong> use <code>@EnableTransactionManagement</code> - it drives transactions through GORM&#8217;s own <code>@Transactional</code> AST transform - so that factory is never registered, and every <code>@TransactionalEventListener</code> is silently ignored until you declare it yourself:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/spring/resources.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">beans = {
+    <span class="comment">// The listeners are ordinary services, so Grails auto-registers them - no</span>
+    <span class="comment">// wiring needed there. This is the one bean the pattern does need: Grails</span>
+    <span class="comment">// uses GORM's @Transactional, not Spring's @EnableTransactionManagement, so</span>
+    <span class="comment">// it never registers a TransactionalEventListenerFactory, and without one</span>
+    <span class="comment">// every @TransactionalEventListener silently no-ops. Declaring it here is</span>
+    <span class="comment">// what makes the AFTER_COMMIT phases fire.</span>
+    transactionalEventListenerFactory(org.springframework.transaction.event.TransactionalEventListenerFactory)
+}</code></pre>
+</div>
 </div>
 <div class="paragraph">
-<p>The failure modes are worth committing to memory because they are all silent:</p>
+<p>That single line is the only wiring the pattern needs. The failure modes are worth committing to memory because they are both silent:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Listener class not a <code>Spring</code> bean</strong> (wrong suffix, not in <code>resources.groovy</code>) &#8594; neither <code>@EventListener</code> nor <code>@TransactionalEventListener</code> fires.</p>
+<p><strong>No <code>TransactionalEventListenerFactory</code></strong> &#8594; plain <code>@EventListener</code> beans still fire, but every <code>@TransactionalEventListener</code> is ignored. This is the confusing one: the synchronous orchestration listener in the second half of this guide works, while the AFTER_COMMIT listeners appear dead.</p>
 </li>
 <li>
-<p><strong>Bean registered but no <code>TransactionalEventListenerFactory</code></strong> &#8594; plain <code>@EventListener</code> fires, every <code>@TransactionalEventListener</code> is ignored. This is the confusing one: the synchronous orchestration listener in the second half of this guide works, while the AFTER_COMMIT listeners appear dead.</p>
-</li>
-<li>
-<p><strong>Both in place</strong> &#8594; everything fires.</p>
+<p><strong>Factory in place</strong> &#8594; everything fires.</p>
 </li>
 </ul>
 </div>
