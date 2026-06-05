@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.18">
-<title>Sets, Lists and Maps</title>
+<title>Sets of Objects</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -441,135 +441,197 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div id="header">
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
-<ul class="sectlevel1">
-<li><a href="#domainClasses-setsListsAndMaps">Sets, Lists and Maps</a>
-<ul class="sectlevel2">
-<li><a href="#_sets_default">Sets (Default)</a></li>
-<li><a href="#_lists_ordered">Lists (Ordered)</a></li>
-<li><a href="#_maps_key_value">Maps (Key-Value)</a></li>
-<li><a href="#_sorting_sets">Sorting Sets</a></li>
-</ul>
-</li>
+<ul class="sectlevel3">
+<li><a href="#_sets_of_objects">Sets of Objects</a></li>
+<li><a href="#_lists_of_objects">Lists of Objects</a></li>
+<li><a href="#_bags_of_objects">Bags of Objects</a></li>
+<li><a href="#_maps_of_objects">Maps of Objects</a></li>
+<li><a href="#_a_note_on_collection_types_and_performance">A Note on Collection Types and Performance</a></li>
 </ul>
 </div>
 </div>
 <div id="content">
-<div class="sect1">
-<h2 id="domainClasses-setsListsAndMaps">Sets, Lists and Maps</h2>
-<div class="sectionbody">
+<div class="sect3">
+<h4 id="_sets_of_objects">Sets of Objects</h4>
 <div class="paragraph">
-<p>By default <code>hasMany</code> creates a <code>java.util.Set</code> collection (unordered, no duplicates). GORM also supports <code>List</code> and <code>Map</code> collection types.</p>
-</div>
-<div class="sect2">
-<h3 id="_sets_default">Sets (Default)</h3>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Author {
-    static hasMany = [books: Book]  // Set&lt;Book&gt; by default
-}</code></pre>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_lists_ordered">Lists (Ordered)</h3>
-<div class="paragraph">
-<p>Declare the collection property as a <code>List</code> to use a positional, ordered collection. GORM adds an <code>index</code> column to the join table:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Author {
-    List books                      <i class="conum" data-value="1"></i><b>(1)</b>
-    static hasMany = [books: Book]
-}</code></pre>
-</div>
-</div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>Declaring the field type as <code>List</code> tells GORM to use a list mapping with a position index.</td>
-</tr>
-</table>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">def author = Author.get(1)
-author.books[0]     <i class="conum" data-value="1"></i><b>(1)</b></code></pre>
-</div>
-</div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>Access by position — Hibernate maintains the order using an <code>idx</code> column in the join table.</td>
-</tr>
-</table>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_maps_key_value">Maps (Key-Value)</h3>
-<div class="paragraph">
-<p>Declare the collection property as a <code>Map</code> to store key-value pairs. The key is typically a <code>String</code>:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Author {
-    Map books                       <i class="conum" data-value="1"></i><b>(1)</b>
-    static hasMany = [books: Book]
-}</code></pre>
-</div>
-</div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>Keys and values are stored in the join table.</td>
-</tr>
-</table>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">def author = Author.get(1)
-author.books['grailsInAction']      <i class="conum" data-value="1"></i><b>(1)</b></code></pre>
-</div>
-</div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>Access by key.</td>
-</tr>
-</table>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_sorting_sets">Sorting Sets</h3>
-<div class="paragraph">
-<p>For <code>Set</code>-based collections, define a default sort order in the <code>mapping</code> block:</p>
+<p>By default when you define a relationship with GORM it is a <code>java.util.Set</code> which is an unordered collection that cannot contain duplicates. In other words when you have:</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight"><code class="language-groovy" data-lang="groovy">class Author {
     static hasMany = [books: Book]
-    static mapping = {
-        books sort: 'title', order: 'asc'
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The books property that GORM injects is a <code>java.util.Set</code>. Sets guarantee uniqueness but not order, which may not be what you want. To have custom ordering you configure the Set as a <code>SortedSet</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Author {
+
+    SortedSet books
+
+    static hasMany = [books: Book]
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In this case a <code>java.util.SortedSet</code> implementation is used which means you must implement <code>java.lang.Comparable</code> in your Book class:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Book implements Comparable {
+
+    String title
+    Date releaseDate = new Date()
+
+    int compareTo(obj) {
+        releaseDate.compareTo(obj.releaseDate)
     }
 }</code></pre>
 </div>
 </div>
-<div class="admonitionblock tip">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-tip" title="Tip"></i>
-</td>
-<td class="content">
-<code>List</code> mappings incur the cost of maintaining a positional index column on every insert/reorder. Use them only when ordering matters. For most associations, the default <code>Set</code> is the better choice.
-</td>
-</tr>
-</table>
+<div class="paragraph">
+<p>The result of the above class is that the Book instances in the books collection of the Author class will be ordered by their release date.</p>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_lists_of_objects">Lists of Objects</h4>
+<div class="paragraph">
+<p>To keep objects in the order which they were added and to be able to reference them by index like an array you can define your collection type as a <code>List</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Author {
+
+    List books
+
+    static hasMany = [books: Book]
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In this case when you add new elements to the books collection the order is retained in a sequential list indexed from 0 so you can do:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">author.books[0] // get the first book</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The way this works at the database level is Hibernate creates a <code>books_idx</code> column where it saves the index of the elements in the collection to retain this order at the database level.</p>
+</div>
+<div class="paragraph">
+<p>When using a <code>List</code>, elements must be added to the collection before being saved, otherwise Hibernate will throw an exception (<code>org.hibernate.HibernateException</code>: null index column for collection):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">// This won't work!
+def book = new Book(title: 'The Shining')
+book.save()
+author.addToBooks(book)
+
+// Do it this way instead.
+def book = new Book(title: 'Misery')
+author.addToBooks(book)
+author.save()</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_bags_of_objects">Bags of Objects</h4>
+<div class="paragraph">
+<p>If ordering and uniqueness aren&#8217;t a concern (or if you manage these explicitly) then you can use the Hibernate <a href="https://docs.jboss.org/hibernate/core/3.6/reference/en-US/html/collections.html">Bag</a> type to represent mapped collections.</p>
+</div>
+<div class="paragraph">
+<p>The only change required for this is to define the collection type as a <code>Collection</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Author {
+
+   Collection books
+
+   static hasMany = [books: Book]
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Since uniqueness and order aren&#8217;t managed by Hibernate, adding to or removing from collections mapped as a Bag don&#8217;t trigger a load of all existing instances from the database, so this approach will perform better and require less memory than using a <code>Set</code> or a <code>List</code>.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_maps_of_objects">Maps of Objects</h4>
+<div class="paragraph">
+<p>If you want a simple map of string/value pairs GORM can map this with the following:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Author {
+    Map books // map of ISBN:book names
+}
+
+def a = new Author()
+a.books = ['1590597583':"My Book"]
+a.save()</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In this case the key and value of the map MUST be strings.</p>
+</div>
+<div class="paragraph">
+<p>If you want a Map of objects then you can do this:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Book {
+
+    Map authors
+
+    static hasMany = [authors: Author]
+}
+
+def a = new Author(name:"Stephen King")
+
+def book = new Book()
+book.authors = [stephen:a]
+book.save()</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The static <code>hasMany</code> property defines the type of the elements within the Map. The keys for the map <strong>must</strong> be strings.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_a_note_on_collection_types_and_performance">A Note on Collection Types and Performance</h4>
+<div class="paragraph">
+<p>The Java <code>Set</code> type doesn&#8217;t allow duplicates. To ensure uniqueness when adding an entry to a <code>Set</code> association Hibernate has to load the entire associations from the database. If you have a large numbers of entries in the association this can be costly in terms of performance.</p>
+</div>
+<div class="paragraph">
+<p>The same behavior is required for <code>List</code> types, since Hibernate needs to load the entire association to maintain order. Therefore it is recommended that if you anticipate a large numbers of records in the association that you make the association bidirectional so that the link can be created on the inverse side. For example consider the following code:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">def book = new Book(title:"New Grails Book")
+def author = Author.get(1)
+book.author = author
+book.save()</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In this example the association link is being created by the child (Book) and hence it is not necessary to manipulate the collection directly resulting in fewer queries and more efficient code. Given an <code>Author</code> with a large number of associated <code>Book</code> instances if you were to write code like the following you would see an impact on performance:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">def book = new Book(title:"New Grails Book")
+def author = Author.get(1)
+author.addToBooks(book)
+author.save()</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>You could also model the collection as a Hibernate Bag as described above.</p>
 </div>
 </div>
 </div>

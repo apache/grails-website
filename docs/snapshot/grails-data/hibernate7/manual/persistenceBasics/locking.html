@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.18">
-<title>Locking</title>
+<title>Optimistic Locking</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -441,75 +441,118 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div id="header">
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
-<ul class="sectlevel1">
-<li><a href="#persistenceBasics-locking">Locking</a>
-<ul class="sectlevel2">
+<ul class="sectlevel3">
 <li><a href="#_optimistic_locking">Optimistic Locking</a></li>
 <li><a href="#_pessimistic_locking">Pessimistic Locking</a></li>
-<li><a href="#_refresh">Refresh</a></li>
-</ul>
-</li>
 </ul>
 </div>
 </div>
 <div id="content">
-<div class="sect1">
-<h2 id="persistenceBasics-locking">Locking</h2>
-<div class="sectionbody">
-<div class="sect2">
-<h3 id="_optimistic_locking">Optimistic Locking</h3>
+<div class="sect3">
+<h4 id="_optimistic_locking">Optimistic Locking</h4>
 <div class="paragraph">
-<p>GORM enables optimistic locking by default via a <code>version</code> column. See <a href="#ormdsl-optimisticLockingAndVersioning">Optimistic Locking and Versioning</a> for full details.</p>
+<p>By default GORM classes are configured for optimistic locking. Optimistic locking is a feature of Hibernate which involves storing a version value in a special <code>version</code> column in the database that is incremented after each update.</p>
 </div>
-</div>
-<div class="sect2">
-<h3 id="_pessimistic_locking">Pessimistic Locking</h3>
 <div class="paragraph">
-<p>To acquire a database-level lock on a row, use <code>lock()</code>:</p>
+<p>The <code>version</code> column gets read into a <code>version</code> property that contains the current versioned state of persistent instance which you can access:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">Book.withTransaction {
-    def book = Book.lock(1)         <i class="conum" data-value="1"></i><b>(1)</b>
-    book.title = 'Updated Safely'
-    book.save()
-}                                   <i class="conum" data-value="2"></i><b>(2)</b></code></pre>
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def airport = Airport.get(10)
+
+println airport.version</code></pre>
 </div>
 </div>
-<div class="colist arabic">
+<div class="paragraph">
+<p>When you perform updates Hibernate will automatically check the version property against the  version column in the database and if they differ will throw a <a href="https://docs.jboss.org/hibernate/orm/5.6/javadocs/org/hibernate/StaleObjectStateException.html">StaleObjectException</a>. This will roll back the transaction if one is active.</p>
+</div>
+<div class="paragraph">
+<p>This is useful as it allows a certain level of atomicity without resorting to pessimistic locking that has an inherit performance penalty. The downside is that you have to deal with this exception if you have highly concurrent writes. This requires flushing the session:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def airport = Airport.get(10)
+
+try {
+    airport.name = "Heathrow"
+    airport.save(flush: true)
+}
+catch (org.springframework.dao.OptimisticLockingFailureException e) {
+    // deal with exception
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The way you deal with the exception depends on the application. You could attempt a programmatic merge of the data or go back to the user and ask them to resolve the conflict.</p>
+</div>
+<div class="paragraph">
+<p>Alternatively, if it becomes a problem you can resort to pessimistic locking.</p>
+</div>
+<div class="admonitionblock note">
 <table>
 <tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>Issues <code>SELECT ... FOR UPDATE</code>, preventing concurrent reads/writes to this row.</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>Lock is released when the transaction commits.</td>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The <code>version</code> will only be updated after flushing the session.
+</td>
 </tr>
 </table>
 </div>
+</div>
+<div class="sect3">
+<h4 id="_pessimistic_locking">Pessimistic Locking</h4>
 <div class="paragraph">
-<p>You can also lock an already-loaded instance:</p>
+<p>Pessimistic locking is equivalent to doing a SQL "SELECT * FOR UPDATE" statement and locking a row in the database. This has the implication that other read operations will be blocking until the lock is released.</p>
+</div>
+<div class="paragraph">
+<p>In GORM pessimistic locking is performed on an existing instance with the <a href="../api/org/grails/datastore/gorm/GormEntity.html#lock()">lock()</a> method:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">def book = Book.get(1)
-book.lock()                         // upgrades to a pessimistic lock</code></pre>
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def airport = Airport.get(10)
+airport.lock() // lock for update
+airport.name = "Heathrow"
+airport.save()</code></pre>
 </div>
 </div>
-</div>
-<div class="sect2">
-<h3 id="_refresh">Refresh</h3>
 <div class="paragraph">
-<p>To reload the current state from the database (discarding in-memory changes):</p>
+<p>GORM will automatically deal with releasing the lock for you once the transaction has been committed.</p>
+</div>
+<div class="paragraph">
+<p>However, in the above case what we are doing is "upgrading" from a regular SELECT to a SELECT..FOR UPDATE and another thread could still have updated the record in between the call to <code>get()</code> and the call to <code>lock()</code>.</p>
+</div>
+<div class="paragraph">
+<p>To get around this problem you can use the static <a href="../api/org/grails/datastore/gorm/GormEntity.html#lock(java.io.Serializable)">lock(id)</a> method that takes an id just like <a href="../api/org/grails/datastore/gorm/GormEntity.html#get(java.io.Serializable)">get(id)</a>:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">def book = Book.get(1)
-// ... another thread modifies the book ...
-book.refresh()                      // re-reads from the database</code></pre>
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def airport = Airport.lock(10) // lock for update
+airport.name = "Heathrow"
+airport.save()</code></pre>
 </div>
 </div>
+<div class="paragraph">
+<p>In this case only SELECT..FOR UPDATE is issued.</p>
+</div>
+<div class="paragraph">
+<p>As well as the <a href="../api/org/grails/datastore/gorm/GormEntity.html#lock(java.io.Serializable)">lock(id)</a> method you can also obtain a pessimistic locking using queries. For example using a dynamic finder:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">def airport = Airport.findByName("Heathrow", [lock: true])</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Or using criteria:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">def airport = Airport.createCriteria().get {
+    eq('name', 'Heathrow')
+    lock true
+}</code></pre>
 </div>
 </div>
 </div>

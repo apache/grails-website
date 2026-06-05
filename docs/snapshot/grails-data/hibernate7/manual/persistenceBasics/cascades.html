@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.18">
-<title>Cascades</title>
+<title>Unidirectional Many-To-One without belongsTo</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -441,92 +441,251 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div id="header">
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
-<ul class="sectlevel1">
-<li><a href="#persistenceBasics-cascades">Cascades</a>
-<ul class="sectlevel2">
-<li><a href="#_default_cascade_behaviour">Default Cascade Behaviour</a></li>
-<li><a href="#_cascade_with_belongsto">Cascade with <code>belongsTo</code></a></li>
-<li><a href="#_cascade_with_all_delete_orphan">Cascade with <code>all-delete-orphan</code></a></li>
-</ul>
-</li>
+<ul class="sectlevel4">
+<li><a href="#_unidirectional_many_to_one_without_belongsto">Unidirectional Many-To-One without belongsTo</a></li>
+<li><a href="#_bidirectional_one_to_many_with_belongsto">Bidirectional one-to-many with belongsTo</a></li>
+<li><a href="#_unidirectional_one_to_many">Unidirectional One-to-Many</a></li>
+<li><a href="#_bidirectional_one_to_many_no_belongsto">Bidirectional One-to-Many, no belongsTo</a></li>
+<li><a href="#_unidirectional_many_to_one_with_belongsto">Unidirectional Many-to-One with belongsTo</a></li>
 </ul>
 </div>
 </div>
 <div id="content">
-<div class="sect1">
-<h2 id="persistenceBasics-cascades">Cascades</h2>
-<div class="sectionbody">
 <div class="paragraph">
-<p>Hibernate cascades propagate persistence operations from a parent entity to its associated children automatically.</p>
+<p>It is critical that you understand how cascading updates and deletes work when using GORM. The key part to remember is the <code>belongsTo</code> setting which controls which class "owns" a relationship.</p>
 </div>
 <div class="paragraph">
-<p>See <a href="#ormdsl-customCascadeBehaviour">Custom Cascade Behaviour</a> for the full reference on configuring cascade behaviour via the <code>mapping</code> block.</p>
+<p>Whether it is a one-to-one, one-to-many or many-to-many, defining <code>belongsTo</code> will result in updates cascading from the owning class to its dependant (the other side of the relationship), and for many-/one-to-one and one-to-many relationships deletes will also cascade.</p>
 </div>
-<div class="sect2">
-<h3 id="_default_cascade_behaviour">Default Cascade Behaviour</h3>
 <div class="paragraph">
-<p>GORM applies <code>save-update</code> cascading by default on associations managed by <code>hasMany</code>. This means:</p>
+<p>If you <em>do not</em> define <code>belongsTo</code> then no cascades will happen and you will have to manually save each object (except in the case of the one-to-many, in which case saves will cascade automatically if a new instance is in a <code>hasMany</code> collection).</p>
 </div>
-<div class="ulist">
-<ul>
-<li>
-<p>Saving an <code>Author</code> also saves any new or modified <code>Book</code> objects in its <code>books</code> collection.</p>
-</li>
-<li>
-<p><strong>Deleting an <code>Author</code> does NOT automatically delete its <code>books</code></strong> unless <code>belongsTo</code> is declared or <code>cascade: 'all'</code> is configured.</p>
-</li>
-</ul>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_cascade_with_belongsto">Cascade with <code>belongsTo</code></h3>
 <div class="paragraph">
-<p>Declaring <code>belongsTo</code> on the owned side automatically adds cascade-delete from the owning side:</p>
+<p>Here is an example:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Book {
-    static belongsTo = [author: Author]     <i class="conum" data-value="1"></i><b>(1)</b>
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Airport {
+    String name
+    static hasMany = [flights: Flight]
 }</code></pre>
 </div>
 </div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>Deleting an <code>Author</code> cascade-deletes all associated <code>Book</code> rows.</td>
-</tr>
-</table>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Flight {
+    String number
+    static belongsTo = [airport: Airport]
+}</code></pre>
 </div>
 </div>
-<div class="sect2">
-<h3 id="_cascade_with_all_delete_orphan">Cascade with <code>all-delete-orphan</code></h3>
 <div class="paragraph">
-<p>Use <code>all-delete-orphan</code> to delete child rows that are removed from the collection:</p>
+<p>If I now create an <code>Airport</code> and add some ``Flight``s to it I can save the <code>Airport</code> and have the updates cascaded down to each flight, hence saving the whole object graph:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">new Airport(name: "Gatwick")
+        .addToFlights(new Flight(number: "BA3430"))
+        .addToFlights(new Flight(number: "EZ0938"))
+        .save()</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Conversely if I later delete the <code>Airport</code> all <code>Flight</code> instances associated with it will also be deleted:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def airport = Airport.findByName("Gatwick")
+airport.delete()</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The above examples are called transitive persistence and are controlled via the <code>belongsTo</code> and the cascade policy. If I were to remove <code>belongsTo</code> then the above cascading deletion code <strong>would not work</strong>.</p>
+</div>
+<div class="sect4">
+<h5 id="_unidirectional_many_to_one_without_belongsto">Unidirectional Many-To-One without belongsTo</h5>
+<div class="paragraph">
+<p>For example, consider the following domain model:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Location {
+    String city
+}
+
+class Author {
+    String name
+    Location location
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>It looks simple, right? And it is. Just set the location property to a Location instance and you have linked an author to a location. But see what happens when we run the following code:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def a = new Author(name: "Niall Ferguson", location: new Location(city: "Boston"))
+a.save()</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>An exception is thrown. If you look at the ultimate “caused by” exception, you’ll see the message <code>“not-null property references a null or transient value: Author.location”</code>. What’s going on?</p>
+</div>
+<div class="paragraph">
+<p>A transient instance is one that isn’t attached to a Hibernate session. As you can see from the code, we are setting the Author.location property to a new Location instance, not one retrieved from the database. Hence the instance is transient. The obvious fix is to make the Location instance persistent by saving it:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def l = new Location(city: "Boston")
+l.save()
+
+def a = new Author(name: "Niall Ferguson", location: l)
+a.save()</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Another option is to alter the cascade policy for the association. There are two ways to do that. One way is to define <code>belongsTo</code> on the <code>Location</code> class:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Location {
+    String city
+
+    static belongsTo = Author
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Note that this above syntax does not make the association bidirectional since no property is defined. A bidirectional example would be:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Location {
+    String city
+
+    static belongsTo = [author:Author]
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Alternatively if you prefer that the <code>Location</code> class has nothing to do with the <code>Author</code> class you can define the cascade policy in <code>Author</code>:</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight"><code class="language-groovy" data-lang="groovy">class Author {
-    static hasMany = [books: Book]
-    static mapping = {
-        books cascade: 'all-delete-orphan'
-    }
-}
+    String name
+    Location location
 
-def author = Author.get(1)
-author.books.remove(author.books.first())   <i class="conum" data-value="1"></i><b>(1)</b>
-author.save()</code></pre>
+    static mapping = {
+        location cascade:'save-update'
+    }
+}</code></pre>
 </div>
 </div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>The removed <code>Book</code> will be deleted from the database.</td>
-</tr>
-</table>
+<div class="paragraph">
+<p>The above example will configure the cascade policy to cascade saves and updates, but not deletes.</p>
 </div>
 </div>
+<div class="sect4">
+<h5 id="_bidirectional_one_to_many_with_belongsto">Bidirectional one-to-many with belongsTo</h5>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class A { static hasMany = [bees: B] }</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class B { static belongsTo = [a: A] }</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In the case of a bidirectional one-to-many where the many side defines a <code>belongsTo</code> then the cascade strategy is set to "ALL" for the one side and "NONE" for the many side.</p>
+</div>
+<div class="paragraph">
+<p>What this means is that whenever an instance of <code>A</code> is saved or updated. So will any instances of <code>B</code>. And, critically, whenever any instance of <code>A</code> is <strong>deleted</strong> so will all the associated instances of <code>B</code>!</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_unidirectional_one_to_many">Unidirectional One-to-Many</h5>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class A { static hasMany = [bees: B] }</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class B {  }</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In the case of a unidirectional one-to-many where the many side defines no belongsTo then the cascade strategy is set to "SAVE-UPDATE".</p>
+</div>
+<div class="paragraph">
+<p>Since the <code>belongsTo</code> is not defined, this means that saves and updates will be cascaded from <code>A</code> to <code>B</code>, however deletes <strong>will not</strong> cascade!</p>
+</div>
+<div class="paragraph">
+<p>Only when you define <code>belongsTo</code> in <code>B</code> or alter the cascading strategy of <code>A</code> will deletes be cascaded.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_bidirectional_one_to_many_no_belongsto">Bidirectional One-to-Many, no belongsTo</h5>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class A { static hasMany = [bees: B] }</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class B { A a }</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In the case of a bidirectional one-to-many where the many side does not define a <code>belongsTo</code> then the cascade strategy is set to "SAVE-UPDATE" for the one side and "NONE" for the many side.</p>
+</div>
+<div class="paragraph">
+<p>So exactly like the previous case of a undirectional One-to-Many, without <code>belongsTo</code> definition no delete operations will be cascaded, but crucially saves and updates will by default. If you do not want saves and updates to cacade then <strong>you must</strong> alter the cascade policy of <code>A</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class A {
+    static hasMany = [bees: B]
+    static mapping = {
+        bees cascade:"none"
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_unidirectional_many_to_one_with_belongsto">Unidirectional Many-to-One with belongsTo</h5>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class A {  }</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class B { static belongsTo = [a: A] }</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In the case of a unidirectional many-to-one association that defines a <code>belongsTo</code> then the cascade strategy is set to "ALL" for the owning side of the relationship (A&#8594;B) and "NONE" from the side that defines the <code>belongsTo</code> (B&#8594;A)</p>
+</div>
+<div class="paragraph">
+<p>You may be wondering why this association is a many-to-one and not a one-to-one. The reason is because it is possible to have multiple instances of <code>B</code> associated to the same instance of <code>A</code>. If you wish to define this association as a true one-to-one association a <code>unique</code> constraint is required:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class B {
+    static belongsTo = [a: A]
+    static constraints = {
+        a unique:true
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Note that if you need further control over cascading behaviour, you can use the <a href="#ormdsl">ORM DSL</a>.</p>
 </div>
 </div>
 </div>

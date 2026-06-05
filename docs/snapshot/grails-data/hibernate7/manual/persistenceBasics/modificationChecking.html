@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.18">
-<title>Modification Checking</title>
+<title>isDirty</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -441,70 +441,137 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div id="header">
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
-<ul class="sectlevel1">
-<li><a href="#persistenceBasics-modificationChecking">Modification Checking</a>
-<ul class="sectlevel2">
-<li><a href="#_checking_if_an_instance_is_dirty">Checking if an Instance is Dirty</a></li>
-<li><a href="#_checking_a_specific_property">Checking a Specific Property</a></li>
-<li><a href="#_getting_the_original_value">Getting the Original Value</a></li>
-<li><a href="#_dirty_properties">Dirty Properties</a></li>
-</ul>
-</li>
+<ul class="sectlevel3">
+<li><a href="#_isdirty">isDirty</a></li>
+<li><a href="#_isdirty_and_proxies">isDirty and Proxies</a></li>
+<li><a href="#_getdirtypropertynames">getDirtyPropertyNames</a></li>
+<li><a href="#_getpersistentvalue">getPersistentValue</a></li>
 </ul>
 </div>
 </div>
 <div id="content">
-<div class="sect1">
-<h2 id="persistenceBasics-modificationChecking">Modification Checking</h2>
-<div class="sectionbody">
 <div class="paragraph">
-<p>Hibernate tracks which properties have been modified since the entity was loaded. GORM exposes this via <code>isDirty()</code> and related methods.</p>
+<p>Once you have loaded and possibly modified a persistent domain class instance, it isn&#8217;t straightforward to retrieve the original values. If you try to reload the instance using <a href="../api/org/grails/datastore/gorm/GormEntity.html#get(java.io.Serializable)">get(id)</a> Hibernate will return the current modified instance from its Session cache.</p>
 </div>
-<div class="sect2">
-<h3 id="_checking_if_an_instance_is_dirty">Checking if an Instance is Dirty</h3>
+<div class="paragraph">
+<p>Reloading using another query would trigger a flush which could cause problems if your data isn&#8217;t ready to be flushed yet. So GORM provides some methods to retrieve the original values that Hibernate caches when it loads the instance (which it uses for dirty checking).</p>
+</div>
+<div class="sect3">
+<h4 id="_isdirty">isDirty</h4>
+<div class="paragraph">
+<p>You can use the <a href="../api/org/grails/datastore/gorm/GormEntity.html#isDirty(java.lang.String)">isDirty()</a> method to check if any field has been modified:</p>
+</div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">def book = Book.get(1)
-book.isDirty()      // false — just loaded
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def airport = Airport.get(10)
+assert !airport.isDirty()
 
-book.title = 'New Title'
-book.isDirty()      // true — title has changed</code></pre>
+airport.properties = params
+if (airport.isDirty()) {
+   // do something based on changed state
+}</code></pre>
 </div>
 </div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<code>isDirty()</code> does not currently check collection associations, but it does check all other persistent properties and associations.
+</td>
+</tr>
+</table>
 </div>
-<div class="sect2">
-<h3 id="_checking_a_specific_property">Checking a Specific Property</h3>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">book.isDirty('title')   // true
-book.isDirty('genre')   // false — genre unchanged</code></pre>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_getting_the_original_value">Getting the Original Value</h3>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">def book = Book.get(1)
-println book.title          // 'Original Title'
-book.title = 'New Title'
-println book.getPersistentValue('title')    // 'Original Title'</code></pre>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_dirty_properties">Dirty Properties</h3>
 <div class="paragraph">
-<p>Get a list of all property names that have changed:</p>
+<p>You can also check if individual fields have been modified:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">def book = Book.get(1)
-book.title = 'New Title'
-book.genre = 'Fiction'
-println book.dirtyPropertyNames    // ['title', 'genre']</code></pre>
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def airport = Airport.get(10)
+assert !airport.isDirty()
+
+airport.properties = params
+if (airport.isDirty('name')) {
+   // do something based on changed name
+}</code></pre>
 </div>
 </div>
+</div>
+<div class="sect3">
+<h4 id="_isdirty_and_proxies">isDirty and Proxies</h4>
+<div class="paragraph">
+<p>Dirty checking uses the <code>equals()</code> method to determine if a property has changed. In the case of associations, it is important to recognize that if the association is a proxy, comparing properties on the domain that are not related to the identifier will initialize the proxy, causing another database query.</p>
+</div>
+<div class="paragraph">
+<p>If the association does not define <code>equals()</code> method, then the default Groovy behavior of verifying the instances are the same will be used. Because proxies are not the same instance as an instance loaded from the database, which can cause confusing behavior. It is recommended to implement the <code>equals()</code> method if you need to check the dirtiness of an association. For example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Author {
+    Long id
+    String name
+
+     /**
+     * This ensures that if either or both of the instances
+     * have a null id (new instances), they are not equal.
+     */
+    @Override
+    boolean equals(o) {
+        if (!(o instanceof Author)) return false
+        if (this.is(o)) return true
+        Author that = (Author) o
+        if (id !=null &amp;&amp; that.id !=null) return id == that.id
+        return false
+    }
+}
+
+class Book {
+    Long id
+    String title
+    Author author
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_getdirtypropertynames">getDirtyPropertyNames</h4>
+<div class="paragraph">
+<p>You can use the <a href="../api/org/grails/datastore/gorm/GormEntity.html#getDirtyPropertyNames()">getDirtyPropertyNames()</a> method to retrieve the names of modified fields; this may be empty but will not be null:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def airport = Airport.get(10)
+assert !airport.isDirty()
+
+airport.properties = params
+def modifiedFieldNames = airport.getDirtyPropertyNames()
+for (fieldName in modifiedFieldNames) {
+   // do something based on changed value
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_getpersistentvalue">getPersistentValue</h4>
+<div class="paragraph">
+<p>You can use the <a href="../api/org/grails/datastore/gorm/GormEntity.html#getPersistentValue(java.lang.String)">getPersistentValue(fieldName)</a> method to retrieve the value of a modified field:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def airport = Airport.get(10)
+assert !airport.isDirty()
+
+airport.properties = params
+def modifiedFieldNames = airport.getDirtyPropertyNames()
+for (fieldName in modifiedFieldNames) {
+    def currentValue = airport."$fieldName"
+    def originalValue = airport.getPersistentValue(fieldName)
+    if (currentValue != originalValue) {
+        // do something based on changed value
+    }
+}</code></pre>
 </div>
 </div>
 </div>

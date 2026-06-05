@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.18">
-<title>Table and Column Names</title>
+<title>Table names</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -441,223 +441,226 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div id="header">
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
-<ul class="sectlevel1">
-<li><a href="#ormdsl-tableAndColumnNames">Table and Column Names</a>
-<ul class="sectlevel2">
-<li><a href="#_changing_the_table_name">Changing the Table Name</a></li>
-<li><a href="#_changing_column_names">Changing Column Names</a></li>
-<li><a href="#_column_properties">Column Properties</a></li>
-<li><a href="#_join_table_configuration_for_collections">Join Table Configuration for Collections</a></li>
-</ul>
-</li>
+<ul class="sectlevel4">
+<li><a href="#_table_names">Table names</a></li>
+<li><a href="#_column_names">Column names</a></li>
+<li><a href="#_column_type">Column type</a></li>
+<li><a href="#_many_to_oneone_to_one_mappings">Many-to-One/One-to-One Mappings</a></li>
+<li><a href="#_one_to_many_mapping">One-to-Many Mapping</a></li>
+<li><a href="#_many_to_many_mapping">Many-to-Many Mapping</a></li>
 </ul>
 </div>
 </div>
 <div id="content">
-<div class="sect1">
-<h2 id="ormdsl-tableAndColumnNames">Table and Column Names</h2>
-<div class="sectionbody">
+<div class="sect4">
+<h5 id="_table_names">Table names</h5>
 <div class="paragraph">
-<p>By default GORM derives table and column names from your domain class and property names using an underscore-based naming strategy. You can override these defaults with the ORM DSL <code>mapping</code> block.</p>
-</div>
-<div class="sect2">
-<h3 id="_changing_the_table_name">Changing the Table Name</h3>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Book {
-    String title
-    static mapping = {
-        table 'books'           <i class="conum" data-value="1"></i><b>(1)</b>
-    }
-}</code></pre>
-</div>
-</div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>Maps the <code>Book</code> domain class to a table named <code>books</code>.</td>
-</tr>
-</table>
-</div>
-<div class="paragraph">
-<p>You can also specify a catalog and/or schema:</p>
+<p>The database table name which the class maps to can be customized using the <code>table</code> method:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Book {
-    String title
+<pre class="highlight"><code class="language-java" data-lang="java">class Person {
+    ...
     static mapping = {
-        table name: 'books', catalog: 'inventory', schema: 'dbo'
-    }
-}</code></pre>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_changing_column_names">Changing Column Names</h3>
-<div class="paragraph">
-<p>Use the property name followed by <code>column</code> to override the column name for any property:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Book {
-    String title
-    static mapping = {
-        title column: 'book_title'
+        table 'people'
     }
 }</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>For multi-column user types, call <code>column</code> multiple times:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Payment {
-    Money amount
-    static mapping = {
-        amount {
-            column name: 'amount_value'
-            column name: 'amount_currency'
-        }
-    }
-}</code></pre>
+<p>In this case the class would be mapped to a table called <code>people</code> instead of the default name of <code>person</code>.</p>
 </div>
 </div>
-</div>
-<div class="sect2">
-<h3 id="_column_properties">Column Properties</h3>
+<div class="sect4">
+<h5 id="_column_names">Column names</h5>
 <div class="paragraph">
-<p>The <code>column</code> block supports the following attributes:</p>
-</div>
-<table class="tableblock frame-all grid-all stretch">
-<colgroup>
-<col style="width: 33.3333%;">
-<col style="width: 33.3333%;">
-<col style="width: 33.3334%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">attribute</th>
-<th class="tableblock halign-left valign-top">description</th>
-<th class="tableblock halign-left valign-top">default</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>name</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The column name</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">derived from property name</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sqlType</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The SQL type override</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">derived from Hibernate type</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>unique</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Whether the column has a unique constraint</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>false</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>index</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Index name (or <code>true</code> for an auto-named index)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">none</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>defaultValue</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The DDL default value for the column</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">none</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>comment</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">A DDL comment for the column</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">none</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>read</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">A SQL expression to use when reading the value</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">none</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>write</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">A SQL expression to use when writing the value</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">none</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="sect2">
-<h3 id="_join_table_configuration_for_collections">Join Table Configuration for Collections</h3>
-<div class="paragraph">
-<p>When a domain class has a <code>hasMany</code> relationship without a <code>belongsTo</code> on the other side (unidirectional), or for <code>hasMany</code> of basic/enum types, GORM uses a join table. You can customise the join table name and its columns:</p>
+<p>It is also possible to customize the mapping for individual columns onto the database. For example to change the name you can do:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Author {
-    static hasMany = [books: Book]
+<pre class="highlight"><code class="language-java" data-lang="java">class Person {
+
+    String firstName
+
     static mapping = {
-        books joinTable: 'author_books'     <i class="conum" data-value="1"></i><b>(1)</b>
+        table 'people'
+        firstName column: 'First_Name'
     }
 }</code></pre>
 </div>
-</div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>Override the join table name only.</td>
-</tr>
-</table>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Author {
-    static hasMany = [books: Book]
-    static mapping = {
-        books joinTable: [
-            name: 'author_books',       <i class="conum" data-value="1"></i><b>(1)</b>
-            key: 'author_fk',           <i class="conum" data-value="2"></i><b>(2)</b>
-            column: 'book_fk'           <i class="conum" data-value="3"></i><b>(3)</b>
-        ]
-    }
-}</code></pre>
-</div>
-</div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>The join table name.</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>The foreign-key column that points back to <code>Author</code>.</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="3"></i><b>3</b></td>
-<td>The foreign-key column that points to <code>Book</code> (or holds the element value for basic types).</td>
-</tr>
-</table>
 </div>
 <div class="paragraph">
-<p>You can also use the closure form:</p>
+<p>Here <code>firstName</code> is a dynamic method within the <code>mapping</code> Closure that has a single Map parameter. Since its name corresponds to a domain class persistent field, the parameter values (in this case just <code>"column"</code>) are used to configure the mapping for that property.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_column_type">Column type</h5>
+<div class="paragraph">
+<p>GORM supports configuration of Hibernate types with the DSL using the type attribute. This includes specifying user types that implement the Hibernate <a href="https://docs.jboss.org/hibernate/orm/5.6/javadocs/org/hibernate/usertype/UserType.html">org.hibernate.usertype.UserType</a> interface, which allows complete customization of how a type is persisted. As an example if you had a <code>PostCodeType</code> you could use it as follows:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Author {
-    static hasMany = [books: Book]
+<pre class="highlight"><code class="language-java" data-lang="java">class Address {
+
+    String number
+    String postCode
+
     static mapping = {
-        books joinTable {
-            name 'author_books'
-            key  'author_fk'
-            column 'book_fk'
-        }
+        postCode type: PostCodeType
     }
 }</code></pre>
 </div>
 </div>
+<div class="paragraph">
+<p>Alternatively if you just wanted to map it to one of Hibernate&#8217;s basic types other than the default chosen by GORM you could use:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">class Address {
+
+    String number
+    String postCode
+
+    static mapping = {
+        postCode type: 'text'
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This would make the <code>postCode</code> column map to the default large-text type for the database you&#8217;re using (for example TEXT or CLOB).</p>
+</div>
+<div class="paragraph">
+<p>See the Hibernate documentation regarding <a href="https://docs.jboss.org/hibernate/orm/current/userguide/html_single/Hibernate_User_Guide.html#basic-explicit">Basic Types</a> for further information.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_many_to_oneone_to_one_mappings">Many-to-One/One-to-One Mappings</h5>
+<div class="paragraph">
+<p>In the case of associations it is also possible to configure the foreign keys used to map associations. In the case of a many-to-one or one-to-one association this is exactly the same as any regular column. For example consider the following:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">class Person {
+
+    String firstName
+    Address address
+
+    static mapping = {
+        table 'people'
+        firstName column: 'First_Name'
+        address column: 'Person_Address_Id'
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>By default the <code>address</code> association would map to a foreign key column called <code>address_id</code>. By using the above mapping we have changed the name of the foreign key column to <code>Person_Adress_Id</code>.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_one_to_many_mapping">One-to-Many Mapping</h5>
+<div class="paragraph">
+<p>With a bidirectional one-to-many you can change the foreign key column used by changing the column name on the many side of the association as per the example in the previous section on one-to-one associations. However, with unidirectional associations the foreign key needs to be specified on the association itself. For example given a unidirectional one-to-many relationship between <code>Person</code> and <code>Address</code> the following code will change the foreign key in the <code>address</code> table:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">class Person {
+
+    String firstName
+
+    static hasMany = [addresses: Address]
+
+    static mapping = {
+        table 'people'
+        firstName column: 'First_Name'
+        addresses column: 'Person_Address_Id'
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If you don&#8217;t want the column to be in the <code>address</code> table, but instead some intermediate join table you can use the <code>joinTable</code> parameter:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">class Person {
+
+    String firstName
+
+    static hasMany = [addresses: Address]
+
+    static mapping = {
+        table 'people'
+        firstName column: 'First_Name'
+        addresses joinTable: [name: 'Person_Addresses',
+                              key: 'Person_Id',
+                              column: 'Address_Id']
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_many_to_many_mapping">Many-to-Many Mapping</h5>
+<div class="paragraph">
+<p>GORM, by default maps a many-to-many association using a join table. For example consider this many-to-many association:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">class Group {
+    ...
+    static hasMany = [people: Person]
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">class Person {
+    ...
+    static belongsTo = Group
+    static hasMany = [groups: Group]
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In this case GORM will create a join table called <code>group_person</code> containing foreign keys called <code>person_id</code> and <code>group_id</code> referencing the <code>person</code> and <code>group</code> tables. To change the column names you can specify a column within the mappings for each class.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">class Group {
+   ...
+   static mapping = {
+       people column: 'Group_Person_Id'
+   }
+}
+class Person {
+   ...
+   static mapping = {
+       groups column: 'Group_Group_Id'
+   }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>You can also specify the name of the join table to use:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">class Group {
+   ...
+   static mapping = {
+       people column: 'Group_Person_Id',
+              joinTable: 'PERSON_GROUP_ASSOCIATIONS'
+   }
+}
+class Person {
+   ...
+   static mapping = {
+       groups column: 'Group_Group_Id',
+              joinTable: 'PERSON_GROUP_ASSOCIATIONS'
+   }
+}</code></pre>
 </div>
 </div>
 </div>

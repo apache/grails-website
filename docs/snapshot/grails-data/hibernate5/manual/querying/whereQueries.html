@@ -447,7 +447,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_conjunction_disjunction_and_negation">Conjunction, Disjunction and Negation</a></li>
 <li><a href="#_property_comparison_queries">Property Comparison Queries</a></li>
 <li><a href="#_querying_associations">Querying Associations</a></li>
-<li><a href="#_query_aliases_and_sorting">Query Aliases and Sorting</a></li>
+<li><a href="#_sorting">Sorting</a></li>
 <li><a href="#_subqueries">Subqueries</a></li>
 <li><a href="#_more_advanced_subqueries_in_gorm">More Advanced Subqueries in GORM</a></li>
 <li><a href="#_other_functions">Other Functions</a></li>
@@ -469,6 +469,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <pre class="highlight"><code class="language-groovy" data-lang="groovy">def query = Person.where {
    firstName == "Bart"
 }
+
 Person bart = query.find()</code></pre>
 </div>
 </div>
@@ -483,9 +484,10 @@ class Person {
     static DetachedCriteria&lt;Person&gt; simpsons = where {
          lastName == "Simpson"
     }
-    ...
 }
+
 ...
+
 Person.simpsons.each { Person p -&gt;
     println p.firstname
 }</code></pre>
@@ -499,9 +501,11 @@ Person.simpsons.each { Person p -&gt;
 <pre class="highlight"><code class="language-groovy" data-lang="groovy">def results = Person.findAll {
      lastName == "Simpson"
 }
+
 def results = Person.findAll(sort:"firstName") {
      lastName == "Simpson"
 }
+
 Person p = Person.find { firstName == "Bart" }</code></pre>
 </div>
 </div>
@@ -577,6 +581,7 @@ Person p = Person.find { firstName == "Bart" }</code></pre>
 <pre class="highlight"><code class="language-groovy" data-lang="groovy">def query = Person.where {
     (lastName != "Simpson" &amp;&amp; firstName != "Fred") || (firstName == "Bart" &amp;&amp; age &gt; 9)
 }
+
 def results = query.list(sort:"firstName")</code></pre>
 </div>
 </div>
@@ -633,9 +638,11 @@ Note that <code>rlike</code> queries are only supported if the underlying databa
 <pre class="highlight"><code class="language-groovy" data-lang="groovy">DetachedCriteria&lt;Person&gt; query = Person.where {
      lastName == "Simpson"
 }
+
 DetachedCriteria&lt;Person&gt; bartQuery = query.where {
      firstName == "Bart"
 }
+
 Person p = bartQuery.find()</code></pre>
 </div>
 </div>
@@ -647,6 +654,8 @@ Person p = bartQuery.find()</code></pre>
 <pre class="highlight"><code class="language-groovy" data-lang="groovy">def callable = {
     lastName == "Simpson"
 }
+
+// Fails: where() requires an inline closure for the AST transform
 def query = Person.where(callable)</code></pre>
 </div>
 </div>
@@ -660,6 +669,7 @@ def query = Person.where(callable)</code></pre>
 def callable = {
     lastName == "Simpson"
 } as DetachedCriteria&lt;Person&gt;
+
 def query = Person.where(callable)</code></pre>
 </div>
 </div>
@@ -845,57 +855,85 @@ def query = Person.where(callable)</code></pre>
 </table>
 </div>
 <div class="sect3">
-<h4 id="_query_aliases_and_sorting">Query Aliases and Sorting</h4>
+<h4 id="_sorting">Sorting</h4>
 <div class="paragraph">
-<p>If you define a query for an association an alias is automatically generated for the query. For example the following query:</p>
+<p>Sorting with <code>where</code> queries is performed by passing <code>sort</code> and (optionally) <code>order</code> arguments to the <code>list</code> method of a <a href="#detachedCriteria">Detached Criteria</a>.</p>
+</div>
+<div class="sect4">
+<h5 id="_single_field_sorting">Single-field Sorting</h5>
+<div class="paragraph">
+<p>To sort by a single property:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">def query = Pet.where {
-    owner.firstName == "Fred"
-}</code></pre>
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def query = Person.where {
+    firstName == "Jack"
+}
+
+def results = query.list(sort: "firstName")</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Will generate an alias for the <code>owner</code> association such as <code>owner_alias_0</code>. These generated aliases are fine for most cases, but are not useful if you want to later sort or use a projection on the results. For example the following query will fail:</p>
+<p>By default, sorting is ascending. You can specify the direction explicitly using the <code>order</code> argument:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def results = query.list(sort: "firstName", order: "desc")</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_multi_field_sorting">Multi-field Sorting</h5>
+<div class="paragraph">
+<p>To sort by multiple fields, pass a <code>Map</code> to the <code>sort</code> argument:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def results = query.list(sort: [
+    firstName: "asc",
+    lastName: "desc"
+])</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This sorts results first by <code>firstName</code> ascending and then by <code>lastName</code> descending.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_sorting_with_associations">Sorting with Associations</h5>
+<div class="paragraph">
+<p>When sorting by properties of associated entities, you must define an explicit alias within the <code>where</code> query.
+Without an explicit alias, sorting on association properties may fail due to dynamically generated aliases.</p>
+</div>
+<div class="paragraph">
+<p>For example the following query will fail:</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight"><code class="language-groovy" data-lang="groovy">// fails because a dynamic alias is used
 Pet.where {
     owner.firstName == "Fred"
-}.list(sort:"owner.lastName")</code></pre>
+}.list(sort: "owner.lastName")</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>If you plan to sort the results then an explicit alias should be used and these can be defined by simply declaring a variable in the <code>where</code> query:</p>
+<p>In this case GORM will generate an alias for the <code>owner</code> association such as <code>owner_alias_0</code>. These generated aliases are internal and are not suitable for later reference in sorting or projections.</p>
+</div>
+<div class="paragraph">
+<p>To avoid this problem, define an explicit alias:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">def query = Pet.where {
-    def o1 = owner <i class="conum" data-value="1"></i><b>(1)</b>
-    o1.firstName == "Fred" <i class="conum" data-value="2"></i><b>(2)</b>
-}.list(sort:'o1.lastName') <i class="conum" data-value="3"></i><b>(3)</b></code></pre>
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">// 1. Define alias
+def query = Pet.where {
+    def o = owner
+    o.firstName == "Fred"
+}
+
+// 2. Execute query using alias for sorting
+def results = query.list(sort: "o.lastName")</code></pre>
 </div>
 </div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>Define an alias called <code>o1</code></td>
-</tr>
-<tr>
-<td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>Use the alias in the query itself</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="3"></i><b>3</b></td>
-<td>Use the alias to sort the results</td>
-</tr>
-</table>
-</div>
-<div class="paragraph">
-<p>By assigning the name of an association to a local variable it will automatically become an alias usable within the query itself and also for the purposes of sorting or projecting the results.</p>
 </div>
 </div>
 <div class="sect3">
@@ -906,7 +944,7 @@ Pet.where {
 <div class="listingblock">
 <div class="content">
 <pre class="highlight"><code class="language-groovy" data-lang="groovy">final query = Person.where {
-  age &gt; avg(age)
+    age &gt; avg(age)
 }</code></pre>
 </div>
 </div>
@@ -957,7 +995,7 @@ Pet.where {
 <div class="listingblock">
 <div class="content">
 <pre class="highlight"><code class="language-groovy" data-lang="groovy">def query = Person.where {
-  age &gt; avg(age).of { lastName == "Simpson" } &amp;&amp; firstName == "Homer"
+    age &gt; avg(age).of { lastName == "Simpson" } &amp;&amp; firstName == "Homer"
 }</code></pre>
 </div>
 </div>
@@ -991,7 +1029,7 @@ Pet.where {
 <div class="content">
 <pre class="highlight"><code class="language-groovy" data-lang="groovy">def results = Person.withCriteria {
     notIn "firstName", Person.where { age &lt; 18 }.firstName
- }</code></pre>
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1011,10 +1049,11 @@ Pet.where {
 <div class="content">
 <pre class="highlight"><code class="language-groovy" data-lang="groovy">def employees = Employee.where {
     region.continent in ['APAC', "EMEA"]
-    }.id()
-    def results = Sale.where {
+}.id()
+
+def results = Sale.where {
     employee in employees &amp;&amp; total &gt; 100000
-    }.employee.list()</code></pre>
+}.employee.list()</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1136,6 +1175,7 @@ Currently functions can only be applied to properties or associations of domain 
 <pre class="highlight"><code class="language-groovy" data-lang="groovy">DetachedCriteria&lt;Person&gt; query = Person.where {
     lastName == 'Simpson'
 }
+
 int total = query.updateAll(lastName:"Bloggs")</code></pre>
 </div>
 </div>
@@ -1159,6 +1199,7 @@ Note that one limitation with regards to batch operations is that join queries (
 <pre class="highlight"><code class="language-groovy" data-lang="groovy">DetachedCriteria&lt;Person&gt; query = Person.where {
     lastName == 'Simpson'
 }
+
 int total = query.deleteAll()</code></pre>
 </div>
 </div>

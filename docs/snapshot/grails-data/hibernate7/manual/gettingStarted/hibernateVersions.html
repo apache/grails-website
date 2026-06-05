@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.18">
-<title>Hibernate Versions</title>
+<title>Grails 7.0.0 and above with Hibernate 5.6.x</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -441,88 +441,93 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div id="header">
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
-<ul class="sectlevel1">
-<li><a href="#gettingStarted-hibernateVersions">Hibernate Versions</a>
-<ul class="sectlevel2">
-<li><a href="#_grails_8_with_hibernate_7">Grails 8 with Hibernate 7</a></li>
-<li><a href="#_key_changes_from_hibernate_5">Key Changes from Hibernate 5</a></li>
-</ul>
-</li>
+<ul class="sectlevel3">
+<li><a href="#_grails_7_0_0_and_above_with_hibernate_5_6_x">Grails 7.0.0 and above with Hibernate 5.6.x</a></li>
+<li><a href="#_grails_3_2_x_and_above_with_hibernate_4">Grails 3.2.x and above with Hibernate 4</a></li>
+<li><a href="#_grails_3_1_x_and_below_with_hibernate_5">Grails 3.1.x and below with Hibernate 5</a></li>
+<li><a href="#_grails_3_0_x_spring_version_conflicts">Grails 3.0.x Spring Version Conflicts</a></li>
 </ul>
 </div>
 </div>
 <div id="content">
-<div class="sect1">
-<h2 id="gettingStarted-hibernateVersions">Hibernate Versions</h2>
-<div class="sectionbody">
 <div class="paragraph">
-<p>GORM for Hibernate 7 (<code>grails-data-hibernate7</code>) requires Hibernate ORM 7.x and Jakarta EE 10 (<code>jakarta.*</code> packages).</p>
+<p>There are various changes you have to make to your build depending on the version of Grails when using GORM 8.0.0-SNAPSHOT.</p>
 </div>
-<div class="sect2">
-<h3 id="_grails_8_with_hibernate_7">Grails 8 with Hibernate 7</h3>
+<div class="sect3">
+<h4 id="_grails_7_0_0_and_above_with_hibernate_5_6_x">Grails 7.0.0 and above with Hibernate 5.6.x</h4>
 <div class="paragraph">
-<p>Grails 8 ships with Hibernate 5 as the default, but provides first-class support for Hibernate 7 via a dedicated BOM and plugin artifact.</p>
+<p>Grails 7.0.x is based on Spring Boot 3.4.x which enforces Hibernate 5.6.x as the default version.</p>
 </div>
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
 <pre class="highlight"><code class="language-groovy" data-lang="groovy">dependencies {
-    implementation enforcedPlatform("org.apache.grails:grails-hibernate7-bom:{version}")
-    implementation "org.apache.grails:grails-hibernate7"
+    implementation "org.grails.plugins:hibernate5:{pluginVersion}"
+    runtimeOnly 'org.hibernate:hibernate-ehcache:5.6.15.Final', {
+    // exclude javax variant of hibernate-core
+    exclude group: 'org.hibernate', module: 'hibernate-core'
+    }
+    runtimeOnly 'org.jboss.spec.javax.transaction:jboss-transaction-api_1.3_spec:2.0.0.Final', {
+      // required for hibernate-ehcache to work with javax variant of hibernate-core excluded
+    }
 }</code></pre>
 </div>
 </div>
+</div>
+<div class="sect3">
+<h4 id="_grails_3_2_x_and_above_with_hibernate_4">Grails 3.2.x and above with Hibernate 4</h4>
 <div class="paragraph">
-<p>Or using the Micronaut integration:</p>
+<p>Grails 3.2.x is based on Spring Boot 1.4.x which enforces Hibernate 5.0.x as the default version. If you want to continue to use Hibernate 4 you must explicitly declare the Hibernate 4 dependences in <code>build.gradle</code>.</p>
 </div>
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
 <pre class="highlight"><code class="language-groovy" data-lang="groovy">dependencies {
-    implementation enforcedPlatform("org.apache.grails:grails-hibernate7-micronaut-bom:{version}")
-    implementation "org.apache.grails:grails-hibernate7"
-    implementation "org.apache.grails:grails-micronaut"
+    compile "org.grails.plugins:hibernate4"
+    compile "org.hibernate:hibernate-core:4.3.10.Final"
+    compile "org.hibernate:hibernate-ehcache:4.3.10.Final"
 }</code></pre>
 </div>
 </div>
 </div>
-<div class="sect2">
-<h3 id="_key_changes_from_hibernate_5">Key Changes from Hibernate 5</h3>
+<div class="sect3">
+<h4 id="_grails_3_1_x_and_below_with_hibernate_5">Grails 3.1.x and below with Hibernate 5</h4>
 <div class="paragraph">
-<p>If you are migrating from Hibernate 5, review the following areas:</p>
+<p>Grails 3.1.x and below are based on Spring Boot 1.3.x which enforces Hibernate 4 as the default version of Hibernate, hence you have to use explicit versions to depend on Hibernate 5:</p>
 </div>
-<div class="ulist">
-<ul>
-<li>
-<p><strong>Session API</strong> — <code>Session.save()</code>, <code>update()</code>, <code>delete()</code>, <code>load()</code>, and <code>get()</code> were removed. GORM&#8217;s own <code>save()</code>, <code>delete()</code>, <code>get()</code>, and <code>load()</code> methods are unaffected; only direct Hibernate <code>Session</code> usage inside <code>withSession</code> blocks is impacted.</p>
-</li>
-<li>
-<p><strong><code>CascadeType.SAVE_UPDATE</code> removed</strong> — Use <code>CascadeType.ALL</code> or <code>CascadeType.PERSIST</code> + <code>CascadeType.MERGE</code>. The GORM ORM DSL <code>cascade: 'save-update'</code> string continues to work.</p>
-</li>
-<li>
-<p><strong><code>@Where</code> renamed</strong> — <code>@org.hibernate.annotations.Where</code> was replaced by <code>@org.hibernate.annotations.SQLRestriction</code>.</p>
-</li>
-<li>
-<p><strong><code>@Proxy</code> removed</strong> — Proxy configuration via annotation is no longer supported.</p>
-</li>
-<li>
-<p><strong><code>@LazyCollection</code> removed</strong> — Use <code>fetch = FetchType.LAZY</code> / <code>EAGER</code> directly on the association annotation.</p>
-</li>
-<li>
-<p><strong>Native query temporal types</strong> — Native SQL queries now return <code>java.time</code> types instead of <code>java.sql</code> types. Set <code>hibernate.query.native.prefer_jdbc_datetime_types=true</code> to restore legacy behaviour during migration.</p>
-</li>
-<li>
-<p><strong>DDL changes</strong> — <code>char</code>/<code>Character</code> now maps to <code>varchar(1)</code> instead of <code>char(1)</code>. Oracle <code>float</code>/<code>double</code> map to <code>binary_float</code>/<code>binary_double</code>. Validate your schema before running <code>dbCreate=update</code> in production.</p>
-</li>
-<li>
-<p><strong>Jakarta EE 10</strong> — <code>javax.*</code> was already replaced by <code>jakarta.*</code> in Grails 7. Hibernate 7 requires Jakarta Persistence 3.2.</p>
-</li>
-</ul>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">dependencies {
+    compile "org.grails.plugins:hibernate5"
+    compile "org.hibernate:hibernate-core:5.1.0.Final"
+    compile "org.hibernate:hibernate-ehcache:5.1.0.Final"
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_grails_3_0_x_spring_version_conflicts">Grails 3.0.x Spring Version Conflicts</h4>
+<div class="paragraph">
+<p>Grails 3.0.x enforces Spring 4.1.x as the Spring version, so if you want to use Hibernate 5 you must force an upgrade to Spring 4.2.x in <code>build.gradle</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">// the below is unnecessary in Grails 3.1 and above, but required in Grails 3.0.x
+configurations.all {
+    resolutionStrategy {
+        eachDependency { DependencyResolveDetails details -&gt;
+            if(details.requested.group == 'org.springframework') {
+                details.useVersion('4.2.3.RELEASE')
+            }
+        }
+    }
+}</code></pre>
+</div>
 </div>
 <div class="paragraph">
-<p>See the <a href="https://docs.hibernate.org/orm/7.0/migration-guide/">Hibernate ORM 7.0 Migration Guide</a> and <a href="https://docs.hibernate.org/orm/6.0/migration-guide/">Hibernate ORM 6.0 Migration Guide</a> for the full list of changes.</p>
-</div>
-</div>
+<p>The <code>resolutionStrategy</code> is needed to enforce an upgrade to Spring 4.2.x which is required by Hibernate 5 support. This block is not needed if you are using Grails 3.1 or above.</p>
 </div>
 </div>
 </div>

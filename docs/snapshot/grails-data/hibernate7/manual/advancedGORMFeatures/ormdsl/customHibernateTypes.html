@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.18">
-<title>Custom Hibernate Types</title>
+<title>Untitled</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -437,130 +437,88 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 </head>
-<body class="article toc2 toc-left">
+<body class="article">
 <div id="header">
-<div id="toc" class="toc2">
-<div id="toctitle">Table of Contents</div>
-<ul class="sectlevel1">
-<li><a href="#ormdsl-customHibernateTypes">Custom Hibernate Types</a>
-<ul class="sectlevel2">
-<li><a href="#_per_property_type">Per-Property Type</a></li>
-<li><a href="#_type_parameters">Type Parameters</a></li>
-<li><a href="#_global_user_type_mapping">Global User Type Mapping</a></li>
-</ul>
-</li>
-</ul>
-</div>
 </div>
 <div id="content">
-<div class="sect1">
-<h2 id="ormdsl-customHibernateTypes">Custom Hibernate Types</h2>
-<div class="sectionbody">
 <div class="paragraph">
-<p>GORM allows you to map properties to custom Hibernate <code>UserType</code> implementations. This is useful for persisting non-standard Java/Groovy types — for example, storing a <code>List</code> as a comma-separated string, or encrypting values at the persistence layer.</p>
+<p>You saw in an earlier section that you can use composition (with the <code>embedded</code> property) to break a table into multiple objects. You can achieve a similar effect with Hibernate&#8217;s custom user types. These are not domain classes themselves, but plain Java or Groovy classes. Each of these types also has a corresponding "meta-type" class that implements <a href="https://docs.jboss.org/hibernate/orm/5.6/javadocs/org/hibernate/usertype/UserType.html">org.hibernate.usertype.UserType</a>.</p>
 </div>
-<div class="sect2">
-<h3 id="_per_property_type">Per-Property Type</h3>
 <div class="paragraph">
-<p>Use the <code>type</code> option in the <code>mapping</code> block to assign a custom Hibernate type to a specific property:</p>
+<p>The <a href="https://docs.jboss.org/hibernate/orm/current/userguide/html_single/Hibernate_User_Guide.html#_custom_type">Hibernate reference manual</a> has some information on custom types, but here we will focus on how to map them in GORM. Let&#8217;s start by taking a look at a simple domain class that uses an old-fashioned (pre-Java 1.5) type-safe enum class:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Setting {
-    String name
-    Serializable value
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Book {
+
+    String title
+    String author
+    Rating rating
 
     static mapping = {
-        value type: 'serializable'      <i class="conum" data-value="1"></i><b>(1)</b>
+        rating type: RatingUserType
     }
 }</code></pre>
 </div>
 </div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>The type name can be a Hibernate built-in type alias, a fully qualified class name, or a <code>Class</code> object.</td>
-</tr>
-</table>
+<div class="paragraph">
+<p>All we have done is declare the <code>rating</code> field the enum type and set the property&#8217;s type in the custom mapping to the corresponding <code>UserType</code> implementation. That&#8217;s all you have to do to start using your custom type. If you want, you can also use the other column settings such as "column" to change the column name and "index" to add it to an index.</p>
 </div>
 <div class="paragraph">
-<p>With a custom <code>UserType</code> class:</p>
+<p>Custom types aren&#8217;t limited to just a single column - they can be mapped to as many columns as you want. In such cases you explicitly define in the mapping what columns to use, since Hibernate can only use the property name for a single column. Fortunately, GORM lets you map multiple columns to a property using this syntax:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Product {
-    String name
-    List&lt;String&gt; tags
+<pre class="highlight"><code class="language-java" data-lang="java">class Book {
+
+    String title
+    Name author
+    Rating rating
 
     static mapping = {
-        tags type: CsvStringListType     <i class="conum" data-value="1"></i><b>(1)</b>
+        author type: NameUserType, {
+            column name: "first_name"
+            column name: "last_name"
+        }
+        rating type: RatingUserType
     }
 }</code></pre>
 </div>
 </div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td><code>CsvStringListType</code> implements <code>org.hibernate.usertype.UserType</code> and handles conversion between a comma-separated column value and a <code>List&lt;String&gt;</code>.</td>
-</tr>
-</table>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_type_parameters">Type Parameters</h3>
 <div class="paragraph">
-<p>If your custom type implements <code>org.hibernate.usertype.ParameterizedType</code>, pass parameters using <code>typeParams</code>:</p>
+<p>The above example will create "first_name" and "last_name" columns for the <code>author</code> property. You&#8217;ll be pleased to know that you can also use some of the normal column/property mapping attributes in the column definitions. For example:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Measurement {
-    BigDecimal value
+<pre class="highlight"><code class="language-java" data-lang="java">column name: "first_name", index: "my_idx", unique: true</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The column definitions do <em>not</em> support the following attributes: <code>type</code>, <code>cascade</code>, <code>lazy</code>, <code>cache</code>, and <code>joinTable</code>.</p>
+</div>
+<div class="paragraph">
+<p>One thing to bear in mind with custom types is that they define the <em>SQL types</em> for the corresponding database columns. That helps take the burden of configuring them yourself, but what happens if you have a legacy database that uses a different SQL type for one of the columns? In that case, override the column&#8217;s SQL type using the <code>sqlType</code> attribute:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">class Book {
+
+    String title
+    Name author
+    Rating rating
 
     static mapping = {
-        value type: FixedScaleDecimalType, typeParams: [scale: '4']
+        author type: NameUserType, {
+            column name: "first_name", sqlType: "text"
+            column name: "last_name", sqlType: "text"
+        }
+        rating type: RatingUserType, sqlType: "text"
     }
 }</code></pre>
 </div>
 </div>
-</div>
-<div class="sect2">
-<h3 id="_global_user_type_mapping">Global User Type Mapping</h3>
 <div class="paragraph">
-<p>Register a user type for a given Java class globally so it applies to all properties of that type without explicit per-property configuration:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class MyDomainClass {
-    static mapping = {
-        userTypes Money: MoneyUserType      <i class="conum" data-value="1"></i><b>(1)</b>
-    }
-}</code></pre>
-</div>
-</div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>Any property of type <code>Money</code> in this class will use <code>MoneyUserType</code>.</td>
-</tr>
-</table>
-</div>
-<div class="admonitionblock tip">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-tip" title="Tip"></i>
-</td>
-<td class="content">
-Implementing <code>org.hibernate.usertype.UserType</code> requires handling <code>sqlTypes()</code>, <code>nullSafeGet()</code>, <code>nullSafeSet()</code>, <code>deepCopy()</code>, and <code>equals()</code>. Prefer Hibernate&#8217;s <code>CompositeUserType</code> for multi-column mappings.
-</td>
-</tr>
-</table>
-</div>
-</div>
-</div>
+<p>Mind you, the SQL type you specify needs to still work with the custom type. So overriding a default of "varchar" with "text" is fine, but overriding "text" with "yes_no" isn&#8217;t going to work.</p>
 </div>
 </div>
 <div id="footer">

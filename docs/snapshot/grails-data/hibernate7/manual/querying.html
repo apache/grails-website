@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.18">
-<title>Querying</title>
+<title>Listing instances</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -441,79 +441,84 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div id="header">
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
-<ul class="sectlevel1">
-<li><a href="#querying">Querying</a>
-<ul class="sectlevel2">
-<li><a href="#_dynamic_finders">Dynamic Finders</a></li>
-<li><a href="#_get_list_count"><code>get</code>, <code>list</code>, <code>count</code></a></li>
-</ul>
-</li>
+<ul class="sectlevel3">
+<li><a href="#_listing_instances">Listing instances</a></li>
+<li><a href="#_retrieval_by_database_identifier">Retrieval by Database  Identifier</a></li>
 </ul>
 </div>
 </div>
 <div id="content">
-<div class="sect1">
-<h2 id="querying">Querying</h2>
-<div class="sectionbody">
 <div class="paragraph">
-<p>GORM provides multiple querying mechanisms, ranging from simple dynamic finders to full SQL queries.</p>
+<p>GORM supports a number of powerful ways to query from dynamic finders, to criteria to Hibernate&#8217;s object oriented query language HQL. Depending on the complexity of the query you have the following options in order of flexibility and power:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><a href="#querying-finders">Dynamic Finders</a> — auto-generated methods based on properties</p>
+<p>Dynamic Finders</p>
 </li>
 <li>
-<p><a href="#querying-whereQueries">Where Queries</a> — type-safe Groovy criteria DSL</p>
+<p>Where Queries</p>
 </li>
 <li>
-<p><a href="#querying-criteria">Criteria Queries</a> — advanced query builder with Hibernate 7 DSL</p>
+<p>Criteria Queries</p>
 </li>
 <li>
-<p><a href="#querying-detachedCriteria">Detached Criteria</a> — reusable query fragments and subqueries</p>
-</li>
-<li>
-<p><a href="#querying-hql">HQL Queries</a> — Hibernate Query Language</p>
-</li>
-<li>
-<p><a href="#querying-nativeSql">Native SQL Queries</a> — raw database SQL via Hibernate</p>
+<p>Hibernate Query Language (HQL)</p>
 </li>
 </ul>
 </div>
-<div class="sect2">
-<h3 id="_dynamic_finders">Dynamic Finders</h3>
 <div class="paragraph">
-<p>The simplest form of querying uses auto-generated finder methods based on property names:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">Book.findByTitle('Groovy in Action')
-Book.findAllByAuthorAndGenre('Dierk König', 'Tech')
-Book.countByGenre('Fiction')
-Book.findByTitleLike('%Groovy%')
-Book.findAllByPagesGreaterThan(300)
-Book.findAllByTitleIlike('%groovy%')    // case-insensitive</code></pre>
-</div>
+<p>In addition, Groovy&#8217;s ability to manipulate collections with <a href="https://groovy.codehaus.org/GPath">GPath</a> and methods like sort, findAll and so on combined with GORM results in a powerful combination.</p>
 </div>
 <div class="paragraph">
-<p>Finder methods support pagination:</p>
+<p>However, let&#8217;s start with the basics.</p>
+</div>
+<div class="sect3">
+<h4 id="_listing_instances">Listing instances</h4>
+<div class="paragraph">
+<p>Use the <a href="../api/org/grails/datastore/gorm/GormEntity.html#list()">list()</a> method to obtain all instances of a given class:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">Book.findAllByGenre('Fiction', [max: 10, offset: 0, sort: 'title', order: 'asc'])</code></pre>
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def books = Book.list()</code></pre>
 </div>
 </div>
+<div class="paragraph">
+<p>The <a href="../api/org/grails/datastore/gorm/GormEntity.html#list(java.util.Map)">list()</a> method supports arguments to perform pagination:</p>
 </div>
-<div class="sect2">
-<h3 id="_get_list_count"><code>get</code>, <code>list</code>, <code>count</code></h3>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">Book.get(1)                                 // by id
-Book.list()                                 // all
-Book.list(max: 10, offset: 20)             // paginated
-Book.count()                                // total count</code></pre>
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def books = Book.list(offset:10, max:20)</code></pre>
 </div>
 </div>
+<div class="paragraph">
+<p>as well as sorting:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def books = Book.list(sort:"title", order:"asc")</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Here, the <code>sort</code> argument is the name of the domain class property that you wish to sort on, and the <code>order</code> argument is either <code>asc</code> for *asc*ending or <code>desc</code> for *desc*ending.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_retrieval_by_database_identifier">Retrieval by Database  Identifier</h4>
+<div class="paragraph">
+<p>The second basic form of retrieval is by database identifier using the <a href="../api/org/grails/datastore/gorm/GormEntity.html#get(java.io.Serializable)">get(id)</a> method:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def book = Book.get(23)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>You can also obtain a list of instances for a set of identifiers using <a href="../api/org/grails/datastore/gorm/GormEntity.html#getAll(java.io.Serializable)">getAll()</a>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def books = Book.getAll(23, 93, 81)</code></pre>
 </div>
 </div>
 </div>

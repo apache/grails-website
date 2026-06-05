@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.18">
-<title>HQL Queries</title>
+<title>Named Parameters</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -441,150 +441,76 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div id="header">
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
-<ul class="sectlevel1">
-<li><a href="#querying-hql">HQL Queries</a>
-<ul class="sectlevel2">
-<li><a href="#_basic_hql">Basic HQL</a></li>
-<li><a href="#_safe_parameterization_with_gstring">Safe Parameterization with GString</a></li>
+<ul class="sectlevel3">
 <li><a href="#_named_parameters">Named Parameters</a></li>
-<li><a href="#_positional_parameters">Positional Parameters</a></li>
+<li><a href="#_multiline_queries">Multiline Queries</a></li>
 <li><a href="#_pagination_and_sorting">Pagination and Sorting</a></li>
-<li><a href="#_bulk_updates_and_deletes">Bulk Updates and Deletes</a></li>
-</ul>
-</li>
 </ul>
 </div>
 </div>
 <div id="content">
-<div class="sect1">
-<h2 id="querying-hql">HQL Queries</h2>
-<div class="sectionbody">
 <div class="paragraph">
-<p>GORM supports querying using <a href="http://docs.jboss.org/hibernate/orm/current/querylanguage/html_single/Hibernate_Query_Language_Guide.html">Hibernate Query Language (HQL)</a>, which is an object-oriented query language similar to SQL but operating on domain class names and properties rather than table and column names.</p>
+<p>GORM classes also support Hibernate&#8217;s query language HQL, a very complete reference for which can be found <a href="https://docs.jboss.org/hibernate/orm/current/userguide/html_single/Hibernate_User_Guide.html#hql">in the Hibernate documentation</a> of the Hibernate documentation.</p>
 </div>
-<div class="sect2">
-<h3 id="_basic_hql">Basic HQL</h3>
 <div class="paragraph">
-<p>The following static methods accept HQL strings:</p>
+<p>GORM provides a number of methods that work with HQL including <a href="../api/org/grails/datastore/gorm/GormEntity.html#find(java.lang.String)">find</a>, <a href="../api/org/grails/datastore/gorm/GormEntity.html#findAll(java.lang.String)">findAll</a> and <a href="../api/org/grails/datastore/gorm/GormEntity.html#executeQuery(java.lang.String)">executeQuery</a>.</p>
 </div>
-<div class="ulist">
-<ul>
-<li>
-<p><code>find(CharSequence)</code> — returns the first matching instance</p>
-</li>
-<li>
-<p><code>findAll(CharSequence)</code> — returns all matching instances</p>
-</li>
-<li>
-<p><code>executeQuery(CharSequence)</code> — returns a list (supports projections)</p>
-</li>
-<li>
-<p><code>executeUpdate(CharSequence)</code> — executes a bulk update/delete, returns the count</p>
-</li>
-</ul>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_safe_parameterization_with_gstring">Safe Parameterization with GString</h3>
 <div class="paragraph">
-<p>GORM automatically converts Groovy <a href="http://docs.groovy-lang.org/latest/html/documentation/#_string_interpolation">GString</a> interpolations into safe named parameters before the query reaches Hibernate. This is the <strong>preferred</strong> way to pass user-supplied values.</p>
+<p>An example of a query can be seen below:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">String title = params.title  // user input
-
-// ✅ SAFE — ${title} is extracted and bound as :p0
-List results = Book.findAll("from Book b where b.title = ${title}")
-
-// ✅ SAFE — multiple interpolations become :p0, :p1
-List results = Book.findAll(
-    "from Book b where b.title like ${title} and b.genre = ${genre}")</code></pre>
+<pre class="highlight"><code class="language-java" data-lang="java">def results =
+      Book.findAll("from Book as b where b.title like 'Lord of the%'")</code></pre>
 </div>
 </div>
-<div class="admonitionblock warning">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-warning" title="Warning"></i>
-</td>
-<td class="content">
-The single-argument overloads (<code>find</code>, <code>findAll</code>, <code>executeQuery</code>, <code>executeUpdate</code>) only accept a Groovy <code>GString</code>. Passing a plain <code>String</code> throws <code>UnsupportedOperationException</code> to prevent accidental injection via string concatenation.
-</td>
-</tr>
-</table>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">// ❌ BLOCKED — throws UnsupportedOperationException at runtime
-String hql = "from Book where title = '" + userInput + "'"
-Book.findAll(hql)
-
-// ✅ Use the parameterized overload for plain String queries
-Book.findAll("from Book where title = :title", [title: userInput])</code></pre>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_named_parameters">Named Parameters</h3>
+<div class="sect3">
+<h4 id="_named_parameters">Named Parameters</h4>
 <div class="paragraph">
-<p>Use the <code>(CharSequence, Map)</code> overload to pass named parameters explicitly. This also accepts a plain <code>String</code>, making it safe for dynamically constructed queries where GString syntax is inconvenient.</p>
+<p>In this case the value passed to the query is hard coded, however you can equally use named parameters:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">// Named parameters — safe with plain String
-List results = Book.findAll(
-    "from Book b where b.title = :title and b.author = :author",
-    [title: params.title, author: params.author])
-
-Book.executeUpdate(
-    "update Book set active = :flag where genre = :genre",
-    [flag: false, genre: 'Horror'])</code></pre>
+<pre class="highlight"><code class="language-java" data-lang="java">def results =
+      Book.findAll("from Book as b " +
+                   "where b.title like :search or b.author like :search",
+                   [search: "The Shi%"])</code></pre>
 </div>
 </div>
-</div>
-<div class="sect2">
-<h3 id="_positional_parameters">Positional Parameters</h3>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">// Positional parameters (?1, ?2, ...)
-List results = Book.executeQuery(
-    "from Book b where b.title like ?1 and b.genre = ?2",
-    ['%Groovy%', 'Tech'])</code></pre>
+<pre class="highlight"><code class="language-java" data-lang="java">def author = Author.findByName("Stephen King")
+def books = Book.findAll("from Book as book where book.author = :author",
+                         [author: author])</code></pre>
 </div>
 </div>
 </div>
-<div class="sect2">
-<h3 id="_pagination_and_sorting">Pagination and Sorting</h3>
+<div class="sect3">
+<h4 id="_multiline_queries">Multiline Queries</h4>
 <div class="paragraph">
-<p>All <code>findAll</code> and <code>executeQuery</code> overloads accept a settings map as the last argument:</p>
+<p>Use the triple quoted strings to separate the query across multiple lines:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">List results = Book.findAll(
-    "from Book b where b.genre = ${genre} order by b.title",
-    [max: 10, offset: 20])
-
-List results = Book.executeQuery(
-    "from Book b where b.genre = :genre",
-    [genre: 'Tech'],
-    [max: 5, offset: 0, cache: true])</code></pre>
+<pre class="highlight"><code class="language-java" data-lang="java">def results = Book.findAll("""
+from Book as b,
+     Author as a
+where b.author = a and a.surname = :surname""", [surname:'Smith'])</code></pre>
 </div>
 </div>
 </div>
-<div class="sect2">
-<h3 id="_bulk_updates_and_deletes">Bulk Updates and Deletes</h3>
+<div class="sect3">
+<h4 id="_pagination_and_sorting">Pagination and Sorting</h4>
+<div class="paragraph">
+<p>You can also perform pagination and sorting whilst using HQL queries. To do so simply specify the pagination options as a Map at the end of the method call and include an "ORDER BY" clause in the HQL:</p>
+</div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">// Bulk update with named params
-int count = Book.executeUpdate(
-    "update Book set active = :flag where publishedYear &lt; :year",
-    [flag: false, year: 2000])
-
-// Bulk delete
-int count = Book.executeUpdate(
-    "delete Book where active = false")</code></pre>
-</div>
-</div>
+<pre class="highlight"><code class="language-java" data-lang="java">def results =
+      Book.findAll("from Book as b where " +
+                   "b.title like 'Lord of the%' " +
+                   "order by b.title asc",
+                   [max: 10, offset: 20])</code></pre>
 </div>
 </div>
 </div>

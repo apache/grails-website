@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.18">
-<title>Many-to-Many Associations</title>
+<title>Untitled</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -437,116 +437,57 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 </head>
-<body class="article toc2 toc-left">
+<body class="article">
 <div id="header">
-<div id="toc" class="toc2">
-<div id="toctitle">Table of Contents</div>
-<ul class="sectlevel1">
-<li><a href="#gormAssociation-manyToMany">Many-to-Many Associations</a>
-<ul class="sectlevel2">
-<li><a href="#_declaring_the_relationship">Declaring the Relationship</a></li>
-<li><a href="#_saving_a_many_to_many">Saving a Many-to-Many</a></li>
-<li><a href="#_join_table_customisation">Join Table Customisation</a></li>
-<li><a href="#_bidirectional_access">Bidirectional Access</a></li>
-</ul>
-</li>
-</ul>
-</div>
 </div>
 <div id="content">
-<div class="sect1">
-<h2 id="gormAssociation-manyToMany">Many-to-Many Associations</h2>
-<div class="sectionbody">
 <div class="paragraph">
-<p>A many-to-many association is created when both domain classes declare <code>hasMany</code> pointing at each other, and one side also declares <code>belongsTo</code>.</p>
+<p>GORM supports many-to-many relationships by defining a <code>hasMany</code> on both sides of the relationship and having a <code>belongsTo</code> on the owned side of the relationship:</p>
 </div>
-<div class="sect2">
-<h3 id="_declaring_the_relationship">Declaring the Relationship</h3>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight"><code class="language-groovy" data-lang="groovy">class Book {
+    static belongsTo = Author
+    static hasMany = [authors:Author]
     String title
-    static hasMany  = [authors: Author]
-    static belongsTo = Author               <i class="conum" data-value="1"></i><b>(1)</b>
-}
-
-class Author {
-    String name
-    static hasMany = [books: Book]
 }</code></pre>
 </div>
-</div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td><code>belongsTo</code> without a property name makes <code>Book</code> the owned side. The owning side (<code>Author</code>) controls cascade save/delete.</td>
-</tr>
-</table>
-</div>
-<div class="paragraph">
-<p>GORM creates a join table <code>author_books</code> with foreign-key columns for both sides.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_saving_a_many_to_many">Saving a Many-to-Many</h3>
-<div class="paragraph">
-<p>Always save from the owning side (the side that does <strong>not</strong> have <code>belongsTo</code>):</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">def author = new Author(name: 'Graeme Rocher')
-def book   = new Book(title:  'Grails in Action')
-
-author.addToBooks(book)
-author.save()           <i class="conum" data-value="1"></i><b>(1)</b></code></pre>
-</div>
-</div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td><code>book</code> is cascade-saved because <code>Author</code> is the owning side.</td>
-</tr>
-</table>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_join_table_customisation">Join Table Customisation</h3>
-<div class="paragraph">
-<p>Override the join table name and columns in the <code>mapping</code> block:</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight"><code class="language-groovy" data-lang="groovy">class Author {
-    static hasMany = [books: Book]
-    static mapping = {
-        books joinTable: [
-            name:   'author_to_book',
-            key:    'auth_id',
-            column: 'book_id'
-        ]
-    }
+    static hasMany = [books:Book]
+    String name
 }</code></pre>
 </div>
 </div>
-</div>
-<div class="sect2">
-<h3 id="_bidirectional_access">Bidirectional Access</h3>
 <div class="paragraph">
-<p>Both sides of the relationship can be navigated:</p>
+<p>GORM maps a many-to-many using a join table at the database level. The owning side of the relationship, in this case <code>Author</code>, takes responsibility for persisting the relationship and is the only side that can cascade saves across.</p>
+</div>
+<div class="paragraph">
+<p>For example this will work and cascade saves:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">Author author = Author.get(1)
-author.books.each { println it.title }
-
-Book book = Book.get(1)
-book.authors.each { println it.name }</code></pre>
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">new Author(name:"Stephen King")
+        .addToBooks(new Book(title:"The Stand"))
+        .addToBooks(new Book(title:"The Shining"))
+        .save()</code></pre>
 </div>
 </div>
+<div class="paragraph">
+<p>However this will only save the <code>Book</code> and not the authors!</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">new Book(name:"Groovy in Action")
+        .addToAuthors(new Author(name:"Dierk Koenig"))
+        .addToAuthors(new Author(name:"Guillaume Laforge"))
+        .save()</code></pre>
 </div>
 </div>
+<div class="paragraph">
+<p>This is the expected behaviour as, just like Hibernate, only one side of a many-to-many can take responsibility for managing the relationship.</p>
 </div>
 </div>
 <div id="footer">

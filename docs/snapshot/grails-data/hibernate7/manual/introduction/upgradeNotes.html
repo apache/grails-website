@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.18">
-<title>Upgrade Notes</title>
+<title>Dependency Upgrades</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -441,95 +441,51 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div id="header">
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
-<ul class="sectlevel1">
-<li><a href="#upgrade-notes">Upgrade Notes</a>
-<ul class="sectlevel2">
-<li><a href="#_grails_8_hibernate_7">Grails 8 / Hibernate 7</a></li>
-</ul>
-</li>
+<ul class="sectlevel3">
+<li><a href="#_dependency_upgrades">Dependency Upgrades</a></li>
+<li><a href="#_default_autowire_by_type_inside_gorm_data_services">Default Autowire By Type inside GORM Data Services</a></li>
 </ul>
 </div>
 </div>
 <div id="content">
-<div class="sect1">
-<h2 id="upgrade-notes">Upgrade Notes</h2>
-<div class="sectionbody">
-<div class="sect2">
-<h3 id="_grails_8_hibernate_7">Grails 8 / Hibernate 7</h3>
 <div class="sect3">
-<h4 id="_query_api_breaking_changes_for_injection_safety">Query API — Breaking Changes for Injection Safety</h4>
+<h4 id="_dependency_upgrades">Dependency Upgrades</h4>
 <div class="paragraph">
-<p>As part of the Grails 8 / Hibernate 7 security hardening, several GORM query methods now enforce safe parameterization at runtime.</p>
-</div>
-<div class="sect4">
-<h5 id="_single_argument_hql_overloads_require_gstring">Single-argument HQL overloads require GString</h5>
-<div class="paragraph">
-<p>The following single-argument overloads now throw <code>UnsupportedOperationException</code> when passed a plain <code>String</code>:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><code>find(CharSequence)</code></p>
-</li>
-<li>
-<p><code>findAll(CharSequence)</code></p>
-</li>
-<li>
-<p><code>executeQuery(CharSequence)</code></p>
-</li>
-<li>
-<p><code>executeUpdate(CharSequence)</code></p>
-</li>
-</ul>
+<p>GORM 7.1 supports Apache Groovy 3 and Java 14 Hibernate 5.5.x and Spring 5.3.x.</p>
 </div>
 <div class="paragraph">
-<p>These overloads are retained for GString use only. GORM extracts GString interpolations as named JDBC parameters, preventing HQL injection. Passing a pre-evaluated <code>String</code> bypasses this protection and is no longer permitted.</p>
-</div>
-<div class="paragraph">
-<p><strong>Migration</strong>: Choose one of the following patterns:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">// Option 1: GString interpolation (GORM binds ${value} as :p0)
-Book.findAll("from Book where title = ${params.title}")
-
-// Option 2: Named parameters with plain String
-Book.findAll("from Book where title = :title", [title: params.title])
-
-// Option 3: Positional parameters
-Book.executeQuery("from Book where title like ?1", [params.title + '%'])</code></pre>
-</div>
-</div>
-</div>
-<div class="sect4">
-<h5 id="_findwithsql_findallwithsql_renamed"><code>findWithSql</code> / <code>findAllWithSql</code> renamed</h5>
-<div class="paragraph">
-<p><code>findWithSql</code> and <code>findAllWithSql</code> are deprecated. Use <code>findWithNativeSql</code> and <code>findAllWithNativeSql</code> instead. The old names remain as delegating aliases for backwards compatibility.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">// Before (deprecated)
-Book.findAllWithSql("select * from book where ...")
-
-// After
-Book.findAllWithNativeSql("select * from book where ...")</code></pre>
-</div>
-</div>
+<p>Each of these underlying components may have changes that require altering your application. These changes are beyond the scope of this documentation.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_schema_per_tenant_schema_names_are_now_quoted">Schema-per-Tenant — Schema Names Are Now Quoted</h4>
+<h4 id="_default_autowire_by_type_inside_gorm_data_services">Default Autowire By Type inside GORM Data Services</h4>
 <div class="paragraph">
-<p><code>DefaultSchemaHandler</code> now quotes schema names using the JDBC identifier quote character (<code>connection.metaData.identifierQuoteString</code>) before executing <code>SET SCHEMA</code> and <code>CREATE SCHEMA</code> DDL statements. This prevents SQL injection via tenant identifiers.</p>
-</div>
-<div class="paragraph">
-<p>Embedded quote characters are stripped from the schema name before quoting. If the JDBC driver does not support identifier quoting (returns <code>" "</code> or empty), the name is used unquoted as before — no behaviour change for such drivers.</p>
+<p>A Grails Service (or a bean) inside GORM DataService will default to autowire by-type, For example:</p>
 </div>
 <div class="paragraph">
-<p>No application changes are required unless your tenant resolver intentionally produces schema names containing the database&#8217;s identifier quote character (typically <code>"</code> or `` ` ``), in which case those characters will be stripped.</p>
+<p><em>./grails-app/services/example/BookService.groovy</em></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>package example
+
+import grails.gorm.services.Service
+
+@Service(Book)
+abstract class BookService {
+
+    TestService testRepo
+
+    abstract Book save(String title, String author)
+
+    void doSomething() {
+        assert testRepo != null
+    }
+}</code></pre>
 </div>
 </div>
-</div>
+<div class="paragraph">
+<p>Please note that with autowire by-type as the default, when multiple beans for same type are found the application with throw Exception. Use the Spring `@Qualifier annotation for <a href="https://docs.spring.io/spring-framework/docs/5.3.10/reference/html/core.html#beans-autowired-annotation-qualifiers">Fine-tuning Annotation Based Autowiring with Qualifiers</a>.</p>
 </div>
 </div>
 </div>

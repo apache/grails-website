@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.18">
-<title>Basic CRUD</title>
+<title>Create</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -441,119 +441,96 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div id="header">
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
-<ul class="sectlevel1">
-<li><a href="#quickStartGuide-basicCRUD">Basic CRUD</a>
-<ul class="sectlevel2">
+<ul class="sectlevel3">
 <li><a href="#_create">Create</a></li>
 <li><a href="#_read">Read</a></li>
 <li><a href="#_update">Update</a></li>
 <li><a href="#_delete">Delete</a></li>
-<li><a href="#_validation">Validation</a></li>
-<li><a href="#_transactions">Transactions</a></li>
-</ul>
-</li>
 </ul>
 </div>
 </div>
 <div id="content">
-<div class="sect1">
-<h2 id="quickStartGuide-basicCRUD">Basic CRUD</h2>
-<div class="sectionbody">
 <div class="paragraph">
-<p>Every GORM domain class automatically gets Create, Read, Update, and Delete (CRUD) operations.</p>
+<p>Try performing some basic CRUD (Create/Read/Update/Delete) operations.</p>
 </div>
-<div class="sect2">
-<h3 id="_create">Create</h3>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">// Constructor with named parameters
-def book = new Book(title: 'Groovy in Action', author: 'Dierk König')
-book.save()
-
-// Or using the create() factory method
-def book = Book.create(title: 'Grails in Action', author: 'Glen Smith')</code></pre>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_read">Read</h3>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">// By primary key
-def book = Book.get(1)
-
-// Returns null if not found
-def book = Book.get(999)    // null
-
-// Get multiple by IDs
-def books = Book.getAll(1, 2, 3)
-
-// Load a proxy (no immediate SELECT)
-def book = Book.load(1)
-
-// List all
-def books = Book.list()
-
-// With pagination
-def books = Book.list(max: 10, offset: 0, sort: 'title', order: 'asc')
-
-// Dynamic finders
-def book  = Book.findByTitle('Groovy in Action')
-def books = Book.findAllByAuthor('Dierk König')
-def count = Book.countByAuthor('Dierk König')</code></pre>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_update">Update</h3>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">def book = Book.get(1)
-book.title = 'Updated Title'
-book.save()</code></pre>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_delete">Delete</h3>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">def book = Book.get(1)
-book.delete()</code></pre>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_validation">Validation</h3>
+<div class="sect3">
+<h4 id="_create">Create</h4>
 <div class="paragraph">
-<p><code>save()</code> runs constraints before persisting and returns <code>null</code> if validation fails:</p>
+<p>To create a domain class use Map constructor to set its properties and call the <code>save()</code> method:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">def book = new Book(title: '')          // blank title violates constraint
-if (!book.save()) {
-    println book.errors.allErrors       // print validation errors
-}
-
-// Throw on failure instead
-book.save(failOnError: true)            // throws ValidationException</code></pre>
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def p = new Person(name: "Fred", age: 40, lastVisit: new Date())
+p.save()</code></pre>
 </div>
 </div>
-</div>
-<div class="sect2">
-<h3 id="_transactions">Transactions</h3>
 <div class="paragraph">
-<p>GORM operations run inside Hibernate sessions. Use <code>withTransaction</code> for explicit transaction control:</p>
+<p>The <a href="../api/org/grails/datastore/gorm/GormEntity.html#save()">save()</a> method will persist your class to the database using the underlying Hibernate ORM layer.</p>
+</div>
+<div class="paragraph">
+<p>The <code>save()</code> method is defined by the <a href="../api/org/grails/datastore/gorm/GormEntity.html">GormEntity</a> trait.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_read">Read</h4>
+<div class="paragraph">
+<p>GORM transparently adds an implicit <code>id</code> property to your domain class which you can use for retrieval:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">Book.withTransaction {
-    def book = new Book(title: 'Tx Book', author: 'Author')
-    book.save()
-    // any exception here rolls back the transaction
-}</code></pre>
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def p = Person.get(1)
+assert 1 == p.id</code></pre>
 </div>
 </div>
+<div class="paragraph">
+<p>This uses the static <a href="../api/org/grails/datastore/gorm/GormEntity.html#get(java.io.Serializable)">get(id)</a> method that expects a database identifier to read the <code>Person</code> object back from the database.</p>
+</div>
+<div class="paragraph">
+<p>You can also load an object in a read-only state by using the <code>read(id)</code> method:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def p = Person.read(1)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In this case the underlying Hibernate engine will not do any dirty checking and the object will not be persisted. Note that if you explicitly call the <code>save()</code> method then the object is placed back into a read-write state.</p>
+</div>
+<div class="paragraph">
+<p>In addition, you can also load a proxy for an instance by using the <code>load(id)</code> method:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">def p = Person.load(1)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This incurs no database access until a method other than getId() is called. Hibernate then initializes the proxied instance, or
+throws an exception if no record is found for the specified id.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_update">Update</h4>
+<div class="paragraph">
+<p>To update an instance, change some properties and then call <code>save()</code> again:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def p = Person.get(1)
+p.name = "Bob"
+p.save()</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_delete">Delete</h4>
+<div class="paragraph">
+<p>To delete an instance use the <a href="../api/org/grails/datastore/gorm/GormEntity.html#delete()">delete()</a> method:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def p = Person.get(1)
+p.delete()</code></pre>
 </div>
 </div>
 </div>

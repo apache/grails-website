@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.18">
-<title>Saving and Updating</title>
+<title>Untitled</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -437,123 +437,58 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 </head>
-<body class="article toc2 toc-left">
+<body class="article">
 <div id="header">
-<div id="toc" class="toc2">
-<div id="toctitle">Table of Contents</div>
-<ul class="sectlevel1">
-<li><a href="#persistenceBasics-savingAndUpdating">Saving and Updating</a>
-<ul class="sectlevel2">
-<li><a href="#_saving">Saving</a></li>
-<li><a href="#_fail_on_error">Fail on Error</a></li>
-<li><a href="#_flush">Flush</a></li>
-<li><a href="#_updating">Updating</a></li>
-<li><a href="#_dynamic_update">Dynamic Update</a></li>
-<li><a href="#_dynamic_insert">Dynamic Insert</a></li>
-</ul>
-</li>
-</ul>
-</div>
 </div>
 <div id="content">
-<div class="sect1">
-<h2 id="persistenceBasics-savingAndUpdating">Saving and Updating</h2>
-<div class="sectionbody">
-<div class="sect2">
-<h3 id="_saving">Saving</h3>
 <div class="paragraph">
-<p>Call <code>save()</code> on a domain instance to persist it. GORM delegates to Hibernate&#8217;s <code>Session.saveOrUpdate()</code>:</p>
+<p>An example of using the <a href="../api/org/grails/datastore/gorm/GormEntity.html#save()">save()</a> method can be seen below:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">def book = new Book(title: 'Groovy in Action', author: 'Dierk König')
-book.save()</code></pre>
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def p = Person.get(1)
+p.save()</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>If validation fails, <code>save()</code> returns <code>null</code> and the errors are available on the instance:</p>
+<p>This save will be not be pushed to the database immediately - it will be pushed when the next flush occurs. But there are occasions when you want to control when those statements are executed or, in Hibernate terminology, when the session is "flushed". To do so you can use the flush argument to the save method:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">def book = new Book(title: '')   // violates blank constraint
-if (!book.save()) {
-    book.errors.allErrors.each { println it }
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def p = Person.get(1)
+p.save(flush: true)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Note that in this case <em>all</em> pending SQL statements including previous saves, deletes, etc. will be synchronized with the database. This also lets you catch any exceptions, which is typically useful in highly concurrent scenarios involving <a href="#locking">optimistic locking</a>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def p = Person.get(1)
+try {
+    p.save(flush: true)
+}
+catch (org.springframework.dao.DataIntegrityViolationException e) {
+    // deal with exception
 }</code></pre>
 </div>
 </div>
-</div>
-<div class="sect2">
-<h3 id="_fail_on_error">Fail on Error</h3>
 <div class="paragraph">
-<p>Use <code>failOnError: true</code> to throw a <code>ValidationException</code> instead of returning <code>null</code>:</p>
+<p>Another thing to bear in mind is that GORM validates a domain instance every time you save it. If that validation fails the domain instance will <em>not</em> be persisted to the database. By default, <code>save()</code> will simply return <code>null</code> in this case, but if you would prefer it to throw an exception you can use the <code>failOnError</code> argument:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">book.save(failOnError: true)    // throws ValidationException on constraint violation</code></pre>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_flush">Flush</h3>
-<div class="paragraph">
-<p>By default Hibernate delays SQL writes until the session is flushed. Force an immediate flush:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">book.save(flush: true)      <i class="conum" data-value="1"></i><b>(1)</b></code></pre>
-</div>
-</div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>Issues the <code>INSERT</code> or <code>UPDATE</code> immediately.</td>
-</tr>
-</table>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_updating">Updating</h3>
-<div class="paragraph">
-<p>Modify properties on a loaded instance and call <code>save()</code>:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">def book = Book.get(1)
-book.title = 'Updated Title'
-book.save()</code></pre>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_dynamic_update">Dynamic Update</h3>
-<div class="paragraph">
-<p>To generate <code>UPDATE</code> statements that only include changed columns (useful for wide tables), enable <code>dynamicUpdate</code>:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Book {
-    static mapping = {
-        dynamicUpdate true
-    }
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def p = Person.get(1)
+try {
+    p.save(failOnError: true)
+}
+catch (ValidationException e) {
+    // deal with exception
 }</code></pre>
 </div>
 </div>
-</div>
-<div class="sect2">
-<h3 id="_dynamic_insert">Dynamic Insert</h3>
 <div class="paragraph">
-<p>Similarly, <code>dynamicInsert</code> generates <code>INSERT</code> statements that omit null properties:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">static mapping = {
-    dynamicInsert true
-}</code></pre>
-</div>
-</div>
-</div>
-</div>
+<p>You can even change the default behaviour with a setting in <code>application.groovy</code>, as described in the <a href="#configuration">section on configuration</a>. Just remember that when you are saving domain instances that have been bound with data provided by the user, the likelihood of validation exceptions is quite high and you won&#8217;t want those exceptions propagating to the end user.</p>
 </div>
 </div>
 <div id="footer">

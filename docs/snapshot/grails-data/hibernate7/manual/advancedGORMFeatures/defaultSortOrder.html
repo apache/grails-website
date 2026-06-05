@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.18">
-<title>Default Sort Order</title>
+<title>Untitled</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -437,94 +437,73 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 </head>
-<body class="article toc2 toc-left">
+<body class="article">
 <div id="header">
-<div id="toc" class="toc2">
-<div id="toctitle">Table of Contents</div>
-<ul class="sectlevel1">
-<li><a href="#advancedGORMFeatures-defaultSortOrder">Default Sort Order</a>
-<ul class="sectlevel2">
-<li><a href="#_sort_direction">Sort Direction</a></li>
-<li><a href="#_default_sort_on_associations">Default Sort on Associations</a></li>
-</ul>
-</li>
-</ul>
-</div>
 </div>
 <div id="content">
-<div class="sect1">
-<h2 id="advancedGORMFeatures-defaultSortOrder">Default Sort Order</h2>
-<div class="sectionbody">
 <div class="paragraph">
-<p>You can configure a default sort order for <code>list()</code> and <code>findAll*</code> queries at the domain class level using the <code>mapping</code> block:</p>
+<p>You can sort objects using query arguments such as those found in the <a href="#ref-domain-classes-list">list</a> method:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Book {
-    String title
-    Date dateCreated
+<pre class="highlight"><code class="language-java" data-lang="java">def airports = Airport.list(sort:'name')</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>However, you can also declare the default sort order for a collection in the mapping:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">class Airport {
+    ...
+    static mapping = {
+        sort "name"
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The above means that all collections of <code>Airport</code> instances will by default be sorted by the airport name. If you also want to change the sort <em>order</em>, use this syntax:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">class Airport {
+    ...
+    static mapping = {
+        sort name: "desc"
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Finally, you can configure sorting at the association level:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">class Airport {
+    ...
+    static hasMany = [flights: Flight]
 
     static mapping = {
-        sort 'title'            <i class="conum" data-value="1"></i><b>(1)</b>
+        flights sort: 'number', order: 'desc'
     }
 }</code></pre>
 </div>
 </div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>All <code>Book.list()</code> calls will return results sorted by <code>title</code> in ascending order by default.</td>
-</tr>
-</table>
-</div>
-<div class="sect2">
-<h3 id="_sort_direction">Sort Direction</h3>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">static mapping = {
-    sort title: 'desc'          <i class="conum" data-value="1"></i><b>(1)</b>
-}</code></pre>
-</div>
-</div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>Sort by <code>title</code> descending.</td>
-</tr>
-</table>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_default_sort_on_associations">Default Sort on Associations</h3>
 <div class="paragraph">
-<p>You can also define a default sort order on a <code>hasMany</code> collection:</p>
+<p>In this case, the <code>flights</code> collection will always be sorted in descending order of flight number.</p>
 </div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Author {
-    static hasMany = [books: Book]
-    static mapping = {
-        books sort: 'title', order: 'asc'
-    }
-}</code></pre>
-</div>
-</div>
-<div class="admonitionblock note">
+<div class="admonitionblock warning">
 <table>
 <tr>
 <td class="icon">
-<i class="fa icon-note" title="Note"></i>
+<i class="fa icon-warning" title="Warning"></i>
 </td>
 <td class="content">
-The default sort order in <code>mapping</code> applies to queries that do not specify their own <code>order</code>. Any query that specifies <code>sort</code> or <code>order</code> explicitly will override the default.
+These mappings will not work for default unidirectional one-to-many or many-to-many relationships because they involve a join table. See <a href="#ref-orgbrowse-grails-4089-this issue">this issue</a> for more details. Consider using a <code>SortedSet</code> or queries with sort parameters to fetch the data you need.
 </td>
 </tr>
 </table>
-</div>
-</div>
-</div>
 </div>
 </div>
 <div id="footer">

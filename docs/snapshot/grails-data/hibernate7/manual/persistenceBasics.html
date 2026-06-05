@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.18">
-<title>Persistence Basics</title>
+<title>Transactional Write-Behind</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -441,35 +441,25 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div id="header">
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
-<ul class="sectlevel1">
-<li><a href="#persistenceBasics">Persistence Basics</a>
 <ul class="sectlevel3">
 <li><a href="#_transactional_write_behind">Transactional Write-Behind</a></li>
-</ul>
-</li>
 </ul>
 </div>
 </div>
 <div id="content">
-<div class="sect1">
-<h2 id="persistenceBasics">Persistence Basics</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>This section covers the core persistence operations available on every GORM domain class: saving, updating, deleting, querying for changes, and transaction management.</p>
-</div>
 <div class="paragraph">
 <p>A key thing to remember about GORM is that under the surface GORM is using <a href="https://www.hibernate.org/">Hibernate</a> for persistence. If you are coming from a background of using <a href="https://api.rubyonrails.org/classes/ActiveRecord/Base.html">ActiveRecord</a> or <a href="https://www.mybatis.org/">iBatis/MyBatis</a>, Hibernate&#8217;s "session" model may feel a little strange.</p>
 </div>
 <div class="paragraph">
-<p>If you are using Grails, then Grails automatically binds a Hibernate session to the currently executing request. This lets you use the <code>save()</code> and <code>delete()</code> methods as well as other GORM methods transparently.</p>
+<p>If you are using Grails, then Grails automatically binds a Hibernate session to the currently executing request. This lets you use the <code>save()</code> and <code>delete</code> methods as well as other GORM methods transparently.</p>
 </div>
 <div class="paragraph">
-<p>If you are not using Grails then you have to make sure that a session is bound to the current request. One way to achieve that is with the <a href="../api/org/grails/datastore/gorm/GormEntity.html#withNewSession(groovy.lang.Closure)">withNewSession(Closure)</a> method:</p>
+<p>If you are not using Grails then you have to make sure that a session is bound to the current request. One way to to achieve that is with the <a href="../api/org/grails/datastore/gorm/GormEntity.html#withNewSession(groovy.lang.Closure)">withNewSession(Closure)</a> method:</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight"><code class="language-groovy" data-lang="groovy">Book.withNewSession {
-    // your logic here
+	// your logic here
 }</code></pre>
 </div>
 </div>
@@ -479,21 +469,9 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div class="listingblock">
 <div class="content">
 <pre class="highlight"><code class="language-groovy" data-lang="groovy">Book.withTransaction {
-    // your logic here
+	// your logic here
 }</code></pre>
 </div>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-<strong>Hibernate 7 — direct Session API changes.</strong> If you call the Hibernate <code>Session</code> directly inside a <code>withSession</code> block (rather than using GORM&#8217;s own methods), note that <code>session.save()</code>, <code>session.update()</code>, <code>session.delete()</code>, <code>session.load()</code>, and <code>session.get()</code> were removed in Hibernate 7. Use the JPA equivalents: <code>session.persist()</code>, <code>session.merge()</code>, <code>session.remove()</code>, <code>session.getReference()</code>, and <code>session.find()</code> respectively. GORM&#8217;s dynamic methods (<code>save()</code>, <code>delete()</code>, <code>get()</code>, etc. on the domain class) are <strong>not</strong> affected — they go through GORM&#8217;s own API and work unchanged.
-</td>
-</tr>
-</table>
 </div>
 <div class="sect3">
 <h4 id="_transactional_write_behind">Transactional Write-Behind</h4>
@@ -501,15 +479,13 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <p>A useful feature of Hibernate over direct JDBC calls and even other frameworks is that when you call <a href="../api/org/grails/datastore/gorm/GormEntity.html#save()">save()</a> or <a href="../api/org/grails/datastore/gorm/GormEntity.html#delete()">delete()</a> it does not necessarily perform any SQL operations <strong>at that point</strong>. Hibernate batches up SQL statements and executes them as late as possible, often at the end of the request when flushing and closing the session.</p>
 </div>
 <div class="paragraph">
-<p>If you are using Grails this is typically done for you automatically, which manages your Hibernate session. If you are using GORM outside of Grails then you may need to manually flush the session at the end of your operation.</p>
+<p>If you are using Grails this typically done for you automatically, which manages your Hibernate session. If you are using GORM outside of Grails then you may need to manually flush the session at the end of your operation.</p>
 </div>
 <div class="paragraph">
 <p>Hibernate caches database updates where possible, only actually pushing the changes when it knows that a flush is required, or when a flush is triggered programmatically. One common case where Hibernate will flush cached updates is when performing queries since the cached information might be included in the query results. But as long as you&#8217;re doing non-conflicting saves, updates, and deletes, they&#8217;ll be batched until the session is flushed. This can be a significant performance boost for applications that do a lot of database writes.</p>
 </div>
 <div class="paragraph">
 <p>Note that flushing is not the same as committing a transaction. If your actions are performed in the context of a transaction, flushing will execute SQL updates but the database will save the changes in its transaction queue and only finalize the updates when the transaction commits.</p>
-</div>
-</div>
 </div>
 </div>
 </div>

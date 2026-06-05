@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.18">
-<title>Composite Primary Keys</title>
+<title>Untitled</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -437,105 +437,84 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 </head>
-<body class="article toc2 toc-left">
+<body class="article">
 <div id="header">
-<div id="toc" class="toc2">
-<div id="toctitle">Table of Contents</div>
-<ul class="sectlevel1">
-<li><a href="#ormdsl-compositePrimaryKeys">Composite Primary Keys</a>
-<ul class="sectlevel2">
-<li><a href="#_defining_a_composite_identity">Defining a Composite Identity</a></li>
-<li><a href="#_using_composite_keys">Using Composite Keys</a></li>
-<li><a href="#_associations_with_composite_keys">Associations with Composite Keys</a></li>
-</ul>
-</li>
-</ul>
-</div>
 </div>
 <div id="content">
-<div class="sect1">
-<h2 id="ormdsl-compositePrimaryKeys">Composite Primary Keys</h2>
-<div class="sectionbody">
 <div class="paragraph">
-<p>GORM allows you to map domain classes to tables that use a composite primary key (a key composed of two or more columns). This is commonly needed when mapping to legacy database schemas.</p>
-</div>
-<div class="sect2">
-<h3 id="_defining_a_composite_identity">Defining a Composite Identity</h3>
-<div class="paragraph">
-<p>Use <code>id composite: [...]</code> in the <code>mapping</code> block, listing the property names that together form the primary key:</p>
+<p>GORM supports the concept of composite identifiers (identifiers composed from 2 or more properties). It is not an approach we recommend, but is available to you if you need it:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class OrderItem {
-    Long orderId
-    Long productId
-    Integer quantity
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">import org.apache.commons.lang.builder.HashCodeBuilder
+
+class Person implements Serializable {
+
+    String firstName
+    String lastName
+
+    boolean equals(other) {
+        if (!(other instanceof Person)) {
+            return false
+        }
+
+        other.firstName == firstName &amp;&amp; other.lastName == lastName
+    }
+
+    int hashCode() {
+        def builder = new HashCodeBuilder()
+        builder.append firstName
+        builder.append lastName
+        builder.toHashCode()
+    }
 
     static mapping = {
-        id composite: ['orderId', 'productId']  <i class="conum" data-value="1"></i><b>(1)</b>
+        id composite: ['firstName', 'lastName']
     }
 }</code></pre>
 </div>
 </div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>The composite key is made up of <code>orderId</code> and <code>productId</code>.</td>
-</tr>
-</table>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-Domain classes with composite keys do <strong>not</strong> have the auto-generated <code>id</code> and <code>version</code> properties. You are responsible for setting the key properties before calling <code>save()</code>.
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_using_composite_keys">Using Composite Keys</h3>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">def item = new OrderItem(orderId: 1L, productId: 42L, quantity: 3)
-item.save()
-
-// Load by composite key — pass a map
-def found = OrderItem.get(orderId: 1L, productId: 42L)</code></pre>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_associations_with_composite_keys">Associations with Composite Keys</h3>
 <div class="paragraph">
-<p>When another domain class references a domain class with a composite key, GORM creates multiple foreign-key columns automatically:</p>
+<p>The above will create a composite id of the <code>firstName</code> and <code>lastName</code> properties of the Person class. To retrieve an instance by id you use a prototype of the object itself:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class OrderLine {
-    Integer lineNumber
-    OrderItem item     // foreign key will use both orderId and productId columns
+<pre class="highlight"><code class="language-java" data-lang="java">def p = Person.get(new Person(firstName: "Fred", lastName: "Flintstone"))
+println p.firstName</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Domain classes mapped with composite primary keys must implement the <code>Serializable</code> interface and override the <code>equals</code> and <code>hashCode</code> methods, using the properties in the composite key for the calculations. The example above uses a <code>HashCodeBuilder</code> for convenience but it&#8217;s fine to implement it yourself.</p>
+</div>
+<div class="paragraph">
+<p>Another important consideration when using composite primary keys is associations. If for example you have a many-to-one association where the foreign keys are stored in the associated table then 2 columns will be present in the associated table.</p>
+</div>
+<div class="paragraph">
+<p>For example consider the following domain class:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Address {
+    Person person
 }</code></pre>
 </div>
 </div>
-<div class="admonitionblock tip">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-tip" title="Tip"></i>
-</td>
-<td class="content">
-Composite primary keys add complexity to all queries and associations. Prefer surrogate (auto-generated) single-column keys wherever possible and use composite unique constraints instead of composite keys for business-key uniqueness requirements.
-</td>
-</tr>
-</table>
+<div class="paragraph">
+<p>In this case the <code>address</code> table will have an additional two columns called <code>person_first_name</code> and <code>person_last_name</code>. If you wish the change the mapping of these columns then you can do so using the following technique:</p>
 </div>
-</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Address {
+    Person person
+    static mapping = {
+        columns {
+		    person {
+                column name: "FirstName"
+                column name: "LastName"
+			}
+        }
+    }
+}</code></pre>
 </div>
 </div>
 </div>

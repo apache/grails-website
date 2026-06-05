@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.18">
-<title>One-to-Many Associations</title>
+<title>Untitled</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -437,115 +437,128 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 </head>
-<body class="article toc2 toc-left">
+<body class="article">
 <div id="header">
-<div id="toc" class="toc2">
-<div id="toctitle">Table of Contents</div>
-<ul class="sectlevel1">
-<li><a href="#gormAssociation-oneToMany">One-to-Many Associations</a>
-<ul class="sectlevel2">
-<li><a href="#_bidirectional_one_to_many">Bidirectional One-to-Many</a></li>
-<li><a href="#_unidirectional_one_to_many">Unidirectional One-to-Many</a></li>
-<li><a href="#_sorting">Sorting</a></li>
-<li><a href="#_adding_and_removing_items">Adding and Removing Items</a></li>
-</ul>
-</li>
-</ul>
-</div>
 </div>
 <div id="content">
-<div class="sect1">
-<h2 id="gormAssociation-oneToMany">One-to-Many Associations</h2>
-<div class="sectionbody">
 <div class="paragraph">
-<p>A one-to-many association is declared using <code>hasMany</code>. It represents a collection of associated domain objects.</p>
-</div>
-<div class="sect2">
-<h3 id="_bidirectional_one_to_many">Bidirectional One-to-Many</h3>
-<div class="paragraph">
-<p>When both sides declare the relationship, GORM manages the foreign key on the many side&#8217;s table:</p>
+<p>A one-to-many relationship is when one class, example <code>Author</code>, has many instances of another class, example <code>Book</code>. With GORM you define such a relationship with the <code>hasMany</code> setting:</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight"><code class="language-groovy" data-lang="groovy">class Author {
-    String name
-    static hasMany = [books: Book]  <i class="conum" data-value="1"></i><b>(1)</b>
-}
+    static hasMany = [books: Book]
 
-class Book {
-    String title
-    Author author                   <i class="conum" data-value="2"></i><b>(2)</b>
-    static belongsTo = [author: Author]
+    String name
 }</code></pre>
 </div>
 </div>
-<div class="colist arabic">
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Book {
+    String title
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In this case we have a unidirectional one-to-many. GORM will, by default, map this kind of relationship with a join table.</p>
+</div>
+<div class="admonitionblock note">
 <table>
 <tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td><code>Author</code> owns a collection of <code>Book</code> objects.</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="2"></i><b>2</b></td>
-<td><code>Book</code> declares the back-reference. <code>belongsTo</code> also enables cascade delete.</td>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The <a href="#ormdsl">ORM DSL</a> allows mapping unidirectional relationships using a foreign key association instead
+</td>
 </tr>
 </table>
 </div>
 <div class="paragraph">
-<p>With <code>belongsTo</code>, deleting an <code>Author</code> will cascade-delete all of its <code>books</code>.</p>
+<p>GORM will automatically inject a property of type <code>java.util.Set</code> into the domain class based on the <code>hasMany</code> setting. This can be used to iterate over the collection:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def a = Author.get(1)
+
+for (book in a.books) {
+    println book.title
+}</code></pre>
 </div>
 </div>
-<div class="sect2">
-<h3 id="_unidirectional_one_to_many">Unidirectional One-to-Many</h3>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The default fetch strategy used by GORM is "lazy", which means that the collection will be lazily initialized on first access. This can lead to the N+1 if you are not careful.
+</td>
+</tr>
+</table>
+</div>
 <div class="paragraph">
-<p>Without <code>belongsTo</code> on the other side, GORM uses a join table to maintain the relationship:</p>
+<p>If you need "eager" fetching you can use the <a href="#ormdsl">ORM DSL</a> or specify eager fetching as part of a <a href="#querying">query</a></p>
+</div>
+<div class="paragraph">
+<p>The default cascading behaviour is to cascade saves and updates, but not deletes unless a <code>belongsTo</code> is also specified:</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight"><code class="language-groovy" data-lang="groovy">class Author {
+    static hasMany = [books: Book]
+
     String name
-    static hasMany = [books: Book]
-}
-
-class Book {
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Book {
+    static belongsTo = [author: Author]
     String title
-    // no belongsTo or author property
 }</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>The join table name defaults to <code>author_books</code> and can be customised — see <a href="#ormdsl-tableAndColumnNames">Table and Column Names</a>.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_sorting">Sorting</h3>
-<div class="paragraph">
-<p>You can define a default sort order for the collection:</p>
+<p>If you have two properties of the same type on the many side of a one-to-many you have to use <code>mappedBy</code> to specify which the collection is mapped:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Author {
-    static hasMany = [books: Book]
-    static mapping = {
-        books sort: 'title', order: 'asc'
-    }
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Airport {
+    static hasMany = [flights: Flight]
+    static mappedBy = [flights: "departureAirport"]
 }</code></pre>
 </div>
 </div>
-</div>
-<div class="sect2">
-<h3 id="_adding_and_removing_items">Adding and Removing Items</h3>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">def author = Author.get(1)
-author.addToBooks(new Book(title: 'Groovy in Action'))
-author.save()
-
-author.removeFromBooks(author.books.first())
-author.save()</code></pre>
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Flight {
+    Airport departureAirport
+    Airport destinationAirport
+}</code></pre>
 </div>
 </div>
+<div class="paragraph">
+<p>This is also true if you have multiple collections that map to different properties on the many side:</p>
 </div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Airport {
+    static hasMany = [outboundFlights: Flight, inboundFlights: Flight]
+    static mappedBy = [outboundFlights: "departureAirport",
+                       inboundFlights: "destinationAirport"]
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Flight {
+    Airport departureAirport
+    Airport destinationAirport
+}</code></pre>
 </div>
 </div>
 </div>
