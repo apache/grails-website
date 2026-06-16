@@ -1,0 +1,376 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+                      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+    <title>6 Testing data access</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
+    <link rel="stylesheet" href="../css/guide.css" type="text/css" media="screen, print" title="Style" charset="utf-8" />            
+    <link rel="stylesheet" href="../css/pdf.css" type="text/css" media="print" title="PDF" charset="utf-8"/>
+    <script type="text/javascript">
+function addJsClass() {
+    var classes = document.body.className.split(" ");
+    classes.push("js");
+    document.body.className = classes.join(" ");
+}
+    </script>
+</head>
+
+<body class="body" onload="addJsClass();">
+<div id="navigation">
+    <div class="navTitle">
+        
+        Grails Framework Guide 
+    </div>
+    <div class="navLinks">
+        <ul>
+            <li>
+                <div id="nav-summary" onmouseover="toggleNavSummary(false)" onmouseout="toggleNavSummary(true)">
+                    <a href="../guide/index.html" class="button">Table of contents</a>
+
+                    <div id="nav-summary-childs" style="display:none;">
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/introduction.html"><strong>1</strong><span>Introduction</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/gettingStarted.html"><strong>2</strong><span>Getting Started</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/domainModel.html"><strong>3</strong><span>Domain model and associations</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/queries.html"><strong>4</strong><span>Querying with GORM</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/servicesAndControllers.html"><strong>5</strong><span>Services and REST controllers</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/testing.html"><strong>6</strong><span>Testing data access</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/runningTheApp.html"><strong>7</strong><span>Running the application</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/summary.html"><strong>8</strong><span>Summary</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>9</strong><span>Do you need help with Grails?</span></a>
+                        </div>
+                        
+                    </div>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+
+</div>
+
+<table id="colset" border="0" cellpadding="0" cellspacing="0">
+    <tr>
+        <td id="col1">
+            <div id="main" class="corner-all">
+
+                
+                    <div class="toc-item prev-left"><a href="../guide/servicesAndControllers.html">&lt;&lt; <strong>5</strong><span>Services and REST controllers</span></a></div>
+                
+
+                
+                    <div class="toc-item next-right"><a href="../guide/runningTheApp.html"><strong>7</strong><span>Running the application</span> >></a></div>
+                
+
+
+                
+
+                
+
+<h1 id="testing">6 Testing data access</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-data-access/v8/guide/testing.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="sect1">
+<h2 id="unitTests">Unit tests</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Domain constraints and associations:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/test/groovy/example/BookSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.testing.gorm.DataTest</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="keyword">import</span> <span class="include">java.time.LocalDate</span>
+
+<span class="type">class</span> <span class="class">BookSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> DataTest {
+
+    <span class="predefined-type">Class</span>&lt;?&gt;<span class="type">[]</span> getDomainClassesToMock() {
+        [Author, <span class="predefined-type">Book</span>, Tag] <span class="keyword">as</span> <span class="predefined-type">Class</span><span class="type">[]</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">book requires an author</span><span class="delimiter">'</span></span>() {
+        <span class="keyword">def</span> book = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Untitled</span><span class="delimiter">'</span></span>)
+
+        <span class="key">when</span>:
+        <span class="type">boolean</span> valid = book.validate()
+
+        <span class="key">then</span>:
+        !valid
+        book.errors[<span class="string"><span class="delimiter">'</span><span class="content">author</span><span class="delimiter">'</span></span>]
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">many-to-many tags can be associated</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        <span class="keyword">def</span> author = <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Test Author</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">def</span> tag = <span class="keyword">new</span> Tag(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">gorm</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">def</span> book = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">GORM in Action</span><span class="delimiter">'</span></span>, <span class="key">price</span>: <span class="float">39.99</span>, <span class="key">author</span>: author, <span class="key">publishedOn</span>: LocalDate.now()).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">when</span>:
+        book.addToTags(tag)
+        book.save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">then</span>:
+        <span class="predefined-type">Book</span>.get(book.id).tags*.name == [<span class="string"><span class="delimiter">'</span><span class="content">gorm</span><span class="delimiter">'</span></span>]
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Service-level criteria, HQL, and <code>where</code> queries with <code>DataTest</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/test/groovy/example/BookServiceSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.testing.gorm.DataTest</span>
+<span class="keyword">import</span> <span class="include">grails.testing.services.ServiceUnitTest</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="keyword">import</span> <span class="include">java.time.LocalDate</span>
+
+<span class="type">class</span> <span class="class">BookServiceSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> ServiceUnitTest&lt;BookService&gt;, DataTest {
+
+    <span class="predefined-type">Class</span>&lt;?&gt;<span class="type">[]</span> getDomainClassesToMock() {
+        [Author, <span class="predefined-type">Book</span>, Tag] <span class="keyword">as</span> <span class="predefined-type">Class</span><span class="type">[]</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">listByAuthor uses criteria</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        <span class="keyword">def</span> ada = <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Ada</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">def</span> other = <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Other</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">A</span><span class="delimiter">'</span></span>, <span class="key">price</span>: <span class="float">10.00</span>, <span class="key">author</span>: ada).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">B</span><span class="delimiter">'</span></span>, <span class="key">price</span>: <span class="float">12.00</span>, <span class="key">author</span>: other).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">expect</span>:
+        service.listByAuthor(ada)*.title == [<span class="string"><span class="delimiter">'</span><span class="content">A</span><span class="delimiter">'</span></span>]
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">findPublishedSince uses where query</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        <span class="keyword">def</span> author = <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Ada</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Old</span><span class="delimiter">'</span></span>, <span class="key">price</span>: <span class="float">9.99</span>, <span class="key">author</span>: author, <span class="key">publishedOn</span>: LocalDate.of(<span class="integer">2000</span>, <span class="integer">1</span>, <span class="integer">1</span>)).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">New</span><span class="delimiter">'</span></span>, <span class="key">price</span>: <span class="float">19.99</span>, <span class="key">author</span>: author, <span class="key">publishedOn</span>: LocalDate.of(<span class="integer">2024</span>, <span class="integer">6</span>, <span class="integer">1</span>)).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">expect</span>:
+        service.findPublishedSince(LocalDate.of(<span class="integer">2020</span>, <span class="integer">1</span>, <span class="integer">1</span>))*.title == [<span class="string"><span class="delimiter">'</span><span class="content">New</span><span class="delimiter">'</span></span>]
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">searchByTitle uses where query</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        <span class="keyword">def</span> author = <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Ada</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Grails Data Access</span><span class="delimiter">'</span></span>, <span class="key">price</span>: <span class="float">29.99</span>, <span class="key">author</span>: author).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Other Topic</span><span class="delimiter">'</span></span>, <span class="key">price</span>: <span class="float">14.99</span>, <span class="key">author</span>: author).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">expect</span>:
+        service.searchByTitle(<span class="string"><span class="delimiter">'</span><span class="content">data</span><span class="delimiter">'</span></span>)*.title == [<span class="string"><span class="delimiter">'</span><span class="content">Grails Data Access</span><span class="delimiter">'</span></span>]
+    }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">src/test/groovy/example/BookQueryServiceSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.testing.gorm.DataTest</span>
+<span class="keyword">import</span> <span class="include">grails.testing.services.ServiceUnitTest</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="type">class</span> <span class="class">BookQueryServiceSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> ServiceUnitTest&lt;BookQueryService&gt;, DataTest {
+
+    <span class="predefined-type">Class</span><span class="type">[]</span> getDomainClassesToMock() {
+        [Author, <span class="predefined-type">Book</span>, Tag] <span class="keyword">as</span> <span class="predefined-type">Class</span><span class="type">[]</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">findBooksByAuthorName matches case-insensitively</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        Author author = <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Jane Austen</span><span class="delimiter">'</span></span>, <span class="key">email</span>: <span class="string"><span class="delimiter">'</span><span class="content">jane@example.com</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Emma</span><span class="delimiter">'</span></span>, <span class="key">price</span>: <span class="float">11.50</span>, <span class="key">author</span>: author).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Other</span><span class="delimiter">'</span></span>, <span class="key">price</span>: <span class="float">5.00</span>, <span class="key">author</span>: <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Other</span><span class="delimiter">'</span></span>, <span class="key">email</span>: <span class="string"><span class="delimiter">'</span><span class="content">o@example.com</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">when</span>:
+        <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; books = service.findBooksByAuthorName(<span class="string"><span class="delimiter">'</span><span class="content">jane</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>:
+        books*.title == [<span class="string"><span class="delimiter">'</span><span class="content">Emma</span><span class="delimiter">'</span></span>]
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">findBooksWithMinPrice filters and sorts by price descending</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        Author author = <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">A</span><span class="delimiter">'</span></span>, <span class="key">email</span>: <span class="string"><span class="delimiter">'</span><span class="content">a@example.com</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Low</span><span class="delimiter">'</span></span>, <span class="key">price</span>: <span class="float">5.00</span>, <span class="key">author</span>: author).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">High</span><span class="delimiter">'</span></span>, <span class="key">price</span>: <span class="float">25.00</span>, <span class="key">author</span>: author).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">when</span>:
+        <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; books = service.findBooksWithMinPrice(<span class="float">10.00</span>)
+
+        <span class="key">then</span>:
+        books*.title == [<span class="string"><span class="delimiter">'</span><span class="content">High</span><span class="delimiter">'</span></span>]
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>HQL (<code>countBooksForAuthor</code>) is exercised in the integration spec below because <code>executeQuery</code> requires a Hibernate session.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="integrationTests">Integration tests</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Integration specs boot the full application context and hit the database:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/integration-test/groovy/example/BookDataAccessIntegrationSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="keyword">import</span> <span class="include">java.time.LocalDate</span>
+
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">BookDataAccessIntegrationSpec</span> <span class="directive">extends</span> Specification {
+
+    BookService bookService
+    BookQueryService bookQueryService
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">criteria, HQL, and where queries run against a real database</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        Author author = Author.withTransaction {
+            <span class="keyword">def</span> existingAuthor = <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Integration Author</span><span class="delimiter">'</span></span>, <span class="key">email</span>: <span class="string"><span class="delimiter">'</span><span class="content">integration@example.com</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+            <span class="keyword">new</span> <span class="predefined-type">Book</span>(
+                <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Persistence Patterns</span><span class="delimiter">'</span></span>,
+                <span class="key">price</span>: <span class="float">29.99</span>,
+                <span class="key">author</span>: existingAuthor,
+                <span class="key">publishedOn</span>: LocalDate.of(<span class="integer">2019</span>, <span class="integer">1</span>, <span class="integer">1</span>)
+            ).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+            <span class="keyword">new</span> <span class="predefined-type">Book</span>(
+                <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">GORM Deep Dive</span><span class="delimiter">'</span></span>,
+                <span class="key">price</span>: <span class="float">34.50</span>,
+                <span class="key">author</span>: existingAuthor,
+                <span class="key">publishedOn</span>: LocalDate.of(<span class="integer">2024</span>, <span class="integer">6</span>, <span class="integer">1</span>)
+            ).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+            <span class="keyword">new</span> <span class="predefined-type">Book</span>(
+                <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Grails Data Access</span><span class="delimiter">'</span></span>,
+                <span class="key">price</span>: <span class="float">19.99</span>,
+                <span class="key">author</span>: existingAuthor,
+                <span class="key">publishedOn</span>: LocalDate.of(<span class="integer">2024</span>, <span class="integer">1</span>, <span class="integer">1</span>)
+            ).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+            existingAuthor
+        }
+
+        <span class="key">expect</span>:
+        bookQueryService.findBooksByAuthorName(<span class="string"><span class="delimiter">'</span><span class="content">integration</span><span class="delimiter">'</span></span>).size() == <span class="integer">3</span>
+        bookQueryService.countBooksForAuthor(author.id) == <span class="integer">3L</span>
+        bookQueryService.findBooksWithMinPrice(<span class="float">30.00</span>)*.title == [<span class="string"><span class="delimiter">'</span><span class="content">GORM Deep Dive</span><span class="delimiter">'</span></span>]
+        bookService.listByAuthor(author)*.title.sort() == [<span class="string"><span class="delimiter">'</span><span class="content">GORM Deep Dive</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Grails Data Access</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Persistence Patterns</span><span class="delimiter">'</span></span>]
+        bookService.findPublishedSince(LocalDate.of(<span class="integer">2020</span>, <span class="integer">1</span>, <span class="integer">1</span>))*.title == [<span class="string"><span class="delimiter">'</span><span class="content">GORM Deep Dive</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Grails Data Access</span><span class="delimiter">'</span></span>]
+        bookService.searchByTitle(<span class="string"><span class="delimiter">'</span><span class="content">data</span><span class="delimiter">'</span></span>)*.title == [<span class="string"><span class="delimiter">'</span><span class="content">Grails Data Access</span><span class="delimiter">'</span></span>]
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Run unit tests:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">cd complete
+./gradlew test</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Run integration tests (requires Docker):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">./gradlew integrationTest</code></pre>
+</div>
+</div>
+</div>
+</div>
+
+
+                <div style="clear:both;margin-top:15px;"></div>
+                
+                    <div class="toc-item prev-left"><a href="../guide/servicesAndControllers.html">&lt;&lt; <strong>5</strong><span>Services and REST controllers</span></a></div>
+                
+                    <div class="toc-item next-right"><a href="../guide/runningTheApp.html"><strong>7</strong><span>Running the application</span> >></a></div>
+                
+                <div style="clear:both"></div>
+            </div>
+        </td>
+        <td id="col2">
+            <div class="local clearfix">
+                <div class="local-title" style="text-align: right"><a href="https://travis-ci.org/grails-guides/grails-data-access"><img src="https://travis-ci.org/grails-guides/grails-data-access.svg?branch=master" /></a></div>            
+                 <div class="local-title">
+                    <a href="https://github.com/grails-guides/grails-data-access">
+                    <svg height="35" class="octicon octicon-mark-github" viewBox="0 0 16 16" version="1.1" width="35" aria-hidden="true"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a> &nbsp;&nbsp;Get the Code
+                </div>
+                <div class="menu">
+                    <div class="input-group">                        
+                        <button href="#" onclick="document.getElementById('github-url').value='git@github.com:grails-guides/grails-data-access.git'" class="codeButton">SSH</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-data-access.git'" class="codeButton">HTTPS</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-data-access'" class="codeButton">Subversion</button>
+                    </div>
+       
+                    <div class="input-group">                    
+                        <!-- Target -->
+                        <input id="github-url" value="git@github.com:grails-guides/grails-data-access.git" type="text" />
+
+                        <!-- Trigger -->
+                        <button class="clipbtn" type="button" data-clipboard-target="#github-url">
+
+                            <img width="13" src="../img/clippy.svg" alt="Copy to clipboard">
+                        </button>       
+
+                    </div>
+                    <div class="input-group">
+                      <a href="https://github.com/grails-guides/grails-data-access/archive/master.zip" class="downloadButton">Download ZIP</a>
+                    </div>
+                </div>
+            </div>
+        </td>
+    </tr>
+</table>
+
+<div id="footer">
+    
+    
+</div>
+
+<script type="text/javascript" src="../js/docs.js"></script>
+
+</body>
+</html>

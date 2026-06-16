@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Data Access with GORM in Grails 8 | Grails Guides | Apache Grails</title>
+    <meta name='description' content='Data Access with GORM in Grails 8. Model relational data with GORM, run criteria/HQL/where queries, expose REST endpoints, and test with Spock and Testcontainers.'/>
+    <meta charset='UTF-8'/>
+<meta name='viewport' content='width=device-width, initial-scale=1'/>
+<link rel='icon' href='https://grails.apache.org/images/favicon.ico'/>
+<link rel='mask-icon' href='https://grails.apache.org/images/grails-pinned-icon.svg' color='feb672'/>
+<link rel='alternate' type='application/rss+xml' title='RSS' href='https://grails.apache.org/rss.xml'/>
+<link rel='stylesheet' href='https://grails.apache.org/stylesheets/screen.css'/>
+<link rel='stylesheet' href='https://grails.apache.org/stylesheets/plugin.css'/>
+<script src='https://grails.apache.org/javascripts/navigation.js'></script>
+
+<!-- Matomo -->
+<script>
+  var _paq = window._paq = window._paq || [];
+  _paq.push(['setDoNotTrack', true]);
+  _paq.push(['disableCookies']);
+  _paq.push(['trackPageView']);
+  _paq.push(['enableLinkTracking']);
+  (function() {
+    var u = 'https://analytics.apache.org/';
+    _paq.push(['setTrackerUrl', u + 'matomo.php']);
+    _paq.push(['setSiteId', '79']);
+    var d = document, g = d.createElement('script'), s = d.getElementsByTagName('script')[0];
+    g.async = true; g.src = u + 'matomo.js'; s.parentNode.insertBefore(g, s);
+  })();
+</script>
+<!-- End Matomo Code -->
+
+<script
+    async
+    src="https://widget.kapa.ai/kapa-widget.bundle.js"
+    data-website-id="d804a9f2-51a2-414c-97f7-12f2a1ba4609"
+    data-project-name="Apache Grails"
+    data-project-color="#3F4346"
+    data-font-family="system-ui,-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,Segoe UI,sans-serif,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol;"
+    data-project-logo="https://grails.apache.org/images/grails.png"
+    data-modal-override-open-id="ask-ai-input"
+    data-modal-override-open-class="search-input"
+    data-user-analytics-fingerprint-enabled="true"
+    data-modal-title="Apache Grails AI Assistant"
+    data-modal-example-questions-title="Try asking me..."
+    data-modal-example-questions="How does database migration work?,How does Spring Security work?"
+    data-button-text-color="#FBB576"
+    data-modal-header-bg-color="#FFFFFF"
+    data-modal-title-color="#FBB576"
+    data-consent-required="true"></script>
+
+    <link rel='stylesheet' href='../css/guide.css'/>
+    <script src='../js/clipboard.min.js'></script>
+</head>
+<body class='guide'>
+<header class='main-header'>
+    <div class='content'>
+        <a href='https://grails.apache.org/index.html'><img class='grails-logo' src='https://grails.apache.org/images/grails_logo.svg' alt='Grails Logo'/></a>
+        <a href='javascript:show("top-menus", "show-navigation-link")' id='show-navigation-link'
+           class='mobile align-center'>Show Navigation</a>
+        <div id='top-menus'>
+            <nav class='secondary-menu' id='secondary-menu'>
+                <ul>
+                    <li><a href='https://grails.apache.org/casestudies/index.html'>Case Studies</a></li>
+                    <li><a href='https://grails.apache.org/blog/index.html'>Blog</a></li>
+                    <li><a href='https://grails.apache.org/learning.html'>Learning</a></li>
+                    <li><a href='https://grails.apache.org/community.html'>Community</a></li>
+                    <li><a href='https://grails.apache.org/search.html'>Search</a></li>
+                </ul>
+            </nav>
+            <nav class='main-menu' id='main-menu'>
+                <ul>
+                    <li><a href='https://grails.apache.org/documentation.html'>Documentation</a></li>
+                    <li><a href='https://grails.apache.org/download.html'>Download</a></li>
+                    <li><a href='https://grails.apache.org/plugins.html'>Plugins</a></li>
+                    <li><a href='https://grails.apache.org/guides'>Guides</a></li>
+                    <li><a href='https://grails.apache.org/faq.html'>FAQ</a></li>
+                    <li><a href='https://grails.apache.org/support.html'>Support</a></li>
+                    <li><a href='https://start.grails.org'>Forge App</a></li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</header>
+
+<div class='fullwidth'><article class="guide">
+    <aside>
+        <button type="button" class="btn btn-large" onclick="window.location.href=&quot;https://github.com/grails-guides/grails-data-access&quot;"><img height="15" src="../img/github_white.svg" alt="GitHub"/><span>&nbsp;Get the Code</span></button>
+        <ul class="githublinks">
+            <li><button type="button" class="btn btn-default codeButton" onclick="document.getElementById('github-url').value='git@github.com:grails-guides/grails-data-access.git'">SSH</button></li>
+            <li><button type="button" class="btn btn-default codeButton" onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-data-access.git'">HTTPS</button></li>
+        </ul>
+        <div class="input-group">
+            <input id="github-url" value="git@github.com:grails-guides/grails-data-access.git" type="text"/>
+            <button type="button" class="clippy btn btn-default" data-clipboard-target="#github-url">
+                <img width="13" src="../img/clippy.svg" alt="Copy to clipboard">
+            </button>
+        </div>
+        <script>var clipboard = new Clipboard('.clippy');</script>
+        <button type="button" class="btn btn-large" onclick="window.location.href=&quot;https://github.com/grails-guides/grails-data-access/archive/master.zip&quot;">Download ZIP</button>
+        
+        <div id="table-of-content">
+            <h3>Table of Contents</h3>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#introduction"><strong>1</strong><span>Introduction</span></a></div>
+            
+            <div class="toc-item" style="margin-left:10px"><a href="#requirements"><strong>1.1</strong><span>What you will need</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#gettingStarted"><strong>2</strong><span>Getting Started</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#domainModel"><strong>3</strong><span>Domain model and associations</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#queries"><strong>4</strong><span>Querying with GORM</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#servicesAndControllers"><strong>5</strong><span>Services and REST controllers</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#testing"><strong>6</strong><span>Testing data access</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#runningTheApp"><strong>7</strong><span>Running the application</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#summary"><strong>8</strong><span>Summary</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#helpWithGrails"><strong>9</strong><span>Do you need help with Grails?</span></a></div>
+            
+            <div style="clear:both"></div>
+        </div>
+        
+    </aside>
+    <header>
+        <h1>Data Access with GORM in Grails 8</h1>
+        <p>Model relational data with GORM, run criteria/HQL/where queries, expose REST endpoints, and test with Spock and Testcontainers.</p>
+        <p><strong>Authors:</strong> Sanjana</p>
+        <p><strong>Grails Version:</strong> 8</p>
+    </header>
+    
+
+<h1 id="introduction">1 Introduction</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-data-access/v8/guide/introduction.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Learn how to model relational data with GORM, express associations, run criteria/HQL/<code>where</code> queries, expose REST endpoints, and bulletproof the stack with Spock unit and integration tests.</p>
+</div>
+<div class="paragraph">
+<p>This guide follows the standard Grails guides layout: work in the <code>initial/</code> project and compare your progress with <code>complete/</code>.</p>
+</div>
+
+
+<h2 id="requirements">1.1 What you will need</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-data-access/v8/guide/requirements.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="ulist">
+<ul>
+<li>
+<p>Approximately 45 minutes</p>
+</li>
+<li>
+<p>JDK 21 (Apache Grails 8 requires Java 21)</p>
+</li>
+<li>
+<p>A <a href="https://www.grails.org/">Grails</a> installation or the bundled Gradle wrapper in <code>initial/</code> and <code>complete/</code></p>
+</li>
+<li>
+<p><strong>Docker</strong> — required for integration tests (Testcontainers PostgreSQL)</p>
+</li>
+<li>
+<p><strong>PostgreSQL</strong> on <code>localhost:5432</code> — required for <code>./gradlew bootRun</code> in <code>complete/</code> (default database <code>devDb</code>; see <code>grails-app/conf/application.yml</code>)</p>
+</li>
+</ul>
+</div>
+
+
+<h1 id="gettingStarted">2 Getting Started</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-data-access/v8/guide/gettingStarted.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Clone the repository and run the starting application:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">git clone -b grails8 https://github.com/grails-guides/grails-data-access.git
+cd grails-data-access/initial
+./gradlew bootRun</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Open <a href="http://localhost:8080/">http://localhost:8080/</a> for the welcome JSON payload.</p>
+</div>
+<div class="paragraph">
+<p>To skip ahead, <code>cd complete</code> and run the same commands — that tree contains the finished domain model, services, and tests.</p>
+</div>
+<div class="sect1">
+<h2 id="cloneAndRun">Verify tests</h2>
+<div class="sectionbody">
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">./gradlew test</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Both <code>initial</code> and <code>complete</code> must pass in CI (see <code>.github/workflows/grails8.yml</code>).</p>
+</div>
+</div>
+</div>
+
+
+<h1 id="domainModel">3 Domain model and associations</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-data-access/v8/guide/domainModel.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>We model a small catalog: authors write books, and books carry many tags (many-to-many).</p>
+</div>
+<div class="sect1">
+<h2 id="author">Author</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Create <code>grails-app/domain/example/Author.groovy</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/domain/example/Author.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.persistence.Entity</span>
+
+<span class="annotation">@Entity</span>
+<span class="type">class</span> <span class="class">Author</span> {
+
+    <span class="predefined-type">String</span> name
+    <span class="predefined-type">String</span> email
+
+    <span class="directive">static</span> hasMany = [<span class="key">books</span>: <span class="predefined-type">Book</span>]
+
+    <span class="directive">static</span> constraints = {
+        name <span class="key">blank</span>: <span class="predefined-constant">false</span>, <span class="key">maxSize</span>: <span class="integer">100</span>
+        email <span class="key">email</span>: <span class="predefined-constant">true</span>, <span class="key">unique</span>: <span class="predefined-constant">true</span>, <span class="key">nullable</span>: <span class="predefined-constant">true</span>, <span class="key">maxSize</span>: <span class="integer">255</span>
+    }
+
+    <span class="predefined-type">String</span> toString() {
+        name
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="book">Book and Tag</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><code>Book</code> belongs to <code>Author</code> and links to many <code>Tag</code> instances through a join table:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/domain/example/Book.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.persistence.Entity</span>
+
+<span class="keyword">import</span> <span class="include">java.time.LocalDate</span>
+
+<span class="annotation">@Entity</span>
+<span class="type">class</span> <span class="class">Book</span> {
+
+    <span class="predefined-type">String</span> title
+    <span class="predefined-type">String</span> isbn
+    <span class="predefined-type">BigDecimal</span> price
+    LocalDate publishedOn
+    Author author
+
+    <span class="directive">static</span> belongsTo = [<span class="key">author</span>: Author]
+
+    <span class="directive">static</span> hasMany = [<span class="key">tags</span>: Tag]
+
+    <span class="directive">static</span> mapping = {
+        tags <span class="key">joinTable</span>: [<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">book_tag</span><span class="delimiter">'</span></span>, <span class="key">key</span>: <span class="string"><span class="delimiter">'</span><span class="content">book_id</span><span class="delimiter">'</span></span>, <span class="key">column</span>: <span class="string"><span class="delimiter">'</span><span class="content">tag_id</span><span class="delimiter">'</span></span>]
+    }
+
+    <span class="directive">static</span> constraints = {
+        title <span class="key">blank</span>: <span class="predefined-constant">false</span>, <span class="key">maxSize</span>: <span class="integer">255</span>
+        isbn <span class="key">nullable</span>: <span class="predefined-constant">true</span>, <span class="key">maxSize</span>: <span class="integer">20</span>
+        price <span class="key">nullable</span>: <span class="predefined-constant">false</span>, <span class="key">min</span>: <span class="float">0.01</span>G, <span class="key">scale</span>: <span class="integer">2</span>
+        publishedOn <span class="key">nullable</span>: <span class="predefined-constant">true</span>
+        author <span class="key">nullable</span>: <span class="predefined-constant">false</span>
+    }
+
+    <span class="predefined-type">String</span> toString() {
+        title
+    }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/domain/example/Tag.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.persistence.Entity</span>
+
+<span class="annotation">@Entity</span>
+<span class="type">class</span> <span class="class">Tag</span> {
+
+    <span class="predefined-type">String</span> name
+
+    <span class="directive">static</span> hasMany = [<span class="key">books</span>: <span class="predefined-type">Book</span>]
+
+    <span class="directive">static</span> constraints = {
+        name <span class="key">blank</span>: <span class="predefined-constant">false</span>, <span class="key">unique</span>: <span class="predefined-constant">true</span>, <span class="key">maxSize</span>: <span class="integer">50</span>
+    }
+
+    <span class="predefined-type">String</span> toString() {
+        name
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Seed data in <code>BootStrap</code> (development only) demonstrates cascading associations:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/init/example/BootStrap.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">java.time.LocalDate</span>
+
+<span class="type">class</span> <span class="class">BootStrap</span> {
+
+    <span class="keyword">def</span> init = { servletContext -&gt;
+        environments {
+            development {
+                Author.withTransaction {
+                    <span class="keyword">if</span> (Author.count() == <span class="integer">0</span>) {
+                        <span class="keyword">def</span> tags = [<span class="string"><span class="delimiter">'</span><span class="content">gorm</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">grails</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">data-access</span><span class="delimiter">'</span></span>].collect { <span class="keyword">new</span> Tag(<span class="key">name</span>: <span class="local-variable">it</span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>) }
+
+                        <span class="keyword">def</span> author = <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Ada Lovelace</span><span class="delimiter">'</span></span>, <span class="key">email</span>: <span class="string"><span class="delimiter">'</span><span class="content">ada@example.com</span><span class="delimiter">'</span></span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+
+                        <span class="keyword">def</span> book = <span class="keyword">new</span> <span class="predefined-type">Book</span>(
+                            <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Computing and Composition</span><span class="delimiter">'</span></span>,
+                            <span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">978-0000000001</span><span class="delimiter">'</span></span>,
+                            <span class="key">price</span>: <span class="float">24.99</span>,
+                            <span class="key">publishedOn</span>: LocalDate.of(<span class="integer">1843</span>, <span class="integer">10</span>, <span class="integer">1</span>),
+                            <span class="key">author</span>: author
+                        ).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+
+                        tags.each { book.addToTags(<span class="local-variable">it</span>) }
+                        book.save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>, <span class="key">flush</span>: <span class="predefined-constant">true</span>)
+                    }
+                }
+            }
+        }
+    }
+
+    <span class="keyword">def</span> destroy = {
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+
+
+<h1 id="queries">4 Querying with GORM</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-data-access/v8/guide/queries.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Encapsulate query logic in services so controllers stay thin.</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/services/example/BookService.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">java.time.LocalDate</span>
+
+<span class="annotation">@Transactional</span>
+<span class="type">class</span> <span class="class">BookService</span> {
+
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; listByAuthor(Author author, <span class="predefined-type">Integer</span> max = <span class="integer">20</span>) {
+        <span class="predefined-type">Book</span>.createCriteria().list(<span class="key">max</span>: max) {
+            eq <span class="string"><span class="delimiter">'</span><span class="content">author</span><span class="delimiter">'</span></span>, author
+            order <span class="string"><span class="delimiter">'</span><span class="content">title</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">asc</span><span class="delimiter">'</span></span>
+        } <span class="keyword">as</span> <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt;
+    }
+
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; findPublishedSince(LocalDate since) {
+        <span class="keyword">if</span> (!since) {
+            <span class="keyword">return</span> <span class="type">[]</span>
+        }
+        <span class="predefined-type">Book</span>.where {
+            publishedOn &gt;= since
+        }.list(<span class="key">sort</span>: <span class="string"><span class="delimiter">'</span><span class="content">publishedOn</span><span class="delimiter">'</span></span>, <span class="key">order</span>: <span class="string"><span class="delimiter">'</span><span class="content">desc</span><span class="delimiter">'</span></span>)
+    }
+
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; searchByTitle(<span class="predefined-type">String</span> term) {
+        <span class="keyword">if</span> (!term?.trim()) {
+            <span class="keyword">return</span> <span class="type">[]</span>
+        }
+        <span class="predefined-type">String</span> pattern = <span class="string"><span class="delimiter">&quot;</span><span class="content">%</span><span class="inline"><span class="inline-delimiter">${</span>term.trim()<span class="inline-delimiter">}</span></span><span class="content">%</span><span class="delimiter">&quot;</span></span>
+        <span class="predefined-type">Book</span>.createCriteria().list {
+            ilike <span class="string"><span class="delimiter">'</span><span class="content">title</span><span class="delimiter">'</span></span>, pattern
+            order <span class="string"><span class="delimiter">'</span><span class="content">title</span><span class="delimiter">'</span></span>
+        } <span class="keyword">as</span> <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt;
+    }
+
+    <span class="predefined-type">Book</span> saveBook(<span class="predefined-type">Book</span> book) {
+        book.save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>, <span class="key">flush</span>: <span class="predefined-constant">true</span>)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Additional read-only queries live in <code>BookQueryService</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/services/example/BookQueryService.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.ReadOnly</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+
+<span class="annotation">@Transactional</span>
+<span class="type">class</span> <span class="class">BookQueryService</span> {
+
+    <span class="comment">/**
+     * Criteria-style query: books for an author by name (case-insensitive contains).
+     */</span>
+    <span class="annotation">@ReadOnly</span>
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; findBooksByAuthorName(<span class="predefined-type">String</span> authorName) {
+        <span class="keyword">if</span> (!authorName?.trim()) {
+            <span class="keyword">return</span> <span class="type">[]</span>
+        }
+        <span class="predefined-type">String</span> pattern = <span class="string"><span class="delimiter">&quot;</span><span class="content">%</span><span class="inline"><span class="inline-delimiter">${</span>authorName.trim()<span class="inline-delimiter">}</span></span><span class="content">%</span><span class="delimiter">&quot;</span></span>
+        <span class="predefined-type">Book</span>.createCriteria().list {
+            author {
+                ilike(<span class="string"><span class="delimiter">'</span><span class="content">name</span><span class="delimiter">'</span></span>, pattern)
+            }
+            order(<span class="string"><span class="delimiter">'</span><span class="content">title</span><span class="delimiter">'</span></span>)
+        } <span class="keyword">as</span> <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt;
+    }
+
+    <span class="comment">/**
+     * HQL aggregate: how many books an author has published.
+     */</span>
+    <span class="annotation">@ReadOnly</span>
+    <span class="type">long</span> countBooksForAuthor(<span class="predefined-type">Long</span> authorId) {
+        <span class="keyword">if</span> (!authorId) {
+            <span class="keyword">return</span> <span class="integer">0L</span>
+        }
+        (<span class="predefined-type">Book</span>.executeQuery(
+            <span class="string"><span class="delimiter">'</span><span class="content">select count(b) from Book b where b.author.id = :authorId</span><span class="delimiter">'</span></span>,
+            [<span class="key">authorId</span>: authorId]
+        )[<span class="integer">0</span>] <span class="keyword">as</span> <span class="predefined-type">Long</span>) ?: <span class="integer">0L</span>
+    }
+
+    <span class="comment">/**
+     * Criteria-style query: books at or above a minimum price.
+     */</span>
+    <span class="annotation">@ReadOnly</span>
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; findBooksWithMinPrice(<span class="predefined-type">BigDecimal</span> minimumPrice) {
+        <span class="predefined-type">BigDecimal</span> min = minimumPrice ?: <span class="predefined-type">BigDecimal</span>.ZERO
+        <span class="predefined-type">Book</span>.where {
+            price &gt;= min
+        }.list(<span class="key">sort</span>: <span class="string"><span class="delimiter">'</span><span class="content">price</span><span class="delimiter">'</span></span>, <span class="key">order</span>: <span class="string"><span class="delimiter">'</span><span class="content">desc</span><span class="delimiter">'</span></span>)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="sect1">
+<h2 id="criteria">Criteria</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><code>listByAuthor</code> uses the criteria DSL to filter and order results.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="hql">HQL</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><code>BookQueryService.countBooksForAuthor</code> runs an HQL aggregate with a named parameter:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="predefined-type">Long</span> count = <span class="predefined-type">Book</span>.executeQuery(
+    <span class="string"><span class="delimiter">'</span><span class="content">select count(b) from Book b where b.author.id = :authorId</span><span class="delimiter">'</span></span>,
+    [<span class="key">authorId</span>: authorId]
+)[<span class="integer">0</span>] <span class="keyword">as</span> <span class="predefined-type">Long</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Criteria and <code>where</code> queries cover the other examples in this guide.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="whereQueries">Where queries</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><code>findPublishedSince</code> uses type-safe <code>where</code> queries for date filters. <code>searchByTitle</code> uses criteria <code>ilike</code> for case-insensitive title search (consistent with <code>findBooksByAuthorName</code>).</p>
+</div>
+</div>
+</div>
+
+
+<h1 id="servicesAndControllers">5 Services and REST controllers</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-data-access/v8/guide/servicesAndControllers.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>REST resources are mapped under <code>/api</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/controllers/example/UrlMappings.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="type">class</span> <span class="class">UrlMappings</span> {
+
+    <span class="directive">static</span> mappings = {
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/</span><span class="inline"><span class="inline-delimiter">$</span>controller</span><span class="content">/</span><span class="inline"><span class="inline-delimiter">$</span>action</span><span class="content">?/</span><span class="inline"><span class="inline-delimiter">$</span>id</span><span class="content">?(.</span><span class="inline"><span class="inline-delimiter">$</span>format</span><span class="content">)?</span><span class="delimiter">&quot;</span></span>{
+            constraints {
+                <span class="comment">// apply constraints here</span>
+            }
+        }
+
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/api/books/byAuthor/</span><span class="inline"><span class="inline-delimiter">$</span>authorId</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">byAuthor</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/api/books/search</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">search</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/api/books</span><span class="delimiter">&quot;</span></span>(<span class="key">resources</span>: <span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/api/authors</span><span class="delimiter">&quot;</span></span>(<span class="key">resources</span>: <span class="string"><span class="delimiter">'</span><span class="content">author</span><span class="delimiter">'</span></span>)
+
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">application</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">index</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">500</span><span class="delimiter">&quot;</span></span>(<span class="key">view</span>: <span class="string"><span class="delimiter">'</span><span class="content">/error</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">404</span><span class="delimiter">&quot;</span></span>(<span class="key">view</span>: <span class="string"><span class="delimiter">'</span><span class="content">/notFound</span><span class="delimiter">'</span></span>)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>BookController</code> delegates persistence and queries to <code>BookService</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/controllers/example/BookController.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.converters.JSON</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+
+<span class="type">class</span> <span class="class">BookController</span> {
+
+    <span class="directive">static</span> responseFormats = [<span class="string"><span class="delimiter">'</span><span class="content">json</span><span class="delimiter">'</span></span>]
+    <span class="directive">static</span> allowedMethods = [<span class="key">index</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>, <span class="key">show</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>, <span class="key">save</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>, <span class="key">update</span>: <span class="string"><span class="delimiter">'</span><span class="content">PUT</span><span class="delimiter">'</span></span>, <span class="key">delete</span>: <span class="string"><span class="delimiter">'</span><span class="content">DELETE</span><span class="delimiter">'</span></span>]
+
+    BookService bookService
+
+    <span class="keyword">def</span> <span class="function">index</span>(<span class="predefined-type">Integer</span> max) {
+        params.max = <span class="predefined-type">Math</span>.min(max ?: <span class="integer">10</span>, <span class="integer">100</span>)
+        respond <span class="predefined-type">Book</span>.list(params), <span class="key">model</span>: [<span class="key">bookCount</span>: <span class="predefined-type">Book</span>.count()]
+    }
+
+    <span class="keyword">def</span> <span class="function">show</span>(<span class="predefined-type">Long</span> id) {
+        respond <span class="predefined-type">Book</span>.get(id)
+    }
+
+    <span class="annotation">@Transactional</span>
+    <span class="keyword">def</span> <span class="function">save</span>() {
+        <span class="keyword">def</span> book = <span class="keyword">new</span> <span class="predefined-type">Book</span>(request.JSON <span class="keyword">as</span> <span class="predefined-type">Map</span>)
+        <span class="keyword">if</span> (!book.validate()) {
+            respond book.errors, <span class="key">status</span>: <span class="integer">422</span>
+            <span class="keyword">return</span>
+        }
+        bookService.saveBook(book)
+        respond book, <span class="key">status</span>: <span class="integer">201</span>
+    }
+
+    <span class="annotation">@Transactional</span>
+    <span class="keyword">def</span> <span class="function">update</span>(<span class="predefined-type">Long</span> id) {
+        <span class="keyword">def</span> book = <span class="predefined-type">Book</span>.get(id)
+        <span class="keyword">if</span> (!book) {
+            render <span class="key">status</span>: <span class="integer">404</span>
+            <span class="keyword">return</span>
+        }
+        book.properties = request.JSON
+        <span class="keyword">if</span> (!book.validate()) {
+            respond book.errors, <span class="key">status</span>: <span class="integer">422</span>
+            <span class="keyword">return</span>
+        }
+        bookService.saveBook(book)
+        respond book
+    }
+
+    <span class="annotation">@Transactional</span>
+    <span class="keyword">def</span> <span class="function">delete</span>(<span class="predefined-type">Long</span> id) {
+        <span class="keyword">def</span> book = <span class="predefined-type">Book</span>.get(id)
+        <span class="keyword">if</span> (!book) {
+            render <span class="key">status</span>: <span class="integer">404</span>
+            <span class="keyword">return</span>
+        }
+        book.delete(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        render <span class="key">status</span>: <span class="integer">204</span>
+    }
+
+    <span class="keyword">def</span> <span class="function">byAuthor</span>(<span class="predefined-type">Long</span> authorId) {
+        <span class="keyword">def</span> author = Author.get(authorId)
+        <span class="keyword">if</span> (!author) {
+            render <span class="key">status</span>: <span class="integer">404</span>
+            <span class="keyword">return</span>
+        }
+        respond bookService.listByAuthor(author)
+    }
+
+    <span class="keyword">def</span> <span class="function">search</span>(<span class="predefined-type">String</span> q) {
+        respond bookService.searchByTitle(q)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Call <code>validate()</code> after binding request JSON and before <code>save</code>. That returns structured <code>422</code> responses for constraint violations; relying on <code>hasErrors()</code> alone only catches binding errors, and <code>save(failOnError: true)</code> would otherwise surface <code>ValidationException</code> as <code>500</code>.</p>
+</div>
+<div class="paragraph">
+<p>JSON responses are rendered with GSON views (for example <code>_book.gson</code>).</p>
+</div>
+
+
+<h1 id="testing">6 Testing data access</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-data-access/v8/guide/testing.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="sect1">
+<h2 id="unitTests">Unit tests</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Domain constraints and associations:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/test/groovy/example/BookSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.testing.gorm.DataTest</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="keyword">import</span> <span class="include">java.time.LocalDate</span>
+
+<span class="type">class</span> <span class="class">BookSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> DataTest {
+
+    <span class="predefined-type">Class</span>&lt;?&gt;<span class="type">[]</span> getDomainClassesToMock() {
+        [Author, <span class="predefined-type">Book</span>, Tag] <span class="keyword">as</span> <span class="predefined-type">Class</span><span class="type">[]</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">book requires an author</span><span class="delimiter">'</span></span>() {
+        <span class="keyword">def</span> book = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Untitled</span><span class="delimiter">'</span></span>)
+
+        <span class="key">when</span>:
+        <span class="type">boolean</span> valid = book.validate()
+
+        <span class="key">then</span>:
+        !valid
+        book.errors[<span class="string"><span class="delimiter">'</span><span class="content">author</span><span class="delimiter">'</span></span>]
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">many-to-many tags can be associated</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        <span class="keyword">def</span> author = <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Test Author</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">def</span> tag = <span class="keyword">new</span> Tag(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">gorm</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">def</span> book = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">GORM in Action</span><span class="delimiter">'</span></span>, <span class="key">price</span>: <span class="float">39.99</span>, <span class="key">author</span>: author, <span class="key">publishedOn</span>: LocalDate.now()).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">when</span>:
+        book.addToTags(tag)
+        book.save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">then</span>:
+        <span class="predefined-type">Book</span>.get(book.id).tags*.name == [<span class="string"><span class="delimiter">'</span><span class="content">gorm</span><span class="delimiter">'</span></span>]
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Service-level criteria, HQL, and <code>where</code> queries with <code>DataTest</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/test/groovy/example/BookServiceSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.testing.gorm.DataTest</span>
+<span class="keyword">import</span> <span class="include">grails.testing.services.ServiceUnitTest</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="keyword">import</span> <span class="include">java.time.LocalDate</span>
+
+<span class="type">class</span> <span class="class">BookServiceSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> ServiceUnitTest&lt;BookService&gt;, DataTest {
+
+    <span class="predefined-type">Class</span>&lt;?&gt;<span class="type">[]</span> getDomainClassesToMock() {
+        [Author, <span class="predefined-type">Book</span>, Tag] <span class="keyword">as</span> <span class="predefined-type">Class</span><span class="type">[]</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">listByAuthor uses criteria</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        <span class="keyword">def</span> ada = <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Ada</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">def</span> other = <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Other</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">A</span><span class="delimiter">'</span></span>, <span class="key">price</span>: <span class="float">10.00</span>, <span class="key">author</span>: ada).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">B</span><span class="delimiter">'</span></span>, <span class="key">price</span>: <span class="float">12.00</span>, <span class="key">author</span>: other).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">expect</span>:
+        service.listByAuthor(ada)*.title == [<span class="string"><span class="delimiter">'</span><span class="content">A</span><span class="delimiter">'</span></span>]
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">findPublishedSince uses where query</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        <span class="keyword">def</span> author = <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Ada</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Old</span><span class="delimiter">'</span></span>, <span class="key">price</span>: <span class="float">9.99</span>, <span class="key">author</span>: author, <span class="key">publishedOn</span>: LocalDate.of(<span class="integer">2000</span>, <span class="integer">1</span>, <span class="integer">1</span>)).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">New</span><span class="delimiter">'</span></span>, <span class="key">price</span>: <span class="float">19.99</span>, <span class="key">author</span>: author, <span class="key">publishedOn</span>: LocalDate.of(<span class="integer">2024</span>, <span class="integer">6</span>, <span class="integer">1</span>)).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">expect</span>:
+        service.findPublishedSince(LocalDate.of(<span class="integer">2020</span>, <span class="integer">1</span>, <span class="integer">1</span>))*.title == [<span class="string"><span class="delimiter">'</span><span class="content">New</span><span class="delimiter">'</span></span>]
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">searchByTitle uses where query</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        <span class="keyword">def</span> author = <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Ada</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Grails Data Access</span><span class="delimiter">'</span></span>, <span class="key">price</span>: <span class="float">29.99</span>, <span class="key">author</span>: author).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Other Topic</span><span class="delimiter">'</span></span>, <span class="key">price</span>: <span class="float">14.99</span>, <span class="key">author</span>: author).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">expect</span>:
+        service.searchByTitle(<span class="string"><span class="delimiter">'</span><span class="content">data</span><span class="delimiter">'</span></span>)*.title == [<span class="string"><span class="delimiter">'</span><span class="content">Grails Data Access</span><span class="delimiter">'</span></span>]
+    }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">src/test/groovy/example/BookQueryServiceSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.testing.gorm.DataTest</span>
+<span class="keyword">import</span> <span class="include">grails.testing.services.ServiceUnitTest</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="type">class</span> <span class="class">BookQueryServiceSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> ServiceUnitTest&lt;BookQueryService&gt;, DataTest {
+
+    <span class="predefined-type">Class</span><span class="type">[]</span> getDomainClassesToMock() {
+        [Author, <span class="predefined-type">Book</span>, Tag] <span class="keyword">as</span> <span class="predefined-type">Class</span><span class="type">[]</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">findBooksByAuthorName matches case-insensitively</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        Author author = <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Jane Austen</span><span class="delimiter">'</span></span>, <span class="key">email</span>: <span class="string"><span class="delimiter">'</span><span class="content">jane@example.com</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Emma</span><span class="delimiter">'</span></span>, <span class="key">price</span>: <span class="float">11.50</span>, <span class="key">author</span>: author).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Other</span><span class="delimiter">'</span></span>, <span class="key">price</span>: <span class="float">5.00</span>, <span class="key">author</span>: <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Other</span><span class="delimiter">'</span></span>, <span class="key">email</span>: <span class="string"><span class="delimiter">'</span><span class="content">o@example.com</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">when</span>:
+        <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; books = service.findBooksByAuthorName(<span class="string"><span class="delimiter">'</span><span class="content">jane</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>:
+        books*.title == [<span class="string"><span class="delimiter">'</span><span class="content">Emma</span><span class="delimiter">'</span></span>]
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">findBooksWithMinPrice filters and sorts by price descending</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        Author author = <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">A</span><span class="delimiter">'</span></span>, <span class="key">email</span>: <span class="string"><span class="delimiter">'</span><span class="content">a@example.com</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Low</span><span class="delimiter">'</span></span>, <span class="key">price</span>: <span class="float">5.00</span>, <span class="key">author</span>: author).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">High</span><span class="delimiter">'</span></span>, <span class="key">price</span>: <span class="float">25.00</span>, <span class="key">author</span>: author).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">when</span>:
+        <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; books = service.findBooksWithMinPrice(<span class="float">10.00</span>)
+
+        <span class="key">then</span>:
+        books*.title == [<span class="string"><span class="delimiter">'</span><span class="content">High</span><span class="delimiter">'</span></span>]
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>HQL (<code>countBooksForAuthor</code>) is exercised in the integration spec below because <code>executeQuery</code> requires a Hibernate session.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="integrationTests">Integration tests</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Integration specs boot the full application context and hit the database:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/integration-test/groovy/example/BookDataAccessIntegrationSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="keyword">import</span> <span class="include">java.time.LocalDate</span>
+
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">BookDataAccessIntegrationSpec</span> <span class="directive">extends</span> Specification {
+
+    BookService bookService
+    BookQueryService bookQueryService
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">criteria, HQL, and where queries run against a real database</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">given</span>:
+        Author author = Author.withTransaction {
+            <span class="keyword">def</span> existingAuthor = <span class="keyword">new</span> Author(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Integration Author</span><span class="delimiter">'</span></span>, <span class="key">email</span>: <span class="string"><span class="delimiter">'</span><span class="content">integration@example.com</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+            <span class="keyword">new</span> <span class="predefined-type">Book</span>(
+                <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Persistence Patterns</span><span class="delimiter">'</span></span>,
+                <span class="key">price</span>: <span class="float">29.99</span>,
+                <span class="key">author</span>: existingAuthor,
+                <span class="key">publishedOn</span>: LocalDate.of(<span class="integer">2019</span>, <span class="integer">1</span>, <span class="integer">1</span>)
+            ).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+            <span class="keyword">new</span> <span class="predefined-type">Book</span>(
+                <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">GORM Deep Dive</span><span class="delimiter">'</span></span>,
+                <span class="key">price</span>: <span class="float">34.50</span>,
+                <span class="key">author</span>: existingAuthor,
+                <span class="key">publishedOn</span>: LocalDate.of(<span class="integer">2024</span>, <span class="integer">6</span>, <span class="integer">1</span>)
+            ).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+            <span class="keyword">new</span> <span class="predefined-type">Book</span>(
+                <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Grails Data Access</span><span class="delimiter">'</span></span>,
+                <span class="key">price</span>: <span class="float">19.99</span>,
+                <span class="key">author</span>: existingAuthor,
+                <span class="key">publishedOn</span>: LocalDate.of(<span class="integer">2024</span>, <span class="integer">1</span>, <span class="integer">1</span>)
+            ).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+            existingAuthor
+        }
+
+        <span class="key">expect</span>:
+        bookQueryService.findBooksByAuthorName(<span class="string"><span class="delimiter">'</span><span class="content">integration</span><span class="delimiter">'</span></span>).size() == <span class="integer">3</span>
+        bookQueryService.countBooksForAuthor(author.id) == <span class="integer">3L</span>
+        bookQueryService.findBooksWithMinPrice(<span class="float">30.00</span>)*.title == [<span class="string"><span class="delimiter">'</span><span class="content">GORM Deep Dive</span><span class="delimiter">'</span></span>]
+        bookService.listByAuthor(author)*.title.sort() == [<span class="string"><span class="delimiter">'</span><span class="content">GORM Deep Dive</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Grails Data Access</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Persistence Patterns</span><span class="delimiter">'</span></span>]
+        bookService.findPublishedSince(LocalDate.of(<span class="integer">2020</span>, <span class="integer">1</span>, <span class="integer">1</span>))*.title == [<span class="string"><span class="delimiter">'</span><span class="content">GORM Deep Dive</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Grails Data Access</span><span class="delimiter">'</span></span>]
+        bookService.searchByTitle(<span class="string"><span class="delimiter">'</span><span class="content">data</span><span class="delimiter">'</span></span>)*.title == [<span class="string"><span class="delimiter">'</span><span class="content">Grails Data Access</span><span class="delimiter">'</span></span>]
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Run unit tests:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">cd complete
+./gradlew test</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Run integration tests (requires Docker):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">./gradlew integrationTest</code></pre>
+</div>
+</div>
+</div>
+</div>
+
+
+<h1 id="runningTheApp">7 Running the application</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-data-access/v8/guide/runningTheApp.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">cd complete
+./gradlew bootRun</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Example requests:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>GET /api/authors</code></p>
+</li>
+<li>
+<p><code>GET /api/books</code></p>
+</li>
+<li>
+<p><code>GET /api/books/search?q=data</code></p>
+</li>
+<li>
+<p><code>GET /api/books/byAuthor/1</code></p>
+</li>
+</ul>
+</div>
+
+
+<h1 id="summary">8 Summary</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-data-access/v8/guide/summary.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>You created a REST API backed by GORM with:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>belongsTo</code>, <code>hasMany</code>, and many-to-many associations</p>
+</li>
+<li>
+<p>Criteria, HQL, and <code>where</code> queries in a service layer</p>
+</li>
+<li>
+<p>Spock unit and integration tests</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Next steps: enable the database-migration plugin, add validation groups, or extend the API with pagination and filtering.</p>
+</div>
+
+
+<h1 id="helpWithGrails">9 Do you need help with Grails?</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-data-access/v8/guide/helpWithGrails.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="sect1">
+<h2 id="_help_with_apache_grails">Help with Apache Grails</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Apache Grails is supported by an active community of contributors and the Apache Software Foundation. If you need help working through a guide, want to discuss the framework, or have run into something that looks like a bug, the channels below are the right place to start.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="https://slack.grails.org">Slack</a> - real-time conversation with the Apache Grails community.</p>
+</li>
+<li>
+<p><a href="https://lists.apache.org/list.html?dev@grails.apache.org">Developer mailing list</a> - design discussions and contributor coordination.</p>
+</li>
+<li>
+<p><a href="https://lists.apache.org/list.html?users@grails.apache.org">Users mailing list</a> - end-user questions and answers.</p>
+</li>
+<li>
+<p><a href="https://github.com/apache/grails-core/issues">Issue tracker on GitHub</a> - file a bug or feature request against the framework.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>For Grails plugins, see the matching project on <a href="https://github.com/apache?q=grails">the apache org</a> or the plugin&#8217;s own GitHub repository.</p>
+</div>
+</div>
+</div>
+
+</article></div>
+<footer>
+    <div class='content'>
+        <div class='apache-grails'>
+            <p>Apache Grails is supported by the Apache Software Foundation and the Grails community.</p>
+            <a href='https://apache.org'><img src='https://www.apache.org/img/asf_logo.png' width='200px' alt='Apache Software Foundation'/></a>
+            <p>Apache, Apache Grails, Grails, Groovy, and the ASF logo are either registered trademarks or trademarks of The Apache Software Foundation.</p>
+        </div>
+        <nav class='social-media-nav'>
+            <ul>
+                <li><a href='mailto:dev@grails.apache.org'><img src='https://grails.apache.org/images/email.svg' alt='Email Icon'/></a></li>
+                <li><a href='https://slack.grails.org'><img src='https://grails.apache.org/images/slack.svg' alt='Slack Icon'/></a></li>
+                <li><a href='https://www.youtube.com/@GrailsFramework'><img src='https://grails.apache.org/images/youtube.svg' alt='Youtube Icon'/></a></li>
+                <li><a href='https://bsky.app/profile/grails.apache.org'><img src='https://grails.apache.org/images/bsky.svg' alt='Bluesky Icon'/></a></li>
+                <li><a rel="me" href="https://fosstodon.org/@grails"><img src='https://grails.apache.org/images/mastodont.svg' alt='Mastodon Icon'/></a></li>
+                <li><a href='https://www.linkedin.com/showcase/official-grails/'><img src='https://grails.apache.org/images/linkedin.svg' alt='LinkedIn Icon'/></a></li>
+                <li><a href='https://github.com/apache/grails-core'><img src='https://grails.apache.org/images/github.svg' alt='GitHub Icon'/></a></li>
+                <li><a href='https://twitter.com/grailsframework'><img src='https://grails.apache.org/images/x-twitter.svg' alt='Twitter Icon'/></a></li>
+            </ul>
+        </nav>
+    </div>
+    <div class='footer-bottom'>
+        <p>&copy; 2005-2026 the Apache Grails project</p>
+        <p>Grails is Open Source:
+            <a href='https://www.apache.org/licenses/'>License</a>,
+            <a href='https://privacy.apache.org/policies/privacy-policy-public.html'>Privacy Policy</a>,
+            <a href='https://www.apache.org/foundation/sponsorship'>Sponsor Apache</a>,
+            <a href='https://www.apache.org/events/current-event'>Events</a>,
+            <a href='https://www.apache.org/security'>Security</a>,
+            <a href='https://www.apache.org/foundation/thanks.html'>Thanks</a>,
+            <a href='https://grails.apache.org/support-schedule.html'>Support Schedule</a>
+        </p>
+    </div>
+</footer>
+
+</body>
+</html>
