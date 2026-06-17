@@ -3691,6 +3691,56 @@ Previously, rendering an enum value would produce a JSON string with the type an
 See <a href="https://github.com/apache/grails-core/pull/15212">PR 15212</a> for more details on this change.</p>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_26_gorm_properties_are_nullable_by_default">26. GORM Properties Are Nullable by Default</h4>
+<div class="paragraph">
+<p>Grails 8 changes the validation default so that an <strong>unconstrained persistent (domain) property is nullable by default</strong> rather than required.
+This aligns Grails with the rest of the JVM persistence/validation ecosystem (JPA/Hibernate, Spring Data, Micronaut Data and Jakarta Bean Validation), all of which treat an unconstrained property as valid when <code>null</code>.</p>
+</div>
+<div class="paragraph">
+<p>Previously every domain property without an explicit constraint had an implicit <code>nullable: false</code> applied, so <code>save()</code> failed validation when the property was <code>null</code>.
+From Grails 8 such a property is optional unless you declare otherwise:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">Book</span> {
+    <span class="predefined-type">String</span> title    <span class="comment">// Grails 7: required, Grails 8: nullable</span>
+
+    <span class="directive">static</span> constraints = {
+        title <span class="key">nullable</span>: <span class="predefined-constant">false</span>   <span class="comment">// declare explicitly to keep it required</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This is a <strong>validation-layer</strong> change only.
+Column/DDL nullability is governed separately by the mapping layer and is unaffected.
+Command objects are also unaffected: <code>Validateable</code> command-object fields remain required by default.</p>
+</div>
+<div class="paragraph">
+<p>To restore the legacy required-by-default behaviour for an entire application, set the new <code>grails.gorm.default.nullable</code> property to <code>false</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">gorm</span>:
+        <span class="key">default</span>:
+            <span class="key">nullable</span>: <span class="string"><span class="content">false</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The existing <code>grails.gorm.default.constraints</code> wildcard form also works:</p>
+</div>
+<div class="listingblock">
+<div class="title">application.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails.gorm.default.constraints = {
+    <span class="string"><span class="delimiter">'</span><span class="content">*</span><span class="delimiter">'</span></span>(<span class="key">nullable</span>: <span class="predefined-constant">false</span>)
+}</code></pre>
+</div>
+</div>
+</div>
 </div>
 
 
@@ -16970,6 +17020,26 @@ The <code>string</code> method returns the first element when the underlying att
 </table>
 </div>
 </div>
+<div class="sect2">
+<h3 id="_typed_reads_of_attributes">Typed Reads of Attributes</h3>
+<div class="paragraph">
+<p>Attributes often hold richer objects than the scalar types covered by the named converters — a security principal, a domain instance, a token. For these, <code>session</code>, <code>request</code> and <code>servletContext</code> offer a <code>Class</code>-typed overload of <code>getAttribute</code> that returns the attribute typed as requested, so no cast is needed under static compilation:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">// returns the attribute typed as CsrfToken, or null when absent</span>
+CsrfToken token = session.getAttribute(<span class="string"><span class="delimiter">'</span><span class="content">_csrf</span><span class="delimiter">'</span></span>, CsrfToken)
+
+<span class="comment">// with a default, returned when the attribute is absent</span>
+Theme theme = session.getAttribute(<span class="string"><span class="delimiter">'</span><span class="content">theme</span><span class="delimiter">'</span></span>, Theme, Theme.DEFAULT)
+
+UserDetails user = request.getAttribute(<span class="string"><span class="delimiter">'</span><span class="content">apiUser</span><span class="delimiter">'</span></span>, UserDetails)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Unlike the named converters, no coercion is attempted: the attribute is returned only when it is an instance of the requested type, and reads as absent otherwise (so the default also applies when the stored value has an unexpected type). Primitive class literals (<code>int</code>, <code>boolean</code>, &#8230;&#8203;) are normalized to their wrapper types. Use the named converters when you want type conversion, and the <code>Class</code>-typed read when you want a type-safe retrieval.</p>
+</div>
+</div>
 
 
 <h2 id="controllerExceptionHandling">8.1.13 Declarative Controller Exception Handling</h2>
@@ -29104,7 +29174,7 @@ class BookController <span class="directive">implements</span> AsyncController {
 <i class="fa icon-note" title="Note"></i>
 </td>
 <td class="content">
-By default, all domain class properties are not nullable (i.e. they have an implicit <code>nullable: false</code> constraint).
+As of Grails 8, domain class properties are <strong>nullable by default</strong>: an unconstrained property is optional unless you declare <code>nullable: false</code> (prior to Grails 8 the default was the opposite — an implicit <code>nullable: false</code> was applied to every property). To restore the legacy required-by-default behaviour application-wide, set <code>grails.gorm.default.nullable = false</code>.
 </td>
 </tr>
 </table>
@@ -40122,12 +40192,6 @@ Configuration of both an HTTP and HTTPS connector via application properties is 
                         
                         
                         <div class="menu-item"><a href="../ref/Versions/Grails%20BOM%20Hibernate5.html">Grails BOM Hibernate5</a>
-                        </div>
-                        
-                        <div class="menu-item"><a href="../ref/Versions/Grails%20BOM%20Hibernate7%20Micronaut.html">Grails BOM Hibernate7 Micronaut</a>
-                        </div>
-                        
-                        <div class="menu-item"><a href="../ref/Versions/Grails%20BOM%20Micronaut.html">Grails BOM Micronaut</a>
                         </div>
                         
                         <div class="menu-item"><a href="../ref/Versions/Grails%20BOM.html">Grails BOM</a>

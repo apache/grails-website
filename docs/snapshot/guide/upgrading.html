@@ -1605,6 +1605,56 @@ Previously, rendering an enum value would produce a JSON string with the type an
 See <a href="https://github.com/apache/grails-core/pull/15212">PR 15212</a> for more details on this change.</p>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_26_gorm_properties_are_nullable_by_default">26. GORM Properties Are Nullable by Default</h4>
+<div class="paragraph">
+<p>Grails 8 changes the validation default so that an <strong>unconstrained persistent (domain) property is nullable by default</strong> rather than required.
+This aligns Grails with the rest of the JVM persistence/validation ecosystem (JPA/Hibernate, Spring Data, Micronaut Data and Jakarta Bean Validation), all of which treat an unconstrained property as valid when <code>null</code>.</p>
+</div>
+<div class="paragraph">
+<p>Previously every domain property without an explicit constraint had an implicit <code>nullable: false</code> applied, so <code>save()</code> failed validation when the property was <code>null</code>.
+From Grails 8 such a property is optional unless you declare otherwise:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">Book</span> {
+    <span class="predefined-type">String</span> title    <span class="comment">// Grails 7: required, Grails 8: nullable</span>
+
+    <span class="directive">static</span> constraints = {
+        title <span class="key">nullable</span>: <span class="predefined-constant">false</span>   <span class="comment">// declare explicitly to keep it required</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This is a <strong>validation-layer</strong> change only.
+Column/DDL nullability is governed separately by the mapping layer and is unaffected.
+Command objects are also unaffected: <code>Validateable</code> command-object fields remain required by default.</p>
+</div>
+<div class="paragraph">
+<p>To restore the legacy required-by-default behaviour for an entire application, set the new <code>grails.gorm.default.nullable</code> property to <code>false</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">gorm</span>:
+        <span class="key">default</span>:
+            <span class="key">nullable</span>: <span class="string"><span class="content">false</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The existing <code>grails.gorm.default.constraints</code> wildcard form also works:</p>
+</div>
+<div class="listingblock">
+<div class="title">application.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails.gorm.default.constraints = {
+    <span class="string"><span class="delimiter">'</span><span class="content">*</span><span class="delimiter">'</span></span>(<span class="key">nullable</span>: <span class="predefined-constant">false</span>)
+}</code></pre>
+</div>
+</div>
+</div>
 </div>
 
 
@@ -6607,12 +6657,6 @@ environments {
                         
                             
                             <div class="menu-item"><a href="../ref/Versions/Grails%20BOM%20Hibernate5.html">Grails BOM Hibernate5</a>
-                            </div>
-                            
-                            <div class="menu-item"><a href="../ref/Versions/Grails%20BOM%20Hibernate7%20Micronaut.html">Grails BOM Hibernate7 Micronaut</a>
-                            </div>
-                            
-                            <div class="menu-item"><a href="../ref/Versions/Grails%20BOM%20Micronaut.html">Grails BOM Micronaut</a>
                             </div>
                             
                             <div class="menu-item"><a href="../ref/Versions/Grails%20BOM.html">Grails BOM</a>
