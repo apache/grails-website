@@ -102,18 +102,30 @@ if (location.href.indexOf('is-external=true') == -1) {
             <hr>
 
 <pre>@org.springframework.boot.autoconfigure.AutoConfiguration
+@org.springframework.boot.autoconfigure.AutoConfigureAfter(name = "org.springframework.boot.webmvc.autoconfigure.DispatcherServletAutoConfiguration")
 @org.springframework.boot.autoconfigure.AutoConfigureBefore(name = "org.sitemesh.autoconfigure.SiteMeshViewResolverAutoConfiguration")
 @org.springframework.boot.autoconfigure.condition.ConditionalOnClass(SiteMeshViewResolverBeanPostProcessor.class)
 @org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "sitemesh.integration", havingValue = "view-resolver", matchIfMissing = true)
 public class Sitemesh3AutoConfiguration
 extends java.lang.Object</pre>
 
-    <p> Registers a <a href='../../../../org/grails/plugins/sitemesh3/GrailsSiteMeshViewResolverBeanPostProcessor.html' title='GrailsSiteMeshViewResolverBeanPostProcessor'>GrailsSiteMeshViewResolverBeanPostProcessor</a> ahead of
- the upstream auto-configuration. Upstream's
- <CODE>SiteMeshViewResolverAutoConfiguration</CODE> declares its post-processor
- bean with <CODE>@ConditionalOnMissingBean(SiteMeshViewResolverBeanPostProcessor.class)</CODE>;
- by scheduling this config first (via AutoConfigureBefore), our
- Grails-specific subclass is picked up and the default is suppressed.
+    <p> Registers the Grails SiteMesh 3 integration beans ahead of the upstream
+ auto-configuration: the <a href='../../../../org/grails/plugins/sitemesh3/GrailsSiteMeshViewResolverBeanPostProcessor.html' title='GrailsSiteMeshViewResolverBeanPostProcessor'>GrailsSiteMeshViewResolverBeanPostProcessor</a>,
+ the <a href='../../../../org/grails/plugins/sitemesh3/CaptureAwareContentProcessor.html' title='CaptureAwareContentProcessor'>CaptureAwareContentProcessor</a> (<CODE>contentProcessor</CODE>) and the
+ <a href='../../../../org/grails/plugins/sitemesh3/Sitemesh3LayoutFinder.html' title='Sitemesh3LayoutFinder'>Sitemesh3LayoutFinder</a> (<CODE>decoratorSelector</CODE>).
+
+ <p>Upstream's <CODE>SiteMeshViewResolverAutoConfiguration</CODE> declares each of
+ these with a <CODE>@ConditionalOnMissingBean</CODE> guard. By scheduling this
+ configuration first (via AutoConfigureBefore) the Grails
+ implementations are registered before those guards are evaluated, so the
+ upstream defaults back off cleanly rather than being registered and then
+ overridden after the fact.</p>
+
+ <p>The <CODE>contentProcessor</CODE> and <CODE>decoratorSelector</CODE> beans drive view
+ decoration, which is only meaningful when Spring MVC is resolving views, so
+ they are gated on a DispatcherServlet being present. This keeps them
+ out of the lightweight unit-test contexts built by grails-testing-support,
+ which have no dispatcher servlet.</p>
  </p>
 
           </li>
@@ -156,7 +168,19 @@ extends java.lang.Object</pre>
                         
                         <tr class="altColor">
                             <td class="colFirst"><code></code></td>
-                            <td class="colLast"><code>public&nbsp;<a href='../../../../org/grails/plugins/sitemesh3/GrailsSiteMeshViewResolverBeanPostProcessor.html'>GrailsSiteMeshViewResolverBeanPostProcessor</a></code></td>
+                            <td class="colLast"><code>public&nbsp;<a href='../../../../org/grails/plugins/sitemesh3/CaptureAwareContentProcessor.html'>CaptureAwareContentProcessor</a></code></td>
+                            <td class="colLast"><code><strong><a href="#contentProcessor()">contentProcessor</a></strong>()</code><br></td>
+                        </tr>
+                        
+                        <tr class="rowColor">
+                            <td class="colFirst"><code></code></td>
+                            <td class="colLast"><code>public&nbsp;<a href='../../../../org/grails/plugins/sitemesh3/Sitemesh3LayoutFinder.html'>Sitemesh3LayoutFinder</a></code></td>
+                            <td class="colLast"><code><strong><a href="#decoratorSelector(ObjectProvider, grails.core.GrailsApplication)">decoratorSelector</a></strong>(ObjectProvider&lt;GrailsConventionGroovyPageLocator&gt; groovyPageLocator, <a href='../../../../grails/core/GrailsApplication.html'>GrailsApplication</a> grailsApplication)</code><br></td>
+                        </tr>
+                        
+                        <tr class="altColor">
+                            <td class="colFirst"><code></code></td>
+                            <td class="colLast"><code>public&nbsp;static&nbsp;<a href='../../../../org/grails/plugins/sitemesh3/GrailsSiteMeshViewResolverBeanPostProcessor.html'>GrailsSiteMeshViewResolverBeanPostProcessor</a></code></td>
                             <td class="colLast"><code><strong><a href="#siteMeshViewResolverBeanPostProcessor()">siteMeshViewResolverBeanPostProcessor</a></strong>()</code><br></td>
                         </tr>
                         
@@ -210,10 +234,26 @@ extends java.lang.Object</pre>
                 </a>
                     <h3>Method Detail</h3>
                     
+                        <a name="contentProcessor()"><!-- --></a>
+                        <ul class="blockListLast">
+                            <li class="blockList">
+                                <h4>@org.springframework.context.annotation.Bean<br>@org.springframework.boot.autoconfigure.condition.ConditionalOnBean(DispatcherServlet.class)<br>@org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean(name = "contentProcessor")<br>public&nbsp;<a href='../../../../org/grails/plugins/sitemesh3/CaptureAwareContentProcessor.html'>CaptureAwareContentProcessor</a> <strong>contentProcessor</strong>()</h4>
+                                <p></p>
+                            </li>
+                        </ul>
+                    
+                        <a name="decoratorSelector(ObjectProvider, grails.core.GrailsApplication)"><!-- --></a>
+                        <ul class="blockListLast">
+                            <li class="blockList">
+                                <h4>@org.springframework.context.annotation.Bean<br>@org.springframework.boot.autoconfigure.condition.ConditionalOnBean(DispatcherServlet.class)<br>@org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean(name = "decoratorSelector")<br>public&nbsp;<a href='../../../../org/grails/plugins/sitemesh3/Sitemesh3LayoutFinder.html'>Sitemesh3LayoutFinder</a> <strong>decoratorSelector</strong>(ObjectProvider&lt;GrailsConventionGroovyPageLocator&gt; groovyPageLocator, <a href='../../../../grails/core/GrailsApplication.html'>GrailsApplication</a> grailsApplication)</h4>
+                                <p></p>
+                            </li>
+                        </ul>
+                    
                         <a name="siteMeshViewResolverBeanPostProcessor()"><!-- --></a>
                         <ul class="blockListLast">
                             <li class="blockList">
-                                <h4>@org.springframework.context.annotation.Bean<br>@org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean(SiteMeshViewResolverBeanPostProcessor.class)<br>public&nbsp;<a href='../../../../org/grails/plugins/sitemesh3/GrailsSiteMeshViewResolverBeanPostProcessor.html'>GrailsSiteMeshViewResolverBeanPostProcessor</a> <strong>siteMeshViewResolverBeanPostProcessor</strong>()</h4>
+                                <h4>@org.springframework.context.annotation.Bean<br>@org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean(SiteMeshViewResolverBeanPostProcessor.class)<br>public&nbsp;static&nbsp;<a href='../../../../org/grails/plugins/sitemesh3/GrailsSiteMeshViewResolverBeanPostProcessor.html'>GrailsSiteMeshViewResolverBeanPostProcessor</a> <strong>siteMeshViewResolverBeanPostProcessor</strong>()</h4>
                                 <p></p>
                             </li>
                         </ul>
