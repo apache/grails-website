@@ -448,7 +448,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_safe_parameterization_with_gstring">Safe Parameterization with GString</a></li>
 <li><a href="#_named_parameters">Named Parameters</a></li>
 <li><a href="#_positional_parameters">Positional Parameters</a></li>
-<li><a href="#_pagination_and_sorting">Pagination and Sorting</a></li>
+<li><a href="#_query_settings">Query Settings</a></li>
 <li><a href="#_bulk_updates_and_deletes">Bulk Updates and Deletes</a></li>
 </ul>
 </li>
@@ -501,25 +501,32 @@ List results = Book.findAll(
     "from Book b where b.title like ${title} and b.genre = ${genre}")</code></pre>
 </div>
 </div>
-<div class="admonitionblock warning">
+<div class="admonitionblock note">
 <table>
 <tr>
 <td class="icon">
-<i class="fa icon-warning" title="Warning"></i>
+<i class="fa icon-note" title="Note"></i>
 </td>
 <td class="content">
-The single-argument overloads (<code>find</code>, <code>findAll</code>, <code>executeQuery</code>, <code>executeUpdate</code>) only accept a Groovy <code>GString</code>. Passing a plain <code>String</code> throws <code>UnsupportedOperationException</code> to prevent accidental injection via string concatenation.
+The single-argument overloads accept either a plain <code>String</code> (executed as written, exactly as on Hibernate 5) or a Groovy <code>GString</code>. A <code>GString</code> is never interpolated into the query text — every <code>${value}</code> is extracted and bound as a named parameter — so the idiomatic interpolated form above is injection-safe by binding rather than escaping.
 </td>
 </tr>
 </table>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">// ❌ BLOCKED — throws UnsupportedOperationException at runtime
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">// ✅ SAFE — a static plain String contains no untrusted input
+List results = Book.findAll("from Book where active = true")
+
+// ✅ SAFE — the GString value is bound as :p0, never interpolated into the query
+List results = Book.findAll("from Book where title = ${userInput}")
+
+// ⚠️ UNSAFE — manually concatenating untrusted input into a plain String is an
+// injection risk in any ORM; never build queries this way
 String hql = "from Book where title = '" + userInput + "'"
 Book.findAll(hql)
 
-// ✅ Use the parameterized overload for plain String queries
+// ✅ Instead use the GString form above, or the parameterized overload
 Book.findAll("from Book where title = :title", [title: userInput])</code></pre>
 </div>
 </div>
@@ -554,9 +561,9 @@ List results = Book.executeQuery(
 </div>
 </div>
 <div class="sect2">
-<h3 id="_pagination_and_sorting">Pagination and Sorting</h3>
+<h3 id="_query_settings">Query Settings</h3>
 <div class="paragraph">
-<p>All <code>findAll</code> and <code>executeQuery</code> overloads accept a settings map as the last argument:</p>
+<p><code>find</code>, <code>findAll</code>, and <code>executeQuery</code> overloads accept a settings map as the last argument. Use it for pagination and Hibernate query settings such as <code>cache</code>, <code>readOnly</code>, <code>fetchSize</code>, <code>timeout</code>, <code>flushMode</code>, and <code>lock</code>:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -567,8 +574,16 @@ List results = Book.executeQuery(
 List results = Book.executeQuery(
     "from Book b where b.genre = :genre",
     [genre: 'Tech'],
-    [max: 5, offset: 0, cache: true])</code></pre>
+    [max: 5, offset: 0, cache: true])
+
+List locked = Book.findAll(
+    "from Book b where b.genre = :genre",
+    [genre: 'Tech'],
+    [lock: true])</code></pre>
 </div>
+</div>
+<div class="paragraph">
+<p>When <code>lock: true</code> is used, GORM requests a pessimistic write lock and disables query caching for that query.</p>
 </div>
 </div>
 <div class="sect2">
