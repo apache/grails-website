@@ -951,29 +951,6 @@ abstract class BookService {
 <p>Please note that with autowire by-type as the default, when multiple beans for same type are found the application with throw Exception. Use the Spring `@Qualifier annotation for <a href="https://docs.spring.io/spring-framework/docs/5.3.10/reference/html/core.html#beans-autowired-annotation-qualifiers">Fine-tuning Annotation Based Autowiring with Qualifiers</a>.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="_mongoclient_lifecycle_for_an_externally_supplied_client">MongoClient Lifecycle for an Externally-Supplied Client</h4>
-<div class="paragraph">
-<p>When you construct a <code>MongoDatastore</code> with a <code>MongoClient</code> that you created yourself, GORM no longer closes that client when the datastore shuts down. The client is owned by whoever created it, so closing it is now your responsibility.</p>
-</div>
-<div class="paragraph">
-<p>This only affects you if you previously relied on <code>MongoDatastore.close()</code> to also close a client you passed in:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">MongoClient mongoClient = MongoClients.create(<span class="string"><span class="delimiter">&quot;</span><span class="content">mongodb://localhost/mydb</span><span class="delimiter">&quot;</span></span>)
-MongoDatastore datastore = <span class="keyword">new</span> MongoDatastore(mongoClient, Person)
-
-<span class="comment">// ...</span>
-
-datastore.close()    <span class="comment">// no longer closes mongoClient</span>
-mongoClient.close()  <span class="comment">// close the client you created</span></code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>No change is required when GORM creates the client itself — for example <code>new MongoDatastore(Person)</code>, or configuration-driven setups where GORM builds the client from <code>grails.mongodb.*</code> settings — because GORM continues to own and close those clients. A <code>MongoClient</code> registered as a Spring bean likewise continues to be closed by the <code>ApplicationContext</code>.</p>
-</div>
-</div>
 </div>
 </div>
 </div>
@@ -1025,7 +1002,7 @@ mongoClient.close()  <span class="comment">// close the client you created</span
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.mongodb:mongodb-driver:5.8.0"</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.mongodb:mongodb-driver:5.6.4"</code></pre>
 </div>
 </div>
 </div>
@@ -1315,29 +1292,6 @@ If your GORM entities are in a different package specify the package name as the
 
 println Person.count()</code></pre>
 </div>
-</div>
-<div class="paragraph">
-<p>You can also supply your own <code>com.mongodb.client.MongoClient</code> if you need to configure the driver directly:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">MongoClient mongoClient = MongoClients.create(<span class="string"><span class="delimiter">&quot;</span><span class="content">mongodb://localhost/mydb</span><span class="delimiter">&quot;</span></span>)
-<span class="keyword">def</span> datastore = <span class="keyword">new</span> MongoDatastore(mongoClient, Person)
-
-println Person.count()</code></pre>
-</div>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-When you supply your own <code>MongoClient</code>, GORM does not close it when the datastore shuts down — the client is owned by whoever created it, so you are responsible for closing it. When GORM creates the client itself (for example <code>new MongoDatastore(Person)</code>), it closes it for you.
-</td>
-</tr>
-</table>
 </div>
 <div class="paragraph">
 <p>For configuration you can either pass a map or an instance of the <code>org.springframework.core.env.PropertyResolver</code> interface:</p>
@@ -2122,14 +2076,9 @@ beans = {
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">static</span> <span class="include">com.mongodb.client.model.Filters.eq</span>
-
+<pre class="CodeRay highlight"><code data-lang="groovy">Unresolved directive <span class="keyword">in</span> querying/queryingBasics.adoc - <span class="key">include</span>::..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>..<span class="regexp"><span class="delimiter">/</span><span class="content">core</span><span class="delimiter">/</span></span>src/test/groovy/grails/gorm/tests/FindNativeSpec.groovy[tags=nativeImport]
 ...
-FindIterable findIterable = Product.find(eq(<span class="string"><span class="delimiter">&quot;</span><span class="content">title</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">coffee</span><span class="delimiter">&quot;</span></span>))
-findIterable.limit(<span class="integer">10</span>)
-        .each { Product product -&gt;
-            println <span class="string"><span class="delimiter">&quot;</span><span class="content">Product title </span><span class="inline"><span class="inline-delimiter">$</span>product</span><span class="content">.title</span><span class="delimiter">&quot;</span></span>
-        }</code></pre>
+Unresolved directive <span class="keyword">in</span> querying/queryingBasics.adoc - <span class="key">include</span>::..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>..<span class="regexp"><span class="delimiter">/</span><span class="content">core</span><span class="delimiter">/</span></span>src/test/groovy/grails/gorm/tests/FindNativeSpec.groovy[tags=nativeFind,indent=<span class="integer">0</span>]</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -2152,12 +2101,9 @@ For the full MongoDB client model refer to the <a href="https://api.mongodb.com/
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">static</span> <span class="include">com.mongodb.client.model.Filters.eq</span>
-
+<pre class="CodeRay highlight"><code data-lang="groovy">Unresolved directive <span class="keyword">in</span> querying/queryingBasics.adoc - <span class="key">include</span>::..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>..<span class="regexp"><span class="delimiter">/</span><span class="content">core</span><span class="delimiter">/</span></span>src/test/groovy/grails/gorm/tests/FindNativeSpec.groovy[tags=nativeImport]
 ...
-Document doc = Product.collection
-        .find(eq(<span class="string"><span class="delimiter">&quot;</span><span class="content">title</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">coffee</span><span class="delimiter">&quot;</span></span>))
-        .first()</code></pre>
+Unresolved directive <span class="keyword">in</span> querying/queryingBasics.adoc - <span class="key">include</span>::..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>..<span class="regexp"><span class="delimiter">/</span><span class="content">..</span><span class="delimiter">/</span></span>..<span class="regexp"><span class="delimiter">/</span><span class="content">core</span><span class="delimiter">/</span></span>src/test/groovy/grails/gorm/tests/FindNativeSpec.groovy[tags=collectionFind,indent=<span class="integer">0</span>]</code></pre>
 </div>
 </div>
 </div>

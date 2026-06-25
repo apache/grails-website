@@ -445,8 +445,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#gettingStarted-hibernateVersions">Hibernate Versions</a>
 <ul class="sectlevel2">
 <li><a href="#_grails_8_with_hibernate_7">Grails 8 with Hibernate 7</a></li>
-<li><a href="#_hibernate_7_4_support_line">Hibernate 7.4 support line</a></li>
-<li><a href="#_migration_checklist_from_hibernate_5">Migration checklist from Hibernate 5</a></li>
+<li><a href="#_key_changes_from_hibernate_5">Key Changes from Hibernate 5</a></li>
 </ul>
 </li>
 </ul>
@@ -488,169 +487,40 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </div>
 </div>
 <div class="sect2">
-<h3 id="_hibernate_7_4_support_line">Hibernate 7.4 support line</h3>
+<h3 id="_key_changes_from_hibernate_5">Key Changes from Hibernate 5</h3>
 <div class="paragraph">
-<p>Grails Hibernate 7 targets Hibernate ORM 7.4, the current stable Hibernate 7 line. Hibernate ORM 7.3 and 7.2 are limited-support lines, so new Hibernate 7 applications should validate against the Hibernate 7.4 behavior described below.</p>
+<p>If you are migrating from Hibernate 5, review the following areas:</p>
 </div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Session API</strong> — <code>Session.save()</code>, <code>update()</code>, <code>delete()</code>, <code>load()</code>, and <code>get()</code> were removed. GORM&#8217;s own <code>save()</code>, <code>delete()</code>, <code>get()</code>, and <code>load()</code> methods are unaffected; only direct Hibernate <code>Session</code> usage inside <code>withSession</code> blocks is impacted.</p>
+</li>
+<li>
+<p><strong><code>CascadeType.SAVE_UPDATE</code> removed</strong> — Use <code>CascadeType.ALL</code> or <code>CascadeType.PERSIST</code> + <code>CascadeType.MERGE</code>. The GORM ORM DSL <code>cascade: 'save-update'</code> string continues to work.</p>
+</li>
+<li>
+<p><strong><code>@Where</code> renamed</strong> — <code>@org.hibernate.annotations.Where</code> was replaced by <code>@org.hibernate.annotations.SQLRestriction</code>.</p>
+</li>
+<li>
+<p><strong><code>@Proxy</code> removed</strong> — Proxy configuration via annotation is no longer supported.</p>
+</li>
+<li>
+<p><strong><code>@LazyCollection</code> removed</strong> — Use <code>fetch = FetchType.LAZY</code> / <code>EAGER</code> directly on the association annotation.</p>
+</li>
+<li>
+<p><strong>Native query temporal types</strong> — Native SQL queries now return <code>java.time</code> types instead of <code>java.sql</code> types. Set <code>hibernate.query.native.prefer_jdbc_datetime_types=true</code> to restore legacy behaviour during migration.</p>
+</li>
+<li>
+<p><strong>DDL changes</strong> — <code>char</code>/<code>Character</code> now maps to <code>varchar(1)</code> instead of <code>char(1)</code>. Oracle <code>float</code>/<code>double</code> map to <code>binary_float</code>/<code>binary_double</code>. Validate your schema before running <code>dbCreate=update</code> in production.</p>
+</li>
+<li>
+<p><strong>Jakarta EE 10</strong> — <code>javax.*</code> was already replaced by <code>jakarta.*</code> in Grails 7. Hibernate 7 requires Jakarta Persistence 3.2.</p>
+</li>
+</ul>
 </div>
-<div class="sect2">
-<h3 id="_migration_checklist_from_hibernate_5">Migration checklist from Hibernate 5</h3>
 <div class="paragraph">
-<p>If you are migrating an application from Hibernate 5 or the Grails Hibernate 5 plugin, review these remaining application-level changes. GORM compatibility issues fixed by this release, such as <code>findWhere</code> null handling and <code>getAll</code> ordering with converted ids, are documented in the relevant GORM API reference pages and do not require separate migration steps when using the fixed GORM APIs.</p>
-</div>
-<table class="tableblock frame-all grid-all stretch">
-<colgroup>
-<col style="width: 20%;">
-<col style="width: 40%;">
-<col style="width: 40%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Area</th>
-<th class="tableblock halign-left valign-top">Hibernate 7.4 change</th>
-<th class="tableblock halign-left valign-top">Application migration action</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Hibernate artifacts</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Hibernate 7 applications must resolve the Hibernate 7 Grails plugin, BOM, and Hibernate ORM artifacts together.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Use <code>grails-hibernate7-bom</code> and <code>grails-hibernate7</code> consistently. Do not mix Hibernate 5 and Hibernate 7 GORM or Hibernate artifacts in one runtime.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Jakarta Persistence</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Hibernate 7 requires Jakarta Persistence 3.2 and Jakarta EE packages.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Replace any remaining <code>javax.persistence.*</code> or other <code>javax.*</code> imports with the matching <code>jakarta.*</code> APIs.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Direct Hibernate <code>Session</code> API</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Session.save()</code>, <code>update()</code>, <code>delete()</code>, and <code>load()</code> were removed. <code>Session.get()</code> remains available but is deprecated in favor of <code>find()</code>.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GORM domain methods such as <code>save()</code>, <code>delete()</code>, <code>get()</code>, and <code>load()</code> are unaffected. Direct <code>Session</code> code inside <code>withSession</code> blocks should use <code>persist()</code>, <code>merge()</code>, <code>remove()</code>, and <code>getReference()</code> for removed methods, and prefer <code>find()</code> over deprecated direct <code>Session.get()</code> usage.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Hibernate annotations</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Several Hibernate 5 annotations or enum constants were removed or renamed.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Replace direct uses of <code>CascadeType.SAVE_UPDATE</code>, <code>@org.hibernate.annotations.Where</code>, <code>@Proxy</code>, and <code>@LazyCollection</code>. The GORM ORM DSL <code>cascade: 'save-update'</code> string continues to work.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">HQL string safety (no migration required)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Single-argument GORM HQL overloads accept a plain <code>String</code> exactly as on Hibernate 5. When a Groovy <code>GString</code> is passed, its interpolated values are bound as named parameters rather than interpolated into the query text, so the idiomatic form is injection-safe by binding.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">No change is required. For dynamic values, prefer the <code>GString</code> form (auto-bound) or an explicit named/positional params map or list. See <a href="#querying-hql">HQL Queries</a>.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">H5-specific cache setup</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Hibernate 5 cache integrations and region-factory classes are not valid Hibernate 7 cache configuration.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Remove H5 cache dependencies and region-factory settings before booting on Hibernate 7. Reintroduce caching with a Hibernate 7 compatible provider such as JCache and test locked queries without relying on query cache entries.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Direct single-result queries</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Hibernate 7.3 and later strictly throw when <code>getSingleResult()</code> or <code>getSingleResultOrNull()</code> sees more than one result.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GORM single-result helpers fixed by this release preserve GORM first-row behavior. Direct Hibernate or JPA queries should add <code>setMaxResults(1)</code>, query for a list and choose the first row intentionally, or use a result-list transformer when duplicate collapse is required.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Read-only entity collections</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Collections owned by entities loaded in read-only mode are now read-only too.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Do not mutate associations on read-only entities. Reload the entity in a writable session before changing its collections.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Timeout exceptions</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Query or lock timeouts may now throw <code>PersistenceException</code> when the database marks the transaction for rollback.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Catch <code>PersistenceException</code> around direct Hibernate or JPA timeout-sensitive code and inspect the cause when you need to distinguish query timeout, lock timeout, and transaction rollback behavior.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Native SQL temporal values</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Native SQL queries return <code>java.time</code> types instead of <code>java.sql</code> temporal types by default.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Update result handling to use <code>java.time</code> types, or set <code>hibernate.query.native.prefer_jdbc_datetime_types=true</code> during migration if legacy JDBC temporal values are required.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Direct aggregate HQL</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Hibernate 7 validates projection result types strictly.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Use scalar-compatible return types for aggregate projections. For example, <code>avg</code> generally returns <code>Double</code>, <code>count</code> returns <code>Long</code>, and <code>max</code> or <code>min</code> follow the selected expression type.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Numeric expression typing</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Hibernate 7 SQM typing is stricter about comparing unlike numeric expression types.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GORM where-query numeric comparison fixes are included in this release. In direct HQL, align domain numeric types or cast explicitly when comparing expressions of different numeric types.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Managed collection identity</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Hibernate 7 detects duplicate managed collection wrappers more aggressively.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Prefer mutating managed collection instances with GORM <code>addTo*</code> and <code>removeFrom*</code> helpers instead of replacing collection objects. Be careful when merging detached graphs into an existing session.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Bidirectional associations</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Hibernate 7 is less tolerant of inconsistent managed association state at flush time.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Keep both sides of bidirectional associations synchronized. Prefer GORM association helpers where possible.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Query locks and query cache</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Locked queries are not query-cacheable.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Do not expect <code>lock: true</code> queries to use the query cache. Treat pessimistically locked queries as database reads that require fresh row state.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Programmatic datastore setup</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Hibernate 7 test and programmatic datastore setups expose wrong package scanning more readily.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">When constructing a datastore manually, scan the package that contains the domain and service classes, not only the caller or spec package.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Multiple datasources and OSIV</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Hibernate 7 multiple-datasource and Open Session in View behavior should be validated explicitly for each application.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Run targeted migration tests for datasource switching, transaction routing, and GSP rendering under OSIV before migrating production applications with multiple datasources.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Views and scaffolding</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Generated views and scaffolding can expose Hibernate 7 differences in association rendering and unique-constraint behavior.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Regression-test generated and custom association rendering, fields rendering, and unique constraints before enabling Hibernate 7 in applications that rely on scaffolding.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Version-column DDL</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Hibernate 7.3 declares <code>@Version</code> columns <code>not null</code> by default.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Validate generated DDL against existing schemas before using <code>dbCreate=update</code>, especially for tables with legacy nullable version columns.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">General DDL changes</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Hibernate 7 changes generated DDL for several mappings, including <code>char</code>/<code>Character</code>, Oracle floating-point types, <code>@ElementCollection</code> sets, <code>@CreationTimestamp</code>, <code>@UpdateTimestamp</code>, and Oracle 23c LOB columns.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Prefer explicit database migrations for production schemas. Compare generated DDL in a staging database before using schema update tooling.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Schema actions and <code>import.sql</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Hibernate 7.3 and later run schema actions even when no entities are mapped.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Remove accidental <code>import.sql</code> files from the runtime classpath, or ensure schema-generation settings are intentional for persistence units with no mapped entities.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">MySQL fetch depth</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Hibernate 7.4 removes the MySQL dialect-specific default <code>hibernate.max_fetch_depth=2</code>.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Set <code>hibernate.max_fetch_depth</code> explicitly if the application relied on that implicit MySQL default.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Fetch joins with limits</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Hibernate 7.4 applies pagination or limits with collection fetch joins in SQL instead of doing the limit in memory.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Review queries that combine <code>max</code>/<code>offset</code> or limits with collection fetch joins. Set the query hint <code>org.hibernate.limitInMemory</code> only when the previous in-memory behavior is required.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Oracle HQL date expressions</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">On Oracle, HQL <code>current date</code> and <code>local date</code> now translate to <code>trunc(current_date)</code>.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Review Oracle queries that depended on a time component from those date expressions.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Eager <code>@Any</code> mappings</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Hibernate 7.4 join-fetches eager <code>@Any</code> associations when loading an entity by id.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Review direct Hibernate <code>@Any</code> mappings for SQL shape and row-width changes.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Spanner PostgreSQL dialect</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SpannerPostgreSQLDialect</code> moved from <code>hibernate-community-dialects</code> to <code>hibernate-core</code> and package <code>org.hibernate.dialect</code>.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Update explicit dialect configuration to <code>org.hibernate.dialect.SpannerPostgreSQLDialect</code>, or rely on automatic dialect resolution.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Envers audited associations</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Hibernate 7.3 respects <code>RelationTargetAuditMode.NOT_AUDITED</code> for audited associations.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">If you use Envers, verify historic reads that previously expected the associated target entity to come from its audit table despite <code>NOT_AUDITED</code>.</p></td>
-</tr>
-</tbody>
-</table>
-<div class="paragraph">
-<p>See the <a href="https://docs.hibernate.org/orm/7.4/migration-guide/">Hibernate ORM 7.4 Migration Guide</a>, <a href="https://docs.hibernate.org/orm/7.3/migration-guide/">Hibernate ORM 7.3 Migration Guide</a>, <a href="https://docs.hibernate.org/orm/7.0/migration-guide/">Hibernate ORM 7.0 Migration Guide</a>, and <a href="https://docs.hibernate.org/orm/6.0/migration-guide/">Hibernate ORM 6.0 Migration Guide</a> for the full list of Hibernate changes.</p>
+<p>See the <a href="https://docs.hibernate.org/orm/7.0/migration-guide/">Hibernate ORM 7.0 Migration Guide</a> and <a href="https://docs.hibernate.org/orm/6.0/migration-guide/">Hibernate ORM 6.0 Migration Guide</a> for the full list of changes.</p>
 </div>
 </div>
 </div>

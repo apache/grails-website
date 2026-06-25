@@ -113,39 +113,28 @@ extends <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractD
 
 
  <pre>
- class FooService {
-   <CODE>@Transactional</CODE>
-   void updateFoo() {
-       ...
-   }
+ <CODE>@Transactional</CODE>
+ class MyService {
+      void saveBook(String title) {
+           new Book(title:title).save()
+      }
  }
  </pre>
 
-
- <p>The resulting byte code produced will be (more or less):</p>
+ <p>The transform will produce:</p>
 
  <pre>
- class FooService {
-   PlatformTransactionManager $transactionManager
+ class MyService {
+      <CODE>@Autowired</CODE>
+      PlatformTransactionManager transactionManager
 
-   PlatformTransactionManager getTransactionManager() { $transactionManager }
-
-   void updateFoo() {
-       GrailsTransactionTemplate template = new GrailsTransactionTemplate(getTransactionManager())
-       template.execute { TransactionStatus status ->
-           $tt_updateFoo(status)
-       }
-   }
-
-   private void $tt_updateFoo(TransactionStatus status) {
-       ...
-   }
+      void saveBook(String title) {
+           transactionManager.execute { TransactionStatus status ->
+                new Book(title:title).save()
+           }
+      }
  }
- </pre>
-
- <p>
-     The body of the method is moved to a new method prefixed with "$tt_" and which receives the arguments of the method and the TransactionStatus object
- </p> <DL><DT><B>Authors:</B></DT><DD>Graeme Rocher</DD></DL><DL><DT><B>Since:</B></DT><DD>6.1</DD></DL></p>
+ </pre> <DL><DT><B>Authors:</B></DT><DD>Graeme Rocher</DD></DL><DL><DT><B>Since:</B></DT><DD>6.1</DD></DL></p>
 
           </li>
     </ul>
@@ -180,8 +169,20 @@ extends <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractD
                         </tr>
                         
                         <tr class="rowColor">
+                            <td class="colFirst"><code><strong>static&nbsp;java.lang.String</strong></code>&nbsp;</td>
+                            <td class="colLast"><code><a href="#METHOD_EXECUTE">METHOD_EXECUTE</a></code></td>
+                            <td class="colLast"></td>
+                        </tr>
+                        
+                        <tr class="altColor">
                             <td class="colFirst"><code><strong>static&nbsp;org.codehaus.groovy.ast.ClassNode</strong></code>&nbsp;</td>
                             <td class="colLast"><code><a href="#MY_TYPE">MY_TYPE</a></code></td>
+                            <td class="colLast"></td>
+                        </tr>
+                        
+                        <tr class="rowColor">
+                            <td class="colFirst"><code><strong>static&nbsp;java.lang.String</strong></code>&nbsp;</td>
+                            <td class="colLast"><code><a href="#PROPERTY_TRANSACTION_MANAGER">PROPERTY_TRANSACTION_MANAGER</a></code></td>
                             <td class="colLast"></td>
                         </tr>
                         
@@ -194,6 +195,12 @@ extends <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractD
                         <tr class="rowColor">
                             <td class="colFirst"><code><strong>static&nbsp;java.lang.String</strong></code>&nbsp;</td>
                             <td class="colLast"><code><a href="#RENAMED_METHOD_PREFIX">RENAMED_METHOD_PREFIX</a></code></td>
+                            <td class="colLast"></td>
+                        </tr>
+                        
+                        <tr class="altColor">
+                            <td class="colFirst"><code><strong>static&nbsp;java.lang.String</strong></code>&nbsp;</td>
+                            <td class="colLast"><code><a href="#SET_TRANSACTION_MANAGER">SET_TRANSACTION_MANAGER</a></code></td>
                             <td class="colLast"></td>
                         </tr>
                         
@@ -340,13 +347,13 @@ extends <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractD
                         <tr class="altColor">
                             <td class="colFirst"><code></code></td>
                             <td class="colLast"><code>protected&nbsp;boolean</code></td>
-                            <td class="colLast"><code><strong><a href="#hasExcludedAnnotation(org.codehaus.groovy.ast.MethodNode)">hasExcludedAnnotation</a></strong>(org.codehaus.groovy.ast.MethodNode md)</code><br></td>
+                            <td class="colLast"><code><strong><a href="#hasLocalAnnotation(org.codehaus.groovy.ast.MethodNode, org.codehaus.groovy.ast.AnnotationNode)">hasLocalAnnotation</a></strong>(org.codehaus.groovy.ast.MethodNode amd, org.codehaus.groovy.ast.AnnotationNode classAnnotation)</code><br></td>
                         </tr>
                         
                         <tr class="rowColor">
                             <td class="colFirst"><code></code></td>
                             <td class="colLast"><code>static&nbsp;boolean</code></td>
-                            <td class="colLast"><code><strong><a href="#hasTransactionalAnnotation(org.codehaus.groovy.ast.AnnotatedNode)">hasTransactionalAnnotation</a></strong>(org.codehaus.groovy.ast.AnnotatedNode md)</code><br>Whether the given method has a transactional annotation</td>
+                            <td class="colLast"><code><strong><a href="#hasTransactionalAnnotation(org.codehaus.groovy.ast.AnnotatedNode)">hasTransactionalAnnotation</a></strong>(org.codehaus.groovy.ast.AnnotatedNode node)</code><br>Whether the given node has a transactional annotation</td>
                         </tr>
                         
                         <tr class="altColor">
@@ -405,7 +412,7 @@ extends <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractD
                         </tr>
                         <tr class="altColor">
                             <td class="colFirst"><code>class <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html'>AbstractMethodDecoratingTransformation</a></code></td>
-                            <td class="colLast"><code><a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#buildCallToOriginalMethod(org.codehaus.groovy.ast.ClassNode, org.codehaus.groovy.ast.MethodNode)'>buildCallToOriginalMethod</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#buildDelegatingMethodCall(org.codehaus.groovy.control.SourceUnit, org.codehaus.groovy.ast.AnnotationNode, org.codehaus.groovy.ast.ClassNode, org.codehaus.groovy.ast.MethodNode, org.codehaus.groovy.ast.expr.MethodCallExpression, org.codehaus.groovy.ast.stmt.BlockStatement)'>buildDelegatingMethodCall</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#compileMethodStatically(org.codehaus.groovy.control.SourceUnit, org.codehaus.groovy.ast.MethodNode)'>compileMethodStatically</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#createDelegingMethodBody(org.codehaus.groovy.ast.Parameter, org.codehaus.groovy.ast.expr.MethodCallExpression)'>createDelegingMethodBody</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#enhanceClassNode(org.codehaus.groovy.control.SourceUnit, org.codehaus.groovy.ast.AnnotationNode, org.codehaus.groovy.ast.ClassNode)'>enhanceClassNode</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#getRenamedMethodPrefix()'>getRenamedMethodPrefix</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#hasExcludedAnnotation(org.codehaus.groovy.ast.MethodNode)'>hasExcludedAnnotation</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#hasExcludedAnnotation(org.codehaus.groovy.ast.MethodNode, Set)'>hasExcludedAnnotation</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#isTestSetupOrCleanup(org.codehaus.groovy.ast.ClassNode, org.codehaus.groovy.ast.MethodNode)'>isTestSetupOrCleanup</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#makeDelegatingClosureCall(org.codehaus.groovy.ast.expr.Expression, java.lang.String, org.codehaus.groovy.ast.Parameter, org.codehaus.groovy.ast.expr.MethodCallExpression, org.codehaus.groovy.ast.VariableScope)'>makeDelegatingClosureCall</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#makeDelegatingClosureCall(org.codehaus.groovy.ast.expr.Expression, java.lang.String, org.codehaus.groovy.ast.expr.ArgumentListExpression, org.codehaus.groovy.ast.Parameter, org.codehaus.groovy.ast.expr.MethodCallExpression, org.codehaus.groovy.ast.VariableScope)'>makeDelegatingClosureCall</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#moveOriginalCodeToNewMethod(org.codehaus.groovy.ast.MethodNode, java.lang.String, org.codehaus.groovy.ast.Parameter, org.codehaus.groovy.ast.ClassNode, org.codehaus.groovy.control.SourceUnit, Map)'>moveOriginalCodeToNewMethod</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#prepareNewMethodParameters(org.codehaus.groovy.ast.MethodNode, Map, org.codehaus.groovy.ast.ClassNode)'>prepareNewMethodParameters</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#resolveReturnTypeForNewMethod(org.codehaus.groovy.ast.MethodNode)'>resolveReturnTypeForNewMethod</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#visit(org.codehaus.groovy.control.SourceUnit, org.codehaus.groovy.ast.AnnotationNode, org.codehaus.groovy.ast.AnnotatedNode)'>visit</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#weaveClassNode(org.codehaus.groovy.control.SourceUnit, org.codehaus.groovy.ast.AnnotationNode, org.codehaus.groovy.ast.ClassNode)'>weaveClassNode</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#weaveNewMethod(org.codehaus.groovy.control.SourceUnit, org.codehaus.groovy.ast.AnnotationNode, org.codehaus.groovy.ast.ClassNode, org.codehaus.groovy.ast.MethodNode, Map)'>weaveNewMethod</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#weaveTestSetupMethod(org.codehaus.groovy.control.SourceUnit, org.codehaus.groovy.ast.AnnotationNode, org.codehaus.groovy.ast.ClassNode, org.codehaus.groovy.ast.MethodNode, Map)'>weaveTestSetupMethod</a></code></td>
+                            <td class="colLast"><code><a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#buildCallToOriginalMethod(org.codehaus.groovy.ast.ClassNode, org.codehaus.groovy.ast.MethodNode)'>buildCallToOriginalMethod</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#buildDelegatingMethodCall(org.codehaus.groovy.control.SourceUnit, org.codehaus.groovy.ast.AnnotationNode, org.codehaus.groovy.ast.ClassNode, org.codehaus.groovy.ast.MethodNode, org.codehaus.groovy.ast.expr.MethodCallExpression, org.codehaus.groovy.ast.stmt.BlockStatement)'>buildDelegatingMethodCall</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#compileMethodStatically(org.codehaus.groovy.control.SourceUnit, org.codehaus.groovy.ast.MethodNode)'>compileMethodStatically</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#createDelegingMethodBody(org.codehaus.groovy.ast.Parameter, org.codehaus.groovy.ast.expr.MethodCallExpression)'>createDelegingMethodBody</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#enhanceClassNode(org.codehaus.groovy.control.SourceUnit, org.codehaus.groovy.ast.AnnotationNode, org.codehaus.groovy.ast.ClassNode)'>enhanceClassNode</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#getRenamedMethodPrefix()'>getRenamedMethodPrefix</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#hasExcludedAnnotation(org.codehaus.groovy.ast.MethodNode)'>hasExcludedAnnotation</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#hasExcludedAnnotation(org.codehaus.groovy.ast.MethodNode, Set)'>hasExcludedAnnotation</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#hasLocalAnnotation(org.codehaus.groovy.ast.MethodNode, org.codehaus.groovy.ast.AnnotationNode)'>hasLocalAnnotation</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#isTestSetupOrCleanup(org.codehaus.groovy.ast.ClassNode, org.codehaus.groovy.ast.MethodNode)'>isTestSetupOrCleanup</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#makeDelegatingClosureCall(org.codehaus.groovy.ast.expr.Expression, java.lang.String, org.codehaus.groovy.ast.Parameter, org.codehaus.groovy.ast.expr.MethodCallExpression, org.codehaus.groovy.ast.VariableScope)'>makeDelegatingClosureCall</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#makeDelegatingClosureCall(org.codehaus.groovy.ast.expr.Expression, java.lang.String, org.codehaus.groovy.ast.expr.ArgumentListExpression, org.codehaus.groovy.ast.Parameter, org.codehaus.groovy.ast.expr.MethodCallExpression, org.codehaus.groovy.ast.VariableScope)'>makeDelegatingClosureCall</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#moveOriginalCodeToNewMethod(org.codehaus.groovy.ast.MethodNode, java.lang.String, org.codehaus.groovy.ast.Parameter, org.codehaus.groovy.ast.ClassNode, org.codehaus.groovy.control.SourceUnit, Map)'>moveOriginalCodeToNewMethod</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#prepareNewMethodParameters(org.codehaus.groovy.ast.MethodNode, Map, org.codehaus.groovy.ast.ClassNode)'>prepareNewMethodParameters</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#resolveReturnTypeForNewMethod(org.codehaus.groovy.ast.MethodNode)'>resolveReturnTypeForNewMethod</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#visit(org.codehaus.groovy.control.SourceUnit, org.codehaus.groovy.ast.AnnotationNode, org.codehaus.groovy.ast.AnnotatedNode)'>visit</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#weaveClassNode(org.codehaus.groovy.control.SourceUnit, org.codehaus.groovy.ast.AnnotationNode, org.codehaus.groovy.ast.ClassNode)'>weaveClassNode</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#weaveNewMethod(org.codehaus.groovy.control.SourceUnit, org.codehaus.groovy.ast.AnnotationNode, org.codehaus.groovy.ast.ClassNode, org.codehaus.groovy.ast.MethodNode, Map)'>weaveNewMethod</a>, <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractMethodDecoratingTransformation.html#weaveTestSetupMethod(org.codehaus.groovy.control.SourceUnit, org.codehaus.groovy.ast.AnnotationNode, org.codehaus.groovy.ast.ClassNode, org.codehaus.groovy.ast.MethodNode, Map)'>weaveTestSetupMethod</a></code></td>
                         </tr>
                         <tr class="altColor">
                             <td class="colFirst"><code>class <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractGormASTTransformation.html'>AbstractGormASTTransformation</a></code></td>
@@ -442,10 +449,26 @@ extends <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractD
                             </li>
                         </ul>
                     
+                        <a name="METHOD_EXECUTE"><!-- --></a>
+                        <ul class="blockListLast">
+                            <li class="blockList">
+                                <h4>public&nbsp;static&nbsp;final&nbsp;java.lang.String <strong>METHOD_EXECUTE</strong></h4>
+                                <p></p>
+                            </li>
+                        </ul>
+                    
                         <a name="MY_TYPE"><!-- --></a>
                         <ul class="blockListLast">
                             <li class="blockList">
                                 <h4>public&nbsp;static&nbsp;final&nbsp;org.codehaus.groovy.ast.ClassNode <strong>MY_TYPE</strong></h4>
+                                <p></p>
+                            </li>
+                        </ul>
+                    
+                        <a name="PROPERTY_TRANSACTION_MANAGER"><!-- --></a>
+                        <ul class="blockListLast">
+                            <li class="blockList">
+                                <h4>public&nbsp;static&nbsp;final&nbsp;java.lang.String <strong>PROPERTY_TRANSACTION_MANAGER</strong></h4>
                                 <p></p>
                             </li>
                         </ul>
@@ -462,6 +485,14 @@ extends <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractD
                         <ul class="blockListLast">
                             <li class="blockList">
                                 <h4>public&nbsp;static&nbsp;final&nbsp;java.lang.String <strong>RENAMED_METHOD_PREFIX</strong></h4>
+                                <p></p>
+                            </li>
+                        </ul>
+                    
+                        <a name="SET_TRANSACTION_MANAGER"><!-- --></a>
+                        <ul class="blockListLast">
+                            <li class="blockList">
+                                <h4>public&nbsp;static&nbsp;final&nbsp;java.lang.String <strong>SET_TRANSACTION_MANAGER</strong></h4>
                                 <p></p>
                             </li>
                         </ul>
@@ -567,10 +598,10 @@ extends <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractD
                             </li>
                         </ul>
                     
-                        <a name="hasExcludedAnnotation(org.codehaus.groovy.ast.MethodNode)"><!-- --></a>
+                        <a name="hasLocalAnnotation(org.codehaus.groovy.ast.MethodNode, org.codehaus.groovy.ast.AnnotationNode)"><!-- --></a>
                         <ul class="blockListLast">
                             <li class="blockList">
-                                <h4>@java.lang.Override<br>protected&nbsp;boolean <strong>hasExcludedAnnotation</strong>(org.codehaus.groovy.ast.MethodNode md)</h4>
+                                <h4>@java.lang.Override<br>protected&nbsp;boolean <strong>hasLocalAnnotation</strong>(org.codehaus.groovy.ast.MethodNode amd, org.codehaus.groovy.ast.AnnotationNode classAnnotation)</h4>
                                 <p></p>
                             </li>
                         </ul>
@@ -578,9 +609,8 @@ extends <a href='../../../../../../org/grails/datastore/gorm/transform/AbstractD
                         <a name="hasTransactionalAnnotation(org.codehaus.groovy.ast.AnnotatedNode)"><!-- --></a>
                         <ul class="blockListLast">
                             <li class="blockList">
-                                <h4>static&nbsp;boolean <strong>hasTransactionalAnnotation</strong>(org.codehaus.groovy.ast.AnnotatedNode md)</h4>
-                                <p> Whether the given method has a transactional annotation
- @return <DL><DT><B>Parameters:</B></DT><DD><code>md</code> -  The method node</DD></DL></p>
+                                <h4>static&nbsp;boolean <strong>hasTransactionalAnnotation</strong>(org.codehaus.groovy.ast.AnnotatedNode node)</h4>
+                                <p> Whether the given node has a transactional annotation <DL><DT><B>Parameters:</B></DT><DD><code>node</code> -  The node</DD></DL><DL><DT><B>Returns:</B></DT><DD>True if it does</DD></DL></p>
                             </li>
                         </ul>
                     
