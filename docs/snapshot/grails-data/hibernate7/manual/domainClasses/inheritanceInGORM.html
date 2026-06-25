@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.18">
-<title>Considerations</title>
+<title>Inheritance in GORM</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -441,70 +441,90 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div id="header">
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
-<ul class="sectlevel3">
-<li><a href="#_considerations">Considerations</a></li>
-<li><a href="#_polymorphic_queries">Polymorphic Queries</a></li>
+<ul class="sectlevel1">
+<li><a href="#domainClasses-inheritanceInGORM">Inheritance in GORM</a>
+<ul class="sectlevel2">
+<li><a href="#_basic_inheritance">Basic Inheritance</a></li>
+<li><a href="#_querying_the_hierarchy">Querying the Hierarchy</a></li>
+<li><a href="#_abstract_base_classes">Abstract Base Classes</a></li>
+</ul>
+</li>
 </ul>
 </div>
 </div>
 <div id="content">
+<div class="sect1">
+<h2 id="domainClasses-inheritanceInGORM">Inheritance in GORM</h2>
+<div class="sectionbody">
 <div class="paragraph">
-<p>GORM supports inheritance both from abstract base classes and concrete persistent GORM entities. For example:</p>
+<p>GORM supports standard Groovy/Java class inheritance. Domain classes in a hierarchy all benefit from GORM persistence.</p>
 </div>
+<div class="paragraph">
+<p>See <a href="#ormdsl-inheritanceStrategies">Inheritance Strategies</a> for the available mapping strategies (table-per-hierarchy, table-per-subclass, table-per-concrete-class) and how to configure them.</p>
+</div>
+<div class="sect2">
+<h3 id="_basic_inheritance">Basic Inheritance</h3>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight"><code class="language-groovy" data-lang="groovy">class Content {
-     String author
-}</code></pre>
-</div>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class BlogEntry extends Content {
-    URL url
-}</code></pre>
-</div>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Book extends Content {
-    String ISBN
-}</code></pre>
-</div>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class PodCast extends Content {
-    byte[] audioStream
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>In the above example we have a parent <code>Content</code> class and then various child classes with more specific behaviour.</p>
-</div>
-<div class="sect3">
-<h4 id="_considerations">Considerations</h4>
-<div class="paragraph">
-<p>At the database level GORM by default uses table-per-hierarchy mapping with a discriminator column called <code>class</code> so the parent class (<code>Content</code>) and its subclasses (<code>BlogEntry</code>, <code>Book</code> etc.), share the <strong>same</strong> table.</p>
-</div>
-<div class="paragraph">
-<p>Table-per-hierarchy mapping has a down side in that you <strong>cannot</strong> have non-nullable properties with inheritance mapping. An alternative is to use table-per-subclass which can be enabled with the <a href="#ormdsl">ORM DSL</a></p>
-</div>
-<div class="paragraph">
-<p>However, excessive use of inheritance and table-per-subclass can result in poor query performance due to the use of outer join queries. In general our advice is if you&#8217;re going to use inheritance, don&#8217;t abuse it and don&#8217;t make your inheritance hierarchy too deep.</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_polymorphic_queries">Polymorphic Queries</h4>
-<div class="paragraph">
-<p>The upshot of inheritance is that you get the ability to polymorphically query. For example using the <a href="../api/org/grails/datastore/gorm/GormEntity.html#list()">list()</a> method on the <code>Content</code> super class will return all subclasses of <code>Content</code>:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">def content = Content.list() // list all blog entries, books and podcasts
-content = Content.findAllByAuthor('Joe Bloggs') // find all by author
+    String title
+    Date dateCreated
+}
 
-def podCasts = PodCast.list() // list only podcasts</code></pre>
+class BlogPost extends Content {
+    String body
+    String author
+}
+
+class Page extends Content {
+    String html
+    String slug
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>By default all three classes are stored in a single <code>content</code> table (table-per-hierarchy). GORM uses a <code>class</code> discriminator column to distinguish rows.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_querying_the_hierarchy">Querying the Hierarchy</h3>
+<div class="paragraph">
+<p>GORM queries are polymorphic by default — querying the parent class returns instances of all subclasses:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">List&lt;Content&gt; all = Content.list()      // returns BlogPost and Page instances
+
+List&lt;BlogPost&gt; posts = BlogPost.list()  // returns only BlogPost instances</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_abstract_base_classes">Abstract Base Classes</h3>
+<div class="paragraph">
+<p>You can use abstract domain classes as the root of a hierarchy. Abstract classes have no corresponding rows and cannot be instantiated directly:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">abstract class Content {
+    String title
+}
+
+class BlogPost extends Content { ... }</code></pre>
+</div>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+Prefer table-per-hierarchy (the default) for most use cases. It requires no <code>JOIN</code> for polymorphic queries and is the most performant strategy.
+</td>
+</tr>
+</table>
+</div>
 </div>
 </div>
 </div>

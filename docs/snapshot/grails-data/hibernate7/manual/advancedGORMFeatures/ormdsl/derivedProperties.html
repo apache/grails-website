@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.18">
-<title>Untitled</title>
+<title>Derived Properties</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -437,104 +437,118 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 </head>
-<body class="article">
+<body class="article toc2 toc-left">
 <div id="header">
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#ormdsl-derivedProperties">Derived Properties</a>
+<ul class="sectlevel2">
+<li><a href="#_defining_a_derived_property">Defining a Derived Property</a></li>
+<li><a href="#_reading_derived_values">Reading Derived Values</a></li>
+<li><a href="#_column_level_formulas_readwrite_expressions">Column-Level Formulas (Read/Write Expressions)</a></li>
+</ul>
+</li>
+</ul>
+</div>
 </div>
 <div id="content">
+<div class="sect1">
+<h2 id="ormdsl-derivedProperties">Derived Properties</h2>
+<div class="sectionbody">
 <div class="paragraph">
-<p>A derived property is one that takes its value from a SQL expression, often but not necessarily based on the value of one or more other persistent properties.  Consider a Product class like this:</p>
+<p>A derived property is a read-only property whose value is computed by a SQL formula rather than stored in a dedicated column.</p>
+</div>
+<div class="sect2">
+<h3 id="_defining_a_derived_property">Defining a Derived Property</h3>
+<div class="paragraph">
+<p>Use the <code>formula</code> option in the <code>mapping</code> block:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">class Product {
-    Float price
-    Float taxRate
-    Float tax
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>If the <code>tax</code> property is derived based on the value of <code>price</code> and <code>taxRate</code> properties then is probably no need to persist the <code>tax</code> property.  The SQL used to derive the value of a derived property may be expressed in the ORM DSL like this:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">class Product {
-    Float price
-    Float taxRate
-    Float tax
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Order {
+    BigDecimal subtotal
+    BigDecimal taxRate
+
+    BigDecimal tax                  <i class="conum" data-value="1"></i><b>(1)</b>
+    BigDecimal total                <i class="conum" data-value="1"></i><b>(1)</b>
 
     static mapping = {
-        tax formula: 'PRICE * TAX_RATE'
+        tax   formula: 'subtotal * tax_rate'            <i class="conum" data-value="2"></i><b>(2)</b>
+        total formula: 'subtotal + (subtotal * tax_rate)'
     }
 }</code></pre>
 </div>
 </div>
-<div class="paragraph">
-<p>Note that the formula expressed in the ORM DSL is SQL so references to other properties should relate to the persistence model not the object model, which is why the example refers to <code>PRICE</code> and <code>TAX_RATE</code> instead of <code>price</code> and <code>taxRate</code>.</p>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td><code>tax</code> and <code>total</code> have no corresponding columns in the table.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The formula is a raw SQL expression evaluated by the database.</td>
+</tr>
+</table>
 </div>
+</div>
+<div class="sect2">
+<h3 id="_reading_derived_values">Reading Derived Values</h3>
 <div class="paragraph">
-<p>With that in place, when a Product is retrieved with something like <code>Product.get(42)</code>, the SQL that is generated to support that will look something like this:</p>
+<p>Derived properties are populated when an entity is loaded:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">select
-    product0_.id as id1_0_,
-    product0_.version as version1_0_,
-    product0_.price as price1_0_,
-    product0_.tax_rate as tax4_1_0_,
-    product0_.PRICE * product0_.TAX_RATE as formula1_0_
-from
-    product product0_
-where
-    product0_.id=?</code></pre>
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def order = Order.get(1)
+println order.tax   // value computed by the database formula</code></pre>
 </div>
 </div>
-<div class="paragraph">
-<p>Since the <code>tax</code> property is derived at runtime and not stored in the database it might seem that the same effect could be achieved by adding a method like <code>getTax()</code> to the <code>Product</code> class that simply returns the product of the <code>taxRate</code> and <code>price</code> properties.  With an approach like that you would give up the ability query the database based on the value of the <code>tax</code> property.  Using a derived property allows exactly that.  To retrieve all <code>Product</code> objects that have a <code>tax</code> value greater than 21.12 you could execute a query like this:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">Product.findAllByTaxGreaterThan(21.12)</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Derived properties may be referenced in the Criteria API:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">Product.withCriteria {
-    gt 'tax', 21.12f
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The SQL that is generated to support either of those would look something like this:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">select
-    this_.id as id1_0_,
-    this_.version as version1_0_,
-    this_.price as price1_0_,
-    this_.tax_rate as tax4_1_0_,
-    this_.PRICE * this_.TAX_RATE as formula1_0_
-from
-    product this_
-where
-    this_.PRICE * this_.TAX_RATE&gt;?</code></pre>
-</div>
-</div>
-<div class="admonitionblock note">
+<div class="admonitionblock warning">
 <table>
 <tr>
 <td class="icon">
-<i class="fa icon-note" title="Note"></i>
+<i class="fa icon-warning" title="Warning"></i>
 </td>
 <td class="content">
-Because the value of a derived property is generated in the database and depends on the execution of SQL code, derived properties may not have GORM constraints applied to them.  If constraints are specified for a derived property, they will be ignored.
+Derived properties are read-only. Setting them in Groovy code does not affect the database value — the formula always takes precedence when reloading.
 </td>
 </tr>
 </table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_column_level_formulas_readwrite_expressions">Column-Level Formulas (Read/Write Expressions)</h3>
+<div class="paragraph">
+<p>For finer control over individual column values, use <code>read</code> and <code>write</code> expressions on a regular property:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class CreditCard {
+    String cardNumber
+    static mapping = {
+        cardNumber {
+            read  "decrypt(card_number)"    <i class="conum" data-value="1"></i><b>(1)</b>
+            write "encrypt(?)"              <i class="conum" data-value="2"></i><b>(2)</b>
+        }
+    }
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>SQL expression used when reading the column value.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>SQL expression wrapping the bound parameter when writing.</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div id="footer">

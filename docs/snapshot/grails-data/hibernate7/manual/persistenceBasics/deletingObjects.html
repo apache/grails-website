@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.18">
-<title>Untitled</title>
+<title>Deleting Objects</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -437,62 +437,84 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 </head>
-<body class="article">
+<body class="article toc2 toc-left">
 <div id="header">
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#persistenceBasics-deletingObjects">Deleting Objects</a>
+<ul class="sectlevel2">
+<li><a href="#_flush_on_delete">Flush on Delete</a></li>
+<li><a href="#_cascade_delete">Cascade Delete</a></li>
+<li><a href="#_bulk_delete">Bulk Delete</a></li>
+</ul>
+</li>
+</ul>
+</div>
 </div>
 <div id="content">
+<div class="sect1">
+<h2 id="persistenceBasics-deletingObjects">Deleting Objects</h2>
+<div class="sectionbody">
 <div class="paragraph">
-<p>An example of the <a href="../api/org/grails/datastore/gorm/GormEntity.html#delete()">delete()</a> method can be seen below:</p>
+<p>Call <code>delete()</code> on a loaded instance to remove it from the database:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">def p = Person.get(1)
-p.delete()</code></pre>
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def book = Book.get(1)
+book.delete()</code></pre>
 </div>
 </div>
+<div class="sect2">
+<h3 id="_flush_on_delete">Flush on Delete</h3>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">book.delete(flush: true)    // issues DELETE immediately</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_cascade_delete">Cascade Delete</h3>
 <div class="paragraph">
-<p>As with saves, Hibernate will use transactional write-behind to perform the delete; to perform the delete in-place you can use the <code>flush</code> argument:</p>
+<p>When a domain class declares <code>belongsTo</code>, deleting the parent also deletes its children:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">def p = Person.get(1)
-p.delete(flush: true)</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Using the <code>flush</code> argument lets you catch any errors that occur during a delete. A common error that may occur is if you violate a database constraint, although this is normally down to a programming or schema error. The following example shows how to catch a <code>DataIntegrityViolationException</code> that is thrown when you violate the database constraints:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">import org.springframework.dao.*
-
-def p = Person.get(1)
-
-try {
-    p.delete(flush: true)
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Author {
+    static hasMany = [books: Book]
 }
-catch (DataIntegrityViolationException e) {
-    // handle the error
-}</code></pre>
+
+class Book {
+    static belongsTo = [author: Author]
+}
+
+// Deletes the author AND all associated books
+Author.get(1).delete()</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>In order to perform a batch delete there are a couple of ways to achieve that. One way is to use a <a href="#whereQueries">Where Query</a>:</p>
+<p>To delete without cascading, remove the <code>belongsTo</code> and configure cascade behaviour explicitly — see <a href="#ormdsl-customCascadeBehaviour">Custom Cascade Behaviour</a>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_bulk_delete">Bulk Delete</h3>
+<div class="paragraph">
+<p>Use <code>deleteAll()</code> to delete all instances matching a criteria:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">Person.where {
-	name == "Fred"
-}.deleteAll()</code></pre>
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">Book.where { genre == 'Horror' }.deleteAll()</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Another alternative is to use an HQL statement within the <a href="../api/org/grails/datastore/gorm/GormEntity.html#executeUpdate(java.lang.String)">executeUpdate(&#8230;&#8203;)</a> method:</p>
+<p>Or with HQL:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">Customer.executeUpdate("delete Customer c where c.name = :oldName",
-                       [oldName: "Fred"])</code></pre>
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">Book.executeUpdate("delete Book where genre = :genre", [genre: 'Horror'])</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>

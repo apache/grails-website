@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.18">
-<title>Setting up caching</title>
+<title>Caching</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -441,194 +441,173 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div id="header">
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
-<ul class="sectlevel4">
-<li><a href="#_setting_up_caching">Setting up caching</a></li>
-<li><a href="#_caching_instances">Caching instances</a></li>
-<li><a href="#_caching_associations">Caching associations</a></li>
-<li><a href="#_caching_queries">Caching Queries</a></li>
-<li><a href="#_cache_usages">Cache usages</a></li>
+<ul class="sectlevel1">
+<li><a href="#ormdsl-caching">Caching</a>
+<ul class="sectlevel2">
+<li><a href="#_enabling_second_level_cache">Enabling Second-Level Cache</a></li>
+<li><a href="#_cache_usage">Cache Usage</a></li>
+<li><a href="#_cache_include">Cache Include</a></li>
+<li><a href="#_caching_associations">Caching Associations</a></li>
+<li><a href="#_query_cache">Query Cache</a></li>
+</ul>
+</li>
 </ul>
 </div>
 </div>
 <div id="content">
-<div class="sect4">
-<h5 id="_setting_up_caching">Setting up caching</h5>
+<div class="sect1">
+<h2 id="ormdsl-caching">Caching</h2>
+<div class="sectionbody">
 <div class="paragraph">
-<p><a href="https://www.hibernate.org/">Hibernate</a> features a second-level cache with a customizable cache provider. This needs to be configured in the <code>grails-app/conf/application.yml</code> file as follows:</p>
+<p>GORM supports Hibernate&#8217;s second-level cache and query cache. Caching is configured per domain class and optionally per association.</p>
+</div>
+<div class="sect2">
+<h3 id="_enabling_second_level_cache">Enabling Second-Level Cache</h3>
+<div class="paragraph">
+<p>Second-level cache is enabled globally via configuration:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">hibernate:
-  cache:
+<pre class="highlight"><code class="language-yaml" data-lang="yaml">hibernate:
     use_second_level_cache: true
-    region:
-       factory_class: 'jcache'</code></pre>
+    cache:
+        region:
+            factory_class: 'org.hibernate.cache.jcache.internal.JCacheRegionFactory'</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>and the <code>ehcache</code> dependency using the <code>jakarta</code> classifier needs added to build.gradle:</p>
+<p>Then enable caching for individual domain classes using the <code>cache</code> directive in the <code>mapping</code> block:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">    dependencies {
-        implementation 'org.ehcache:ehcache', {
-            capabilities {
-                requireCapability('org.ehcache:ehcache-jakarta')
-            }
-        }
-    }</code></pre>
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Book {
+    String title
+    static mapping = {
+        cache true          <i class="conum" data-value="1"></i><b>(1)</b>
+    }
+}</code></pre>
 </div>
 </div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Enables the second-level cache for <code>Book</code> with the default <code>read-write</code> usage.</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_cache_usage">Cache Usage</h3>
 <div class="paragraph">
-<p>You can customize any of these settings, for example to use a distributed caching mechanism.</p>
+<p>You can control the cache usage strategy:</p>
 </div>
-<div class="admonitionblock note">
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">static mapping = {
+    cache usage: 'read-only'    <i class="conum" data-value="1"></i><b>(1)</b>
+}</code></pre>
+</div>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">usage</th>
+<th class="tableblock halign-left valign-top">description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>read-write</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cached data can be read and written — default</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>read-only</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cached data is never modified (best performance for immutable data)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>nonstrict-read-write</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No strict locking; possible stale reads between updates</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>transactional</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Full transaction support (requires a JTA transaction manager)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="_cache_include">Cache Include</h3>
+<div class="paragraph">
+<p>The <code>include</code> option controls what data to cache:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">static mapping = {
+    cache usage: 'read-write', include: 'non-lazy'  <i class="conum" data-value="1"></i><b>(1)</b>
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Only non-lazy properties are cached. Use <code>all</code> (default) to include lazy properties too.</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_caching_associations">Caching Associations</h3>
+<div class="paragraph">
+<p>You can cache collection associations independently:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Author {
+    String name
+    static hasMany = [books: Book]
+    static mapping = {
+        books cache: true
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_query_cache">Query Cache</h3>
+<div class="paragraph">
+<p>To cache the results of individual queries, pass <code>cache: true</code> in the query options and enable the query cache globally:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-yaml" data-lang="yaml">hibernate:
+    cache:
+        use_query_cache: true</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">List&lt;Book&gt; books = Book.findAllByGenre('Fiction', [cache: true])</code></pre>
+</div>
+</div>
+<div class="admonitionblock tip">
 <table>
 <tr>
 <td class="icon">
-<i class="fa icon-note" title="Note"></i>
+<i class="fa icon-tip" title="Tip"></i>
 </td>
 <td class="content">
-For further reading on caching and in particular Hibernate&#8217;s second-level cache, refer to the <a href="https://docs.jboss.org/hibernate/orm/current/userguide/html_single/Hibernate_User_Guide.html#caching">Hibernate documentation</a> on the subject.
+Only use the query cache for queries whose results change infrequently. Cached queries are invalidated whenever any entity in the queried table is updated.
 </td>
 </tr>
 </table>
 </div>
 </div>
-<div class="sect4">
-<h5 id="_caching_instances">Caching instances</h5>
-<div class="paragraph">
-<p>Call the <code>cache</code> method in your mapping block to enable caching with the default settings:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">class Person {
-    ...
-    static mapping = {
-        table 'people'
-        cache true
-    }
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>This will configure a <em>read-write</em> cache that includes both lazy and non-lazy properties. You can customize this further:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">class Person {
-    ...
-    static mapping = {
-        table 'people'
-        cache usage: 'read-only', include: 'non-lazy'
-    }
-}</code></pre>
-</div>
-</div>
-</div>
-<div class="sect4">
-<h5 id="_caching_associations">Caching associations</h5>
-<div class="paragraph">
-<p>As well as the ability to use Hibernate&#8217;s second level cache to cache instances you can also cache collections (associations) of objects. For example:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">class Person {
-
-    String firstName
-
-    static hasMany = [addresses: Address]
-
-    static mapping = {
-        table 'people'
-        version false
-        addresses column: 'Address', cache: true
-    }
-}</code></pre>
-</div>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">class Address {
-    String number
-    String postCode
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>This will enable a <em>read-write</em> caching mechanism on the <code>addresses</code> collection. You can also use:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">cache: 'read-write' // or 'read-only' or 'transactional'</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>to further configure the cache usage.</p>
-</div>
-</div>
-<div class="sect4">
-<h5 id="_caching_queries">Caching Queries</h5>
-<div class="paragraph">
-<p>In order for the results of queries to be cached, you must enable caching in your mapping:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">hibernate:
-  cache:
-    use_query_cache: true</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>To enable query caching for all queries created by dynamic finders, GORM etc. you can specify:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">hibernate:
-  cache:
-    queries: true    # This implicitly sets  `use_query_cache=true`</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>You can cache queries such as dynamic finders and criteria. To do so using a dynamic finder you can pass the <code>cache</code> argument:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">def person = Person.findByFirstName("Fred", [cache: true])</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>You can also cache criteria queries:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">def people = Person.withCriteria {
-    like('firstName', 'Fr%')
-    cache true
-}</code></pre>
-</div>
-</div>
-</div>
-<div class="sect4">
-<h5 id="_cache_usages">Cache usages</h5>
-<div class="paragraph">
-<p>Below is a description of the different cache settings and their usages:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><code>read-only</code> - If your application needs to read but never modify instances of a persistent class, a read-only cache may be used.</p>
-</li>
-<li>
-<p><code>read-write</code> - If the application needs to update data, a read-write cache might be appropriate.</p>
-</li>
-<li>
-<p><code>nonstrict-read-write</code> - If the application only occasionally needs to update data (i.e. if it is very unlikely that two transactions would try to update the same item simultaneously) and strict transaction isolation is not required, a <code>nonstrict-read-write</code> cache might be appropriate.</p>
-</li>
-<li>
-<p><code>transactional</code> - The <code>transactional</code> cache strategy provides support for fully transactional cache providers such as JBoss TreeCache. Such a cache may only be used in a JTA environment and you must specify <code>hibernate.transaction.manager_lookup_class</code> in the <code>grails-app/conf/application.groovy</code> file&#8217;s <code>hibernate</code> config.</p>
-</li>
-</ul>
 </div>
 </div>
 </div>

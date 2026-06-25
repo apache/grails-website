@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.18">
-<title>Untitled</title>
+<title>Database Indices</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -437,30 +437,113 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 </head>
-<body class="article">
+<body class="article toc2 toc-left">
 <div id="header">
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#ormdsl-databaseIndices">Database Indices</a>
+<ul class="sectlevel2">
+<li><a href="#_single_column_index">Single-Column Index</a></li>
+<li><a href="#_composite_index">Composite Index</a></li>
+<li><a href="#_unique_index">Unique Index</a></li>
+</ul>
+</li>
+</ul>
+</div>
 </div>
 <div id="content">
+<div class="sect1">
+<h2 id="ormdsl-databaseIndices">Database Indices</h2>
+<div class="sectionbody">
 <div class="paragraph">
-<p>To get the best performance out of your queries it is often necessary to tailor the table index definitions. How you tailor them is domain specific and a matter of monitoring usage patterns of your queries. With GORM&#8217;s DSL you can specify which columns are used in which indexes:</p>
+<p>GORM lets you define database indices on domain class columns directly in the <code>mapping</code> block, so they are created automatically when <code>hbm2ddl</code> generates the schema.</p>
+</div>
+<div class="sect2">
+<h3 id="_single_column_index">Single-Column Index</h3>
+<div class="paragraph">
+<p>Set <code>index: true</code> on a column to create an auto-named index, or provide a string name to name it explicitly:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">class Person {
-    String firstName
-    String address
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Book {
+    String title
+    String isbn
     static mapping = {
-        table 'people'
-        version false
-        id column: 'person_id'
-        firstName column: 'First_Name', index: 'Name_Idx'
-        address column: 'Address', index: 'Name_Idx,Address_Index'
+        title  index: true          <i class="conum" data-value="1"></i><b>(1)</b>
+        isbn   index: 'isbn_idx'    <i class="conum" data-value="2"></i><b>(2)</b>
     }
 }</code></pre>
 </div>
 </div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Creates an unnamed (auto-named) index on <code>title</code>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Creates a named index <code>isbn_idx</code> on <code>isbn</code>.</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_composite_index">Composite Index</h3>
 <div class="paragraph">
-<p>Note that you cannot have any spaces in the value of the <code>index</code> attribute; in this example <code>index:'Name_Idx, Address_Index'</code> will cause an error.</p>
+<p>To create a composite index across multiple columns, use the same index name on each column:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class OrderItem {
+    Long orderId
+    Long productId
+    static mapping = {
+        orderId   index: 'order_product_idx'    <i class="conum" data-value="1"></i><b>(1)</b>
+        productId index: 'order_product_idx'    <i class="conum" data-value="1"></i><b>(1)</b>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Both columns share the same index name, so Hibernate creates a single composite index.</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_unique_index">Unique Index</h3>
+<div class="paragraph">
+<p>You can combine <code>index</code> with <code>unique</code> to create a unique index:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Book {
+    String isbn
+    static mapping = {
+        isbn unique: true, index: 'isbn_unique_idx'
+    }
+}</code></pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Indices are only created automatically when <code>hibernate.hbm2ddl.auto</code> is set to <code>create</code>, <code>create-drop</code>, or <code>update</code>. For production schemas, prefer explicit DDL migration scripts.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div id="footer">

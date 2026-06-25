@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.18">
-<title>Version columns types</title>
+<title>Optimistic Locking and Versioning</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -441,63 +441,117 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div id="header">
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
-<ul class="sectlevel4">
-<li><a href="#_version_columns_types">Version columns types</a></li>
+<ul class="sectlevel1">
+<li><a href="#ormdsl-optimisticLockingAndVersioning">Optimistic Locking and Versioning</a>
+<ul class="sectlevel2">
+<li><a href="#_how_optimistic_locking_works">How Optimistic Locking Works</a></li>
+<li><a href="#_disabling_optimistic_locking">Disabling Optimistic Locking</a></li>
+<li><a href="#_customising_the_version_column">Customising the Version Column</a></li>
+<li><a href="#_locking_pessimistically">Locking Pessimistically</a></li>
+</ul>
+</li>
 </ul>
 </div>
 </div>
 <div id="content">
+<div class="sect1">
+<h2 id="ormdsl-optimisticLockingAndVersioning">Optimistic Locking and Versioning</h2>
+<div class="sectionbody">
 <div class="paragraph">
-<p>As discussed in the section on <a href="#locking">Optimistic and Pessimistic Locking</a>, by default GORM uses optimistic locking and automatically injects a <code>version</code> property into every class which is in turn mapped to a <code>version</code> column at the database level.</p>
+<p>GORM enables optimistic locking by default via a <code>version</code> column added to every domain class table.</p>
 </div>
+<div class="sect2">
+<h3 id="_how_optimistic_locking_works">How Optimistic Locking Works</h3>
 <div class="paragraph">
-<p>If you&#8217;re mapping to a legacy schema that doesn&#8217;t have version columns (or there&#8217;s some other reason why you don&#8217;t want/need this feature) you can disable this with the <code>version</code> method:</p>
+<p>When you call <code>save()</code>, Hibernate checks that the <code>version</code> in the database matches the version loaded by the current session. If another transaction modified the row in between, the versions will differ and Hibernate throws <code>StaleObjectStateException</code>:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">class Person {
-    ...
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def book = Book.get(1)
+// ... another thread or transaction updates the same book row ...
+book.title = "New Title"
+book.save()  // throws StaleObjectStateException if version was incremented elsewhere</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Handle this with a try/catch in your service or controller:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">try {
+    book.save(failOnError: true)
+} catch (org.hibernate.StaleObjectStateException e) {
+    // handle conflict: reload and retry, or inform the user
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_disabling_optimistic_locking">Disabling Optimistic Locking</h3>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Book {
+    String title
     static mapping = {
-        table 'people'
-        version false
+        version false   <i class="conum" data-value="1"></i><b>(1)</b>
     }
 }</code></pre>
 </div>
 </div>
-<div class="admonitionblock note">
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>No <code>version</code> column is created; concurrent modifications are not detected.</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock warning">
 <table>
 <tr>
 <td class="icon">
-<i class="fa icon-note" title="Note"></i>
+<i class="fa icon-warning" title="Warning"></i>
 </td>
 <td class="content">
-If you disable optimistic locking you are essentially on your own with regards to concurrent updates and are open to the risk of users losing data (due to data overriding) unless you use <a href="#locking">pessimistic locking</a>
+Disabling versioning removes all optimistic locking protection. Concurrent updates to the same row will silently overwrite each other.
 </td>
 </tr>
 </table>
 </div>
-<div class="sect4">
-<h5 id="_version_columns_types">Version columns types</h5>
-<div class="paragraph">
-<p>By default GORM maps the <code>version</code> property as a <code>Long</code> that gets incremented by one each time an instance is updated. But Hibernate also supports using a <code>Timestamp</code>, for example:</p>
 </div>
+<div class="sect2">
+<h3 id="_customising_the_version_column">Customising the Version Column</h3>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">import java.sql.Timestamp
-
-class Person {
-
-    ...
-    Timestamp version
-
-    static mapping = {
-        table 'people'
-    }
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">static mapping = {
+    version column: 'revision'
 }</code></pre>
 </div>
 </div>
+</div>
+<div class="sect2">
+<h3 id="_locking_pessimistically">Locking Pessimistically</h3>
 <div class="paragraph">
-<p>There&#8217;s a slight risk that two updates occurring at nearly the same time on a fast server can end up with the same timestamp value but this risk is very low. One benefit of using a <code>Timestamp</code> instead of a <code>Long</code> is that you combine the optimistic locking and last-updated semantics into a single column.</p>
+<p>For cases where you need a database-level lock, use GORM&#8217;s <code>lock()</code> method:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">Book.withTransaction {
+    def book = Book.lock(1)   <i class="conum" data-value="1"></i><b>(1)</b>
+    book.title = "Locked Update"
+    book.save()
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Issues a <code>SELECT ... FOR UPDATE</code>, preventing other transactions from reading or modifying the row until the transaction commits.</td>
+</tr>
+</table>
+</div>
+</div>
 </div>
 </div>
 </div>

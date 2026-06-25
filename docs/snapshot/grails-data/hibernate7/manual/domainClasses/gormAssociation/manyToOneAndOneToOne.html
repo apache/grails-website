@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.18">
-<title>Example A</title>
+<title>Many-to-One and One-to-One Associations</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -441,270 +441,127 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div id="header">
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
-<ul class="sectlevel4">
-<li><a href="#_example_a">Example A</a></li>
-<li><a href="#_example_b">Example B</a></li>
-<li><a href="#_example_c">Example C</a></li>
-<li><a href="#_controlling_the_ends_of_the_association">Controlling the ends of the association</a></li>
-<li><a href="#_replacing_a_many_to_one_collection">Replacing a many-to-one collection</a></li>
+<ul class="sectlevel1">
+<li><a href="#gormAssociation-manyToOneAndOneToOne">Many-to-One and One-to-One Associations</a>
+<ul class="sectlevel2">
+<li><a href="#_many_to_one">Many-to-One</a></li>
+<li><a href="#_one_to_one">One-to-One</a></li>
+<li><a href="#_configuring_the_foreign_key_column">Configuring the Foreign Key Column</a></li>
+<li><a href="#_nullable_associations">Nullable Associations</a></li>
+</ul>
+</li>
 </ul>
 </div>
 </div>
 <div id="content">
+<div class="sect1">
+<h2 id="gormAssociation-manyToOneAndOneToOne">Many-to-One and One-to-One Associations</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_many_to_one">Many-to-One</h3>
 <div class="paragraph">
-<p>A many-to-one relationship is the simplest kind, and is defined with a property of the type of another domain class. Consider this example:</p>
+<p>Declare a many-to-one association by adding a property of the target domain class type:</p>
 </div>
-<div class="sect4">
-<h5 id="_example_a">Example A</h5>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Face {
-    Nose nose
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Book {
+    String title
+    Author author           <i class="conum" data-value="1"></i><b>(1)</b>
+}
+
+class Author {
+    String name
 }</code></pre>
 </div>
 </div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Nose {
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>In this case we have a unidirectional many-to-one relationship from <code>Face</code> to <code>Nose</code>. To make this relationship bidirectional define the other side as follows (and see the section on controlling the ends of the association just below):</p>
-</div>
-</div>
-<div class="sect4">
-<h5 id="_example_b">Example B</h5>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Face {
-    Nose nose
-}</code></pre>
-</div>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Nose {
-    static belongsTo = [face:Face]
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>In this case we use the <code>belongsTo</code> setting to say that <code>Nose</code> "belongs to" <code>Face</code>. The result of this is that we can create a <code>Face</code>, attach a <code>Nose</code> instance to it and when we save or delete the <code>Face</code> instance, GORM will save or delete the <code>Nose</code>. In other words, saves and deletes will cascade from <code>Face</code> to the associated <code>Nose</code>:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">new Face(nose:new Nose()).save()</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The example above will save both face and nose. Note that the inverse <em>is not</em> true and will result in an error due to a transient <code>Face</code>:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">new Nose(face:new Face()).save() // will cause an error</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Now if we delete the <code>Face</code> instance, the <code>Nose</code> will go too:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">def f = Face.get(1)
-f.delete() // both Face and Nose deleted</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>To make the relationship a true one-to-one, use the <code>hasOne</code> property on the owning side, e.g. <code>Face</code>:</p>
-</div>
-</div>
-<div class="sect4">
-<h5 id="_example_c">Example C</h5>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Face {
-    static hasOne = [nose:Nose]
-}</code></pre>
-</div>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Nose {
-    Face face
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Note that using this property puts the foreign key on the inverse table to the example A, so in this case the foreign key column is stored in the <code>nose</code> table inside a column called <code>face_id</code>.</p>
-</div>
-<div class="admonitionblock note">
+<div class="colist arabic">
 <table>
 <tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-<code>hasOne</code> only works with bidirectional relationships.
-</td>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>A foreign key column <code>author_id</code> is added to the <code>book</code> table.</td>
 </tr>
 </table>
 </div>
 <div class="paragraph">
-<p>Finally, it&#8217;s a good idea to add a unique constraint on one side of the one-to-one relationship:</p>
+<p>When combined with <code>belongsTo</code>, the association participates in cascade save/delete:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Face {
-    static hasOne = [nose:Nose]
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Book {
+    String title
+    static belongsTo = [author: Author]     <i class="conum" data-value="1"></i><b>(1)</b>
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The <code>author</code> property is added implicitly; deleting <code>Author</code> cascades to <code>Book</code>.</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_one_to_one">One-to-One</h3>
+<div class="paragraph">
+<p>A one-to-one association is also declared as a simple property, but each <code>Author</code> can only have one <code>Biography</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Author {
+    String name
+    Biography biography      <i class="conum" data-value="1"></i><b>(1)</b>
+}
+
+class Biography {
+    String summary
+    static belongsTo = [author: Author]
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>A unique foreign key <code>biography_id</code> is added to <code>author</code>.</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_configuring_the_foreign_key_column">Configuring the Foreign Key Column</h3>
+<div class="paragraph">
+<p>Override the foreign key column name in the <code>mapping</code> block:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Book {
+    String title
+    Author author
+    static mapping = {
+        author column: 'fk_author'
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_nullable_associations">Nullable Associations</h3>
+<div class="paragraph">
+<p>By default, GORM-managed foreign key columns are non-nullable. To allow null:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Book {
+    Author author
 
     static constraints = {
-        nose unique: true
+        author nullable: true
     }
 }</code></pre>
 </div>
 </div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Nose {
-    Face face
-}</code></pre>
-</div>
-</div>
-</div>
-<div class="sect4">
-<h5 id="_controlling_the_ends_of_the_association">Controlling the ends of the association</h5>
-<div class="paragraph">
-<p>Occasionally you may find yourself with domain classes that have multiple properties of the same type. They may even be self-referential, i.e. the association property has the same type as the domain class it&#8217;s in. Such situations can cause problems because GORM may guess incorrectly the type of the association. Consider this simple class:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Person {
-    String name
-    Person parent
-
-    static belongsTo = [ supervisor: Person ]
-
-    static constraints = { supervisor nullable: true }
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>As far as GORM is concerned, the <code>parent</code> and <code>supervisor</code> properties are two directions of the same association. So when you set the <code>parent</code> property on a <code>Person</code> instance, GORM will automatically set the <code>supervisor</code> property on the other <code>Person</code> instance. This may be what you want, but if you look at the class, what we in fact have are two unidirectional relationships.</p>
-</div>
-<div class="paragraph">
-<p>To guide GORM to the correct mapping, you can tell it that a particular association is unidirectional through the <code>mappedBy</code> property:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Person {
-    String name
-    Person parent
-
-    static belongsTo = [ supervisor: Person ]
-
-    static mappedBy = [ supervisor: "none", parent: "none" ]
-
-    static constraints = { supervisor nullable: true }
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>You can also replace "none" with any property name of the target class. And of course this works for normal domain classes too, not just self-referential ones. Nor is the <code>mappedBy</code> property limited to many-to-one and one-to-one associations: it also works for one-to-many and many-to-many associations as you&#8217;ll see in the next section.</p>
-</div>
-<div class="admonitionblock warning">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-warning" title="Warning"></i>
-</td>
-<td class="content">
-If you have a property called "none" on your domain class, this approach won&#8217;t work currently! The "none" property will be treated as the reverse direction of the association (or the "back reference"). Fortunately, "none" is not a common domain class property name.
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div class="sect4">
-<h5 id="_replacing_a_many_to_one_collection">Replacing a many-to-one collection</h5>
-<div class="paragraph">
-<p>Given these GORM entities:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Book {
-    String name
-    static hasMany = [reviews: Review]
-}
-class Review {
-    String author
-    String quote
-    static belongsTo = [book: Book]
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Imagine you have a book with two reviews:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">new Book(name: 'Daemon')
-                .addToReviews(new Review(quote: 'Daemon does for surfing the Web what Jaws did for swimming in the ocean.', author: 'Chicago Sun-Times'))
-                .addToReviews(new Review(quote: 'Daemon is wet-yourself scary, tech-savvy, mind-blowing!', author: 'Paste Magazine'))
-                .save()</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>You could create a method to replace the <code>reviews</code> collection as illustrated next:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">Book replaceReviews(Serializable idParam, List&lt;Review&gt; newReviews) {
-    Book book = Book.where { id == idParam }.join('reviews').get()
-    clearReviews(book)
-    newReviews.each { book.addToReviews(it) }
-    book.save()
-}
-
-void clearReviews(Book book) {
-    List&lt;Serializable&gt; ids = []
-    book.reviews.collect().each {
-        book.removeFromReviews(it)
-        ids &lt;&lt; it.id
-    }
-    Review.executeUpdate("delete Review r where r.id in :ids", [ids: ids])
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Alternatively you could leverage <a href="https://grails.apache.org/docs/latest/ref/Database%20Mapping/cascade.html">cascade</a> behaviour.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Book {
-    String name
-    static hasMany = [reviews: Review]
-    static mappping = {
-        reviews cascade: 'all-delete-orphan'
-    }
-}
-class Review {
-    String author
-    String quote
-    static belongsTo = [book: Book]
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The cascade behaviour takes cares of deleting every orphan <code>Review</code>. Thus, invoking <code>.clear()</code> suffices to remove the book&#8217;s previous reviews.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">Book replaceReviews(Serializable idParam, List&lt;Review&gt; newReviews) {
-    Book book = Book.where { id == idParam }.join('reviews').get()
-    book.reviews.clear()
-    newReviews.each { book.addToReviews(it) }
-    book.save()
-}</code></pre>
 </div>
 </div>
 </div>

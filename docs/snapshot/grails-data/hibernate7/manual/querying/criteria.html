@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.18">
-<title>Conjunctions and Disjunctions</title>
+<title>Hibernate Criteria DSL</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -442,14 +442,14 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
 <ul class="sectlevel3">
+<li><a href="#HibernateCriteriaDSL">Hibernate Criteria DSL</a></li>
 <li><a href="#_conjunctions_and_disjunctions">Conjunctions and Disjunctions</a></li>
 <li><a href="#_querying_associations">Querying Associations</a></li>
 <li><a href="#_querying_with_projections">Querying with Projections</a></li>
-<li><a href="#_transforming_projection_results">Transforming Projection Results</a></li>
-<li><a href="#_sql_projections">SQL Projections</a></li>
-<li><a href="#_using_sql_restrictions">Using SQL Restrictions</a></li>
+<li><a href="#_sql_restrictions">SQL Restrictions</a></li>
+<li><a href="#_setting_properties_in_the_criteria_instance">Setting Properties in the Criteria Instance</a></li>
+<li><a href="#_advanced_hibernate_7_features">Advanced Hibernate 7 Features</a></li>
 <li><a href="#_using_scrollable_results">Using Scrollable Results</a></li>
-<li><a href="#_setting_properties_in_the_criteria_instance">Setting properties in the Criteria instance</a></li>
 <li><a href="#_querying_with_eager_fetching">Querying with Eager Fetching</a></li>
 <li><a href="#_method_reference">Method Reference</a></li>
 <li><a href="#_combining_criteria">Combining Criteria</a></li>
@@ -461,15 +461,15 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <p>Criteria is an advanced way to query that uses a Groovy builder to construct potentially complex queries. It is a much better approach than building up query strings using a <code>StringBuilder</code>.</p>
 </div>
 <div class="paragraph">
-<p>Criteria can be used either with the <a href="../api/org/grails/datastore/gorm/GormEntity.html#createCriteria()">createCriteria()</a> or <a href="../api/org/grails/datastore/gorm/GormEntity.html#withCriteria(groovy.lang.Closure)">withCriteria(closure)</a> methods.</p>
+<p>Criteria can be used either with the <code>createCriteria()</code> or <code>withCriteria(closure)</code> methods.</p>
 </div>
 <div class="paragraph">
-<p>The builder uses Hibernate&#8217;s Criteria API. The nodes on this builder map the static methods found in the <a href="https://docs.jboss.org/hibernate/orm/5.6/javadocs/org/hibernate/criterion/Restrictions.html">Restrictions</a> class of the Hibernate Criteria API. For example:</p>
+<p>The builder uses Hibernate 7&#8217;s Criteria API (based on JPA Criteria). The nodes on this builder map to GORM query constraints which are then translated into JPA Criteria predicates.</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight"><code class="language-groovy" data-lang="groovy">def c = Account.createCriteria()
-def results = c {
+def results = c.list {
     between("balance", 500, 1000)
     eq("branch", "London")
     or {
@@ -502,6 +502,26 @@ def results = c {
 </div>
 <div class="paragraph">
 <p>If no records are found with the above criteria, an empty List is returned.</p>
+</div>
+<div class="sect3">
+<h4 id="HibernateCriteriaDSL">Hibernate Criteria DSL</h4>
+<div class="paragraph">
+<p>In Hibernate 7, the criteria builder has been completely rewritten to leverage the JPA Criteria API. The <code>HibernateCriteriaBuilder</code> implements the GORM criteria DSL and provides seamless integration with Hibernate 7 features.</p>
+</div>
+<div class="paragraph">
+<p>The DSL supports all standard GORM criteria methods such as <code>eq</code>, <code>ne</code>, <code>gt</code>, <code>lt</code>, <code>ge</code>, <code>le</code>, <code>between</code>, <code>like</code>, <code>ilike</code>, <code>in</code>, <code>isNull</code>, <code>isNotNull</code>, <code>isEmpty</code>, <code>isNotEmpty</code>, and more.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def results = Person.withCriteria {
+    ilike('firstName', 'b%')
+    or {
+        ge('age', 18)
+        isNull('parent')
+    }
+}</code></pre>
+</div>
+</div>
 </div>
 <div class="sect3">
 <h4 id="_conjunctions_and_disjunctions">Conjunctions and Disjunctions</h4>
@@ -595,7 +615,7 @@ def results = c.list {
 <div class="sect3">
 <h4 id="_querying_with_projections">Querying with Projections</h4>
 <div class="paragraph">
-<p>Projections may be used to customise the results. Define a "projections" node within the criteria builder tree to use projections. There are equivalent methods within the projections node to the methods found in the Hibernate <a href="https://docs.jboss.org/hibernate/orm/5.6/javadocs/org/hibernate/criterion/Projections.html">Projections</a> class:</p>
+<p>Projections may be used to customise the results. Define a "projections" node within the criteria builder tree to use projections.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -611,203 +631,12 @@ def numberOfBranches = c.get {
 <div class="paragraph">
 <p>When multiple fields are specified in the projection, a List of values will be returned. A single value will be returned otherwise.</p>
 </div>
-</div>
-<div class="sect3">
-<h4 id="_transforming_projection_results">Transforming Projection Results</h4>
 <div class="paragraph">
-<p>If the raw value or simple object array returned by the criteria method doesn&#8217;t suit your needs, the result can be transformed with a <a href="https://docs.jboss.org/hibernate/orm/5.6/javadocs/org/hibernate/transform/ResultTransformer.html">ResultTransformer</a>. Let&#8217;s say we want to transform the criteria results into a Map so that we can easily reference values by key:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">def c = Account.createCriteria()
-
-def accountsOverview = c.get {
-    resultTransformer(CriteriaSpecification.ALIAS_TO_ENTITY_MAP)
-    projections {
-        sum('balance', 'allBalances')
-        countDistinct('holderLastName', 'lastNames')
-    }
-}
-
-// accountsOverview.allBalances
-// accountsOverview.lastNames</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Note that we&#8217;ve added an alias to each projection as an additional parameter to be used as the key. For this to work, all projections must have aliases defined, otherwise the corresponding map entry will not be built.</p>
-</div>
-<div class="paragraph">
-<p>We can also transform the result into an object of our choosing via the <a href="https://docs.jboss.org/hibernate/orm/5.6/javadocs/org/hibernate/transform/Transformers.html#aliasToBean-java.lang.Class-">Transformers.aliasToBean()</a> method. In this case, we&#8217;ll transform it into an <code>AccountsOverview</code>:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">class AccountsOverview {
-    Number allBalances
-    Number lastNames
-}</code></pre>
-</div>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">def c = Account.createCriteria()
-
-def accountsOverview = c.get {
-    resultTransformer(Transformers.aliasToBean(AccountsOverview))
-    projections {
-        sum('balance', 'allBalances')
-        countDistinct('holderLastName', 'lastNames')
-    }
-}
-
-// accountsOverview instanceof AccountsOverview</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Each alias must have a corresponding property or explicit setter on the bean otherwise an exception will be thrown.</p>
+<p>Common projections include <code>count</code>, <code>countDistinct</code>, <code>groupProperty</code>, <code>avg</code>, <code>min</code>, <code>max</code>, <code>sum</code>, <code>id</code>, and <code>property</code>.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_sql_projections">SQL Projections</h4>
-<div class="paragraph">
-<p>The criteria DSL provides access to Hibernate&#8217;s SQL projection API.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">// Box is a domain class...
-class Box {
-    int width
-    int height
-}</code></pre>
-</div>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">// Use SQL projections to retrieve the perimeter and area of all of the Box instances...
-def c = Box.createCriteria()
-
-def results = c.list {
-    projections {
-      sqlProjection '(2 * (width + height)) as perimeter, (width * height) as area', ['perimeter', 'area'], [INTEGER, INTEGER]
-    }
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The first argument to the <code>sqlProjection</code> method is the SQL which defines the projections.  The second argument is a list of
-Strings which represent column aliases corresponding to the projected values expressed in the SQL.  The third argument
-is a list of <code>org.hibernate.type.Type</code> instances which correspond to the projected values expressed in the SQL.  The API
-supports all <code>org.hibernate.type.Type</code> objects but constants like INTEGER, LONG, FLOAT etc. are provided by the DSL which
-correspond to all of the types defined in <code>org.hibernate.type.StandardBasicTypes</code>.</p>
-</div>
-<div class="paragraph">
-<p>Consider that the following table represents the data in the
-<code>BOX</code> table.</p>
-</div>
-<table class="tableblock frame-all grid-all stretch">
-<colgroup>
-<col style="width: 50%;">
-<col style="width: 50%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">width</th>
-<th class="tableblock halign-left valign-top">height</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">7</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">9</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">9</p></td>
-</tr>
-</tbody>
-</table>
-<div class="paragraph">
-<p>The query above would return results like this:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">[[18, 14], [20, 16], [22, 18], [26, 36]]</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Each of the inner lists contains the 2 projected values for each <code>Box</code>, perimeter and area.</p>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-Note that if there are other references in scope wherever your criteria query is expressed that have names that conflict
-with any of the type constants described above, the code in your criteria will refer to those references, not the type
-constants provided by the DSL.  In the unlikely event of that happening you can disambiguate the conflict by referring
-to the fully qualified Hibernate type.  For example <code>StandardBasicTypes.INTEGER</code> instead of <code>INTEGER</code>.
-</td>
-</tr>
-</table>
-</div>
-<div class="paragraph">
-<p>If only 1 value is being projected, the alias and the type do not need to be included in a list.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">def results = c.list {
-    projections {
-      sqlProjection 'sum(width * height) as totalArea', 'totalArea', INTEGER
-    }
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>That query would return a single result with the value of 84 as the total area of all of the <code>Box</code> instances.</p>
-</div>
-<div class="paragraph">
-<p>The DSL supports grouped projections with the <code>sqlGroupProjection</code> method.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">def results = c.list {
-    projections {
-        sqlGroupProjection 'width, sum(height) as combinedHeightsForThisWidth', 'width', ['width', 'combinedHeightsForThisWidth'], [INTEGER, INTEGER]
-    }
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The first argument to the <code>sqlGroupProjection</code> method is the SQL which defines the projections.  The second argument represents the
-group by clause that should be part of the query.  That string may be single column name or a comma separated list of column
-names.  The third argument is a list of
-Strings which represent column aliases corresponding to the projected values expressed in the SQL.  The fourth argument
-is a list of <code>org.hibernate.type.Type</code> instances which correspond to the projected values expressed in the SQL.</p>
-</div>
-<div class="paragraph">
-<p>The query above is projecting the combined heights of boxes grouped by width and would return results that look like this:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">[[2, 24], [4, 9]]</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Each of the inner lists contains 2 values.  The first value is a box width and the second value is the sum of the heights
-of all of the boxes which have that width.</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_using_sql_restrictions">Using SQL Restrictions</h4>
+<h4 id="_sql_restrictions">SQL Restrictions</h4>
 <div class="paragraph">
 <p>You can access Hibernate&#8217;s SQL Restrictions capabilities.</p>
 </div>
@@ -839,23 +668,65 @@ def peopleWithShortFirstNames = c.list {
 <i class="fa icon-note" title="Note"></i>
 </td>
 <td class="content">
-Note that the parameter there is SQL. The <code>first_name</code> attribute referenced in the example refers to the persistence model, not the object model like in HQL queries. The <code>Person</code> property named <code>firstName</code> is mapped to the <code>first_name</code> column in the database and you must refer to that in the <code>sqlRestriction</code> string.
+Note that the parameter there is SQL. The <code>first_name</code> attribute referenced in the example refers to the persistence model, not the object model like in HQL queries.
 </td>
 </tr>
 </table>
 </div>
+</div>
+<div class="sect3">
+<h4 id="_setting_properties_in_the_criteria_instance">Setting Properties in the Criteria Instance</h4>
 <div class="paragraph">
-<p>Also note that the SQL used here is not necessarily portable across databases.</p>
+<p>The builder allows setting properties that control how the query is executed.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">import org.hibernate.FetchMode
+...
+def results = c.list {
+    maxResults(10)
+    firstResult(50)
+    cache(true)
+    readOnly(true)
+    lock(true)
+    fetchMode("aRelationship", FetchMode.JOIN)
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If a node within the builder tree doesn&#8217;t match a particular criterion it will attempt to set a property on the Criteria object itself. This allows full access to all the properties in the criteria.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_advanced_hibernate_7_features">Advanced Hibernate 7 Features</h4>
+<div class="paragraph">
+<p>The Hibernate 7 criteria builder supports several advanced features:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Pessimistic Locking:</strong> Use <code>lock(true)</code> to obtain a pessimistic write lock.</p>
+</li>
+<li>
+<p><strong>Query Caching:</strong> Use <code>cache(true)</code> to enable query caching for the results.</p>
+</li>
+<li>
+<p><strong>Read-Only Mode:</strong> Use <code>readOnly(true)</code> to disable dirty checking for loaded entities.</p>
+</li>
+<li>
+<p><strong>Fetch Mode:</strong> Use <code>fetchMode("association", FetchMode.JOIN)</code> to specify Eager/Lazy fetching strategies.</p>
+</li>
+</ul>
 </div>
 </div>
 <div class="sect3">
 <h4 id="_using_scrollable_results">Using Scrollable Results</h4>
 <div class="paragraph">
-<p>You can use Hibernate&#8217;s <a href="https://docs.jboss.org/hibernate/orm/5.6/javadocs/org/hibernate/ScrollableResults.html">ScrollableResults</a> feature by calling the scroll method:</p>
+<p>You can use Hibernate&#8217;s <a href="https://docs.hibernate.org/orm/7.0/javadocs/org/hibernate/ScrollableResults.html">ScrollableResults</a> feature by calling the scroll method:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">def results = crit.scroll {
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def results = crit.scroll {
     maxResults(10)
 }
 def f = results.first()
@@ -868,7 +739,7 @@ def accountNumber = results.getLong('number')</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>To quote the documentation of Hibernate ScrollableResults:</p>
+<p>To quote the Hibernate documentation on ScrollableResults:</p>
 </div>
 <div class="quoteblock">
 <blockquote>
@@ -882,30 +753,13 @@ def accountNumber = results.getLong('number')</code></pre>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_setting_properties_in_the_criteria_instance">Setting properties in the Criteria instance</h4>
-<div class="paragraph">
-<p>If a node within the builder tree doesn&#8217;t match a particular criterion it will attempt to set a property on the Criteria object itself. This allows full access to all the properties in this class. This example calls <code>setMaxResults</code> and <code>setFirstResult</code> on the <a href="https://docs.jboss.org/hibernate/orm/5.6/javadocs/org/hibernate/Criteria.html">Criteria</a> instance:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">import org.hibernate.FetchMode as FM
-...
-def results = c.list {
-    maxResults(10)
-    firstResult(50)
-    fetchMode("aRelationship", FM.JOIN)
-}</code></pre>
-</div>
-</div>
-</div>
-<div class="sect3">
 <h4 id="_querying_with_eager_fetching">Querying with Eager Fetching</h4>
 <div class="paragraph">
-<p>In the section on <a href="#fetching">Eager and Lazy Fetching</a> we discussed how to declaratively specify fetching to avoid the N+1 SELECT problem. However, this can also be achieved using a criteria query:</p>
+<p>In the section on eager and lazy fetching we discussed how to declaratively specify fetching to avoid the N+1 SELECT problem. However, this can also be achieved using a criteria query:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">def criteria = Task.createCriteria()
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def criteria = Task.createCriteria()
 def tasks = criteria.list{
     eq "assignee.id", task.assignee.id
     join 'assignee'
@@ -915,7 +769,7 @@ def tasks = criteria.list{
 </div>
 </div>
 <div class="paragraph">
-<p>Notice the usage of the <code>join</code> method: it tells the criteria API to use a <code>JOIN</code> to fetch the named associations with the <code>Task</code> instances. It&#8217;s probably best not to use this for one-to-many associations though, because you will most likely end up with duplicate results. Instead, use the <em>select</em> fetch mode:</p>
+<p>Notice the usage of the <code>join</code> method: it tells the criteria API to use a <code>JOIN</code> to fetch the named associations with the <code>Task</code> instances. It&#8217;s probably best not to use this for one-to-many associations though, because you will most likely end up with duplicate results. Instead, use the <code>select</code> fetch mode:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -928,7 +782,7 @@ def results = Airport.withCriteria {
 </div>
 </div>
 <div class="paragraph">
-<p>Although this approach triggers a second query to get the <code>flights</code> association, you will get reliable results  - even with the <code>maxResults</code> option.</p>
+<p>Although this approach triggers a second query to get the <code>flights</code> association, you will get reliable results — even with the <code>maxResults</code> option.</p>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -966,15 +820,15 @@ def results = Airport.withCriteria {
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">c { ... }</code></pre>
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">c { ... }</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>The build defaults to listing all the results and hence the above is equivalent to:</p>
+<p>The builder defaults to listing all the results and hence the above is equivalent to:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">c.list { ... }</code></pre>
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">c.list { ... }</code></pre>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
@@ -1003,7 +857,7 @@ def results = Airport.withCriteria {
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>listDistinct</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">If subqueries or associations are used one may end up with the same row multiple times in the result set. This allows listing only distinct entities and is equivalent to <code>DISTINCT_ROOT_ENTITY</code> of the <a href="https://docs.jboss.org/hibernate/orm/5.6/javadocs/org/hibernate/criterion/CriteriaSpecification.html">CriteriaSpecification</a> class.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">If subqueries or associations are used one may end up with the same row multiple times in the result set. This allows listing only distinct entities and is equivalent to <code>DISTINCT_ROOT_ENTITY</code> of the CriteriaSpecification class.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>count</strong></p></td>
@@ -1019,7 +873,7 @@ def results = Airport.withCriteria {
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">def emeaCriteria = {
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def emeaCriteria = {
     eq "region", "EMEA"
 }
 

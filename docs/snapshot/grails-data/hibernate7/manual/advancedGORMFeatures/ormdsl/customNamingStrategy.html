@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.18">
-<title>Untitled</title>
+<title>Custom Naming Strategy</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -437,75 +437,90 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 </head>
-<body class="article">
+<body class="article toc2 toc-left">
 <div id="header">
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#ormdsl-customNamingStrategy">Custom Naming Strategy</a>
+<ul class="sectlevel2">
+<li><a href="#_configuring_a_custom_strategy">Configuring a Custom Strategy</a></li>
+<li><a href="#_implementing_a_custom_strategy">Implementing a Custom Strategy</a></li>
+</ul>
+</li>
+</ul>
+</div>
 </div>
 <div id="content">
+<div class="sect1">
+<h2 id="ormdsl-customNamingStrategy">Custom Naming Strategy</h2>
+<div class="sectionbody">
 <div class="paragraph">
-<p>By default GORM uses Hibernate&#8217;s <code>ImprovedNamingStrategy</code> to convert domain class Class and field names to SQL table and column names by converting from camel-cased Strings to ones that use underscores as word separators. You can customize these on a per-class basis in the <code>mapping</code> closure but if there&#8217;s a consistent pattern you can specify a different <code>NamingStrategy</code> class to use.</p>
+<p>By default GORM uses Hibernate&#8217;s snake_case physical naming strategy (<code>PhysicalNamingStrategySnakeCaseImpl</code>), which converts camelCase class and property names to <code>snake_case</code> table and column names (e.g., <code>BookAuthor</code> → <code>book_author</code>, <code>firstName</code> → <code>first_name</code>).</p>
 </div>
+<div class="sect2">
+<h3 id="_configuring_a_custom_strategy">Configuring a Custom Strategy</h3>
 <div class="paragraph">
-<p>Configure the class name to be used in <code>grails-app/conf/application.groovy</code> in the <code>hibernate</code> section, e.g.</p>
+<p>You can replace this with any Hibernate <code>PhysicalNamingStrategy</code> implementation via application configuration:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">dataSource {
-    pooled = true
-    dbCreate = "create-drop"
-    ...
-}
-
-hibernate {
-    cache.use_second_level_cache = true
-    ...
-    naming_strategy = com.myco.myproj.CustomNamingStrategy
-}</code></pre>
+<pre class="highlight"><code class="language-yaml" data-lang="yaml">hibernate:
+    physicalNamingStrategy: com.example.MyCustomNamingStrategy</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>You can also specify the name of the class and it will be loaded for you:</p>
+<p>Or set it per datasource:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">hibernate {
-    ...
-    naming_strategy = 'com.myco.myproj.CustomNamingStrategy'
-}</code></pre>
+<pre class="highlight"><code class="language-yaml" data-lang="yaml">dataSources:
+    reporting:
+        hibernate:
+            physicalNamingStrategy: com.example.LegacyNamingStrategy</code></pre>
 </div>
 </div>
+</div>
+<div class="sect2">
+<h3 id="_implementing_a_custom_strategy">Implementing a Custom Strategy</h3>
 <div class="paragraph">
-<p>A third option is to provide an instance if there is some configuration required beyond calling the default constructor:</p>
+<p>Implement Hibernate&#8217;s <code>org.hibernate.boot.model.naming.PhysicalNamingStrategy</code> interface:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">hibernate {
-    ...
-    def strategy = new com.myco.myproj.CustomNamingStrategy()
-    // configure as needed
-    naming_strategy = strategy
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>You can use an existing class or write your own, for example one that prefixes table names and column names:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">package com.myco.myproj
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">import org.hibernate.boot.model.naming.Identifier
+import org.hibernate.boot.model.naming.PhysicalNamingStrategy
+import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment
 
-import org.hibernate.cfg.ImprovedNamingStrategy
-import org.hibernate.util.StringHelper
+class UpperCaseNamingStrategy implements PhysicalNamingStrategy {
 
-class CustomNamingStrategy extends ImprovedNamingStrategy {
-
-    String classToTableName(String className) {
-        "table_" + StringHelper.unqualify(className)
+    @Override
+    Identifier toPhysicalTableName(Identifier name, JdbcEnvironment jdbcEnvironment) {
+        return Identifier.toIdentifier(name.text.toUpperCase())
     }
 
-    String propertyToColumnName(String propertyName) {
-        "col_" + StringHelper.unqualify(propertyName)
+    @Override
+    Identifier toPhysicalColumnName(Identifier name, JdbcEnvironment jdbcEnvironment) {
+        return Identifier.toIdentifier(name.text.toUpperCase())
     }
+
+    // ... other required method overrides ...
 }</code></pre>
+</div>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+Individual column or table names set explicitly in the <code>mapping</code> block always take precedence over what the naming strategy would produce.
+</td>
+</tr>
+</table>
+</div>
+</div>
 </div>
 </div>
 </div>

@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.18">
-<title>Untitled</title>
+<title>GORM Composition (Embedded Objects)</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -437,33 +437,96 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 </head>
-<body class="article">
+<body class="article toc2 toc-left">
 <div id="header">
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#domainClasses-gormComposition">GORM Composition (Embedded Objects)</a>
+<ul class="sectlevel2">
+<li><a href="#_declaring_an_embedded_component">Declaring an Embedded Component</a></li>
+<li><a href="#_overriding_column_names">Overriding Column Names</a></li>
+<li><a href="#_nullable_embedded_objects">Nullable Embedded Objects</a></li>
+</ul>
+</li>
+</ul>
+</div>
 </div>
 <div id="content">
+<div class="sect1">
+<h2 id="domainClasses-gormComposition">GORM Composition (Embedded Objects)</h2>
+<div class="sectionbody">
 <div class="paragraph">
-<p>As well as <a href="#gormAssociation">associations</a>, GORM supports the notion of composition. In this case instead of mapping classes onto separate tables a class can be "embedded" within the current table. For example:</p>
+<p>GORM supports composition via <code>embedded</code>, which maps a non-domain class as a set of columns on the owning table rather than a separate table.</p>
+</div>
+<div class="sect2">
+<h3 id="_declaring_an_embedded_component">Declaring an Embedded Component</h3>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Address {
+    String street
+    String city
+    String postalCode
+    String country
+}
+
+class Person {
+    String name
+    Address address             <i class="conum" data-value="1"></i><b>(1)</b>
+
+    static embedded = ['address']   <i class="conum" data-value="2"></i><b>(2)</b>
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td><code>Address</code> is a plain Groovy class (not a domain class).</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Declaring it in <code>embedded</code> maps its properties as columns on the <code>person</code> table.</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The <code>person</code> table will contain columns: <code>name</code>, <code>address_street</code>, <code>address_city</code>, <code>address_postal_code</code>, <code>address_country</code>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_overriding_column_names">Overriding Column Names</h3>
+<div class="paragraph">
+<p>Use the <code>mapping</code> block to rename the embedded columns:</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight"><code class="language-groovy" data-lang="groovy">class Person {
-    Address homeAddress
-    Address workAddress
-    static embedded = ['homeAddress', 'workAddress']
-}
-
-class Address {
-    String number
-    String code
+    static embedded = ['address']
+    static mapping = {
+        address {
+            street  column: 'addr_street'
+            city    column: 'addr_city'
+        }
+    }
 }</code></pre>
 </div>
 </div>
-<div class="paragraph">
-<p>The resulting mapping would looking like this:</p>
 </div>
-<div class="imageblock">
+<div class="sect2">
+<h3 id="_nullable_embedded_objects">Nullable Embedded Objects</h3>
+<div class="paragraph">
+<p>If the embedded object can be absent, mark it as nullable in constraints:</p>
+</div>
+<div class="listingblock">
 <div class="content">
-<img src="5.2.2-composition.jpg" alt="5.2.2 composition">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Person {
+    Address address
+    static embedded  = ['address']
+    static constraints = {
+        address nullable: true
+    }
+}</code></pre>
 </div>
 </div>
 <div class="admonitionblock note">
@@ -473,10 +536,13 @@ class Address {
 <i class="fa icon-note" title="Note"></i>
 </td>
 <td class="content">
-If you define the <code>Address</code> class in a separate Groovy file in the <code>grails-app/domain</code> directory you will also get an <code>address</code> table. If you don&#8217;t want this to happen use Groovy&#8217;s ability to define multiple classes per file and include the <code>Address</code> class below the <code>Person</code> class in the <code>grails-app/domain/Person.groovy</code> file. Another option is to define the <code>Address</code> class in <code>src/main/groovy/Address.groovy</code> and annotate it with <code>grails.gorm.annotation.Entity</code>
+Embedded components are always persisted as part of the owning entity. There is no separate table, no <code>id</code>, and no lifecycle management for the embedded object.
 </td>
 </tr>
 </table>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div id="footer">

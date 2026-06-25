@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.18">
-<title>Untitled</title>
+<title>Domain Classes</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -437,59 +437,141 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 </head>
-<body class="article">
+<body class="article toc2 toc-left">
 <div id="header">
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#domainClasses">Domain Classes</a>
+<ul class="sectlevel2">
+<li><a href="#_anatomy_of_a_domain_class">Anatomy of a Domain Class</a></li>
+<li><a href="#_automatic_properties">Automatic Properties</a></li>
+</ul>
+</li>
+</ul>
+</div>
 </div>
 <div id="content">
+<div class="sect1">
+<h2 id="domainClasses">Domain Classes</h2>
+<div class="sectionbody">
 <div class="paragraph">
-<p>When building applications you have to consider the problem domain you are trying to solve. For example if you were building an <a href="https://www.amazon.com/">Amazon</a>-style bookstore you would be thinking about books, authors, customers and publishers to name a few.</p>
+<p>Domain classes are the heart of a GORM application. They represent the data model and are mapped to database tables automatically by convention.</p>
 </div>
-<div class="paragraph">
-<p>These are modeled in GORM as Groovy classes, so a <code>Book</code> class may have a title, a release date, an ISBN number and so on. The next few sections show how to model the domain in GORM.</p>
-</div>
-<div class="paragraph">
-<p>Consider the following domain class:</p>
-</div>
+<div class="sect2">
+<h3 id="_anatomy_of_a_domain_class">Anatomy of a Domain Class</h3>
 <div class="listingblock">
-<div class="title">grails-app/domain/org/bookstore/Book.groovy</div>
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">package org.bookstore
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Book {
+    String title
+    String author
+    Integer pages
+    Date dateCreated         <i class="conum" data-value="1"></i><b>(1)</b>
+    Date lastUpdated         <i class="conum" data-value="1"></i><b>(1)</b>
 
-class Book {
+    static constraints = {   <i class="conum" data-value="2"></i><b>(2)</b>
+        title  blank: false, maxSize: 255
+        author blank: false
+        pages  min: 1, nullable: true
+    }
+
+    static mapping = {       <i class="conum" data-value="3"></i><b>(3)</b>
+        table 'books'
+        title index: true
+    }
 }</code></pre>
 </div>
 </div>
-<div class="paragraph">
-<p>This class will map automatically to a table in the database called <code>book</code> (the same name as the class).</p>
-</div>
-<div class="admonitionblock note">
+<div class="colist arabic">
 <table>
 <tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-This behaviour is customizable through the <a href="#ormdsl">ORM Domain Specific Language</a>
-</td>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td><code>dateCreated</code> and <code>lastUpdated</code> are automatically timestamped by GORM.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>constraints</code> block defines validation rules and column constraints.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <code>mapping</code> block customises the Hibernate ORM mapping.</td>
 </tr>
 </table>
 </div>
+</div>
+<div class="sect2">
+<h3 id="_automatic_properties">Automatic Properties</h3>
 <div class="paragraph">
-<p>Now that you have a domain class you can define its properties as Java types. For example:</p>
+<p>Every domain class automatically gets:</p>
 </div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">package org.bookstore
-
-class Book {
-    String title
-    Date releaseDate
-    String ISBN
-}</code></pre>
-</div>
-</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 66.6667%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Property</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>id</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Auto-generated primary key (<code>Long</code> by default)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>version</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Optimistic locking version column (<code>Long</code>)</p></td>
+</tr>
+</tbody>
+</table>
 <div class="paragraph">
-<p>Each property is mapped to a column in the database, where the convention for column names is all lower case separated by underscores. For example <code>releaseDate</code> maps onto a column <code>release_date</code>. The SQL types are auto-detected from the Java types, but can be customized with <a href="#constraints">Constraints</a> or the <a href="#ormdsl">ORM DSL</a>.</p>
+<p>And auto-timestamped properties if declared:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 66.6667%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Property</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dateCreated</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Set to the current timestamp on first save</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lastUpdated</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Updated to the current timestamp on every save</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Refer to the following sections for details on domain class features:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="#domainClasses-setsListsAndMaps">Sets, Lists and Maps</a></p>
+</li>
+<li>
+<p><a href="#domainClasses-gormAssociation">GORM Associations</a></p>
+</li>
+<li>
+<p><a href="#domainClasses-gormComposition">GORM Composition</a></p>
+</li>
+<li>
+<p><a href="#domainClasses-inheritanceInGORM">Inheritance in GORM</a></p>
+</li>
+</ul>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div id="footer">

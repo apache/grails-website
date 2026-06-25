@@ -396,11 +396,16 @@ Note that Grails GORM for MongoDB uses its own <code>mongodb.*</code> configurat
 <h4 id="_5_hibernate_orm_package_relocations">5. Hibernate ORM Package Relocations</h4>
 <div class="paragraph">
 <p>Spring Framework 7 removed the <code>org.springframework.orm.hibernate5</code> package entirely.
-Grails 8 vendors these classes from Spring Framework 6.2.x into a new module (<code>grails-data-hibernate5-spring-orm</code>) under the package <code>org.grails.orm.hibernate.support.hibernate5</code>.</p>
+Grails 8 vendors these classes from Spring Framework 6.2.x into <code>grails-data-hibernate5-spring-orm</code> and <code>grails-data-hibernate7-spring-orm</code> so that both Hibernate 5 and Hibernate 7 users have a drop-in replacement.</p>
 </div>
 <div class="paragraph">
 <p>This change is transparent for most applications since Grails manages the Hibernate integration internally.
-However, if your application directly imports any of the following classes, you must update your import statements:</p>
+However, if your application directly imports any of the following classes, you must update your import statements based on which Hibernate version you are using.</p>
+</div>
+<div class="sect4">
+<h5 id="_5_1_hibernate_5_default">5.1 Hibernate 5 (Default)</h5>
+<div class="paragraph">
+<p>If your application uses the default Grails Hibernate 5 integration (<code>org.apache.grails:grails-hibernate5</code> / <code>grails-data-hibernate5-spring-orm</code>), replace the <code>org.springframework.orm.hibernate5</code> package prefix with <code>org.grails.orm.hibernate.support.hibernate5</code>:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -410,7 +415,58 @@ However, if your application directly imports any of the following classes, you 
 <thead>
 <tr>
 <th class="tableblock halign-left valign-top">Before (Spring Framework 6 / Grails 7)</th>
-<th class="tableblock halign-left valign-top">After (Grails 8)</th>
+<th class="tableblock halign-left valign-top">After (Grails 8 — Hibernate 5)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.springframework.orm.hibernate5.HibernateTemplate</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.orm.hibernate.support.hibernate5.HibernateTemplate</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.springframework.orm.hibernate5.HibernateTransactionManager</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.orm.hibernate.support.hibernate5.HibernateTransactionManager</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.springframework.orm.hibernate5.LocalSessionFactoryBean</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.orm.hibernate.support.hibernate5.LocalSessionFactoryBean</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.springframework.orm.hibernate5.SessionFactoryUtils</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.orm.hibernate.support.hibernate5.SessionFactoryUtils</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.springframework.orm.hibernate5.SessionHolder</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.orm.hibernate.support.hibernate5.SessionHolder</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.springframework.orm.hibernate5.HibernateCallback</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.orm.hibernate.support.hibernate5.HibernateCallback</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.springframework.orm.hibernate5.support.OpenSessionInViewInterceptor</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.orm.hibernate.support.hibernate5.support.OpenSessionInViewInterceptor</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>All other classes from <code>org.springframework.orm.hibernate5</code> follow the same pattern — replace the <code>org.springframework.orm.hibernate5</code> prefix with <code>org.grails.orm.hibernate.support.hibernate5</code>.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_5_2_hibernate_7">5.2 Hibernate 7</h5>
+<div class="paragraph">
+<p>If your application has opted in to Hibernate 7 (<code>org.apache.grails:grails-hibernate7</code> / <code>grails-data-hibernate7-spring-orm</code>), the equivalent vendored classes live under <code>org.grails.orm.hibernate.support.hibernate7</code>:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Before (Spring Framework 6 / Grails 7)</th>
+<th class="tableblock halign-left valign-top">After (Grails 8 — Hibernate 7)</th>
 </tr>
 </thead>
 <tbody>
@@ -445,7 +501,20 @@ However, if your application directly imports any of the following classes, you 
 </tbody>
 </table>
 <div class="paragraph">
-<p>All other classes from <code>org.springframework.orm.hibernate5</code> follow the same pattern - replace the <code>org.springframework.orm.hibernate5</code> prefix with <code>org.grails.orm.hibernate.support.hibernate5</code>.</p>
+<p>All other classes follow the same pattern — replace the <code>org.springframework.orm.hibernate5</code> prefix with <code>org.grails.orm.hibernate.support.hibernate7</code>.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+See <a href="#_hibernate_5_to_hibernate_7_migration">26. Hibernate 5 to Hibernate 7 Migration</a> below if you are also upgrading from Hibernate 5 to Hibernate 7 as part of this Grails 8 migration.
+</td>
+</tr>
+</table>
+</div>
 </div>
 </div>
 <div class="sect3">
@@ -1606,7 +1675,277 @@ See <a href="https://github.com/apache/grails-core/pull/15212">PR 15212</a> for 
 </div>
 </div>
 <div class="sect3">
-<h4 id="_26_gorm_properties_are_nullable_by_default">26. GORM Properties Are Nullable by Default</h4>
+<h4 id="_hibernate_5_to_hibernate_7_migration">26. Hibernate 5 to Hibernate 7 Migration</h4>
+<div class="paragraph">
+<p>Grails 8 supports both Hibernate 5 (the default) and Hibernate 7.
+If you are upgrading from Grails 7 and also want to migrate from Hibernate 5 to Hibernate 7, apply the <code>grails-hibernate7-bom</code> and the Hibernate 7 plugin in addition to the standard Grails 8 upgrade steps.</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle — switch to Hibernate 7</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
+    implementation enforcedPlatform(<span class="string"><span class="delimiter">&quot;</span><span class="content">org.apache.grails:grails-hibernate7-bom:</span><span class="inline"><span class="inline-delimiter">$</span>grailsVersion</span><span class="delimiter">&quot;</span></span>)
+    implementation <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-hibernate7</span><span class="delimiter">'</span></span>
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The following sections cover every breaking change introduced between Hibernate ORM 5.6.x (used by Grails 7) and Hibernate ORM 7.0.x, and what you need to do in your Grails application.</p>
+</div>
+<div class="sect4">
+<h5 id="_26_1_hibernate_session_api_removals">26.1 Hibernate Session API Removals</h5>
+<div class="paragraph">
+<p>Hibernate 7 removed long-deprecated Hibernate-specific session methods in favour of the standard JPA equivalents.
+GORM&#8217;s dynamic methods (<code>save()</code>, <code>delete()</code>, <code>get()</code>, <code>load()</code>, <code>merge()</code>, etc.) are <strong>not</strong> affected — these go through GORM&#8217;s own persistence API and have been updated internally.</p>
+</div>
+<div class="paragraph">
+<p>You are only affected if your code calls the Hibernate <code>Session</code> or <code>StatelessSession</code> directly (e.g. inside a <code>withSession</code> or <code>withStatelessSession</code> block).</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Removed (Hibernate 5/6)</th>
+<th class="tableblock halign-left valign-top">Replacement (Hibernate 7 / JPA)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>session.save(entity)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>session.persist(entity)</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>session.update(entity)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>session.merge(entity)</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>session.saveOrUpdate(entity)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>session.persist(entity)</code> (new) or <code>session.merge(entity)</code> (detached)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>session.delete(entity)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>session.remove(entity)</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>session.load(Class, id)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>session.getReference(Class, id)</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>session.get(Class, id)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>session.find(Class, id)</code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect4">
+<h5 id="_26_2_removed_hibernate_annotations">26.2 Removed Hibernate Annotations</h5>
+<div class="paragraph">
+<p>The following Hibernate-specific annotations were removed in Hibernate 7.
+Where a replacement exists, migrate before upgrading.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 66.6667%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Removed annotation</th>
+<th class="tableblock halign-left valign-top">Action required</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>@org.hibernate.annotations.Where</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Replace with <code>@org.hibernate.annotations.SQLRestriction</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>@org.hibernate.annotations.WhereJoinTable</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Replace with <code>@org.hibernate.annotations.SQLJoinTableRestriction</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>@org.hibernate.annotations.Proxy</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Remove — proxy configuration is no longer supported</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>@org.hibernate.annotations.LazyCollection</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Remove and use <code>@ManyToMany(fetch = FetchType.LAZY)</code> or <code>EAGER</code> directly</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>@org.hibernate.annotations.Persister</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Remove — custom persisters are no longer supported</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>@org.hibernate.annotations.SelectBeforeUpdate</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Remove — behaviour is now configurable via <code>@DynamicUpdate</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>@org.hibernate.annotations.Loader</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Remove — custom SQL loaders are no longer supported; use <code>@SQLSelect</code> on the entity itself</p></td>
+</tr>
+</tbody>
+</table>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Grails domain classes that use the <code>mapping { }</code> DSL are not affected by annotation removals.
+These annotations only apply if you are using Hibernate annotations directly on Java or Groovy classes.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_26_3_cascadetype_save_update_removed">26.3 CascadeType.SAVE_UPDATE Removed</h5>
+<div class="paragraph">
+<p><code>CascadeType.SAVE_UPDATE</code> (a Hibernate-specific cascade type) was removed in Hibernate 7.
+Persisting a transient entity that has detached associations now throws <code>EntityExistsException</code> instead of silently merging.</p>
+</div>
+<div class="paragraph">
+<p>If your domain mapping or annotated classes used <code>cascade = CascadeType.SAVE_UPDATE</code>, replace it with <code>cascade = CascadeType.ALL</code> or <code>cascade = [CascadeType.PERSIST, CascadeType.MERGE]</code> as appropriate.</p>
+</div>
+<div class="paragraph">
+<p>Also note that automatic <code>cascade = CascadeType.PERSIST</code> on <code>@Id</code> and <code>@MapsId</code> associations was removed.
+If you relied on this implicit behaviour, add an explicit <code>cascade = CascadeType.PERSIST</code> to the <code>@ManyToOne</code> or <code>@OneToOne</code> carrying <code>@MapsId</code>.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_26_4_detached_entity_operations">26.4 Detached Entity Operations</h5>
+<div class="paragraph">
+<p>Calling <code>refresh()</code> or <code>lock()</code> on a detached entity now throws <code>IllegalArgumentException</code> (JPA specification compliance).
+In Hibernate 5 and 6 this was silently permitted.</p>
+</div>
+<div class="paragraph">
+<p>If your code calls <code>entity.refresh()</code> or <code>entity.lock()</code> after the Hibernate session has been closed or the entity has been evicted, you must either re-attach the entity first (via <code>session.merge()</code>) or reload it before refreshing.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_26_5_native_query_temporal_type_changes">26.5 Native Query Temporal Type Changes</h5>
+<div class="paragraph">
+<p>Native SQL queries (via <code>executeQuery</code>, <code>withCriteria</code>, or a raw <code>Session.createNativeQuery</code>) now return <code>java.time</code> types (<code>LocalDate</code>, <code>LocalTime</code>, <code>LocalDateTime</code>) instead of the legacy <code>java.sql</code> types (<code>java.sql.Date</code>, <code>java.sql.Time</code>, <code>java.sql.Timestamp</code>).</p>
+</div>
+<div class="paragraph">
+<p>If your code casts results from native queries to <code>java.sql</code> date/time types, update those casts to use the <code>java.time</code> equivalents, or set the following property to restore legacy behaviour during a phased migration:</p>
+</div>
+<div class="listingblock">
+<div class="title">application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">hibernate</span>:
+    <span class="key">query</span>:
+        <span class="key">native</span>:
+            <span class="key">prefer_jdbc_datetime_types</span>: <span class="string"><span class="content">true</span></span></code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_26_6_statelesssession_now_uses_second_level_cache_by_default">26.6 StatelessSession Now Uses Second-Level Cache by Default</h5>
+<div class="paragraph">
+<p><code>StatelessSession</code> in Hibernate 7 participates in the second-level cache by default (it did not in Hibernate 5/6).
+If you use <code>withStatelessSession</code> for bulk operations where cache bypass was intentional, disable caching explicitly:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">YourDomain.withStatelessSession { StatelessSession session -&gt;
+    session.setCacheMode(CacheMode.IGNORE)
+    <span class="comment">// ... bulk operations</span>
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_26_7_ddl_schema_changes">26.7 DDL Schema Changes</h5>
+<div class="paragraph">
+<p>If you use <code>dbCreate = 'create-drop'</code> or <code>dbCreate = 'update'</code> in development, or generate a schema with the <code>schema-export</code> command, be aware of the following DDL differences in Hibernate 7.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Database</th>
+<th class="tableblock halign-left valign-top">Column type</th>
+<th class="tableblock halign-left valign-top">Change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">All</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>char</code> / <code>Character</code> fields</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Now maps to <code>varchar(1)</code> instead of <code>char(1)</code> to avoid trailing-space issues in MySQL</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Oracle</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>float</code> / <code>double</code> fields</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Now maps to <code>binary_float</code> / <code>binary_double</code> (IEEE 754). Set <code>hibernate.dialect.oracle.use_binary_floats=false</code> to restore the old mapping.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Oracle</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Timestamp</code> columns</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Precision changed to 9 digits (nanoseconds). Existing columns with lower precision will need migration.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SQL Server</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Timestamp</code> columns</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Precision changed to 7 digits (100 nanoseconds). Existing columns will need migration.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">MySQL / MariaDB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Array-mapped columns</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Now stored as JSON instead of <code>VARBINARY</code>. Set <code>hibernate.type.preferred_array_jdbc_type=VARBINARY</code> to restore old behaviour.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+If you have an existing production database, validate the schema diff before enabling <code>dbCreate = 'update'</code> or running Liquibase migrations after the Hibernate 7 upgrade.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_26_8_hibernate_6_intermediate_changes">26.8 Hibernate 6 Intermediate Changes</h5>
+<div class="paragraph">
+<p>Hibernate 7 builds on Hibernate 6, which itself introduced breaking changes relative to Hibernate 5.
+The changes in Hibernate 6 that are most likely to affect a Grails application are listed here for completeness.</p>
+</div>
+<div class="paragraph">
+<p><strong>HQL / criteria result type</strong>: An HQL query with a <code>JOIN</code> but no explicit <code>SELECT</code> clause now returns the root entity type (<code>List&lt;Person&gt;</code>) instead of <code>List&lt;Object[]&gt;</code>.
+If you depended on the old tuple-style result, add an explicit <code>SELECT</code> clause to your query.</p>
+</div>
+<div class="paragraph">
+<p><strong>Ordinal HQL parameters</strong>: Ordinal parameters changed from 0-based to 1-based indexing (<code>:?1</code>, <code>:?2</code>, &#8230;&#8203;).
+The GORM dynamic finders and criteria API are not affected; only raw HQL strings with ordinal parameters need updating.</p>
+</div>
+<div class="paragraph">
+<p><strong>Legacy Hibernate Criteria API removed</strong>: The legacy <code>Criteria</code> / <code>DetachedCriteria</code> API from Hibernate 5 was removed in Hibernate 6.
+GORM&#8217;s <code>createCriteria()</code> and <code>withCriteria()</code> DSL are implemented on top of the JPA Criteria API and are <strong>not</strong> affected.</p>
+</div>
+<div class="paragraph">
+<p><strong>Boolean type mappings</strong>: If your schema used string-based boolean type names (e.g. <code>type: 'yes_no'</code>), migrate to the corresponding converter class (<code>YesNoConverter</code>).</p>
+</div>
+<div class="paragraph">
+<p><strong><code>javax.persistence</code> → <code>jakarta.persistence</code></strong>: This migration was already required for Grails 7; Grails 8 continues to require <code>jakarta.*</code>.</p>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_27_gorm_properties_are_nullable_by_default">27. GORM Properties Are Nullable by Default</h4>
 <div class="paragraph">
 <p>Grails 8 changes the validation default so that an <strong>unconstrained persistent (domain) property is nullable by default</strong> rather than required.
 This aligns Grails with the rest of the JVM persistence/validation ecosystem (JPA/Hibernate, Spring Data, Micronaut Data and Jakarta Bean Validation), all of which treat an unconstrained property as valid when <code>null</code>.</p>
@@ -6657,6 +6996,9 @@ environments {
                         
                             
                             <div class="menu-item"><a href="../ref/Versions/Grails%20BOM%20Hibernate5.html">Grails BOM Hibernate5</a>
+                            </div>
+                            
+                            <div class="menu-item"><a href="../ref/Versions/Grails%20BOM%20Hibernate7.html">Grails BOM Hibernate7</a>
                             </div>
                             
                             <div class="menu-item"><a href="../ref/Versions/Grails%20BOM.html">Grails BOM</a>
