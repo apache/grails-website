@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Securing Grails Applications with Spring Security Core | Grails Guides | Apache Grails</title>
+    <meta name='description' content='Securing Grails Applications with Spring Security Core. Configure Spring Security Core on a Grails 8 REST API with User/Role domains, HTTP Basic auth, @Secured controller rules, and Spock tests.'/>
+    <meta charset='UTF-8'/>
+<meta name='viewport' content='width=device-width, initial-scale=1'/>
+<link rel='icon' href='https://grails.apache.org/images/favicon.ico'/>
+<link rel='mask-icon' href='https://grails.apache.org/images/grails-pinned-icon.svg' color='feb672'/>
+<link rel='alternate' type='application/rss+xml' title='RSS' href='https://grails.apache.org/rss.xml'/>
+<link rel='stylesheet' href='https://grails.apache.org/stylesheets/screen.css'/>
+<link rel='stylesheet' href='https://grails.apache.org/stylesheets/plugin.css'/>
+<script src='https://grails.apache.org/javascripts/navigation.js'></script>
+
+<!-- Matomo -->
+<script>
+  var _paq = window._paq = window._paq || [];
+  _paq.push(['setDoNotTrack', true]);
+  _paq.push(['disableCookies']);
+  _paq.push(['trackPageView']);
+  _paq.push(['enableLinkTracking']);
+  (function() {
+    var u = 'https://analytics.apache.org/';
+    _paq.push(['setTrackerUrl', u + 'matomo.php']);
+    _paq.push(['setSiteId', '79']);
+    var d = document, g = d.createElement('script'), s = d.getElementsByTagName('script')[0];
+    g.async = true; g.src = u + 'matomo.js'; s.parentNode.insertBefore(g, s);
+  })();
+</script>
+<!-- End Matomo Code -->
+
+<script
+    async
+    src="https://widget.kapa.ai/kapa-widget.bundle.js"
+    data-website-id="d804a9f2-51a2-414c-97f7-12f2a1ba4609"
+    data-project-name="Apache Grails"
+    data-project-color="#3F4346"
+    data-font-family="system-ui,-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,Segoe UI,sans-serif,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol;"
+    data-project-logo="https://grails.apache.org/images/grails.png"
+    data-modal-override-open-id="ask-ai-input"
+    data-modal-override-open-class="search-input"
+    data-user-analytics-fingerprint-enabled="true"
+    data-modal-title="Apache Grails AI Assistant"
+    data-modal-example-questions-title="Try asking me..."
+    data-modal-example-questions="How does database migration work?,How does Spring Security work?"
+    data-button-text-color="#FBB576"
+    data-modal-header-bg-color="#FFFFFF"
+    data-modal-title-color="#FBB576"
+    data-consent-required="true"></script>
+
+    <link rel='stylesheet' href='../css/guide.css'/>
+    <script src='../js/clipboard.min.js'></script>
+</head>
+<body class='guide'>
+<header class='main-header'>
+    <div class='content'>
+        <a href='https://grails.apache.org/index.html'><img class='grails-logo' src='https://grails.apache.org/images/grails_logo.svg' alt='Grails Logo'/></a>
+        <a href='javascript:show("top-menus", "show-navigation-link")' id='show-navigation-link'
+           class='mobile align-center'>Show Navigation</a>
+        <div id='top-menus'>
+            <nav class='secondary-menu' id='secondary-menu'>
+                <ul>
+                    <li><a href='https://grails.apache.org/casestudies/index.html'>Case Studies</a></li>
+                    <li><a href='https://grails.apache.org/blog/index.html'>Blog</a></li>
+                    <li><a href='https://grails.apache.org/learning.html'>Learning</a></li>
+                    <li><a href='https://grails.apache.org/community.html'>Community</a></li>
+                    <li><a href='https://grails.apache.org/search.html'>Search</a></li>
+                </ul>
+            </nav>
+            <nav class='main-menu' id='main-menu'>
+                <ul>
+                    <li><a href='https://grails.apache.org/documentation.html'>Documentation</a></li>
+                    <li><a href='https://grails.apache.org/download.html'>Download</a></li>
+                    <li><a href='https://grails.apache.org/plugins.html'>Plugins</a></li>
+                    <li><a href='https://grails.apache.org/guides'>Guides</a></li>
+                    <li><a href='https://grails.apache.org/faq.html'>FAQ</a></li>
+                    <li><a href='https://grails.apache.org/support.html'>Support</a></li>
+                    <li><a href='https://start.grails.org'>Forge App</a></li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</header>
+
+<div class='fullwidth'><article class="guide">
+    <aside>
+        <button type="button" class="btn btn-large" onclick="window.location.href=&quot;https://github.com/grails-guides/grails-spring-security&quot;"><img height="15" src="../img/github_white.svg" alt="GitHub"/><span>&nbsp;Get the Code</span></button>
+        <ul class="githublinks">
+            <li><button type="button" class="btn btn-default codeButton" onclick="document.getElementById('github-url').value='git@github.com:grails-guides/grails-spring-security.git'">SSH</button></li>
+            <li><button type="button" class="btn btn-default codeButton" onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-spring-security.git'">HTTPS</button></li>
+        </ul>
+        <div class="input-group">
+            <input id="github-url" value="git@github.com:grails-guides/grails-spring-security.git" type="text"/>
+            <button type="button" class="clippy btn btn-default" data-clipboard-target="#github-url">
+                <img width="13" src="../img/clippy.svg" alt="Copy to clipboard">
+            </button>
+        </div>
+        <script>var clipboard = new Clipboard('.clippy');</script>
+        <button type="button" class="btn btn-large" onclick="window.location.href=&quot;https://github.com/grails-guides/grails-spring-security/archive/master.zip&quot;">Download ZIP</button>
+        
+        <div id="table-of-content">
+            <h3>Table of Contents</h3>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#introduction"><strong>1</strong><span>Introduction</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#requirements"><strong>2</strong><span>What you will need</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#gettingStarted"><strong>3</strong><span>Getting Started</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#installingPlugin"><strong>4</strong><span>Install Spring Security Core</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#userDomain"><strong>5</strong><span>User, Role, and password encoding</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#securingControllers"><strong>6</strong><span>Securing REST controllers</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#testing"><strong>7</strong><span>Testing security rules</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#runningTheApp"><strong>8</strong><span>Running the application</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#summary"><strong>9</strong><span>Summary</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#helpWithGrails"><strong>10</strong><span>Do you need help with Grails?</span></a></div>
+            
+            <div style="clear:both"></div>
+        </div>
+        
+    </aside>
+    <header>
+        <h1>Securing Grails Applications with Spring Security Core</h1>
+        <p>Configure Spring Security Core on a Grails 8 REST API with User/Role domains, HTTP Basic auth, @Secured controller rules, and Spock tests.</p>
+        <p><strong>Authors:</strong> Sanjana</p>
+        <p><strong>Grails Version:</strong> 8</p>
+    </header>
+    
+
+<h1 id="introduction">1 Introduction</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-spring-security/v8/guide/introduction.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Learn how to secure a Grails 8 REST API with Spring Security Core: configure the plugin, model <code>User</code> and <code>Role</code> domains, enforce access with <code>@Secured</code> on controller actions, and verify behaviour with Spock unit and integration tests.</p>
+</div>
+<div class="paragraph">
+<p>This guide follows the standard Grails guides layout: work in the <code>initial/</code> project and compare your progress with <code>complete/</code>.</p>
+</div>
+
+
+<h1 id="requirements">2 What you will need</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-spring-security/v8/guide/requirements.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="ulist">
+<ul>
+<li>
+<p>Approximately 45 minutes</p>
+</li>
+<li>
+<p>JDK 21 (Apache Grails 8 requires Java 21)</p>
+</li>
+<li>
+<p>A <a href="https://www.grails.org/">Grails</a> installation or the bundled Gradle wrapper in <code>initial/</code> and <code>complete/</code></p>
+</li>
+<li>
+<p><strong>Docker</strong> — required for integration tests (Testcontainers PostgreSQL)</p>
+</li>
+<li>
+<p><strong>PostgreSQL</strong> on <code>localhost:5432</code> — required for <code>./gradlew bootRun</code> in both <code>initial/</code> and <code>complete/</code> (default database <code>devDb</code>; see <code>grails-app/conf/application.yml</code>)</p>
+</li>
+</ul>
+</div>
+
+
+<h1 id="gettingStarted">3 Getting Started</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-spring-security/v8/guide/gettingStarted.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Clone the repository and run the starting application:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">git clone -b grails8 https://github.com/grails-guides/grails-spring-security.git
+cd grails-spring-security/initial
+./gradlew bootRun</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Open <a href="http://localhost:8080/">http://localhost:8080/</a> for the welcome JSON payload. The <code>initial/</code> project exposes a simple <code>Resource</code> REST API with no security plugin yet.</p>
+</div>
+<div class="paragraph">
+<p>To skip ahead, <code>cd complete</code> and run the same commands — that tree contains the finished security configuration, domains, and tests.</p>
+</div>
+<div class="sect1">
+<h2 id="cloneAndRun">Verify tests</h2>
+<div class="sectionbody">
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">./gradlew test</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Both <code>initial</code> and <code>complete</code> must pass in CI (see <code>.github/workflows/grails8.yml</code>).</p>
+</div>
+</div>
+</div>
+
+
+<h1 id="installingPlugin">4 Install Spring Security Core</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-spring-security/v8/guide/installingPlugin.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Add the Spring Security Core plugin to <code>build.gradle</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">    implementation <span class="string"><span class="delimiter">&quot;</span><span class="content">org.apache.grails:grails-spring-security:8.0.0-SNAPSHOT</span><span class="delimiter">&quot;</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Configure HTTP Basic authentication and point the plugin at your domain classes in <code>grails-app/conf/application.yml</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml">  <span class="key">plugin</span>:
+    <span class="key">springsecurity</span>:
+      <span class="key">useBasicAuth</span>: <span class="string"><span class="content">true</span></span>
+      <span class="key">basic</span>:
+        <span class="key">realmName</span>: <span class="string"><span class="content">Securing Grails Applications</span></span>
+      <span class="key">rejectIfNoRule</span>: <span class="string"><span class="content">true</span></span>
+      <span class="key">userLookup</span>:
+        <span class="key">userDomainClassName</span>: <span class="string"><span class="content">example.User</span></span>
+        <span class="key">authorityJoinClassName</span>: <span class="string"><span class="content">example.UserRole</span></span>
+      <span class="key">authority</span>:
+        <span class="key">className</span>: <span class="string"><span class="content">example.Role</span></span>
+      <span class="key">controllerAnnotations</span>:
+        <span class="key">staticRules</span>:
+          - <span class="string"><span class="content">{ pattern: '/', access: ['permitAll'] }</span></span>
+          - <span class="string"><span class="content">{ pattern: '/error', access: ['permitAll'] }</span></span>
+          - <span class="string"><span class="content">{ pattern: '/notFound', access: ['permitAll'] }</span></span>
+          - <span class="string"><span class="content">{ pattern: '/shutdown', access: ['permitAll'] }</span></span>
+          - <span class="string"><span class="content">{ pattern: '/assets/**', access: ['permitAll'] }</span></span>
+          - <span class="string"><span class="content">{ pattern: '/**/favicon.ico', access: ['permitAll'] }</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>useBasicAuth: true</code> enables HTTP Basic for REST clients. <code>rejectIfNoRule: true</code> denies any controller action that lacks an explicit <code>@Secured</code> rule — a safe default for APIs.</p>
+</div>
+<div class="paragraph">
+<p>The <code>userLookup</code> and <code>authority</code> settings tell the plugin which domain classes represent users, roles, and their join table.</p>
+</div>
+
+
+<h1 id="userDomain">5 User, Role, and password encoding</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-spring-security/v8/guide/userDomain.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Spring Security expects a <code>User</code>, a <code>Role</code>, and a join class linking them.</p>
+</div>
+<div class="sect1">
+<h2 id="user">User</h2>
+<div class="sectionbody">
+<div class="listingblock">
+<div class="title">grails-app/domain/example/User.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">groovy.transform.EqualsAndHashCode</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.ToString</span>
+<span class="keyword">import</span> <span class="include">grails.compiler.GrailsCompileStatic</span>
+<span class="keyword">import</span> <span class="include">grails.persistence.Entity</span>
+
+<span class="annotation">@GrailsCompileStatic</span>
+<span class="annotation">@Entity</span>
+<span class="annotation">@EqualsAndHashCode</span>(includes = <span class="string"><span class="delimiter">'</span><span class="content">username</span><span class="delimiter">'</span></span>)
+<span class="annotation">@ToString</span>(includes = <span class="string"><span class="delimiter">'</span><span class="content">username</span><span class="delimiter">'</span></span>, includeNames = <span class="predefined-constant">true</span>, includePackage = <span class="predefined-constant">false</span>)
+<span class="type">class</span> <span class="class">User</span> <span class="directive">implements</span> <span class="predefined-type">Serializable</span> {
+
+    <span class="directive">private</span> <span class="directive">static</span> <span class="directive">final</span> <span class="type">long</span> serialVersionUID = <span class="integer">1</span>
+
+    <span class="predefined-type">String</span> username
+    <span class="predefined-type">String</span> password
+    <span class="type">boolean</span> enabled = <span class="predefined-constant">true</span>
+    <span class="type">boolean</span> accountExpired
+    <span class="type">boolean</span> accountLocked
+    <span class="type">boolean</span> passwordExpired
+
+    <span class="predefined-type">Set</span>&lt;<span class="predefined-type">Role</span>&gt; getAuthorities() {
+        (UserRole.findAllByUser(<span class="local-variable">this</span>) <span class="keyword">as</span> <span class="predefined-type">List</span>&lt;UserRole&gt;)*.role <span class="keyword">as</span> <span class="predefined-type">Set</span>&lt;<span class="predefined-type">Role</span>&gt;
+    }
+
+    <span class="directive">static</span> constraints = {
+        password <span class="key">blank</span>: <span class="predefined-constant">false</span>, <span class="key">password</span>: <span class="predefined-constant">true</span>
+        username <span class="key">blank</span>: <span class="predefined-constant">false</span>, <span class="key">nullable</span>: <span class="predefined-constant">false</span>, <span class="key">unique</span>: <span class="predefined-constant">true</span>
+    }
+
+    <span class="directive">static</span> mapping = {
+        table <span class="string"><span class="delimiter">'</span><span class="content">`user`</span><span class="delimiter">'</span></span>
+        password <span class="key">column</span>: <span class="string"><span class="delimiter">'</span><span class="content">`password`</span><span class="delimiter">'</span></span>
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="role">Role</h2>
+<div class="sectionbody">
+<div class="listingblock">
+<div class="title">grails-app/domain/example/Role.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">groovy.transform.EqualsAndHashCode</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.ToString</span>
+<span class="keyword">import</span> <span class="include">grails.compiler.GrailsCompileStatic</span>
+<span class="keyword">import</span> <span class="include">grails.persistence.Entity</span>
+
+<span class="annotation">@GrailsCompileStatic</span>
+<span class="annotation">@Entity</span>
+<span class="annotation">@EqualsAndHashCode</span>(includes = <span class="string"><span class="delimiter">'</span><span class="content">authority</span><span class="delimiter">'</span></span>)
+<span class="annotation">@ToString</span>(includes = <span class="string"><span class="delimiter">'</span><span class="content">authority</span><span class="delimiter">'</span></span>, includeNames = <span class="predefined-constant">true</span>, includePackage = <span class="predefined-constant">false</span>)
+<span class="type">class</span> <span class="class">Role</span> <span class="directive">implements</span> <span class="predefined-type">Serializable</span> {
+
+    <span class="directive">private</span> <span class="directive">static</span> <span class="directive">final</span> <span class="type">long</span> serialVersionUID = <span class="integer">1</span>
+
+    <span class="predefined-type">String</span> authority
+
+    <span class="directive">static</span> constraints = {
+        authority <span class="key">blank</span>: <span class="predefined-constant">false</span>, <span class="key">nullable</span>: <span class="predefined-constant">false</span>, <span class="key">unique</span>: <span class="predefined-constant">true</span>
+    }
+
+    <span class="directive">static</span> mapping = {
+        table <span class="string"><span class="delimiter">'</span><span class="content">`role`</span><span class="delimiter">'</span></span>
+        cache <span class="predefined-constant">true</span>
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="userRole">UserRole</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The join class uses a composite primary key:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/domain/example/UserRole.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.gorm.DetachedCriteria</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.ToString</span>
+<span class="keyword">import</span> <span class="include">org.codehaus.groovy.util.HashCodeHelper</span>
+<span class="keyword">import</span> <span class="include">grails.compiler.GrailsCompileStatic</span>
+
+<span class="annotation">@GrailsCompileStatic</span>
+<span class="annotation">@ToString</span>(cache = <span class="predefined-constant">true</span>, includeNames = <span class="predefined-constant">true</span>, includePackage = <span class="predefined-constant">false</span>)
+<span class="type">class</span> <span class="class">UserRole</span> <span class="directive">implements</span> <span class="predefined-type">Serializable</span> {
+
+    <span class="directive">private</span> <span class="directive">static</span> <span class="directive">final</span> <span class="type">long</span> serialVersionUID = <span class="integer">1</span>
+
+    User user
+    <span class="predefined-type">Role</span> role
+
+    <span class="annotation">@Override</span>
+    <span class="type">boolean</span> equals(other) {
+        <span class="keyword">if</span> (other <span class="keyword">instanceof</span> UserRole) {
+            other.userId == user?.id &amp;&amp; other.roleId == role?.id
+        }
+    }
+
+    <span class="annotation">@Override</span>
+    <span class="type">int</span> hashCode() {
+        <span class="type">int</span> hashCode = HashCodeHelper.initHash()
+        <span class="keyword">if</span> (user) {
+            hashCode = HashCodeHelper.updateHash(hashCode, user.id)
+        }
+        <span class="keyword">if</span> (role) {
+            hashCode = HashCodeHelper.updateHash(hashCode, role.id)
+        }
+        hashCode
+    }
+
+    <span class="directive">static</span> UserRole get(<span class="type">long</span> userId, <span class="type">long</span> roleId) {
+        (UserRole) criteriaFor(userId, roleId).get()
+    }
+
+    <span class="directive">static</span> <span class="type">boolean</span> exists(<span class="type">long</span> userId, <span class="type">long</span> roleId) {
+        criteriaFor(userId, roleId).count()
+    }
+
+    <span class="directive">private</span> <span class="directive">static</span> DetachedCriteria criteriaFor(<span class="type">long</span> userId, <span class="type">long</span> roleId) {
+        UserRole.where {
+            user == User.load(userId) &amp;&amp;
+                    role == <span class="predefined-type">Role</span>.load(roleId)
+        }
+    }
+
+    <span class="directive">static</span> UserRole create(User user, <span class="predefined-type">Role</span> role, <span class="type">boolean</span> flush = <span class="predefined-constant">false</span>) {
+        <span class="keyword">def</span> instance = <span class="keyword">new</span> UserRole(<span class="key">user</span>: user, <span class="key">role</span>: role)
+        instance.save(<span class="key">flush</span>: flush)
+        instance
+    }
+
+    <span class="directive">static</span> <span class="type">boolean</span> remove(User u, <span class="predefined-type">Role</span> r) {
+        <span class="keyword">if</span> (u != <span class="predefined-constant">null</span> &amp;&amp; r != <span class="predefined-constant">null</span>) {
+            UserRole.where { user == u &amp;&amp; role == r }.deleteAll()
+        }
+    }
+
+    <span class="directive">static</span> <span class="type">int</span> removeAll(User u) {
+        u == <span class="predefined-constant">null</span> ? <span class="integer">0</span> : UserRole.where { user == u }.deleteAll() <span class="keyword">as</span> <span class="type">int</span>
+    }
+
+    <span class="directive">static</span> <span class="type">int</span> removeAll(<span class="predefined-type">Role</span> r) {
+        r == <span class="predefined-constant">null</span> ? <span class="integer">0</span> : UserRole.where { role == r }.deleteAll() <span class="keyword">as</span> <span class="type">int</span>
+    }
+
+    <span class="directive">static</span> constraints = {
+        role <span class="key">validator</span>: { <span class="predefined-type">Role</span> r, UserRole ur -&gt;
+            <span class="keyword">if</span> (ur.user?.id) {
+                UserRole.withNewSession {
+                    <span class="keyword">if</span> (UserRole.exists(ur.user.id, r.id)) {
+                        <span class="keyword">return</span> [<span class="string"><span class="delimiter">'</span><span class="content">userRole.exists</span><span class="delimiter">'</span></span>]
+                    }
+                }
+            }
+        }
+    }
+
+    <span class="directive">static</span> mapping = {
+        id <span class="key">composite</span>: [<span class="string"><span class="delimiter">'</span><span class="content">user</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">role</span><span class="delimiter">'</span></span>]
+        version <span class="predefined-constant">false</span>
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="passwordEncoder">Password encoding</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Hash passwords before they reach the database with a GORM event listener:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/main/groovy/example/UserPasswordEncoderListener.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.mapping.core.Datastore</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.mapping.engine.event.AbstractPersistenceEvent</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.mapping.engine.event.AbstractPersistenceEventListener</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.mapping.engine.event.EventType</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.mapping.engine.event.PreInsertEvent</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.mapping.engine.event.PreUpdateEvent</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Autowired</span>
+<span class="keyword">import</span> <span class="include">org.springframework.context.ApplicationEvent</span>
+<span class="keyword">import</span> <span class="include">org.springframework.security.crypto.password.PasswordEncoder</span>
+
+<span class="annotation">@SuppressWarnings</span>([<span class="string"><span class="delimiter">'</span><span class="content">UnnecessaryGetter</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">LineLength</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Instanceof</span><span class="delimiter">'</span></span>])
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">UserPasswordEncoderListener</span> <span class="directive">extends</span> AbstractPersistenceEventListener {
+
+    <span class="annotation">@Autowired</span>
+    PasswordEncoder passwordEncoder
+
+    UserPasswordEncoderListener(<span class="directive">final</span> Datastore datastore) {
+        <span class="local-variable">super</span>(datastore)
+    }
+
+    <span class="annotation">@Override</span>
+    <span class="directive">protected</span> <span class="type">void</span> onPersistenceEvent(AbstractPersistenceEvent event) {
+        <span class="keyword">if</span> (event.entityObject <span class="keyword">instanceof</span> User) {
+            User u = (User) event.entityObject
+            <span class="keyword">if</span> (u.password &amp;&amp; (event.eventType == EventType.PreInsert || (event.eventType == EventType.PreUpdate &amp;&amp; u.isDirty(<span class="string"><span class="delimiter">'</span><span class="content">password</span><span class="delimiter">'</span></span>)))) {
+                event.getEntityAccess().setProperty(<span class="string"><span class="delimiter">'</span><span class="content">password</span><span class="delimiter">'</span></span>, encodePassword(u.password))
+            }
+        }
+    }
+
+    <span class="annotation">@Override</span>
+    <span class="type">boolean</span> supportsEventType(<span class="predefined-type">Class</span>&lt;? <span class="directive">extends</span> ApplicationEvent&gt; eventType) {
+        eventType == PreUpdateEvent || eventType == PreInsertEvent
+    }
+
+    <span class="directive">private</span> <span class="predefined-type">String</span> encodePassword(<span class="predefined-type">String</span> password) {
+        <span class="keyword">if</span> (password?.startsWith(<span class="string"><span class="delimiter">'</span><span class="content">$2a$</span><span class="delimiter">'</span></span>) || password?.startsWith(<span class="string"><span class="delimiter">'</span><span class="content">$2b$</span><span class="delimiter">'</span></span>)) {
+            <span class="keyword">return</span> password
+        }
+        passwordEncoder.encode(password)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Register the listener as a Spring bean:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/spring/resources.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">example.UserPasswordEncoderListener</span>
+
+beans = {
+    userPasswordEncoderListener(UserPasswordEncoderListener, ref(<span class="string"><span class="delimiter">'</span><span class="content">hibernateDatastore</span><span class="delimiter">'</span></span>))
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The listener skips values that already look like BCrypt hashes (<code>$2a$</code> / <code>$2b$</code>), so re-saving a user does not double-encode the password.</p>
+</div>
+</div>
+</div>
+
+
+<h1 id="securingControllers">6 Securing REST controllers</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-spring-security/v8/guide/securingControllers.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Map REST resources under <code>/api</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/controllers/example/UrlMappings.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="type">class</span> <span class="class">UrlMappings</span> {
+
+    <span class="directive">static</span> mappings = {
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/</span><span class="inline"><span class="inline-delimiter">$</span>controller</span><span class="content">/</span><span class="inline"><span class="inline-delimiter">$</span>action</span><span class="content">?/</span><span class="inline"><span class="inline-delimiter">$</span>id</span><span class="content">?(.</span><span class="inline"><span class="inline-delimiter">$</span>format</span><span class="content">)?</span><span class="delimiter">&quot;</span></span>{
+            constraints {
+                <span class="comment">// apply constraints here</span>
+            }
+        }
+
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/api/resources</span><span class="delimiter">&quot;</span></span>(<span class="key">resources</span>: <span class="string"><span class="delimiter">'</span><span class="content">resource</span><span class="delimiter">'</span></span>)
+
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">application</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">index</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">500</span><span class="delimiter">&quot;</span></span>(<span class="key">view</span>: <span class="string"><span class="delimiter">'</span><span class="content">/error</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">404</span><span class="delimiter">&quot;</span></span>(<span class="key">view</span>: <span class="string"><span class="delimiter">'</span><span class="content">/notFound</span><span class="delimiter">'</span></span>)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Apply <code>@Secured</code> on each action. Spring Security evaluates access before your controller runs:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/controllers/example/ResourceController.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">grails.plugin.springsecurity.annotation.Secured</span>
+
+<span class="comment">// Default for actions without their own @Secured; rejectIfNoRule denies anything that slips through unannotated.</span>
+<span class="annotation">@Secured</span>([<span class="string"><span class="delimiter">'</span><span class="content">ROLE_USER</span><span class="delimiter">'</span></span>])
+<span class="type">class</span> <span class="class">ResourceController</span> {
+
+    <span class="directive">static</span> responseFormats = [<span class="string"><span class="delimiter">'</span><span class="content">json</span><span class="delimiter">'</span></span>]
+    <span class="directive">static</span> allowedMethods = [<span class="key">index</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>, <span class="key">show</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>, <span class="key">save</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>, <span class="key">update</span>: <span class="string"><span class="delimiter">'</span><span class="content">PUT</span><span class="delimiter">'</span></span>, <span class="key">delete</span>: <span class="string"><span class="delimiter">'</span><span class="content">DELETE</span><span class="delimiter">'</span></span>]
+
+    <span class="annotation">@Secured</span>([<span class="string"><span class="delimiter">'</span><span class="content">permitAll</span><span class="delimiter">'</span></span>])
+    <span class="keyword">def</span> <span class="function">index</span>(<span class="predefined-type">Integer</span> max) {
+        params.max = <span class="predefined-type">Math</span>.min(max ?: <span class="integer">10</span>, <span class="integer">100</span>)
+        respond Resource.list(params), <span class="key">model</span>: [<span class="key">resourceCount</span>: Resource.count() <span class="keyword">as</span> <span class="predefined-type">Long</span>]
+    }
+
+    <span class="annotation">@Secured</span>([<span class="string"><span class="delimiter">'</span><span class="content">permitAll</span><span class="delimiter">'</span></span>])
+    <span class="keyword">def</span> <span class="function">show</span>(<span class="predefined-type">Long</span> id) {
+        respond Resource.get(id)
+    }
+
+    <span class="annotation">@Secured</span>([<span class="string"><span class="delimiter">'</span><span class="content">isAuthenticated()</span><span class="delimiter">'</span></span>])
+    <span class="annotation">@Transactional</span>
+    <span class="keyword">def</span> <span class="function">save</span>() {
+        <span class="keyword">def</span> resource = <span class="keyword">new</span> Resource(request.JSON <span class="keyword">as</span> <span class="predefined-type">Map</span>)
+        <span class="keyword">if</span> (!resource.validate()) {
+            respond resource.errors, <span class="key">status</span>: <span class="integer">422</span>
+            <span class="keyword">return</span>
+        }
+        resource.save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>, <span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        respond resource, <span class="key">status</span>: <span class="integer">201</span>
+    }
+
+    <span class="annotation">@Secured</span>([<span class="string"><span class="delimiter">'</span><span class="content">ROLE_ADMIN</span><span class="delimiter">'</span></span>])
+    <span class="annotation">@Transactional</span>
+    <span class="keyword">def</span> <span class="function">update</span>(<span class="predefined-type">Long</span> id) {
+        <span class="keyword">def</span> resource = Resource.get(id)
+        <span class="keyword">if</span> (!resource) {
+            render <span class="key">status</span>: <span class="integer">404</span>
+            <span class="keyword">return</span>
+        }
+        resource.properties = request.JSON
+        <span class="keyword">if</span> (!resource.validate()) {
+            respond resource.errors, <span class="key">status</span>: <span class="integer">422</span>
+            <span class="keyword">return</span>
+        }
+        resource.save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>, <span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        respond resource
+    }
+
+    <span class="annotation">@Secured</span>([<span class="string"><span class="delimiter">'</span><span class="content">ROLE_ADMIN</span><span class="delimiter">'</span></span>])
+    <span class="annotation">@Transactional</span>
+    <span class="keyword">def</span> <span class="function">delete</span>(<span class="predefined-type">Long</span> id) {
+        <span class="keyword">def</span> resource = Resource.get(id)
+        <span class="keyword">if</span> (!resource) {
+            render <span class="key">status</span>: <span class="integer">404</span>
+            <span class="keyword">return</span>
+        }
+        resource.delete(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        render <span class="key">status</span>: <span class="integer">204</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>permitAll</code> — anonymous read access on <code>index</code> and <code>show</code></p>
+</li>
+<li>
+<p><code>isAuthenticated()</code> — any logged-in user can create resources</p>
+</li>
+<li>
+<p><code>ROLE_ADMIN</code> — only administrators can update or delete</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Call <code>validate()</code> after binding request JSON and before <code>save</code>. That returns structured <code>422</code> responses for constraint violations.</p>
+</div>
+<div class="paragraph">
+<p>Seed development users and sample data in <code>BootStrap</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/init/example/BootStrap.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="type">class</span> <span class="class">BootStrap</span> {
+
+    <span class="keyword">def</span> init = { servletContext -&gt;
+        environments {
+            development {
+                <span class="predefined-type">Role</span>.withTransaction {
+                    <span class="keyword">if</span> (<span class="predefined-type">Role</span>.count() == <span class="integer">0</span>) {
+                        <span class="keyword">def</span> userRole = <span class="keyword">new</span> <span class="predefined-type">Role</span>(<span class="key">authority</span>: <span class="string"><span class="delimiter">'</span><span class="content">ROLE_USER</span><span class="delimiter">'</span></span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+                        <span class="keyword">def</span> adminRole = <span class="keyword">new</span> <span class="predefined-type">Role</span>(<span class="key">authority</span>: <span class="string"><span class="delimiter">'</span><span class="content">ROLE_ADMIN</span><span class="delimiter">'</span></span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+
+                        <span class="keyword">def</span> user = <span class="keyword">new</span> User(<span class="key">username</span>: <span class="string"><span class="delimiter">'</span><span class="content">user</span><span class="delimiter">'</span></span>, <span class="key">password</span>: <span class="string"><span class="delimiter">'</span><span class="content">password</span><span class="delimiter">'</span></span>, <span class="key">enabled</span>: <span class="predefined-constant">true</span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+                        UserRole.create(user, userRole, <span class="predefined-constant">true</span>)
+
+                        <span class="keyword">def</span> admin = <span class="keyword">new</span> User(<span class="key">username</span>: <span class="string"><span class="delimiter">'</span><span class="content">admin</span><span class="delimiter">'</span></span>, <span class="key">password</span>: <span class="string"><span class="delimiter">'</span><span class="content">password</span><span class="delimiter">'</span></span>, <span class="key">enabled</span>: <span class="predefined-constant">true</span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+                        UserRole.create(admin, adminRole, <span class="predefined-constant">true</span>)
+                        UserRole.create(admin, userRole, <span class="predefined-constant">true</span>)
+                    }
+
+                    <span class="keyword">if</span> (Resource.count() == <span class="integer">0</span>) {
+                        <span class="keyword">new</span> Resource(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Public Overview</span><span class="delimiter">'</span></span>, <span class="key">description</span>: <span class="string"><span class="delimiter">'</span><span class="content">Readable without authentication</span><span class="delimiter">'</span></span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+                        <span class="keyword">new</span> Resource(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Admin Console</span><span class="delimiter">'</span></span>, <span class="key">description</span>: <span class="string"><span class="delimiter">'</span><span class="content">Restricted to administrators</span><span class="delimiter">'</span></span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+                    }
+                }
+            }
+        }
+    }
+
+    <span class="keyword">def</span> destroy = {
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Development users:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Username</th>
+<th class="tableblock halign-left valign-top">Password</th>
+<th class="tableblock halign-left valign-top">Roles</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>user</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>password</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ROLE_USER</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>admin</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>password</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ROLE_ADMIN</code>, <code>ROLE_USER</code></p></td>
+</tr>
+</tbody>
+</table>
+
+
+<h1 id="testing">7 Testing security rules</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-spring-security/v8/guide/testing.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="sect1">
+<h2 id="unitTests">Unit tests</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Controller unit tests exercise action logic with mocked domains:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/test/groovy/example/ResourceControllerSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.testing.gorm.DataTest</span>
+<span class="keyword">import</span> <span class="include">grails.testing.web.controllers.ControllerUnitTest</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="type">class</span> <span class="class">ResourceControllerSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> ControllerUnitTest&lt;ResourceController&gt;, DataTest {
+
+    <span class="predefined-type">Class</span>&lt;?&gt;<span class="type">[]</span> getDomainClassesToMock() {
+        [Resource, User, <span class="predefined-type">Role</span>, UserRole] <span class="keyword">as</span> <span class="predefined-type">Class</span><span class="type">[]</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">index lists resources without authentication</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        <span class="keyword">new</span> Resource(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Public</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">when</span>:
+        controller.index()
+
+        <span class="key">then</span>:
+        model.resourceList
+        model.resourceCount == <span class="integer">1</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">show returns 404 when resource missing</span><span class="delimiter">'</span></span>() {
+        <span class="key">when</span>:
+        controller.show(<span class="integer">99L</span>)
+
+        <span class="key">then</span>:
+        response.status == <span class="integer">404</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">save creates resource when valid</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        request.method = <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>
+        request.JSON = [<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Team Notes</span><span class="delimiter">'</span></span>, <span class="key">description</span>: <span class="string"><span class="delimiter">'</span><span class="content">Shared notes</span><span class="delimiter">'</span></span>]
+
+        <span class="key">when</span>:
+        controller.save()
+
+        <span class="key">then</span>:
+        response.status == <span class="integer">201</span>
+        Resource.count() == <span class="integer">1</span>
+        Resource.first().name == <span class="string"><span class="delimiter">'</span><span class="content">Team Notes</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">update persists changes when valid</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        <span class="keyword">def</span> resource = <span class="keyword">new</span> Resource(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Original</span><span class="delimiter">'</span></span>, <span class="key">description</span>: <span class="string"><span class="delimiter">'</span><span class="content">Before</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        request.method = <span class="string"><span class="delimiter">'</span><span class="content">PUT</span><span class="delimiter">'</span></span>
+        request.JSON = [<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Updated</span><span class="delimiter">'</span></span>, <span class="key">description</span>: <span class="string"><span class="delimiter">'</span><span class="content">After</span><span class="delimiter">'</span></span>]
+
+        <span class="key">when</span>:
+        controller.update(resource.id)
+
+        <span class="key">then</span>:
+        response.status == <span class="integer">200</span>
+        resource.refresh().name == <span class="string"><span class="delimiter">'</span><span class="content">Updated</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">update returns 404 when resource missing</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        request.method = <span class="string"><span class="delimiter">'</span><span class="content">PUT</span><span class="delimiter">'</span></span>
+        request.JSON = [<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Nobody</span><span class="delimiter">'</span></span>]
+
+        <span class="key">when</span>:
+        controller.update(<span class="integer">99L</span>)
+
+        <span class="key">then</span>:
+        response.status == <span class="integer">404</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">delete removes resource</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        <span class="keyword">def</span> resource = <span class="keyword">new</span> Resource(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Disposable</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        request.method = <span class="string"><span class="delimiter">'</span><span class="content">DELETE</span><span class="delimiter">'</span></span>
+
+        <span class="key">when</span>:
+        controller.delete(resource.id)
+
+        <span class="key">then</span>:
+        response.status == <span class="integer">204</span>
+        Resource.count() == <span class="integer">0</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">delete returns 404 when resource missing</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        request.method = <span class="string"><span class="delimiter">'</span><span class="content">DELETE</span><span class="delimiter">'</span></span>
+
+        <span class="key">when</span>:
+        controller.delete(<span class="integer">99L</span>)
+
+        <span class="key">then</span>:
+        response.status == <span class="integer">404</span>
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="integrationTests">Integration tests</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Integration specs boot the full application context and exercise real HTTP requests with Basic authentication:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/integration-test/groovy/example/ResourceSecurityIntegrationSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">org.springframework.http.HttpEntity</span>
+<span class="keyword">import</span> <span class="include">org.springframework.http.HttpHeaders</span>
+<span class="keyword">import</span> <span class="include">org.springframework.http.HttpMethod</span>
+<span class="keyword">import</span> <span class="include">org.springframework.http.HttpStatus</span>
+<span class="keyword">import</span> <span class="include">org.springframework.http.MediaType</span>
+<span class="keyword">import</span> <span class="include">org.springframework.http.ResponseEntity</span>
+<span class="keyword">import</span> <span class="include">org.springframework.web.client.HttpClientErrorException</span>
+<span class="keyword">import</span> <span class="include">org.springframework.web.client.RestTemplate</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">ResourceSecurityIntegrationSpec</span> <span class="directive">extends</span> Specification {
+
+    RestTemplate restTemplate = <span class="keyword">new</span> RestTemplate()
+
+    <span class="directive">private</span> <span class="predefined-type">String</span> baseUrl() {
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>
+    }
+
+    <span class="directive">private</span> HttpHeaders basicAuthHeaders(<span class="predefined-type">String</span> username, <span class="predefined-type">String</span> password) {
+        HttpHeaders headers = <span class="keyword">new</span> HttpHeaders()
+        headers.setBasicAuth(username, password)
+        headers
+    }
+
+    <span class="directive">private</span> HttpEntity&lt;<span class="predefined-type">String</span>&gt; jsonEntity(<span class="predefined-type">Map</span> body, HttpHeaders headers = <span class="keyword">new</span> HttpHeaders()) {
+        headers.setContentType(MediaType.APPLICATION_JSON)
+        <span class="keyword">new</span> HttpEntity(groovy.json.JsonOutput.toJson(body), headers)
+    }
+
+    <span class="directive">private</span> <span class="type">void</span> seedUsersAndResource() {
+        UserRole.withTransaction {
+            UserRole.list()*.delete(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+            User.list()*.delete(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+            <span class="predefined-type">Role</span>.list()*.delete(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+            Resource.list()*.delete(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+
+            <span class="keyword">def</span> userRole = <span class="keyword">new</span> <span class="predefined-type">Role</span>(<span class="key">authority</span>: <span class="string"><span class="delimiter">'</span><span class="content">ROLE_USER</span><span class="delimiter">'</span></span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>, <span class="key">flush</span>: <span class="predefined-constant">true</span>)
+            <span class="keyword">def</span> adminRole = <span class="keyword">new</span> <span class="predefined-type">Role</span>(<span class="key">authority</span>: <span class="string"><span class="delimiter">'</span><span class="content">ROLE_ADMIN</span><span class="delimiter">'</span></span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>, <span class="key">flush</span>: <span class="predefined-constant">true</span>)
+
+            <span class="keyword">def</span> user = <span class="keyword">new</span> User(<span class="key">username</span>: <span class="string"><span class="delimiter">'</span><span class="content">user</span><span class="delimiter">'</span></span>, <span class="key">password</span>: <span class="string"><span class="delimiter">'</span><span class="content">password</span><span class="delimiter">'</span></span>, <span class="key">enabled</span>: <span class="predefined-constant">true</span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>, <span class="key">flush</span>: <span class="predefined-constant">true</span>)
+            UserRole.create(user, userRole, <span class="predefined-constant">true</span>)
+
+            <span class="keyword">def</span> admin = <span class="keyword">new</span> User(<span class="key">username</span>: <span class="string"><span class="delimiter">'</span><span class="content">admin</span><span class="delimiter">'</span></span>, <span class="key">password</span>: <span class="string"><span class="delimiter">'</span><span class="content">password</span><span class="delimiter">'</span></span>, <span class="key">enabled</span>: <span class="predefined-constant">true</span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>, <span class="key">flush</span>: <span class="predefined-constant">true</span>)
+            UserRole.create(admin, adminRole, <span class="predefined-constant">true</span>)
+
+            <span class="keyword">new</span> Resource(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Secured Notes</span><span class="delimiter">'</span></span>, <span class="key">description</span>: <span class="string"><span class="delimiter">'</span><span class="content">Used in security integration tests</span><span class="delimiter">'</span></span>).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>, <span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        }
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">anonymous users can read the public resource index</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        seedUsersAndResource()
+
+        <span class="key">when</span>:
+        ResponseEntity&lt;<span class="predefined-type">String</span>&gt; response = restTemplate.getForEntity(<span class="string"><span class="delimiter">&quot;</span><span class="inline"><span class="inline-delimiter">${</span>baseUrl()<span class="inline-delimiter">}</span></span><span class="content">/api/resources</span><span class="delimiter">&quot;</span></span>, <span class="predefined-type">String</span>)
+
+        <span class="key">then</span>:
+        response.statusCode == HttpStatus.OK
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">anonymous POST receives 401 unauthorized</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        seedUsersAndResource()
+
+        <span class="key">when</span>:
+        restTemplate.postForEntity(<span class="string"><span class="delimiter">&quot;</span><span class="inline"><span class="inline-delimiter">${</span>baseUrl()<span class="inline-delimiter">}</span></span><span class="content">/api/resources</span><span class="delimiter">&quot;</span></span>, jsonEntity([<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">New Resource</span><span class="delimiter">'</span></span>]), <span class="predefined-type">String</span>)
+
+        <span class="key">then</span>:
+        HttpClientErrorException ex = thrown(HttpClientErrorException)
+        ex.statusCode == HttpStatus.UNAUTHORIZED
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">authenticated user with ROLE_USER can create resources</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        seedUsersAndResource()
+
+        <span class="key">when</span>:
+        ResponseEntity&lt;<span class="predefined-type">String</span>&gt; response = restTemplate.exchange(
+                <span class="string"><span class="delimiter">&quot;</span><span class="inline"><span class="inline-delimiter">${</span>baseUrl()<span class="inline-delimiter">}</span></span><span class="content">/api/resources</span><span class="delimiter">&quot;</span></span>,
+                HttpMethod.POST,
+                jsonEntity([<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">User Created</span><span class="delimiter">'</span></span>], basicAuthHeaders(<span class="string"><span class="delimiter">'</span><span class="content">user</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">password</span><span class="delimiter">'</span></span>)),
+                <span class="predefined-type">String</span>
+        )
+
+        <span class="key">then</span>:
+        response.statusCode == HttpStatus.CREATED
+        <span class="keyword">new</span> groovy.json.JsonSlurper().parseText(response.body).name == <span class="string"><span class="delimiter">'</span><span class="content">User Created</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">authenticated user without ROLE_ADMIN receives 403 on update</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        seedUsersAndResource()
+        <span class="predefined-type">Long</span> resourceId = Resource.withTransaction { Resource.first().id }
+
+        <span class="key">when</span>:
+        restTemplate.exchange(
+                <span class="string"><span class="delimiter">&quot;</span><span class="inline"><span class="inline-delimiter">${</span>baseUrl()<span class="inline-delimiter">}</span></span><span class="content">/api/resources/</span><span class="inline"><span class="inline-delimiter">${</span>resourceId<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>,
+                HttpMethod.PUT,
+                jsonEntity([<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Blocked Update</span><span class="delimiter">'</span></span>], basicAuthHeaders(<span class="string"><span class="delimiter">'</span><span class="content">user</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">password</span><span class="delimiter">'</span></span>)),
+                <span class="predefined-type">String</span>
+        )
+
+        <span class="key">then</span>:
+        HttpClientErrorException ex = thrown(HttpClientErrorException)
+        ex.statusCode == HttpStatus.FORBIDDEN
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">admin can update and delete resources</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        seedUsersAndResource()
+        <span class="predefined-type">Long</span> resourceId = Resource.withTransaction { Resource.first().id }
+
+        <span class="key">when</span>:
+        ResponseEntity&lt;<span class="predefined-type">String</span>&gt; updateResponse = restTemplate.exchange(
+                <span class="string"><span class="delimiter">&quot;</span><span class="inline"><span class="inline-delimiter">${</span>baseUrl()<span class="inline-delimiter">}</span></span><span class="content">/api/resources/</span><span class="inline"><span class="inline-delimiter">${</span>resourceId<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>,
+                HttpMethod.PUT,
+                jsonEntity([<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Admin Updated</span><span class="delimiter">'</span></span>], basicAuthHeaders(<span class="string"><span class="delimiter">'</span><span class="content">admin</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">password</span><span class="delimiter">'</span></span>)),
+                <span class="predefined-type">String</span>
+        )
+
+        <span class="key">then</span>:
+        updateResponse.statusCode == HttpStatus.OK
+        <span class="keyword">new</span> groovy.json.JsonSlurper().parseText(updateResponse.body).name == <span class="string"><span class="delimiter">'</span><span class="content">Admin Updated</span><span class="delimiter">'</span></span>
+
+        <span class="key">when</span>:
+        ResponseEntity&lt;<span class="predefined-type">String</span>&gt; deleteResponse = restTemplate.exchange(
+                <span class="string"><span class="delimiter">&quot;</span><span class="inline"><span class="inline-delimiter">${</span>baseUrl()<span class="inline-delimiter">}</span></span><span class="content">/api/resources/</span><span class="inline"><span class="inline-delimiter">${</span>resourceId<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>,
+                HttpMethod.DELETE,
+                <span class="keyword">new</span> HttpEntity&lt;&gt;(basicAuthHeaders(<span class="string"><span class="delimiter">'</span><span class="content">admin</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">password</span><span class="delimiter">'</span></span>)),
+                <span class="predefined-type">String</span>
+        )
+
+        <span class="key">then</span>:
+        deleteResponse.statusCode == HttpStatus.NO_CONTENT
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">invalid create payload returns 422</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        seedUsersAndResource()
+
+        <span class="key">when</span>:
+        restTemplate.exchange(
+                <span class="string"><span class="delimiter">&quot;</span><span class="inline"><span class="inline-delimiter">${</span>baseUrl()<span class="inline-delimiter">}</span></span><span class="content">/api/resources</span><span class="delimiter">&quot;</span></span>,
+                HttpMethod.POST,
+                jsonEntity([<span class="key">description</span>: <span class="string"><span class="delimiter">'</span><span class="content">missing name</span><span class="delimiter">'</span></span>], basicAuthHeaders(<span class="string"><span class="delimiter">'</span><span class="content">user</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">password</span><span class="delimiter">'</span></span>)),
+                <span class="predefined-type">String</span>
+        )
+
+        <span class="key">then</span>:
+        HttpClientErrorException ex = thrown(HttpClientErrorException)
+        ex.statusCode.value() == <span class="integer">422</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>These tests verify the security rules end to end:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Anonymous <code>GET /api/resources</code> returns <strong>200</strong></p>
+</li>
+<li>
+<p>Anonymous <code>POST</code> returns <strong>401</strong></p>
+</li>
+<li>
+<p>Authenticated <code>ROLE_USER</code> can create resources</p>
+</li>
+<li>
+<p><code>ROLE_USER</code> without admin receives <strong>403</strong> on update</p>
+</li>
+<li>
+<p><code>ROLE_ADMIN</code> can update and delete</p>
+</li>
+<li>
+<p>Invalid payloads return <strong>422</strong></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Run unit tests:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">cd complete
+./gradlew test</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Run integration tests (requires Docker):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">./gradlew integrationTest</code></pre>
+</div>
+</div>
+</div>
+</div>
+
+
+<h1 id="runningTheApp">8 Running the application</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-spring-security/v8/guide/runningTheApp.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">cd complete
+./gradlew bootRun</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Public read access (no credentials):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">curl -s http://localhost:8080/api/resources
+curl -s http://localhost:8080/api/resources/1</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Create a resource (requires authentication — any logged-in user):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">curl -s -u user:password -H 'Content-Type: application/json' \
+  -d '{&quot;name&quot;:&quot;Team Notes&quot;,&quot;description&quot;:&quot;Shared notes&quot;}' \
+  http://localhost:8080/api/resources</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Update or delete (requires <code>ROLE_ADMIN</code>):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">curl -s -u admin:password -X PUT -H 'Content-Type: application/json' \
+  -d '{&quot;name&quot;:&quot;Admin Console&quot;,&quot;description&quot;:&quot;Updated by admin&quot;}' \
+  http://localhost:8080/api/resources/2
+
+curl -s -u admin:password -X DELETE http://localhost:8080/api/resources/2</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Anonymous create attempts return <strong>401</strong>; authenticated users without <code>ROLE_ADMIN</code> receive <strong>403</strong> on update/delete.</p>
+</div>
+
+
+<h1 id="summary">9 Summary</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-spring-security/v8/guide/summary.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>You secured a Grails 8 REST API with Spring Security Core:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Plugin dependency and HTTP Basic configuration</p>
+</li>
+<li>
+<p><code>User</code>, <code>Role</code>, and <code>UserRole</code> domains with password encoding</p>
+</li>
+<li>
+<p><code>@Secured</code> rules on controller actions</p>
+</li>
+<li>
+<p>Spock unit and integration tests against real HTTP and PostgreSQL</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Next steps: add JWT or session-based authentication, integrate Spring Security REST, or extend role-based access to service-layer methods.</p>
+</div>
+
+
+<h1 id="helpWithGrails">10 Do you need help with Grails?</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-spring-security/v8/guide/helpWithGrails.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="sect1">
+<h2 id="_help_with_apache_grails">Help with Apache Grails</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Apache Grails is supported by an active community of contributors and the Apache Software Foundation. If you need help working through a guide, want to discuss the framework, or have run into something that looks like a bug, the channels below are the right place to start.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="https://slack.grails.org">Slack</a> - real-time conversation with the Apache Grails community.</p>
+</li>
+<li>
+<p><a href="https://lists.apache.org/list.html?dev@grails.apache.org">Developer mailing list</a> - design discussions and contributor coordination.</p>
+</li>
+<li>
+<p><a href="https://lists.apache.org/list.html?users@grails.apache.org">Users mailing list</a> - end-user questions and answers.</p>
+</li>
+<li>
+<p><a href="https://github.com/apache/grails-core/issues">Issue tracker on GitHub</a> - file a bug or feature request against the framework.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>For Grails plugins, see the matching project on <a href="https://github.com/apache?q=grails">the apache org</a> or the plugin&#8217;s own GitHub repository.</p>
+</div>
+</div>
+</div>
+
+</article></div>
+<footer>
+    <div class='content'>
+        <div class='apache-grails'>
+            <p>Apache Grails is supported by the Apache Software Foundation and the Grails community.</p>
+            <a href='https://apache.org'><img src='https://www.apache.org/img/asf_logo.png' width='200px' alt='Apache Software Foundation'/></a>
+            <p>Apache, Apache Grails, Grails, Groovy, and the ASF logo are either registered trademarks or trademarks of The Apache Software Foundation.</p>
+        </div>
+        <nav class='social-media-nav'>
+            <ul>
+                <li><a href='mailto:dev@grails.apache.org'><img src='https://grails.apache.org/images/email.svg' alt='Email Icon'/></a></li>
+                <li><a href='https://slack.grails.org'><img src='https://grails.apache.org/images/slack.svg' alt='Slack Icon'/></a></li>
+                <li><a href='https://www.youtube.com/@GrailsFramework'><img src='https://grails.apache.org/images/youtube.svg' alt='Youtube Icon'/></a></li>
+                <li><a href='https://bsky.app/profile/grails.apache.org'><img src='https://grails.apache.org/images/bsky.svg' alt='Bluesky Icon'/></a></li>
+                <li><a rel="me" href="https://fosstodon.org/@grails"><img src='https://grails.apache.org/images/mastodont.svg' alt='Mastodon Icon'/></a></li>
+                <li><a href='https://www.linkedin.com/showcase/official-grails/'><img src='https://grails.apache.org/images/linkedin.svg' alt='LinkedIn Icon'/></a></li>
+                <li><a href='https://github.com/apache/grails-core'><img src='https://grails.apache.org/images/github.svg' alt='GitHub Icon'/></a></li>
+                <li><a href='https://twitter.com/grailsframework'><img src='https://grails.apache.org/images/x-twitter.svg' alt='Twitter Icon'/></a></li>
+            </ul>
+        </nav>
+    </div>
+    <div class='footer-bottom'>
+        <p>&copy; 2005-2026 the Apache Grails project</p>
+        <p>Grails is Open Source:
+            <a href='https://www.apache.org/licenses/'>License</a>,
+            <a href='https://privacy.apache.org/policies/privacy-policy-public.html'>Privacy Policy</a>,
+            <a href='https://www.apache.org/foundation/sponsorship'>Sponsor Apache</a>,
+            <a href='https://www.apache.org/events/current-event'>Events</a>,
+            <a href='https://www.apache.org/security'>Security</a>,
+            <a href='https://www.apache.org/foundation/thanks.html'>Thanks</a>,
+            <a href='https://grails.apache.org/support-schedule.html'>Support Schedule</a>
+        </p>
+    </div>
+</footer>
+
+</body>
+</html>
