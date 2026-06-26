@@ -706,6 +706,22 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <p>Below are the details of the changes across releases:</p>
 </div>
 <div class="sect3">
+<h4 id="_8_0">8.0</h4>
+<div class="ulist">
+<ul>
+<li>
+<p>TTL indexes via <code>indexAttributes: [expireAfterSeconds: N]</code> in the mapping DSL</p>
+</li>
+<li>
+<p>Text and other special indexes via <code>indexAttributes: [type: 'text']</code></p>
+</li>
+<li>
+<p>In-place reconciliation of changed index options, with opt-in <code>indexAttributes: [recreateOnConflict: true]</code></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
 <h4 id="_7_1">7.1</h4>
 <div class="ulist">
 <ul>
@@ -1791,6 +1807,81 @@ dirty checking and prevent the property from being updated.</p>
 </div>
 <div class="paragraph">
 <p>As per the MongoDB docs 1 is for ascending and -1 is for descending.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_ttl_indexes">TTL Indexes</h4>
+<div class="paragraph">
+<p>MongoDB can automatically remove documents from a collection once they reach a certain age using a <a href="https://www.mongodb.com/docs/manual/core/index-ttl/">TTL index</a>. Declare one by adding <code>expireAfterSeconds</code> to the <code>indexAttributes</code> of a single date-valued property:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">LoginEvent</span> {
+    <span class="predefined-type">Date</span> dateCreated
+    <span class="directive">static</span> mapping = {
+        dateCreated <span class="key">index</span>:<span class="predefined-constant">true</span>, <span class="key">indexAttributes</span>: [<span class="key">expireAfterSeconds</span>: <span class="integer">3600</span>]
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>With the mapping above MongoDB expires each <code>LoginEvent</code> roughly one hour (3600 seconds) after the value stored in its <code>dateCreated</code> property. The indexed property must hold a <code>Date</code> (or an array of dates), and TTL is supported on single-field indexes only — MongoDB ignores <code>expireAfterSeconds</code> if it is applied to a <code>compoundIndex</code>.</p>
+</div>
+<div class="paragraph">
+<p>If you later change the declared <code>expireAfterSeconds</code>, GORM reconciles the existing index in place on startup (using MongoDB&#8217;s <a href="https://www.mongodb.com/docs/manual/reference/command/collMod/">collMod</a> command) so that the new expiry takes effect without dropping or rebuilding the index.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_text_indexes">Text Indexes</h4>
+<div class="paragraph">
+<p>In addition to declaring a text index with the <code>index</code> method (see <a href="#textSearch">Full Text Search</a>), you can declare one on a single property through <code>indexAttributes</code> using <code>type: 'text'</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">Product</span> {
+    <span class="predefined-type">String</span> title
+    <span class="directive">static</span> mapping = {
+        title <span class="key">index</span>:<span class="predefined-constant">true</span>, <span class="key">indexAttributes</span>: [<span class="key">type</span>: <span class="string"><span class="delimiter">'</span><span class="content">text</span><span class="delimiter">'</span></span>]
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The <code>type</code> attribute sets the index type for that field, so it can equally be used to declare other special index types such as <code>'2d'</code> or <code>'2dsphere'</code>. Note that MongoDB allows at most one text index per collection. See <a href="#textSearch">Full Text Search</a> for how to query a text index once it has been created.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_reconciling_index_option_changes">Reconciling Index Option Changes</h4>
+<div class="paragraph">
+<p>An index is created from its declared options the first time the collection is initialised. If you later change the options of an already-created index — for example marking it <code>unique</code> — MongoDB cannot alter most options in place and reports an <code>IndexOptionsConflict</code>. By default GORM logs this conflict and leaves the existing index untouched.</p>
+</div>
+<div class="paragraph">
+<p>To have GORM drop the existing index and recreate it with the newly declared options, add <code>recreateOnConflict: true</code> to the <code>indexAttributes</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">Person</span> {
+    <span class="predefined-type">String</span> name
+    <span class="directive">static</span> mapping = {
+        name <span class="key">index</span>:<span class="predefined-constant">true</span>, <span class="key">indexAttributes</span>: [<span class="key">unique</span>:<span class="predefined-constant">true</span>, <span class="key">recreateOnConflict</span>:<span class="predefined-constant">true</span>]
+    }
+}</code></pre>
+</div>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+Dropping and recreating an index rebuilds it from scratch, during which queries that rely on the index are not served by it. Enable <code>recreateOnConflict</code> deliberately, and prefer applying it during a maintenance window for large collections.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>A change to a TTL index&#8217;s <code>expireAfterSeconds</code> is handled automatically and does not require <code>recreateOnConflict</code>, because GORM updates the expiry in place rather than rebuilding the index.</p>
 </div>
 </div>
 <div class="sect3">

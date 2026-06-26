@@ -920,6 +920,33 @@ request bodies. The helper URL-encodes form fields using UTF-8, and repeated val
 repeated keys in insertion order.</p>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_gorm_for_mongodb_ttl_text_and_reconciled_indexes">GORM for MongoDB: TTL, Text, and Reconciled Indexes</h4>
+<div class="paragraph">
+<p>GORM for MongoDB can now declare a <a href="https://www.mongodb.com/docs/manual/core/index-ttl/">TTL index</a> directly in the mapping DSL.
+Adding <code>expireAfterSeconds</code> to the <code>indexAttributes</code> of a single date-valued property creates a TTL index, and MongoDB
+automatically removes each document once it reaches the configured age:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">LoginEvent</span> {
+    <span class="predefined-type">Date</span> dateCreated
+    <span class="directive">static</span> mapping = {
+        dateCreated <span class="key">index</span>: <span class="predefined-constant">true</span>, <span class="key">indexAttributes</span>: [<span class="key">expireAfterSeconds</span>: <span class="integer">3600</span>]
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A single property can likewise declare a <code>$text</code> index — or another special type such as <code>2dsphere</code> — through
+<code>indexAttributes: [type: 'text']</code>.</p>
+</div>
+<div class="paragraph">
+<p>When the options of an already-created index change between restarts, GORM now reconciles the difference instead of only
+logging a conflict. A changed TTL is applied in place with MongoDB&#8217;s <code>collMod</code> command — no drop, no rebuild — while any
+other option change is applied by declaring <code>indexAttributes: [recreateOnConflict: true]</code>.</p>
+</div>
+</div>
 </div>
 
 
