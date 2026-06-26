@@ -1994,6 +1994,81 @@ Command objects are also unaffected: <code>Validateable</code> command-object fi
 </div>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_27_mime_types_are_now_framework_defaults">27. MIME Types Are Now Framework Defaults</h4>
+<div class="paragraph">
+<p>Grails 8 ships the full set of supported MIME types as built-in framework defaults.
+Previously every newly generated application declared a <code>grails.mime.types</code> block in <code>grails-app/conf/application.yml</code>; the Grails Forge and the application profiles no longer generate that block, because the framework now supplies the same defaults out of the box.</p>
+</div>
+<div class="paragraph">
+<p>The built-in defaults cover <code>all</code>, <code>atom</code>, <code>css</code>, <code>csv</code>, <code>form</code>, <code>html</code>, <code>js</code>, <code>json</code>, <code>multipartForm</code>, <code>pdf</code>, <code>rss</code>, <code>text</code>, <code>hal</code> and <code>xml</code> — the same set new applications historically declared.</p>
+</div>
+<div class="paragraph">
+<p><strong>No action is required.</strong>
+A declared <code>grails.mime.types</code> still <strong>replaces</strong> the defaults, exactly as in Grails 7 — your existing block remains authoritative and you get precisely the types you declared (including a deliberately narrowed set). New applications simply no longer need the block, because the framework supplies these defaults when none is configured.</p>
+</div>
+<div class="paragraph">
+<p><strong>Optional: merge instead of replace.</strong>
+If you would rather add to the defaults than re-declare them, set <code>grails.mime.mergeDefaults</code> to <code>true</code>. Your declared entries are then merged over the built-in defaults — an entry replaces the default for its extension, and any extension you do not declare keeps its default — so you can register a single custom type without restating the full list:</p>
+</div>
+<div class="listingblock">
+<div class="title">application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">mime</span>:
+        <span class="key">mergeDefaults</span>: <span class="string"><span class="content">true</span></span>
+        <span class="key">types</span>:
+            <span class="key">custom</span>: <span class="string"><span class="content">application/vnd.example+json</span></span></code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_28_accept_header_honored_for_all_clients">28. Accept Header Honored for All Clients</h4>
+<div class="paragraph">
+<p>Grails 8 honors the HTTP <code>Accept</code> header for content negotiation for <strong>every</strong> client by default, including browsers.</p>
+</div>
+<div class="paragraph">
+<p>In Grails 7 and earlier, the <code>Accept</code> header was ignored for the major browser rendering engines: <code>grails.mime.disable.accept.header.userAgents</code> defaulted to <code>['Gecko', 'WebKit', 'Presto', 'Trident']</code>.
+That was a workaround for very old browsers (Firefox 2 and 3) whose <code>Accept</code> header ranked XML above HTML.
+Modern browsers send a well-formed header that already prioritizes HTML (<code>text/html</code> at <code>q=1.0</code>, <code>application/xml</code> at <code>q=0.9</code>), so the workaround is no longer needed.</p>
+</div>
+<div class="paragraph">
+<p>The practical effect of the old default was that a browser-issued <code>fetch()</code> or <code>XMLHttpRequest</code> call requesting <code>application/json</code> would receive HTML instead of JSON, because those calls do not send an <code>X-Requested-With: XMLHttpRequest</code> header (only libraries such as jQuery add it automatically).
+In Grails 8 such a request correctly receives JSON.</p>
+</div>
+<div class="paragraph">
+<p><strong>What changed:</strong> <code>grails.mime.disable.accept.header.userAgents</code> now defaults to unset, so no user agents are filtered.</p>
+</div>
+<div class="paragraph">
+<p><strong>Most applications need no action.</strong>
+Browser page loads still resolve to HTML because modern browsers rank <code>text/html</code> highest, and <code>withFormat { html { } json { } }</code> continues to serve HTML to browsers and JSON to clients that ask for it.</p>
+</div>
+<div class="paragraph">
+<p><strong><code>respond</code> endpoints without an HTML view now error for browser requests.</strong>
+Because browsers now negotiate <code>text/html</code>, an action that uses <code>respond(&#8230;&#8203;)</code> but has no corresponding HTML view (GSP) can no longer return JSON to a browser by accident — it negotiates <code>html</code> and attempts to render the missing view, which results in an error.
+Previously the browser&#8217;s <code>Accept</code> header was ignored, so such an endpoint happened to return JSON.
+If you have browser-facing <code>respond</code> endpoints, add an HTML view for the action (or <code>render</code> an appropriate response directly).
+API clients that send a specific <code>Accept</code> such as <code>application/json</code> are unaffected.</p>
+</div>
+<div class="paragraph">
+<p>To restore the Grails 7 behavior of ignoring the <code>Accept</code> header for browsers, set the property explicitly:</p>
+</div>
+<div class="listingblock">
+<div class="title">application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">mime</span>:
+        <span class="key">disable</span>:
+            <span class="key">accept</span>:
+                <span class="key">header</span>:
+                    <span class="key">userAgents</span>:
+                        - <span class="string"><span class="content">Gecko</span></span>
+                        - <span class="string"><span class="content">WebKit</span></span>
+                        - <span class="string"><span class="content">Presto</span></span>
+                        - <span class="string"><span class="content">Trident</span></span></code></pre>
+</div>
+</div>
+</div>
 </div>
 
 
