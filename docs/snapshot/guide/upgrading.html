@@ -4989,6 +4989,31 @@ grailsGradlePluginVersion=6.0.0</code></pre>
 <div class="paragraph">
 <p>Micronaut for Spring 4.5.1 provides seamless integration between Micronaut and Spring, allowing you to leverage the strengths of both frameworks in your Grails project.</p>
 </div>
+<div class="sect4">
+<h5 id="_12_27_stop_app_no_longer_uses_jmx_or_the_actuator_shutdown_endpoint">12.27 stop-app no longer uses JMX or the Actuator shutdown endpoint</h5>
+<div class="paragraph">
+<p>The interactive CLI <code>stop-app</code> command no longer stops a running application through JMX or the Spring Boot Actuator <code>/actuator/shutdown</code> endpoint. Both mechanisms were unreliable on current JDKs and default configurations.</p>
+</div>
+<div class="paragraph">
+<p>Instead, <code>run-app</code> records the application&#8217;s process id in a PID file (<code>build/run-app.pid</code>) and <code>stop-app</code> reads that file to stop the process directly. As a result:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The <code>--host</code> and <code>--port</code> options of <code>stop-app</code> have been removed. <code>stop-app</code> now stops the application started by <code>run-app</code> for the current project. If you previously scripted <code>grails stop-app --host=&#8230;&#8203; --port=&#8230;&#8203;</code>, drop those options.</p>
+</li>
+<li>
+<p><code>stop-app</code> only stops an application that was started with <code>run-app</code> for the same project. It can be invoked from interactive mode or from a separate terminal.</p>
+</li>
+<li>
+<p>On Linux and macOS the application is shut down gracefully (the equivalent of <code>SIGTERM</code>), so JVM shutdown hooks and Spring&#8217;s orderly shutdown run. On Windows the application is terminated on a best-effort basis and a graceful shutdown is not guaranteed.</p>
+</li>
+<li>
+<p>Every <code>bootRun</code> invocation (including a direct <code>./gradlew bootRun</code>) now writes <code>build/run-app.pid</code> while the application is running; the file is removed once the application stops. Customizing the Gradle build directory (<code>layout.buildDirectory</code>) is not supported by <code>stop-app</code>, which always looks for the PID file under the conventional <code>build</code> directory.</p>
+</li>
+</ul>
+</div>
+</div>
 </div>
 <div class="sect3">
 <h4 id="_13_upgrading_the_spring_security_plugin">13. Upgrading the Spring Security Plugin</h4>
