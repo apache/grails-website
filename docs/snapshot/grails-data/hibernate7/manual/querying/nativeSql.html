@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.18">
-<title>Native SQL Queries</title>
+<title>SQL Queries</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -442,13 +442,12 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
 <ul class="sectlevel1">
-<li><a href="#querying-native-sql">Native SQL Queries</a>
+<li><a href="#querying-native-sql">SQL Queries</a>
 <ul class="sectlevel2">
 <li><a href="#_methods">Methods</a></li>
-<li><a href="#_safe_usage_gstring_value_parameters">Safe Usage — GString Value Parameters</a></li>
+<li><a href="#_safe_usage_gstring_value_parameters">Safe Usage - GString Value Parameters</a></li>
 <li><a href="#_static_sql_no_user_input">Static SQL (No User Input)</a></li>
 <li><a href="#_what_cannot_be_parameterized">What Cannot Be Parameterized</a></li>
-<li><a href="#_deprecated_names">Deprecated Names</a></li>
 </ul>
 </li>
 </ul>
@@ -456,10 +455,10 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </div>
 <div id="content">
 <div class="sect1">
-<h2 id="querying-native-sql">Native SQL Queries</h2>
+<h2 id="querying-native-sql">SQL Queries</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>GORM provides <code>findWithNativeSql</code> and <code>findAllWithNativeSql</code> for executing raw SQL when HQL or the Criteria API cannot express the query you need (e.g. database-specific functions, complex joins, or legacy SQL).</p>
+<p>GORM provides <code>findWithSql</code> and <code>findAllWithSql</code> for executing raw SQL when HQL or the DetachedCriteria API cannot express the query you need (e.g. database-specific functions, complex joins, or legacy SQL).</p>
 </div>
 <div class="admonitionblock warning">
 <table>
@@ -468,7 +467,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <i class="fa icon-warning" title="Warning"></i>
 </td>
 <td class="content">
-Native SQL bypasses Hibernate&#8217;s type system and object mapping. Prefer HQL, the Criteria API, or dynamic finders wherever possible. Use native SQL only when there is no higher-level alternative.
+Raw SQL bypasses Hibernate&#8217;s type system and object mapping. Prefer HQL, the DetachedCriteria API, or dynamic finders wherever possible. Use SQL only when there is no higher-level alternative.
 </td>
 </tr>
 </table>
@@ -488,26 +487,26 @@ Native SQL bypasses Hibernate&#8217;s type system and object mapping. Prefer HQL
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>findWithNativeSql(CharSequence sql)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>findWithSql(CharSequence sql)</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Returns the first result mapped to the domain class</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>findWithNativeSql(CharSequence sql, Map args)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>findWithSql(CharSequence sql, Map args)</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Returns the first result; <code>args</code> controls pagination (<code>max</code>, <code>offset</code>, <code>cache</code>)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>findAllWithNativeSql(CharSequence sql)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>findAllWithSql(CharSequence sql)</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Returns all results mapped to the domain class</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>findAllWithNativeSql(CharSequence sql, Map args)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>findAllWithSql(CharSequence sql, Map args)</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Returns all results; <code>args</code> controls pagination</p></td>
 </tr>
 </tbody>
 </table>
 </div>
 <div class="sect2">
-<h3 id="_safe_usage_gstring_value_parameters">Safe Usage — GString Value Parameters</h3>
+<h3 id="_safe_usage_gstring_value_parameters">Safe Usage - GString Value Parameters</h3>
 <div class="paragraph">
 <p>When a query contains user-supplied <strong>values</strong> (not identifiers), use Groovy GString interpolation. GORM extracts each <code>${expression}</code> and binds it as a named JDBC parameter, preventing injection.</p>
 </div>
@@ -515,8 +514,8 @@ Native SQL bypasses Hibernate&#8217;s type system and object mapping. Prefer HQL
 <div class="content">
 <pre class="highlight"><code class="language-groovy" data-lang="groovy">String nameFilter = params.name  // user input
 
-// ✅ SAFE — ${nameFilter} is bound as :p0, never inlined into the SQL string
-List results = Club.findAllWithNativeSql(
+// SAFE - ${nameFilter} is bound as :p0, never inlined into the SQL string
+List results = Club.findAllWithSql(
     "select * from club c where c.name like ${nameFilter} order by c.name")</code></pre>
 </div>
 </div>
@@ -528,8 +527,8 @@ List results = Club.findAllWithNativeSql(
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">// ✅ SAFE — no user input, static SQL
-List results = Club.findAllWithNativeSql(
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">// SAFE - no user input, static SQL
+List results = Club.findAllWithSql(
     "select * from club c order by c.name")</code></pre>
 </div>
 </div>
@@ -537,35 +536,20 @@ List results = Club.findAllWithNativeSql(
 <div class="sect2">
 <h3 id="_what_cannot_be_parameterized">What Cannot Be Parameterized</h3>
 <div class="paragraph">
-<p>SQL identifiers — table names, column names, schema names — <strong>cannot</strong> be bound as JDBC parameters. Do not interpolate them from user input under any circumstances.</p>
+<p>SQL identifiers - table names, column names, schema names - <strong>cannot</strong> be bound as JDBC parameters. Do not interpolate them from user input under any circumstances.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">// ❌ UNSAFE — table name from user input, cannot be made safe via GString
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">// UNSAFE - table name from user input, cannot be made safe via GString
 String table = params.table
-Club.findAllWithNativeSql("select * from ${table}")  // DO NOT DO THIS
+Club.findAllWithSql("select * from ${table}")  // DO NOT DO THIS
 
-// ❌ UNSAFE — string concatenation, no protection at all
-Club.findAllWithNativeSql("select * from club where name = '" + userInput + "'")</code></pre>
+// UNSAFE - string concatenation, no protection at all
+Club.findAllWithSql("select * from club where name = '" + userInput + "'")</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>If you need dynamic identifiers (e.g. schema-per-tenant), use the JDBC identifier quoting API (<code>connection.metaData.identifierQuoteString</code>) to quote and sanitize the name before use — the same mechanism used internally by <code>DefaultSchemaHandler</code>.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_deprecated_names">Deprecated Names</h3>
-<div class="paragraph">
-<p><code>findWithSql</code> and <code>findAllWithSql</code> are deprecated aliases for <code>findWithNativeSql</code> and <code>findAllWithNativeSql</code>. They remain functional for backwards compatibility but will be removed in a future release.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">// Deprecated — replace with findAllWithNativeSql
-Club.findAllWithSql("select * from club")
-
-// Preferred
-Club.findAllWithNativeSql("select * from club")</code></pre>
-</div>
+<p>If you need dynamic identifiers (e.g. schema-per-tenant), use the JDBC identifier quoting API (<code>connection.metaData.identifierQuoteString</code>) to quote and sanitize the name before use - the same mechanism used internally by <code>DefaultSchemaHandler</code>.</p>
 </div>
 </div>
 </div>
