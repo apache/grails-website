@@ -2019,21 +2019,71 @@ Command objects are also unaffected: <code>Validateable</code> command-object fi
 </div>
 </div>
 <div class="sect3">
-<h4 id="_28_mime_types_are_now_framework_defaults">28. MIME Types Are Now Framework Defaults</h4>
+<h4 id="_28_apache_groovy_5_behavior_changes">28. Apache Groovy 5 Behavior Changes</h4>
+<div class="paragraph">
+<p>Grails 8 upgrades from Apache Groovy 4 to Apache Groovy 5.
+Most applications need no changes, but a few stricter behaviors can affect application code.</p>
+</div>
+<div class="sect4">
+<h5 id="_28_1_assigning_a_static_field_from_a_static_closure_requires_the_class_name">28.1 Assigning a static field from a static closure requires the class name</h5>
+<div class="paragraph">
+<p>Under Groovy 5 with static compilation (<code>@CompileStatic</code> / <code>@GrailsCompileStatic</code>), assigning to a static field from inside a static closure - such as the <code>constraints</code>, <code>mapping</code>, or <code>namedQueries</code> blocks of a statically compiled class - no longer resolves an unqualified field name to the enclosing class&#8217;s static field.
+Qualify the assignment with the class name:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="annotation">@GrailsCompileStatic</span>
+<span class="type">class</span> <span class="class">Book</span> <span class="directive">implements</span> Validateable {
+    <span class="directive">static</span> <span class="type">boolean</span> constraintsClosureCalled = <span class="predefined-constant">false</span>
+
+    <span class="directive">static</span> constraints = {
+        <span class="comment">// Groovy 4: an unqualified assignment resolved to Book.constraintsClosureCalled</span>
+        <span class="comment">// Groovy 5: the field must be qualified with the class name</span>
+        <span class="predefined-type">Book</span>.constraintsClosureCalled = <span class="predefined-constant">true</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Reading a static field is unaffected; only assignment from within the static closure needs the class-name qualifier.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_28_2_probing_a_configobject_for_a_missing_key">28.2 Probing a <code>ConfigObject</code> for a missing key</h5>
+<div class="paragraph">
+<p>In Groovy 5, indexing a <code>groovy.util.ConfigObject</code> with the subscript operator for a key that does not exist creates and inserts an empty nested <code>ConfigObject</code> for that key, rather than reading back as a falsy value.
+Code that walks a configuration source with <code>[]</code> and expects a missing key to be <code>null</code> should test for the key explicitly before reading it:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">// Under Groovy 5 this inserts an empty entry for a missing key</span>
+<span class="keyword">def</span> value = configObject[key]
+
+<span class="comment">// Probe without creating an entry</span>
+<span class="keyword">def</span> value = configObject.containsKey(key) ? configObject.get(key) : <span class="predefined-constant">null</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Grails applies this guard internally when resolving Spring profile activation keys; you only need it in application code that navigates a raw <code>ConfigObject</code> by subscript.</p>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_29_mime_types_are_now_framework_defaults">29. MIME Types Are Now Framework Defaults</h4>
 <div class="paragraph">
 <p>Grails 8 ships the full set of supported MIME types as built-in framework defaults.
 Previously every newly generated application declared a <code>grails.mime.types</code> block in <code>grails-app/conf/application.yml</code>; the Grails Forge and the application profiles no longer generate that block, because the framework now supplies the same defaults out of the box.</p>
 </div>
 <div class="paragraph">
-<p>The built-in defaults cover <code>all</code>, <code>atom</code>, <code>css</code>, <code>csv</code>, <code>form</code>, <code>html</code>, <code>js</code>, <code>json</code>, <code>multipartForm</code>, <code>pdf</code>, <code>rss</code>, <code>text</code>, <code>hal</code> and <code>xml</code> — the same set new applications historically declared.</p>
+<p>The built-in defaults cover <code>all</code>, <code>atom</code>, <code>css</code>, <code>csv</code>, <code>form</code>, <code>html</code>, <code>js</code>, <code>json</code>, <code>multipartForm</code>, <code>pdf</code>, <code>rss</code>, <code>text</code>, <code>hal</code> and <code>xml</code>, the same set new applications historically declared.</p>
 </div>
 <div class="paragraph">
 <p><strong>No action is required.</strong>
-A declared <code>grails.mime.types</code> still <strong>replaces</strong> the defaults, exactly as in Grails 7 — your existing block remains authoritative and you get precisely the types you declared (including a deliberately narrowed set). New applications simply no longer need the block, because the framework supplies these defaults when none is configured.</p>
+A declared <code>grails.mime.types</code> still <strong>replaces</strong> the defaults, exactly as in Grails 7. Your existing block remains authoritative and you get precisely the types you declared (including a deliberately narrowed set). New applications simply no longer need the block, because the framework supplies these defaults when none is configured.</p>
 </div>
 <div class="paragraph">
 <p><strong>Optional: merge instead of replace.</strong>
-If you would rather add to the defaults than re-declare them, set <code>grails.mime.mergeDefaults</code> to <code>true</code>. Your declared entries are then merged over the built-in defaults — an entry replaces the default for its extension, and any extension you do not declare keeps its default — so you can register a single custom type without restating the full list:</p>
+If you would rather add to the defaults than re-declare them, set <code>grails.mime.mergeDefaults</code> to <code>true</code>. Your declared entries are then merged over the built-in defaults. An entry replaces the default for its extension, and any extension you do not declare keeps its default, so you can register a single custom type without restating the full list:</p>
 </div>
 <div class="listingblock">
 <div class="title">application.yml</div>
@@ -2047,7 +2097,7 @@ If you would rather add to the defaults than re-declare them, set <code>grails.m
 </div>
 </div>
 <div class="sect3">
-<h4 id="_29_accept_header_honored_for_all_clients">29. Accept Header Honored for All Clients</h4>
+<h4 id="_30_accept_header_honored_for_all_clients">30. Accept Header Honored for All Clients</h4>
 <div class="paragraph">
 <p>Grails 8 honors the HTTP <code>Accept</code> header for content negotiation for <strong>every</strong> client by default, including browsers.</p>
 </div>
@@ -2069,7 +2119,7 @@ Browser page loads still resolve to HTML because modern browsers rank <code>text
 </div>
 <div class="paragraph">
 <p><strong><code>respond</code> endpoints without an HTML view now error for browser requests.</strong>
-Because browsers now negotiate <code>text/html</code>, an action that uses <code>respond(&#8230;&#8203;)</code> but has no corresponding HTML view (GSP) can no longer return JSON to a browser by accident — it negotiates <code>html</code> and attempts to render the missing view, which results in an error.
+Because browsers now negotiate <code>text/html</code>, an action that uses <code>respond(&#8230;&#8203;)</code> but has no corresponding HTML view (GSP) can no longer return JSON to a browser by accident. It negotiates <code>html</code> and attempts to render the missing view, which results in an error.
 Previously the browser&#8217;s <code>Accept</code> header was ignored, so such an endpoint happened to return JSON.
 If you have browser-facing <code>respond</code> endpoints, add an HTML view for the action (or <code>render</code> an appropriate response directly).
 API clients that send a specific <code>Accept</code> such as <code>application/json</code> are unaffected.</p>
