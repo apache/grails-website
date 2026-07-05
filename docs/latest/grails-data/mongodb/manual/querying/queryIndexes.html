@@ -519,6 +519,81 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </div>
 </div>
 <div class="sect3">
+<h4 id="_ttl_indexes">TTL Indexes</h4>
+<div class="paragraph">
+<p>MongoDB can automatically remove documents from a collection once they reach a certain age using a <a href="https://www.mongodb.com/docs/manual/core/index-ttl/">TTL index</a>. Declare one by adding <code>expireAfterSeconds</code> to the <code>indexAttributes</code> of a single date-valued property:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class LoginEvent {
+    Date dateCreated
+    static mapping = {
+        dateCreated index:true, indexAttributes: [expireAfterSeconds: 3600]
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>With the mapping above MongoDB expires each <code>LoginEvent</code> roughly one hour (3600 seconds) after the value stored in its <code>dateCreated</code> property. The indexed property must hold a <code>Date</code> (or an array of dates), and TTL is supported on single-field indexes only — MongoDB ignores <code>expireAfterSeconds</code> if it is applied to a <code>compoundIndex</code>.</p>
+</div>
+<div class="paragraph">
+<p>If you later change the declared <code>expireAfterSeconds</code>, GORM reconciles the existing index in place on startup (using MongoDB&#8217;s <a href="https://www.mongodb.com/docs/manual/reference/command/collMod/">collMod</a> command) so that the new expiry takes effect without dropping or rebuilding the index.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_text_indexes">Text Indexes</h4>
+<div class="paragraph">
+<p>In addition to declaring a text index with the <code>index</code> method (see <a href="#textSearch">[textSearch]</a>), you can declare one on a single property through <code>indexAttributes</code> using <code>type: 'text'</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Product {
+    String title
+    static mapping = {
+        title index:true, indexAttributes: [type: 'text']
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The <code>type</code> attribute sets the index type for that field, so it can equally be used to declare other special index types such as <code>'2d'</code> or <code>'2dsphere'</code>. Note that MongoDB allows at most one text index per collection. See <a href="#textSearch">[textSearch]</a> for how to query a text index once it has been created.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_reconciling_index_option_changes">Reconciling Index Option Changes</h4>
+<div class="paragraph">
+<p>An index is created from its declared options the first time the collection is initialised. If you later change the options of an already-created index — for example marking it <code>unique</code> — MongoDB cannot alter most options in place and reports an <code>IndexOptionsConflict</code>. By default GORM logs this conflict and leaves the existing index untouched.</p>
+</div>
+<div class="paragraph">
+<p>To have GORM drop the existing index and recreate it with the newly declared options, add <code>recreateOnConflict: true</code> to the <code>indexAttributes</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Person {
+    String name
+    static mapping = {
+        name index:true, indexAttributes: [unique:true, recreateOnConflict:true]
+    }
+}</code></pre>
+</div>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+Dropping and recreating an index rebuilds it from scratch, during which queries that rely on the index are not served by it. Enable <code>recreateOnConflict</code> deliberately, and prefer applying it during a maintenance window for large collections.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>A change to a TTL index&#8217;s <code>expireAfterSeconds</code> is handled automatically and does not require <code>recreateOnConflict</code>, because GORM updates the expiry in place rather than rebuilding the index.</p>
+</div>
+</div>
+<div class="sect3">
 <h4 id="_indexing_using_the_index_method">Indexing using the <em>index</em> method</h4>
 <div class="paragraph">
 <p>In addition to the convenience features described above you can use the <code>index</code> method to define any index you want. For example:</p>
@@ -538,7 +613,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </div>
 <div id="footer">
 <div id="footer-text">
-Version 7.2.0<br>
+Version 8.0.0-M2<br>
 </div>
 </div>
 </body>
