@@ -4386,6 +4386,107 @@ API clients that send a specific <code>Accept</code> such as <code>application/j
 </div>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_31_enablewebmvc_no_longer_added_to_grails_applications">31. @EnableWebMvc No Longer Added to Grails Applications</h4>
+<div class="paragraph">
+<p>In earlier versions, Grails added Spring&#8217;s <code>@EnableWebMvc</code> annotation to the generated <code>Application</code> class at compile time.
+<code>@EnableWebMvc</code> is a Spring Framework configuration annotation that is not intended to be combined with Spring Boot: it imports <code>DelegatingWebMvcConfiguration</code>, which eagerly registers a fixed set of MVC beans and switches off Spring Boot&#8217;s <code>WebMvcAutoConfiguration</code>.
+In a Boot application this produced bean-definition override warnings at startup (for example for <code>localeResolver</code> and <code>internalAutoProxyCreator</code>) and prevented Boot&#8217;s conditional, more configurable auto-configuration from taking effect.</p>
+</div>
+<div class="paragraph">
+<p>Grails 8 removes the auto-injected <code>@EnableWebMvc</code>.
+Spring Boot&#8217;s <code>WebMvcAutoConfiguration</code> is now active for Grails servlet web applications, which is the intended Boot behavior and resolves those override warnings.</p>
+</div>
+<div class="paragraph">
+<p><strong>No action is required for most applications.</strong>
+Grails adapts internally so the change is transparent.
+The notes below explain the two behavioral differences this introduces and the configuration toggles available if you need to control them.</p>
+</div>
+<div class="sect4">
+<h5 id="_31_1_boots_default_view_resolver_is_removed_automatically">31.1 Boot&#8217;s default view resolver is removed automatically</h5>
+<div class="paragraph">
+<p>With <code>WebMvcAutoConfiguration</code> active, Boot contributes a catch-all <code>defaultViewResolver</code> (an <code>InternalResourceViewResolver</code>).
+For a Grails application that does not use JSP/<code>InternalResource</code> views (for example a REST/JSON-views application) this resolver maps any unmatched view name to a servlet forward, which can surface as:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code>Circular view path [index]: would dispatch back to the current handler URL</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>To prevent this, Grails removes Boot&#8217;s <code>defaultViewResolver</code> for every Grails servlet web application so that Grails' own view resolution is used instead.
+If you need to keep Boot&#8217;s <code>defaultViewResolver</code> (for example, an application that genuinely relies on JSP/<code>InternalResource</code> views), opt out:</p>
+</div>
+<div class="listingblock">
+<div class="title">application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">web</span>:
+        <span class="key">removeDefaultViewResolverBean</span>: <span class="string"><span class="content">false</span></span></code></pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+In GSP applications the GSP view resolver continues to be installed as the primary <code>viewResolver</code>, controlled as before by <code>spring.gsp.replaceViewResolverBean</code>.
+The earlier <code>spring.gsp.removeDefaultViewResolverBean</code> property (from when this removal lived in the GSP module) is still honoured for backward compatibility but is <strong>deprecated</strong> — <code>defaultViewResolver</code> removal is now handled centrally for all Grails servlet web applications by the <code>grails.web.removeDefaultViewResolverBean</code> property above, which takes precedence. Setting the old name logs a deprecation warning at startup.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_31_2_grailswebrequest_binding">31.2 GrailsWebRequest binding</h5>
+<div class="paragraph">
+<p>With <code>WebMvcAutoConfiguration</code> active, Boot would otherwise register its own <code>RequestContextFilter</code> that rebinds a plain <code>ServletRequestAttributes</code>, replacing the <code>GrailsWebRequest</code> bound earlier in the filter chain.
+Downstream code that expects a <code>GrailsWebRequest</code> would then fail with a <code>ClassCastException</code>.</p>
+</div>
+<div class="paragraph">
+<p>Grails 8 registers its request-binding filter as a <code>RequestContextFilter</code> bean so that Boot&#8217;s filter backs off and the <code>GrailsWebRequest</code> remains bound for the whole request.
+This is handled internally and requires no configuration changes.
+Applications that defined their own <code>GrailsWebRequestFilter</code> bean, or their own <code>grailsWebRequestFilter</code> filter-registration bean, continue to override the Grails-provided ones.</p>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_32_more_framework_beans_are_cleanly_overridable">32. More Framework Beans Are Cleanly Overridable</h4>
+<div class="paragraph">
+<p>Several Grails framework beans that were previously registered unconditionally are now guarded with <code>@ConditionalOnMissingBean</code>, so a bean of the same name (or type) defined in an application configuration class (a <code>@Bean</code> method) takes precedence cleanly instead of relying on bean-definition overriding:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>i18n: <code>localeResolver</code>, <code>localeChangeInterceptor</code> and <code>messageSource</code></p>
+</li>
+<li>
+<p>URL mappings: <code>grailsCorsFilter</code>, <code>urlMappingsErrorPageCustomizer</code> and <code>urlMappingsInfoHandlerAdapter</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>No action is required.</strong>
+The framework beans still register by default; this only changes what happens when you define your own.
+Previously, defining one of these beans produced a bean-definition override (with a startup warning, or a failure when <code>spring.main.allow-bean-definition-overriding</code> is <code>false</code>).
+Now the framework bean simply backs off.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The back-off applies to beans that are registered before auto-configuration conditions are evaluated — <code>@Bean</code> methods in application configuration classes.
+Beans contributed later, through a plugin&#8217;s <code>doWithSpring</code> or the application&#8217;s <code>resources.groovy</code>, continue to take effect through bean-definition overriding, exactly as in previous releases.
+</td>
+</tr>
+</table>
+</div>
+</div>
 </div>
 
 
