@@ -931,6 +931,39 @@ This brings the Spring Boot 4 modular artifact layout, Spring Framework 7 API re
 </div>
 </div>
 <div class="sect3">
+<h4 id="_plugin_beans_register_before_spring_boot_auto_configuration">Plugin Beans Register Before Spring Boot Auto-Configuration</h4>
+<div class="paragraph">
+<p>Grails 8 unifies and retimes the plugin lifecycle so that the beans a plugin contributes are registered before Spring Boot processes its auto-configurations.
+A plugin bean now takes precedence over a Spring Boot default guarded by <code>@ConditionalOnMissingBean</code> — Boot backs off in favour of the plugin&#8217;s bean, with no need to override or remove it afterwards.</p>
+</div>
+<div class="paragraph">
+<p>Plugins register beans through the new <code>beanRegistrar()</code> hook, which returns a Spring Framework <a href="https://docs.spring.io/spring-framework/docs/7.0.8/javadoc-api/org/springframework/beans/factory/BeanRegistrar.html">BeanRegistrar</a>. Because <code>BeanRegistrar</code> is a functional interface, a closure coerced with <code>as BeanRegistrar</code> is all that is required:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">org.springframework.beans.factory.BeanRegistrar</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.BeanRegistry</span>
+<span class="keyword">import</span> <span class="include">org.springframework.core.env.Environment</span>
+<span class="keyword">import</span> <span class="include">grails.plugins.Plugin</span>
+
+<span class="type">class</span> <span class="class">MyGrailsPlugin</span> <span class="directive">extends</span> Plugin {
+
+    <span class="annotation">@Override</span>
+    BeanRegistrar beanRegistrar() {
+        { BeanRegistry registry, Environment environment -&gt;
+            registry.registerBean(<span class="string"><span class="delimiter">'</span><span class="content">myService</span><span class="delimiter">'</span></span>, MyServiceImpl)
+        } <span class="keyword">as</span> BeanRegistrar
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>beanRegistrar()</code> replaces the <code>doWithSpring</code> bean builder DSL, which is deprecated in Grails 8.
+The DSL continues to work for now, but you are strongly urged to migrate.
+See the <a href="upgrading.html#upgrading80x">upgrade guide</a> for details.</p>
+</div>
+</div>
+<div class="sect3">
 <h4 id="_gsp_tag_library_improvements">GSP Tag Library Improvements</h4>
 <div class="paragraph">
 <p>Grails 8 continues the move toward method-based TagLib handlers while preserving compatibility with existing closure-based tags.
@@ -4569,11 +4602,103 @@ Now the framework bean simply backs off.</p>
 <i class="fa icon-note" title="Note"></i>
 </td>
 <td class="content">
-The back-off applies to beans that are registered before auto-configuration conditions are evaluated — <code>@Bean</code> methods in application configuration classes.
-Beans contributed later, through a plugin&#8217;s <code>doWithSpring</code> or the application&#8217;s <code>resources.groovy</code>, continue to take effect through bean-definition overriding, exactly as in previous releases.
+The clean back-off applies to beans that are registered before auto-configuration conditions are evaluated: <code>@Bean</code> methods in application configuration classes, and — as of the retimed plugin lifecycle (see <em>Plugin Beans Now Register Before Spring Boot Auto-Configuration</em> below) — beans contributed through a plugin&#8217;s <code>doWithSpring</code> or <code>beanRegistrar()</code>.
+Beans contributed through the application&#8217;s <code>resources.groovy</code> or <code>resources.xml</code> register later and continue to take effect through bean-definition overriding, exactly as in previous releases.
 </td>
 </tr>
 </table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_33_plugin_beans_now_register_before_spring_boot_auto_configuration">33. Plugin Beans Now Register Before Spring Boot Auto-Configuration</h4>
+<div class="paragraph">
+<p>In Grails 7 and earlier, the beans a plugin contributed through <code>doWithSpring</code> were registered <strong>after</strong> Spring Boot had processed its auto-configurations.
+A plugin that wanted to replace a Boot-provided bean therefore had to rely on bean-definition overriding, and Boot beans guarded by <code>@ConditionalOnMissingBean</code> never saw the plugin&#8217;s bean in time to back off.</p>
+</div>
+<div class="paragraph">
+<p>In Grails 8 the plugin lifecycle is unified and retimed: plugin bean definitions — both <code>doWithSpring</code> and the new <code>beanRegistrar()</code> hook — are drained into the bean definition registry <strong>before</strong> Spring Boot expands its auto-configurations. The practical effects are:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Plugin beans win <code>@ConditionalOnMissingBean</code> races.</strong> When a plugin registers a bean, a Boot auto-configuration bean of the same name or type that is guarded by <code>@ConditionalOnMissingBean</code> now backs off in favor of the plugin&#8217;s bean. Plugins no longer need to override or remove Boot&#8217;s defaults after the fact.</p>
+</li>
+<li>
+<p><strong>A single plugin manager and <code>GrailsApplication</code>.</strong> The plugin manager and the <code>grailsApplication</code> are built once, early in the context lifecycle, and reused for the rest of startup, so plugins are loaded by a single manager pass rather than a throwaway pass followed by the real one. <code>Holders.grailsApplication</code> is available earlier than before.</p>
+</li>
+<li>
+<p><strong>Artefact discovery happens earlier.</strong> Controllers, services, domain classes and other artefacts are discovered before plugin beans are registered, because core plugins iterate the application&#8217;s artefacts while defining beans. The set of discovered artefacts is unchanged — only the timing moved.</p>
+</li>
+<li>
+<p><strong>Side-effectful <code>doWithSpring</code> closures still run once</strong>, just earlier. Closures that read <code>grailsApplication.config</code> continue to work; the configuration is fully loaded (including plugin-contributed configuration) before any bean-definition code runs.</p>
+</li>
+<li>
+<p><strong>The application class is instantiated a second time during early artefact discovery.</strong> A throwaway instance is created solely to compute the application&#8217;s class scan; the real lifecycle bean is still created by Spring. An application-class constructor with side effects therefore runs twice per boot, so keep application-class constructors free of side effects.</p>
+</li>
+<li>
+<p><strong>Plugins that inspect the bean definition registry see a pre-auto-configuration registry.</strong> A <code>doWithSpring</code> closure that checks for the presence of a bean definition (for example <code>dispatcherServlet</code> as a "web application" signal) now runs before Spring Boot has registered its auto-configured beans, so such a check returns <code>false</code> where it previously returned <code>true</code>. Plugin code should test a registration-order-independent signal instead — for example whether the application context is a web application context.</p>
+</li>
+<li>
+<p><strong>The <code>annotationHandlerMapping</code> and <code>annotationHandlerAdapter</code> beans were removed.</strong> These duplicated the request-mapping infrastructure that Spring&#8217;s own MVC configuration already provides and were never consulted at runtime, but with plugin beans now registering first the bare duplicate adapter started shadowing Spring&#8217;s fully configured one. <code>@Controller</code> annotated beans continue to be handled by Spring Boot&#8217;s standard MVC infrastructure.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>The bean builder DSL is deprecated.</strong> <code>doWithSpring()</code> on <code>GrailsApplicationLifeCycle</code> and <code>grails.plugins.Plugin</code> is deprecated as of Grails 8 — it continues to work, but the recommended way to register beans is the new <code>beanRegistrar()</code> hook, which returns a Spring Framework <code>org.springframework.beans.factory.BeanRegistrar</code>.</p>
+</div>
+<div class="paragraph">
+<p>Before (deprecated bean builder DSL):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.plugins.Plugin</span>
+
+<span class="type">class</span> <span class="class">MyGrailsPlugin</span> <span class="directive">extends</span> Plugin {
+
+    <span class="annotation">@Override</span>
+    Closure doWithSpring() {
+        { -&gt;
+            myService(MyServiceImpl) {
+                timeout = config.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">myPlugin.timeout</span><span class="delimiter">'</span></span>, <span class="predefined-type">Integer</span>, <span class="integer">30</span>)
+            }
+        }
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>After (Spring <code>BeanRegistrar</code>). <code>BeanRegistrar</code> is a functional interface, so a closure coerced with <code>as BeanRegistrar</code> is all that is required — a separate class is optional and only worth it for more involved or reusable registration:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.plugins.Plugin</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.BeanRegistrar</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.BeanRegistry</span>
+<span class="keyword">import</span> <span class="include">org.springframework.core.env.Environment</span>
+
+<span class="type">class</span> <span class="class">MyGrailsPlugin</span> <span class="directive">extends</span> Plugin {
+
+    <span class="annotation">@Override</span>
+    BeanRegistrar beanRegistrar() {
+        { BeanRegistry registry, Environment environment -&gt;
+            registry.registerBean(<span class="string"><span class="delimiter">'</span><span class="content">myService</span><span class="delimiter">'</span></span>, MyServiceImpl) { spec -&gt;
+                spec.supplier { context -&gt;
+                    <span class="keyword">new</span> MyServiceImpl(<span class="key">timeout</span>: environment.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">myPlugin.timeout</span><span class="delimiter">'</span></span>, <span class="predefined-type">Integer</span>, <span class="integer">30</span>))
+                }
+            }
+        } <span class="keyword">as</span> BeanRegistrar
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Both hooks may be used on the same plugin during migration; when a registrar and the DSL register a bean under the same name, the registrar&#8217;s definition wins.</p>
+</div>
+<div class="paragraph">
+<p><strong>Bean-definition overriding edge case.</strong> Grails defaults <code>spring.main.allow-bean-definition-overriding</code> to <code>true</code>, and under that default nothing changes: an application bean (from the application class, <code>resources.groovy</code> or <code>resources.xml</code>) that uses the same name as a plugin bean still replaces the plugin&#8217;s bean. However, because plugin beans now register earlier and application beans register in a separate, later step, an application that explicitly sets <code>spring.main.allow-bean-definition-overriding</code> to <code>false</code> will see a <code>BeanDefinitionOverrideException</code> for an application bean that shadows a plugin bean — in previous releases the two definitions were merged before a single registry write, so the shadowing was silent even with overriding disabled.</p>
+</div>
+<div class="paragraph">
+<p><strong>Most applications and plugins need no action.</strong> Behavior only changes where a plugin bean and a conditional Boot bean competed for the same name or type — the plugin bean now wins, which is almost always the intended outcome.</p>
 </div>
 </div>
 </div>
@@ -52979,7 +53104,49 @@ If you have created a Grails plugin and want it to be listed on the <a href="htt
 <div class="sect3">
 <h4 id="_hooking_into_the_grails_spring_configuration">Hooking into the Grails Spring configuration</h4>
 <div class="paragraph">
-<p>First, you can hook in Grails runtime configuration overriding the <code>doWithSpring</code> method from the <a href="../api/grails/plugins/Plugin.html">Plugin</a> class and returning a closure that defines additional beans. For example the following snippet is from one of the core Grails plugins that provides <a href="i18n.html">i18n</a> support:</p>
+<p>The recommended way to register beans from a plugin is to override the <code>beanRegistrar</code> method from the <a href="../api/grails/plugins/Plugin.html">Plugin</a> class and return a Spring Framework <a href="https://docs.spring.io/spring-framework/docs/7.0.8/javadoc-api/org/springframework/beans/factory/BeanRegistrar.html">BeanRegistrar</a>. <code>BeanRegistrar</code> is a functional interface, so a closure coerced with <code>as BeanRegistrar</code> is all that is required — no separate class:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">org.springframework.beans.factory.BeanRegistrar</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.BeanRegistry</span>
+<span class="keyword">import</span> <span class="include">org.springframework.core.env.Environment</span>
+<span class="keyword">import</span> <span class="include">org.springframework.web.servlet.i18n.CookieLocaleResolver</span>
+<span class="keyword">import</span> <span class="include">org.springframework.web.servlet.i18n.LocaleChangeInterceptor</span>
+<span class="keyword">import</span> <span class="include">org.springframework.context.support.ReloadableResourceBundleMessageSource</span>
+<span class="keyword">import</span> <span class="include">grails.plugins.Plugin</span>
+
+<span class="type">class</span> <span class="class">I18nGrailsPlugin</span> <span class="directive">extends</span> Plugin {
+
+    <span class="keyword">def</span> version = <span class="string"><span class="delimiter">&quot;</span><span class="content">0.1</span><span class="delimiter">&quot;</span></span>
+
+    <span class="annotation">@Override</span>
+    BeanRegistrar beanRegistrar() {
+        { BeanRegistry registry, Environment environment -&gt;
+            registry.registerBean(<span class="string"><span class="delimiter">'</span><span class="content">messageSource</span><span class="delimiter">'</span></span>, ReloadableResourceBundleMessageSource) { spec -&gt;
+                spec.supplier { context -&gt;
+                    <span class="keyword">new</span> ReloadableResourceBundleMessageSource(<span class="key">basename</span>: <span class="string"><span class="delimiter">'</span><span class="content">WEB-INF/grails-app/i18n/messages</span><span class="delimiter">'</span></span>)
+                }
+            }
+            registry.registerBean(<span class="string"><span class="delimiter">'</span><span class="content">localeChangeInterceptor</span><span class="delimiter">'</span></span>, LocaleChangeInterceptor) { spec -&gt;
+                spec.supplier { context -&gt;
+                    <span class="keyword">new</span> LocaleChangeInterceptor(<span class="key">paramName</span>: <span class="string"><span class="delimiter">'</span><span class="content">lang</span><span class="delimiter">'</span></span>)
+                }
+            }
+            registry.registerBean(<span class="string"><span class="delimiter">'</span><span class="content">localeResolver</span><span class="delimiter">'</span></span>, CookieLocaleResolver)
+        } <span class="keyword">as</span> BeanRegistrar
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>For more involved or reusable registration you can instead implement <code>BeanRegistrar</code> as its own class and return an instance of it from <code>beanRegistrar()</code>.</p>
+</div>
+<div class="paragraph">
+<p>Plugin beans are registered before Spring Boot processes its auto-configurations, so a bean registered here takes precedence over any Spring Boot default guarded by <code>@ConditionalOnMissingBean</code> — there is no need to override or remove Boot&#8217;s beans afterwards.</p>
+</div>
+<div class="paragraph">
+<p>Alternatively, plugins may override the <code>doWithSpring</code> method and return a closure that defines beans using the <a href="spring.html#theBeanBuilderDSLExplained">Spring Bean Builder</a> syntax:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -53004,8 +53171,48 @@ If you have created a Grails plugin and want it to be listed on the <a href="htt
 }</code></pre>
 </div>
 </div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<code>doWithSpring</code> is deprecated as of Grails 8 in favour of <code>beanRegistrar</code>. It continues to work — the beans it defines register at the same early point in the lifecycle — but new code should prefer the <code>BeanRegistrar</code> API.
+</td>
+</tr>
+</table>
+</div>
 <div class="paragraph">
-<p>This plugin configures the Grails <code>messageSource</code> bean and a couple of other beans to manage Locale resolution and switching. It using the <a href="spring.html#theBeanBuilderDSLExplained">Spring Bean Builder</a> syntax to do so.</p>
+<p>Alternatively, you can override the <code>doWithSpring(BeanBuilder)</code> method and register beans directly against the supplied <code>BeanBuilder</code> instead of returning a closure. This avoids the closure indirection and is the recommended form for statically compiled plugins:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">org.springframework.web.servlet.i18n.CookieLocaleResolver</span>
+<span class="keyword">import</span> <span class="include">org.springframework.web.servlet.i18n.LocaleChangeInterceptor</span>
+<span class="keyword">import</span> <span class="include">org.springframework.context.support.ReloadableResourceBundleMessageSource</span>
+<span class="keyword">import</span> <span class="include">grails.plugins.*</span>
+<span class="keyword">import</span> <span class="include">grails.spring.BeanBuilder</span>
+
+<span class="type">class</span> <span class="class">I18nGrailsPlugin</span> <span class="directive">extends</span> Plugin {
+
+    <span class="keyword">def</span> version = <span class="string"><span class="delimiter">&quot;</span><span class="content">0.1</span><span class="delimiter">&quot;</span></span>
+
+    <span class="annotation">@Override</span>
+    <span class="type">void</span> doWithSpring(BeanBuilder beans) {
+        beans.messageSource(ReloadableResourceBundleMessageSource) {
+            basename = <span class="string"><span class="delimiter">&quot;</span><span class="content">WEB-INF/grails-app/i18n/messages</span><span class="delimiter">&quot;</span></span>
+        }
+        beans.localeChangeInterceptor(LocaleChangeInterceptor) {
+            paramName = <span class="string"><span class="delimiter">&quot;</span><span class="content">lang</span><span class="delimiter">&quot;</span></span>
+        }
+        beans.localeResolver(CookieLocaleResolver)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A plugin may override either <code>doWithSpring()</code> or <code>doWithSpring(BeanBuilder)</code>, but not both. The closure-returning <code>doWithSpring()</code> remains fully supported for backwards compatibility. Defining both forms in the same plugin is an error: the plugin will fail to load with an exception, since the two forms are alternatives and defining both indicates an incomplete migration between them. Consolidate the bean definitions into a single form.</p>
 </div>
 </div>
 <div class="sect3">

@@ -330,6 +330,39 @@ This brings the Spring Boot 4 modular artifact layout, Spring Framework 7 API re
 </div>
 </div>
 <div class="sect3">
+<h4 id="_plugin_beans_register_before_spring_boot_auto_configuration">Plugin Beans Register Before Spring Boot Auto-Configuration</h4>
+<div class="paragraph">
+<p>Grails 8 unifies and retimes the plugin lifecycle so that the beans a plugin contributes are registered before Spring Boot processes its auto-configurations.
+A plugin bean now takes precedence over a Spring Boot default guarded by <code>@ConditionalOnMissingBean</code> — Boot backs off in favour of the plugin&#8217;s bean, with no need to override or remove it afterwards.</p>
+</div>
+<div class="paragraph">
+<p>Plugins register beans through the new <code>beanRegistrar()</code> hook, which returns a Spring Framework <a href="https://docs.spring.io/spring-framework/docs/7.0.8/javadoc-api/org/springframework/beans/factory/BeanRegistrar.html">BeanRegistrar</a>. Because <code>BeanRegistrar</code> is a functional interface, a closure coerced with <code>as BeanRegistrar</code> is all that is required:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">org.springframework.beans.factory.BeanRegistrar</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.BeanRegistry</span>
+<span class="keyword">import</span> <span class="include">org.springframework.core.env.Environment</span>
+<span class="keyword">import</span> <span class="include">grails.plugins.Plugin</span>
+
+<span class="type">class</span> <span class="class">MyGrailsPlugin</span> <span class="directive">extends</span> Plugin {
+
+    <span class="annotation">@Override</span>
+    BeanRegistrar beanRegistrar() {
+        { BeanRegistry registry, Environment environment -&gt;
+            registry.registerBean(<span class="string"><span class="delimiter">'</span><span class="content">myService</span><span class="delimiter">'</span></span>, MyServiceImpl)
+        } <span class="keyword">as</span> BeanRegistrar
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>beanRegistrar()</code> replaces the <code>doWithSpring</code> bean builder DSL, which is deprecated in Grails 8.
+The DSL continues to work for now, but you are strongly urged to migrate.
+See the <a href="upgrading.html#upgrading80x">upgrade guide</a> for details.</p>
+</div>
+</div>
+<div class="sect3">
 <h4 id="_gsp_tag_library_improvements">GSP Tag Library Improvements</h4>
 <div class="paragraph">
 <p>Grails 8 continues the move toward method-based TagLib handlers while preserving compatibility with existing closure-based tags.
