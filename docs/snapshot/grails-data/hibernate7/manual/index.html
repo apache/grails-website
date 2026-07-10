@@ -6206,6 +6206,36 @@ Because the timestamp handling is only disabled for the duration of the closure,
 </tr>
 </table>
 </div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The timestamp handling is only disabled for the thread executing the closure. Other threads persisting entities at the same time are unaffected and will continue to have their timestamps applied.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>If work inside the closure runs on other threads (for example an executor-based import), the suppression must be propagated to those threads explicitly. Capture the state with <code>captureTimestampSuppression</code> and apply it on the executing thread with <code>withTimestampSuppression</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">autoTimestampEventListener.withoutTimestamps {
+    <span class="keyword">def</span> suppression = autoTimestampEventListener.captureTimestampSuppression()
+    executor.submit {
+        autoTimestampEventListener.withTimestampSuppression(suppression) {
+            <span class="keyword">new</span> Foo(<span class="key">dateCreated</span>: <span class="keyword">new</span> <span class="predefined-type">Date</span>() - <span class="integer">2</span>, <span class="key">lastUpdated</span>: <span class="keyword">new</span> <span class="predefined-type">Date</span>() - <span class="integer">1</span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        }
+    }.get()
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The captured state is immutable and may be applied on any number of threads, even after the capturing closure has completed.</p>
+</div>
 </div>
 </div>
 <div class="sect2">
