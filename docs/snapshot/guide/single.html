@@ -931,6 +931,23 @@ This brings the Spring Boot 4 modular artifact layout, Spring Framework 7 API re
 </div>
 </div>
 <div class="sect3">
+<h4 id="_hibernate_7_application_generation">Hibernate 7 Application Generation</h4>
+<div class="paragraph">
+<p>Grails Forge can now generate applications configured for Grails Data with Hibernate 7.
+The <code>create-*</code> commands also accept a new <code>-d, --data</code> option (the previous <code>-g</code> and <code>--gorm</code> flags remain supported as legacy aliases) with the values <code>hibernate5</code>, <code>hibernate7</code>, and <code>mongodb</code>; the legacy value <code>hibernate</code> is still accepted and selects Hibernate 5:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="console">grails -t forge create-app --data=hibernate7 com.example.demo</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Applications generated for Hibernate 7 consume <code>grails-hibernate7-bom</code> — or <code>grails-hibernate7-micronaut-bom</code> when combined with the <code>grails-micronaut</code> feature — consistently across the application dependencies, the buildscript classpath, and <code>buildSrc</code>.
+This avoids the dependency resolution conflicts that occur when an application generated for Hibernate 5 is manually switched to <code>grails-data-hibernate7</code> while the default <code>grails-bom</code> remains on the build classpath.
+The <code>database-migration</code> feature also selects the matching <code>grails-data-hibernate7-dbmigration</code> plugin automatically.</p>
+</div>
+</div>
+<div class="sect3">
 <h4 id="_plugin_beans_register_before_spring_boot_auto_configuration">Plugin Beans Register Before Spring Boot Auto-Configuration</h4>
 <div class="paragraph">
 <p>Grails 8 unifies and retimes the plugin lifecycle so that the beans a plugin contributes are registered before Spring Boot processes its auto-configurations.
@@ -9595,7 +9612,8 @@ qualified name of the artifact.</p>
 
 <div class="paragraph">
 <p>When Grails logs a stacktrace, the log message may include the names and values of all of the request parameters for the current request.
-To mask out the values of secure request parameters, specify the parameter names in the <code>grails.exceptionresolver.params.exclude</code> config property:</p>
+To mask out the values of secure request parameters, specify the parameter names in the <code>grails.exceptionresolver.params.exclude</code> config property:
+Parameter names are matched case-insensitively.</p>
 </div>
 <div class="listingblock">
 <div class="title">grails-app/conf/application.yml</div>
@@ -12063,13 +12081,13 @@ Here&#8217;s an example of the available options in interactive mode:</p>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="shell">grails&gt; create-app -h
-Usage: grails create-app [-hivVx] [--list-features] [-g=GORM Implementation] [--jdk=&lt;javaVersion&gt;]
+Usage: grails create-app [-hivVx] [--list-features] [-d=Grails Data Implementation] [--jdk=&lt;javaVersion&gt;]
                          [-s=Servlet Implementation] [-t=TEST] [-f=FEATURE[,FEATURE...]]... [NAME]
 Creates an application
       [NAME]            The name of the application to create.
   -f, --features=FEATURE[,FEATURE...]
                         The features to use. Possible values: h2, scaffolding, gorm-hibernate5,
-                          spring-boot-starter-jetty, spring-boot-starter-tomcat,
+                          gorm-hibernate7, spring-boot-starter-jetty, spring-boot-starter-tomcat,
                           micronaut-http-client, cache-ehcache, hibernate-validator, postgres,
                           mysql, cache, database-migration, grails-gsp, hamcrest, gorm-mongodb,
                           assertj, mockito, spring-boot-starter-undertow,
@@ -12077,9 +12095,9 @@ Creates an application
                           grails-console, views-markup, asset-pipeline-grails, views-json,
                           gorm-neo4j, asciidoctor, grails-web-console,
                           logbackGroovy, mongo-sync, shade, geb, properties
-  -g, --gorm=GORM Implementation
-                        Which GORM Implementation to configure. Possible values: hibernate,
-                          mongodb, neo4j.
+  -d, --data, -g, --gorm=Grails Data Implementation
+                        Which Grails Data implementation to configure (-g, --gorm are legacy
+                          aliases). Possible values: hibernate5, hibernate7, mongodb.
   -h, --help            Show this help message and exit.
   -i, --inplace         Create a service using the current directory
       --jdk, --java-version=&lt;javaVersion&gt;
@@ -12119,8 +12137,9 @@ Available Features
 
   Database
   database-migration                  Adds support for Liquibase database migrations. The Database Migration plugin helps you manage database changes while developing Grails applications.
-  gorm-hibernate5 (+)                 Adds support for Hibernate5 using GORM
-  gorm-mongodb                        Configures GORM for MongoDB for Groovy applications
+  gorm-hibernate5 (+)                 Configure Grails Data for using Hibernate 5.
+  gorm-hibernate7                     Configure Grails Data for using Hibernate 7.
+  gorm-mongodb                        Configure Grails Data for using MongoDB.
   gorm-neo4j                          Configures GORM for Neo4j for Groovy applications
   h2 (+)                              Adds the H2 driver and default config
   mongo-sync                          Adds support for the MongoDB Synchronous Driver
@@ -12813,7 +12832,7 @@ Commands defined this way still have access to the execution context via a varia
 <p>-s, --servlet</p>
 </li>
 <li>
-<p>-g, --gorm</p>
+<p>-d, --data (-g, --gorm are legacy aliases)</p>
 </li>
 <li>
 <p>-t, --test</p>
@@ -12831,7 +12850,7 @@ Commands defined this way still have access to the execution context via a varia
 <pre class="CodeRay highlight"><code data-lang="console">./grails -t forge create-app \
     --servlet=tomcat \
     --jdk=11 \
-    --gorm=hibernate \
+    --data=hibernate5 \
     --test=spock \
     --features=github-workflow-java-ci \
     com.example.demo</code></pre>
@@ -12850,7 +12869,7 @@ Commands defined this way still have access to the execution context via a varia
 <p>-s, --servlet</p>
 </li>
 <li>
-<p>-g, --gorm</p>
+<p>-d, --data (-g, --gorm are legacy aliases)</p>
 </li>
 <li>
 <p>-t, --test</p>
@@ -12868,7 +12887,7 @@ Commands defined this way still have access to the execution context via a varia
 <pre class="CodeRay highlight"><code data-lang="console">./grails -t forge create-restapi \
     --servlet=tomcat \
     --jdk=11 \
-    --gorm=hibernate \
+    --data=hibernate5 \
     --test=spock \
     --features=github-workflow-java-ci \
     com.example.demo</code></pre>
@@ -12887,7 +12906,7 @@ Commands defined this way still have access to the execution context via a varia
 <p>-s, --servlet</p>
 </li>
 <li>
-<p>-g, --gorm</p>
+<p>-d, --data (-g, --gorm are legacy aliases)</p>
 </li>
 <li>
 <p>-t, --test</p>
@@ -12905,7 +12924,7 @@ Commands defined this way still have access to the execution context via a varia
 <pre class="CodeRay highlight"><code data-lang="console">./grails -t forge create-plugin \
     --servlet=tomcat \
     --jdk=11 \
-    --gorm=hibernate \
+    --data=hibernate5 \
     --test=spock \
     --features=github-workflow-java-ci \
     com.example.demo</code></pre>
@@ -12924,7 +12943,7 @@ Commands defined this way still have access to the execution context via a varia
 <p>-s, --servlet</p>
 </li>
 <li>
-<p>-g, --gorm</p>
+<p>-d, --data (-g, --gorm are legacy aliases)</p>
 </li>
 <li>
 <p>-t, --test</p>
@@ -12942,7 +12961,7 @@ Commands defined this way still have access to the execution context via a varia
 <pre class="CodeRay highlight"><code data-lang="console">./grails -t forge create-web-plugin \
     --servlet=tomcat \
     --jdk=11 \
-    --gorm=hibernate \
+    --data=hibernate5 \
     --test=spock \
     --features=github-workflow-java-ci \
     com.example.demo</code></pre>
@@ -12954,7 +12973,7 @@ Commands defined this way still have access to the execution context via a varia
 <div class="sect2">
 <h3 id="_the_create_command_flags">The <code>create-</code> command flags</h3>
 <div class="paragraph">
-<p>The "create-*" commands are used to produce a fundamental Grails project, allowing for the inclusion of optional flags to select additional features, to customize GORM settings, an embedded servlet, the test framework, and the Java version.</p>
+<p>The "create-*" commands are used to produce a fundamental Grails project, allowing for the inclusion of optional flags to select additional features, to customize Grails Data settings, an embedded servlet, the test framework, and the Java version.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -12989,11 +13008,11 @@ Commands defined this way still have access to the execution context via a varia
 </div></div></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">-g, --gorm</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Which GORM Implementation to configure. Possible values: hibernate, mongodb, neo4j.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-d, --data (-g, --gorm are legacy aliases)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Which Grails Data implementation to configure. Possible values: hibernate5, hibernate7, mongodb. The value hibernate is accepted as a legacy alias for hibernate5.</p></td>
 <td class="tableblock halign-left valign-top"><div class="content"><div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="shell">--gorm hibernate</code></pre>
+<pre class="CodeRay highlight"><code data-lang="shell">--data hibernate5</code></pre>
 </div>
 </div></div></td>
 </tr>
@@ -13008,7 +13027,7 @@ Commands defined this way still have access to the execution context via a varia
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-f, --features</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The features to use. Possible values: h2, gorm-hibernate5, spring-boot-starter-jetty, micronaut-http-client, cache-ehcache, hibernate-validator, postgres, mysql, cache, database-migration, grails-gsp, hamcrest, gorm-mongodb, assertj, mockito, spring-boot-starter-undertow, github-workflow-java-ci, jrebel, testcontainers, sqlserver, grails-console, views-markup, views-json, gorm-neo4j, asciidoctor, grails-web-console, logbackGroovy, mongo-sync, shade, properties</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The features to use. Possible values: h2, gorm-hibernate5, gorm-hibernate7, spring-boot-starter-jetty, micronaut-http-client, cache-ehcache, hibernate-validator, postgres, mysql, cache, database-migration, grails-gsp, hamcrest, gorm-mongodb, assertj, mockito, spring-boot-starter-undertow, github-workflow-java-ci, jrebel, testcontainers, sqlserver, grails-console, views-markup, views-json, gorm-neo4j, asciidoctor, grails-web-console, logbackGroovy, mongo-sync, shade, properties</p></td>
 <td class="tableblock halign-left valign-top"><div class="content"><div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="shell">--features github-workflow-java-ci,micronaut-http-client</code></pre>
@@ -13389,7 +13408,7 @@ ext[<span class="string"><span class="delimiter">'</span><span class="content">s
 <p>Use <code>grails create-app myapp</code> to generate a default project using the Grails Shell CLI. This is the most common usage.</p>
 </li>
 <li>
-<p>Use <code>grails -t forge create-app myapp</code> to access advanced application generation options such as <code>--jdk</code>, <code>--gorm</code>, and other Forge-only flags.</p>
+<p>Use <code>grails -t forge create-app myapp</code> to access advanced application generation options such as <code>--jdk</code>, <code>--data</code>, and other Forge-only flags.</p>
 </li>
 </ul>
 </div>
@@ -35429,6 +35448,31 @@ You can find the full list of available CodeNarc rules at <a href="https://coden
 </div>
 <div class="paragraph">
 <p>Grails will automatically switch the user&#8217;s locale and subsequent requests will use the switched locale.</p>
+</div>
+<div class="paragraph">
+<p>To offer a language selector, the i18n plugin discovers the locales your application is actually translated into by scanning the classpath for <code>messages_&#42;.properties</code> bundles (plus the default locale, configurable via <code>grails.i18n.default.locale</code>). This list is exposed as the <code>AvailableLocaleResolver</code> bean and published to the servlet context under the <code>availableLocales</code> attribute. The <code>&lt;g:localeSelect available="true"/&gt;</code> tag renders a <code>&lt;select&gt;</code> limited to those locales, and you can iterate the list directly in a view to build your own switcher:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="xml"><span class="tag">&lt;g:each</span> <span class="attribute-name">in</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${application.getAttribute('availableLocales')}</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">var</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">locale</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;a</span> <span class="attribute-name">href</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">?lang=${locale.toLanguageTag()}</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>${locale.getDisplayName(locale)}<span class="tag">&lt;/a&gt;</span>
+<span class="tag">&lt;/g:each&gt;</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>By default every <code>&#42;.properties</code> bundle on the classpath is considered, so locales contributed by plugins &mdash; whose bundles are namespaced (for example <code>spring-security-core_fr.properties</code>) &mdash; are listed alongside your application&#8217;s own. Candidate suffixes are validated against the ISO language codes (and the ISO country codes when a country is present), so non-i18n properties files (such as <code>application.properties</code>) are ignored. To restrict discovery to your application&#8217;s own <code>messages_&#42;.properties</code> bundles, set <code>grails.i18n.availableLocales.includePlugins=false</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">i18n</span>:
+        <span class="key">availableLocales</span>:
+            <span class="key">includePlugins</span>: <span class="string"><span class="content">false</span></span>   <span class="comment"># list only the application's own translations</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Applications created with <code>grails create-app</code> include a ready-made language dropdown in the default layout that uses exactly this mechanism.</p>
 </div>
 <div class="paragraph">
 <p>By default, Grails uses <a href="https://docs.spring.io/spring-framework/docs/7.0.8/javadoc-api/org/springframework/web/servlet/i18n/SessionLocaleResolver.html">SessionLocaleResolver</a> as the <code>localeResolver</code> bean.</p>
