@@ -437,6 +437,35 @@ logging a conflict. A changed TTL is applied in place with MongoDB&#8217;s <code
 other option change is applied by declaring <code>indexAttributes: [recreateOnConflict: true]</code>.</p>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_gorm_for_mongodb_and_spring_data_mongodb_interoperability">GORM for MongoDB and Spring Data MongoDB Interoperability</h4>
+<div class="paragraph">
+<p>A new optional module, <code>grails-data-mongodb-spring-data</code>, lets an application use GORM for MongoDB and
+<a href="https://spring.io/projects/spring-data-mongodb">Spring Data MongoDB</a> — its <code>MongoTemplate</code> and repositories — side by
+side over the <strong>same</strong> <code>MongoClient</code>, database and codecs, and, within a single <code>@Transactional</code> method, the <strong>same</strong>
+MongoDB transaction. When the module and <code>spring-data-mongodb</code> are on the classpath of a Spring Boot application that
+already has a GORM <code>MongoDatastore</code>, it auto-configures a <code>MongoDatabaseFactory</code>, a <code>MongoTemplate</code> and a primary
+<code>transactionManager</code> over GORM&#8217;s existing connection — GORM keeps ownership of the client:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="annotation">@Transactional</span>
+<span class="type">void</span> transfer(MongoTemplate mongoTemplate) {
+    <span class="keyword">new</span> Account(<span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">from</span><span class="delimiter">&quot;</span></span>).save()                  <span class="comment">// GORM</span>
+    mongoTemplate.insert(<span class="keyword">new</span> LedgerEntry(<span class="key">amount</span>: <span class="integer">10</span>)) <span class="comment">// Spring Data</span>
+    <span class="comment">// both commit together, or neither is applied if an exception is thrown</span>
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The unified transaction shares GORM&#8217;s server-side <code>ClientSession</code>, so it requires GORM multi-document transactions to
+be enabled (<code>grails.mongodb.transactional = true</code>). Spring Data repositories are enabled the usual way with
+<code>@EnableMongoRepositories</code>, on a package separate from the GORM <code>@Entity</code> classes; only the connection, codecs and
+session are shared, and the two object-mapping models stay separate. See the
+<a href="../grails-data/mongodb/manual/index.html#springDataInterop">Spring Data MongoDB Interoperability</a> section of the GORM for MongoDB
+guide for details.</p>
+</div>
+</div>
 </div>
 
 

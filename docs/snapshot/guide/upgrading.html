@@ -2167,7 +2167,7 @@ Spring Boot&#8217;s <code>WebMvcAutoConfiguration</code> is now active for Grail
 <div class="paragraph">
 <p><strong>No action is required for most applications.</strong>
 Grails adapts internally so the change is transparent.
-The notes below explain the two behavioral differences this introduces and the configuration toggles available if you need to control them.</p>
+The notes below explain the behavioral differences this introduces and the configuration toggles available if you need to control them.</p>
 </div>
 <div class="sect4">
 <h5 id="_31_1_boots_default_view_resolver_is_removed_automatically">31.1 Boot&#8217;s default view resolver is removed automatically</h5>
@@ -2216,6 +2216,66 @@ Downstream code that expects a <code>GrailsWebRequest</code> would then fail wit
 <p>Grails 8 registers its request-binding filter as a <code>RequestContextFilter</code> bean so that Boot&#8217;s filter backs off and the <code>GrailsWebRequest</code> remains bound for the whole request.
 This is handled internally and requires no configuration changes.
 Applications that defined their own <code>GrailsWebRequestFilter</code> bean, or their own <code>grailsWebRequestFilter</code> filter-registration bean, continue to override the Grails-provided ones.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_31_3_boots_static_resources_and_welcome_page_are_removed">31.3 Boot&#8217;s static resources and welcome page are removed</h5>
+<div class="paragraph">
+<p>With <code>WebMvcAutoConfiguration</code> active, Boot would register a catch-all static-resource handler (<code>classpath:/META-INF/resources/</code>, <code>/resources/</code>, <code>/static/</code>, <code>/public/</code>) and a <code>WelcomePageHandlerMapping</code> that serves a static <code>index.html</code> for the root path.
+In a Grails application these can shadow URL mappings — a request that should fall through to Grails' URL-mapping error handling could instead be served as a static resource, and <code>/</code> could return a static <code>index.html</code> rather than being handled by your <code>UrlMappings</code>.</p>
+</div>
+<div class="paragraph">
+<p>So that Grails' own URL mappings and resource handling stay in control, Grails 8 disables both by default:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>spring.web.resources.add-mappings</code> defaults to <code>false</code>, which disables Boot&#8217;s catch-all static-resource handler. Re-enable it with <code>spring.web.resources.add-mappings: true</code>.</p>
+</li>
+<li>
+<p>Boot&#8217;s welcome-page mapping is removed so <code>UrlMappings</code> owns <code>/</code>. Opt out with <code>grails.web.removeWelcomePageMapping: false</code>.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_31_4_other_boot_mvc_features_now_active">31.4 Other Boot MVC features now active</h5>
+<div class="paragraph">
+<p>Because Boot&#8217;s <code>WebMvcAutoConfiguration</code> is now active, a handful of its features that <code>@EnableWebMvc</code> previously suppressed take effect for Grails servlet web applications.
+None require action for a typical application, but they are behavioral differences worth knowing about when you upgrade:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Form-content filter for <code>PUT</code> / <code>PATCH</code> / <code>DELETE</code>.</strong> A <code>FormContentFilter</code> parses <code>application/x-www-form-urlencoded</code> bodies of <code>PUT</code>, <code>PATCH</code> and <code>DELETE</code> requests so their fields are visible through the standard <code>request.getParameter(&#8230;&#8203;)</code> API (and therefore in <code>params</code>). Boot&#8217;s <code>OrderedFormContentFilter</code> provides it for a default application; for an application that declares <code>@EnableWebMvc</code> — where Boot&#8217;s MVC auto-configuration backs off — Grails contributes an equivalent filter itself, so form parameters behave the same either way. In Grails 7 only <code>PUT</code> and <code>PATCH</code> bodies were parsed (by <code>GrailsParameterMap</code>) and <code>DELETE</code> was not; all three are now handled uniformly by the filter. It is enabled by default via <code>spring.mvc.formcontent.filter.enabled</code>; setting that to <code>false</code> disables <code>PUT</code> / <code>PATCH</code> / <code>DELETE</code> form-parameter parsing entirely. An application that reads those bodies itself can disable it:</p>
+<div class="listingblock">
+<div class="title">application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">spring</span>:
+    <span class="key">mvc</span>:
+        <span class="key">formcontent</span>:
+            <span class="key">filter</span>:
+                <span class="key">enabled</span>: <span class="string"><span class="content">false</span></span></code></pre>
+</div>
+</div>
+</li>
+<li>
+<p><strong><code>spring.mvc.<strong></code> and <code>spring.web.</strong></code> properties now apply.</strong> Properties such as <code>spring.web.locale</code>, <code>spring.mvc.format.date</code> / <code>time</code> / <code>date-time</code>, and <code>spring.web.resources.*</code> were inert before and now take effect. Review any of these you may have set inadvertently (for example copied from Boot documentation).</p>
+</li>
+<li>
+<p><strong>View resolution.</strong> For non-GSP applications the primary <code>viewResolver</code> is now Boot&#8217;s <code>ContentNegotiatingViewResolver</code>, which negotiates and delegates to the available view resolvers. GSP applications continue to use the GSP view resolver as before.</p>
+</li>
+<li>
+<p><strong>Conversion and message converters.</strong> <code>mvcConversionService</code> is now Boot&#8217;s <code>ApplicationConversionService</code> (which honours the <code>spring.mvc.format.*</code> properties above), and the MVC HTTP message converters pick up Boot&#8217;s customizations, including the application&#8217;s Jackson <code>ObjectMapper</code>. This mainly affects MVC-layer data binding and <code>@RestController</code>-style endpoints.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_31_5_locale_resolution">31.5 Locale resolution</h5>
+<div class="paragraph">
+<p>Grails' locale resolution — including <code>?lang=</code> switching via <code>SessionLocaleResolver</code> — continues to work as before, and the resolver strategy is now configurable through <code>grails.i18n.localeResolver</code> (<code>session</code> (default), <code>cookie</code>, <code>acceptHeader</code> or <code>fixed</code>).
+Applications that opt into <code>@EnableWebMvc</code> are unaffected too: Grails removes the <code>AcceptHeaderLocaleResolver</code> that Spring&#8217;s <code>WebMvcConfigurationSupport</code> would otherwise contribute, so the configured Grails resolver still wins.</p>
 </div>
 </div>
 </div>

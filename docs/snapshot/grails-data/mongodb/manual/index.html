@@ -552,6 +552,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#advancedConfig">Advanced Configuration</a></li>
 <li><a href="#springBoot">Using GORM in Spring Boot</a></li>
 <li><a href="#outsideGrails">GORM for MongoDB without Grails</a></li>
+<li><a href="#springDataInterop">Spring Data MongoDB Interoperability</a></li>
 </ul>
 </li>
 <li><a href="#objectMapping">Mapping Domain Classes</a>
@@ -1474,6 +1475,95 @@ def initializer = <span class="keyword">new</span> MongoDbDataStoreSpringInitial
 initializer.configureForBeanDefinitionRegistry(myApplicationContext)
 
 println Person.count()</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="springDataInterop">Spring Data MongoDB Interoperability</h3>
+<div class="paragraph">
+<p>The optional <code>grails-data-mongodb-spring-data</code> module lets an application use GORM for MongoDB and <a href="https://spring.io/projects/spring-data-mongodb">Spring Data MongoDB</a> (its <code>MongoTemplate</code> and repositories) side by side, sharing one <code>MongoClient</code>, one database and one transaction. Add the dependency:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">implementation "org.apache.grails:grails-data-mongodb-spring-data:8.0.0-SNAPSHOT"</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>When the module and Spring Data MongoDB are on the classpath of a Spring Boot application that already has a GORM <code>MongoDatastore</code>, it auto-configures, over GORM&#8217;s existing connection:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>a <code>MongoDatabaseFactory</code> bound to GORM&#8217;s <code>MongoClient</code> and default database (GORM keeps ownership of the client; the factory will not close it),</p>
+</li>
+<li>
+<p>a <code>MongoTemplate</code> (named <code>mongoTemplate</code>) and its <code>MappingMongoConverter</code>, sharing the driver-level codec registry,</p>
+</li>
+<li>
+<p>a primary <code>transactionManager</code> that lets GORM and Spring Data participate in a single MongoDB transaction.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Spring Data repositories are enabled the usual way, in a package separate from your GORM <code>@Entity</code> classes:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="annotation">@EnableMongoRepositories</span>(basePackages = <span class="string"><span class="delimiter">&quot;</span><span class="content">com.example.repositories</span><span class="delimiter">&quot;</span></span>)
+<span class="type">class</span> <span class="class">Application</span> {
+    <span class="directive">static</span> <span class="type">void</span> main(<span class="predefined-type">String</span><span class="type">[]</span> args) {
+        GrailsApp.run(Application, args)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_shared_transactions">Shared transactions</h4>
+<div class="paragraph">
+<p>With GORM multi-document transactions enabled (<code>grails.mongodb.transactional = true</code>, see <a href="#advancedConfig">Advanced Configuration</a>), a single transactional method commits or rolls back GORM writes and Spring Data writes together on one server-side <code>ClientSession</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="annotation">@Transactional</span>
+<span class="type">void</span> transfer(MongoTemplate mongoTemplate) {
+    <span class="keyword">new</span> Account(<span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">from</span><span class="delimiter">&quot;</span></span>).save()                 <span class="comment">// GORM</span>
+    mongoTemplate.insert(<span class="keyword">new</span> LedgerEntry(<span class="key">amount</span>: <span class="integer">10</span>)) <span class="comment">// Spring Data</span>
+    <span class="comment">// both commit together, or neither is applied if an exception is thrown</span>
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The unified manager is registered as the primary <code>transactionManager</code> (it has to be, to be chosen over GORM&#8217;s plain <code>mongoTransactionManager</code> for an unqualified <code>@Transactional</code>). It backs off automatically if the application already defines a bean named <code>transactionManager</code>. To run a block with GORM-only semantics, qualify the manager: <code>@Transactional("mongoTransactionManager")</code>.</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+Because it is primary, in an application that mixes this with another persistence stack (for example Hibernate/JPA), an unqualified <code>@Transactional</code> resolves to this MongoDB manager. If you run multiple persistence stacks, define your own primary <code>transactionManager</code> (or qualify every <code>@Transactional</code> explicitly) so each method targets the intended manager.
+</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Like GORM&#8217;s own transaction manager, the unified manager supports a single flat transaction (<code>PROPAGATION_REQUIRED</code>). Spring-native suspension propagations such as <code>REQUIRES_NEW</code> and <code>NESTED</code> are not supported — a nested transactional call joins the surrounding transaction rather than starting an independent one.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_boundary">Boundary</h4>
+<div class="paragraph">
+<p>Only the connection, codecs and (within a transaction) the <code>ClientSession</code> are shared. The two object-mapping models remain separate: GORM maps its <code>@Entity</code> classes through its own mapping context, and Spring Data maps its own document classes through <code>MappingMongoConverter</code>. Do not point <code>@EnableMongoRepositories</code> at GORM <code>@Entity</code> packages, and do not register GORM entities with Spring Data&#8217;s mapping context. Two classes may map the same collection only if you keep their field mappings compatible.</p>
 </div>
 </div>
 </div>
