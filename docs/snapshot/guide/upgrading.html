@@ -755,7 +755,9 @@ Enums are serialized as simple string values (e.g., <code>"SUBMIT"</code>) inste
 </div>
 </div>
 <div class="paragraph">
-<p>If you need to restore the legacy behavior temporarily, the deprecated marshallers remain available but will be removed in a future release.</p>
+<p>The legacy <code>org.grails.web.converters.marshaller.json.EnumMarshaller</code> and <code>org.grails.web.converters.marshaller.xml.EnumMarshaller</code> classes were removed in Grails 8.
+There is no Grails 8 configuration switch that restores the verbose enum-object shape.
+If an external API contract still requires that shape, register a custom object marshaller explicitly.</p>
 </div>
 </div>
 <div class="sect3">
@@ -1012,11 +1014,20 @@ If your application or tests reference these classes directly, update the import
 The <code>spring-boot-tomcat</code> module must now be an explicit dependency if you reference Tomcat classes directly.</p>
 </div>
 <div class="paragraph">
-<p><strong>Undertow is temporarily unsupported.</strong>
-Undertow has not yet been updated for Servlet 6.1, which Spring Boot 4 requires.
-As a result, Undertow is <strong>not</strong> an available embedded servlet container in Grails 8.
-Applications that previously used <code>spring-boot-starter-undertow</code> must switch to Tomcat or Jetty until Undertow ships Servlet 6.1 compatibility.
-The Grails Forge generator no longer offers Undertow as a selectable servlet implementation, and explicitly selecting it (for example, <code>--servlet=undertow</code> on the API/CLI) fails fast with <code>IllegalArgumentException</code> and a clear error message.</p>
+<p><strong>Undertow support is now provided by the Grails Undertow plugin.</strong>
+Spring Boot 4 removed its Undertow support (<code>spring-boot-starter-undertow</code>) before Undertow shipped Servlet 6.1 compatibility.
+Undertow has since released Servlet 6.1 support, and Grails 8 restores Undertow as an embedded servlet container through the <code>grails-undertow</code> plugin, which bundles the Spring Boot Undertow web server support.
+Applications that previously used <code>spring-boot-starter-undertow</code> should replace it with:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">implementation <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-undertow</span><span class="delimiter">'</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The existing <code>server.undertow.*</code> configuration properties continue to work.
+Note that <code>server.undertow.max-http-post-size</code> now defaults to 2MB, matching Undertow&#8217;s hardened default (CVE-2024-3884, CVE-2024-4027); set it to <code>-1</code> to restore the previous unlimited behavior.
+The Grails Forge generator offers Undertow as a selectable servlet implementation again (for example, <code>--servlet=undertow</code> on the API/CLI, or the <code>grails-undertow</code> feature).</p>
 </div>
 </div>
 <div class="sect3">
@@ -1489,7 +1500,8 @@ If your tests call <code>mockTagLib</code> directly (for example, when implement
 <p>Method tags with the conventional signatures <code>def tag(Map attrs)</code>, <code>def tag(Closure body)</code>, and <code>def tag(Map attrs, Closure body)</code> are discovered automatically. Zero-argument method tags and method tags that bind named attributes directly to method parameters must use <code>@grails.gsp.Tag</code>; this avoids exposing ordinary public helper methods as tags.</p>
 </div>
 <div class="paragraph">
-<p>Grails Gradle application builds preserve Java and Groovy method parameter names by default (see §22.3 below). If you compile TagLib classes outside those plugins, enable Java <code>-parameters</code> and Groovy <code>groovyOptions.parameters = true</code> so <code>@Tag</code> methods can bind attributes by parameter name.</p>
+<p>Grails Gradle application builds preserve Java and Groovy method parameter names by default (see §22.3 below).
+If you compile TagLib classes outside those plugins, enable Java <code>-parameters</code> and Groovy <code>groovyOptions.parameters = true</code> so <code>@Tag</code> methods can bind attributes by parameter name.</p>
 </div>
 <div class="paragraph">
 <p>To exclude a conventional public method from being exposed as a tag (for example, a helper that must remain public to satisfy an interface), annotate it with <code>@grails.gsp.NotATag</code>:</p>
@@ -1614,7 +1626,8 @@ This configures Groovy compilation to retain method and constructor parameter na
 <i class="fa icon-note" title="Note"></i>
 </td>
 <td class="content">
-This Gradle extension property controls Groovy compilation only (<code>groovyOptions.parameters</code>). Java parameter-name preservation is enabled by the Spring Boot Gradle plugin, which adds <code>-parameters</code> to every <code>JavaCompile</code> task by default since Spring Boot 3.2. Grails 8 applications inherit this through the Spring Boot Gradle plugin and require no additional configuration for Java sources.
+This Gradle extension property controls Groovy compilation only (<code>groovyOptions.parameters</code>).
+Java parameter-name preservation is enabled by the Spring Boot Gradle plugin, which adds <code>-parameters</code> to every <code>JavaCompile</code> task by default since Spring Boot 3.2. Grails 8 applications inherit this through the Spring Boot Gradle plugin and require no additional configuration for Java sources.
 </td>
 </tr>
 </table>
@@ -1634,7 +1647,8 @@ tasks.withType(GroovyCompile).configureEach {
 </div>
 </div>
 <div class="paragraph">
-<p>Without these flags, <code>Parameter.getName()</code> returns synthetic names such as <code>arg0</code>, the attribute lookup misses, and the call surfaces as <code>MissingMethodException</code> at runtime. The <code>@Tag</code>-annotated method itself produces no compile-time warning, because preservation is a property of the build, not of the source file.</p>
+<p>Without these flags, <code>Parameter.getName()</code> returns synthetic names such as <code>arg0</code>, the attribute lookup misses, and the call surfaces as <code>MissingMethodException</code> at runtime.
+The <code>@Tag</code>-annotated method itself produces no compile-time warning, because preservation is a property of the build, not of the source file.</p>
 </div>
 </div>
 </div>
@@ -2405,6 +2419,105 @@ A plugin that wanted to replace a Boot-provided bean therefore had to rely on be
 <div class="paragraph">
 <p><strong>Most applications and plugins need no action.</strong> Behavior only changes where a plugin bean and a conditional Boot bean competed for the same name or type — the plugin bean now wins, which is almost always the intended outcome.</p>
 </div>
+</div>
+<div class="sect3">
+<h4 id="_34_extension_api_compatibility_notes">34. Extension API Compatibility Notes</h4>
+<div class="paragraph">
+<p>Most Grails applications do not call the Grails extension APIs listed below directly.
+They can affect applications, plugins, or build logic that import these public classes or override these public extension points directly.
+Unsupported internal implementation details are not covered here.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 40%;">
+<col style="width: 40%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Module</th>
+<th class="tableblock halign-left valign-top">Changed or removed API</th>
+<th class="tableblock halign-left valign-top">Migration note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails-codecs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.plugins.codecs.CodecsGrailsPlugin</code> no longer overrides <code>doWithSpring()</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Do not depend on that plugin override to contribute codec bean definitions.
+Custom plugins should register their own beans from their own <code>doWithSpring()</code> implementation.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails-controllers</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ControllersAutoConfiguration.dispatcherServletRegistration(&#8230;&#8203;)</code> now returns Spring Boot 4&#8217;s <code>org.springframework.boot.webmvc.autoconfigure.DispatcherServletRegistrationBean</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Update direct imports, overrides, and binary integrations that referenced the Spring Boot 3 return type.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails-converters</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails.web.JSONBuilder</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Use Groovy&#8217;s <code>groovy.json.JsonBuilder</code> or <code>groovy.json.StreamingJsonBuilder</code> for JSON builder code.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails-core</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>GrailsApplicationPostProcessor</code>, <code>ProfilingGrailsApplicationPostProcessor</code>, and <code>DefaultGrailsPluginManager</code> plugin-discovery wiring changed</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Update custom bootstrapping code or subclasses that construct <code>GrailsApplicationPostProcessor</code> or <code>DefaultGrailsPluginManager</code> directly to pass the plugin-discovery dependency.
+<code>ProfilingGrailsApplicationPostProcessor</code> keeps its <code>GrailsApplicationLifeCycle</code>, <code>ApplicationContext</code>, and <code>Class&#8230;&#8203;</code> constructor shape, but the application context must expose the <code>grailsPluginDiscovery</code> bean.
+This was introduced during the Grails 7.1 plugin-loading changes and remains required in Grails 8.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails-core</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails.plugins.PluginFilter</code>, <code>IncludingPluginFilter</code>, <code>ExcludingPluginFilter</code>, <code>NoOpPluginFilter</code>, and related filter types</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Import replacement types from the <code>org.apache.grails.core.plugins.filters</code> package, such as <code>PluginFilter</code>, <code>IncludingPluginFilter</code>, <code>ExcludingPluginFilter</code>, and <code>NoOpPluginFilter</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails-core</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Legacy mixin transform APIs such as <code>grails.util.Mixin</code>, <code>MixinTargetAware</code>, and <code>MixinTransformation</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Replace legacy mixin usage with Groovy traits, extension methods, or explicit composition.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails-core</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails.validation.ConstraintsEvaluator</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Use <code>org.grails.datastore.gorm.validation.constraints.eval.ConstraintsEvaluator</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails-core</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BinaryGrailsPluginDescriptor</code>, <code>CorePluginFinder</code>, and <code>BinaryGrailsPlugin.getBinaryDescriptor()</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Use the current plugin-discovery APIs and <code>BinaryGrailsPlugin.getPluginDescriptor()</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails-domain-class</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ConstraintEvaluatorAdapter</code> and <code>GrailsDomainClassAutoConfiguration.constraintsEvaluator(&#8230;&#8203;)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Code that imported the auto-configuration method should use the current <code>validateableConstraintsEvaluator(&#8230;&#8203;)</code> bean path and the datastore constraint evaluator APIs.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails-fields</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BeanPropertyAccessor.getBeanClass()</code>, its setter, <code>PropertyPathAccessor.getBeanClass()</code>, <code>FormFieldsTagLib.input(&#8230;&#8203;)</code>, and direct <code>render*</code> helper methods</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Use the <code>beanType</code> property exposed by the accessors.
+Custom field renderers should go through the documented <code>f:field</code>, <code>f:widget</code>, and <code>f:displayWidget</code> tags and templates instead of calling private render helpers directly.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails-gradle-plugins</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ApplicationContextCommandTask</code>, <code>ApplicationContextScriptTask</code>, <code>ProfileCompilerTask</code>, and <code>GrailsRunTask</code> are abstract; <code>GrailsGradlePlugin.createBuildPropertiesTask(&#8230;&#8203;)</code> no longer returns a task value; several <code>IntegrationTestGradlePlugin</code> constants were removed</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Register these task types through Gradle task registration and update custom plugins that subclass <code>GrailsGradlePlugin</code> or read integration-test constants to use Gradle source sets, configurations, and the current test-phase APIs.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails-shell-cli</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AetherGrapeEngine</code> and <code>AetherGrapeEngineFactory</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Use <code>MavenResolverGrapeEngine</code> and <code>MavenResolverGrapeEngineFactory</code> if you extend the legacy shell dependency resolver.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails-shell-cli</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JLine 2 <code>complete(&#8230;&#8203;)</code> signatures</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implement the JLine 3 <code>org.jline.reader.Completer</code> contract, <code>complete(LineReader, ParsedLine, List&lt;Candidate&gt;)</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails-spring</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>GrailsApplicationContext.onRefresh()</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Custom context subclasses should use supported Spring lifecycle extension points instead of overriding this removed hook.
+Spring theme APIs removed from the same area are covered in section 10.</p></td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 
