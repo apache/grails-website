@@ -2519,6 +2519,173 @@ Spring theme APIs removed from the same area are covered in section 10.</p></td>
 </tbody>
 </table>
 </div>
+<div class="sect3">
+<h4 id="_35_cli_commands_move_to_companion_cli_artifacts">35. CLI Commands Move to Companion <code>-cli</code> Artifacts</h4>
+<div class="paragraph">
+<p>Grails commands (<code>ApplicationCommand</code> implementations) no longer ship inside runtime plugin
+artifacts. Each command-bearing module publishes a companion artifact under its own coordinate with
+a <code>-cli</code> suffix, and commands are registered in a dedicated <code>META-INF/grails-cli.factories</code> file
+instead of <code>META-INF/grails.factories</code>.</p>
+</div>
+<div class="paragraph">
+<p><strong>Package rename.</strong> The command contract moved from <code>grails.dev.commands.<strong></code> (in <code>grails-core</code>) to
+<code>org.apache.grails.core.cli.</strong></code> (in the new <code>org.apache.grails:grails-core-cli</code> artifact). Update
+imports in your <code>grails-app/commands</code> classes:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">// Grails 7</span>
+<span class="keyword">import</span> <span class="include">grails.dev.commands.ApplicationCommand</span>
+<span class="keyword">import</span> <span class="include">grails.dev.commands.ExecutionContext</span>
+
+<span class="comment">// Grails 8</span>
+<span class="keyword">import</span> <span class="include">org.apache.grails.core.cli.ApplicationCommand</span>
+<span class="keyword">import</span> <span class="include">org.apache.grails.core.cli.ExecutionContext</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><strong>New <code>grailsCli</code> configuration.</strong> The Grails Gradle plugin registers a <code>grailsCli</code> configuration
+that is compile-visible for <code>grails-app/commands</code> sources and on the command-runner classpath, but
+never on <code>runtimeClasspath</code> — so commands and their CLI-only dependencies are excluded from
+<code>bootRun</code>, <code>bootJar</code>, and <code>bootWar</code>.</p>
+</div>
+<div class="paragraph">
+<p><strong>CLI dependencies are discovered automatically.</strong> The plugin adds
+<code>org.apache.grails:grails-core-cli</code> (the command contract) and <code>org.apache.grails:grails-console</code>
+(the command runner) to <code>grailsCli</code>, and walks the application&#8217;s resolved dependency graph —
+including transitive plugins — for jars carrying the <code>Grails-Cli-Artifact</code> manifest attribute,
+adding each advertised companion automatically. The per-command Gradle tasks (e.g. <code>dbmUpdate</code>)
+are registered from those companions as well, so no <code>buildscript</code> classpath entry is required. In
+most applications, upgrading therefore requires <strong>no build changes</strong> to keep plugin commands
+working:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
+    <span class="comment">// the dbm-* commands are discovered automatically: the plugin jar advertises</span>
+    <span class="comment">// org.apache.grails:grails-data-hibernate7-dbmigration-cli, which is added to grailsCli</span>
+    implementation <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-data-hibernate7-dbmigration</span><span class="delimiter">'</span></span>
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The <code>console</code> and <code>shell</code> tasks also draw from the provisioned cli tier, so the
+<code>console "org.apache.grails:grails-console"</code> dependency that earlier Grails versions generated in
+<code>build.gradle</code> is no longer needed and can be removed (the <code>console</code> configuration itself remains
+for additional console-only dependencies).</p>
+</div>
+<div class="paragraph">
+<p>Disable the discovery with <code>grails { cliAutoProvision = false }</code> and declare the cli tier
+explicitly when full control over the command classpath is preferred:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails {
+    cliAutoProvision = <span class="predefined-constant">false</span>
+}
+
+dependencies {
+    implementation <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-data-hibernate7-dbmigration</span><span class="delimiter">'</span></span>
+    grailsCli <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-core-cli</span><span class="delimiter">'</span></span>
+    grailsCli <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-console</span><span class="delimiter">'</span></span>
+    grailsCli <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-data-hibernate7-dbmigration-cli</span><span class="delimiter">'</span></span>
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The renamed framework command packages are:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Grails 7</th>
+<th class="tableblock halign-left valign-top">Grails 8 (<code>-cli</code> artifact)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails.dev.commands.*</code> (grails-core)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.apache.grails.core.cli.*</code> (grails-core-cli)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.web.mapping.reporting.UrlMappingsReportCommand</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.apache.grails.web.mapping.cli.UrlMappingsReportCommand</code> (grails-web-url-mappings-cli)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>scaffolding.*</code> commands</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.apache.grails.scaffolding.cli.*</code> (grails-scaffolding-cli)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails.plugin.hibernate.commands.SchemaExportCommand</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.apache.grails.data.hibernate5.cli</code> / <code>&#8230;&#8203;hibernate7.cli</code> (grails-data-hibernate5-cli / -7-cli)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.plugins.databasemigration.command.*</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.apache.grails.data.hibernate5.dbmigration.cli</code> / <code>&#8230;&#8203;hibernate7.dbmigration.cli</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails.plugin.springsecurity</code> s2 commands</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.apache.grails.security.cli.*</code> (grails-spring-security-cli)</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><strong>Third-party plugins must be rebuilt against Grails 8 for their commands to be available.</strong>
+Apply the new <code>org.apache.grails.gradle.grails-plugin-cli</code> Gradle plugin, move command sources from
+<code>grails-app/commands</code> to <code>src/cli/groovy</code>, and update the contract imports — recompiling then
+regenerates the <code>grails-cli.factories</code> registration automatically and the companion <code>-cli</code>
+artifact is published alongside the plugin (see
+<a href="commandLine.html#creatingCustomCommands">Creating Custom Commands</a> for the complete workflow).
+Hand-authored command registrations must move from
+<code>src/main/resources/META-INF/grails.factories</code> to <code>&#8230;&#8203;/grails-cli.factories</code>. A Grails 7 command
+plugin dropped onto a Grails 8 application unchanged will not have its commands discovered.</p>
+</div>
+<div class="paragraph">
+<p><strong>What this change means for upgrading an application.</strong> Plugin re-releases are <strong>not</strong> a
+prerequisite for upgrading the application itself — the impact of the CLI split is bounded as
+follows:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Plugins that ship no commands</strong> are entirely unaffected by this change.</p>
+</li>
+<li>
+<p><strong>Command-bearing plugins that have not yet been rebuilt for Grails 8</strong> keep their runtime
+functionality — controllers, services, taglibs, and other artefacts continue to work exactly as
+before, because the runtime plugin jar never depended on the command contract. Only the plugin&#8217;s
+<strong>commands</strong> are unavailable: their registrations in the legacy <code>grails.factories</code> location are
+ignored (the clean break above), so they disappear from the command list rather than fail. The
+commands return once the plugin publishes a Grails 8 release with a companion <code>-cli</code> artifact.</p>
+</li>
+<li>
+<p><strong>The application&#8217;s own commands</strong> in <code>grails-app/commands</code> need only the import rename shown
+above; the build wiring is automatic.</p>
+</li>
+</ul>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The statements above are about the CLI split specifically. Independently of it, Grails 8
+removes APIs that were deprecated in Grails 7 — a Grails 7 plugin that avoided those deprecations
+generally continues to work on Grails 8 unchanged, while one that relied on them (or on other
+Grails 8 changes such as Spring Boot 4) needs an update for that reason.
+</td>
+</tr>
+</table>
+</div>
+</div>
 </div>
 
 
