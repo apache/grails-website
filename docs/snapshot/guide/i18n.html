@@ -289,14 +289,20 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
 <p>Grails will automatically switch the user&#8217;s locale and subsequent requests will use the switched locale.</p>
 </div>
 <div class="paragraph">
-<p>To offer a language selector, the i18n plugin discovers the locales your application is actually translated into by scanning the classpath for <code>messages_&#42;.properties</code> bundles (plus the default locale, configurable via <code>grails.i18n.default.locale</code>). This list is exposed as the <code>AvailableLocaleResolver</code> bean and published to the servlet context under the <code>availableLocales</code> attribute. The <code>&lt;g:localeSelect available="true"/&gt;</code> tag renders a <code>&lt;select&gt;</code> limited to those locales, and you can iterate the list directly in a view to build your own switcher:</p>
+<p>To offer a language selector, the i18n plugin discovers the locales your application is actually translated into by scanning the classpath for <code>messages_&#42;.properties</code> bundles (plus the default locale, configurable via <code>grails.i18n.default.locale</code>). This list is exposed as the <code>AvailableLocaleResolver</code> bean, ordered by each locale&#8217;s own name (autonym), and published to the servlet context under the <code>availableLocales</code> attribute.</p>
+</div>
+<div class="paragraph">
+<p>The <code>&lt;g:localeSelect available="true"/&gt;</code> tag renders a <code>&lt;select&gt;</code> limited to those locales. To build a custom switcher, use the tag&#8217;s body form: it resolves and orders the locales and flags the active (<code>loc.active</code>) and configured-default (<code>loc.default</code>) entries, while your markup decides how each is rendered:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="xml"><span class="tag">&lt;g:each</span> <span class="attribute-name">in</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${application.getAttribute('availableLocales')}</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">var</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">locale</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-    <span class="tag">&lt;a</span> <span class="attribute-name">href</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">?lang=${locale.toLanguageTag()}</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>${locale.getDisplayName(locale)}<span class="tag">&lt;/a&gt;</span>
-<span class="tag">&lt;/g:each&gt;</span></code></pre>
+<pre class="CodeRay highlight"><code data-lang="xml"><span class="tag">&lt;g:localeSelect</span> <span class="attribute-name">available</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">pinDefault</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">var</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">loc</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;a</span> <span class="attribute-name">href</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">?lang=${loc.tag}</span><span class="delimiter">&quot;</span></span><span class="error">$</span><span class="error">{</span><span class="attribute-name">loc.active</span> <span class="error">?</span> <span class="error">'</span> <span class="attribute-name">aria-current</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">page</span><span class="delimiter">&quot;</span></span><span class="error">'</span> <span class="attribute-name">:</span> <span class="error">'</span><span class="error">'</span><span class="error">}</span><span class="tag">&gt;</span>${loc.autonym}<span class="tag">&lt;/a&gt;</span>
+<span class="tag">&lt;/g:localeSelect&gt;</span></code></pre>
 </div>
+</div>
+<div class="paragraph">
+<p>Alternatively, iterate the published <code>availableLocales</code> list directly.</p>
 </div>
 <div class="paragraph">
 <p>By default every <code>&#42;.properties</code> bundle on the classpath is considered, so locales contributed by plugins &mdash; whose bundles are namespaced (for example <code>spring-security-core_fr.properties</code>) &mdash; are listed alongside your application&#8217;s own. Candidate suffixes are validated against the ISO language codes (and the ISO country codes when a country is present), so non-i18n properties files (such as <code>application.properties</code>) are ignored. To restrict discovery to your application&#8217;s own <code>messages_&#42;.properties</code> bundles, set <code>grails.i18n.availableLocales.includePlugins=false</code>:</p>
@@ -311,7 +317,7 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
 </div>
 </div>
 <div class="paragraph">
-<p>Applications created with <code>grails create-app</code> include a ready-made language dropdown in the default layout that uses exactly this mechanism.</p>
+<p>Applications created with <code>grails create-app</code> include a ready-made Bootstrap language dropdown in the default layout, built with the <code>g:localeSelect</code> body form shown above.</p>
 </div>
 <div class="paragraph">
 <p>By default, Grails uses <a href="https://docs.spring.io/spring-framework/docs/7.0.8/javadoc-api/org/springframework/web/servlet/i18n/SessionLocaleResolver.html">SessionLocaleResolver</a> as the <code>localeResolver</code> bean.</p>
