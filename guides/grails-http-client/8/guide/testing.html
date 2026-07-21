@@ -1,0 +1,358 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+                      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+    <title>7 Testing</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <link rel="canonical" href="https://grails.apache.org/guides/grails-http-client/8/guide/index.html"/>
+    <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
+    <link rel="stylesheet" href="../css/guide.css" type="text/css" media="screen, print" title="Style" charset="utf-8" />            
+    <link rel="stylesheet" href="../css/pdf.css" type="text/css" media="print" title="PDF" charset="utf-8"/>
+    <script type="text/javascript">
+function addJsClass() {
+    var classes = document.body.className.split(" ");
+    classes.push("js");
+    document.body.className = classes.join(" ");
+}
+    </script>
+</head>
+
+<body class="body" onload="addJsClass();">
+<div id="navigation">
+    <div class="navTitle">
+        
+        Grails Framework Guide 
+    </div>
+    <div class="navLinks">
+        <ul>
+            <li>
+                <div id="nav-summary" onmouseover="toggleNavSummary(false)" onmouseout="toggleNavSummary(true)">
+                    <a href="../guide/index.html" class="button">Table of contents</a>
+
+                    <div id="nav-summary-childs" style="display:none;">
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/introduction.html"><strong>1</strong><span>Introduction</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/requirements.html"><strong>2</strong><span>What you will need</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/gettingStarted.html"><strong>3</strong><span>Getting Started</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/httpClientSetup.html"><strong>4</strong><span>HTTP client setup</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/domainAndControllers.html"><strong>5</strong><span>Domain and local REST API</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/searchService.html"><strong>6</strong><span>Search service and controller</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/testing.html"><strong>7</strong><span>Testing</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/runningTheApp.html"><strong>8</strong><span>Running the application</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/summary.html"><strong>9</strong><span>Summary</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>10</strong><span>Do you need help with Grails?</span></a>
+                        </div>
+                        
+                    </div>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+
+</div>
+
+<table id="colset" border="0" cellpadding="0" cellspacing="0">
+    <tr>
+        <td id="col1">
+            <div id="main" class="corner-all">
+
+                
+                    <div class="toc-item prev-left"><a href="../guide/searchService.html">&lt;&lt; <strong>6</strong><span>Search service and controller</span></a></div>
+                
+
+                
+                    <div class="toc-item next-right"><a href="../guide/runningTheApp.html"><strong>8</strong><span>Running the application</span> >></a></div>
+                
+
+
+                
+
+                
+
+<h1 id="testing">7 Testing</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-http-client/v8/guide/testing.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="sect1">
+<h2 id="unitTests">Unit tests</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Domain constraints:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/test/groovy/example/RecordLabelSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.testing.gorm.DataTest</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="type">class</span> <span class="class">RecordLabelSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> DataTest {
+
+    <span class="predefined-type">Class</span>&lt;?&gt;<span class="type">[]</span> getDomainClassesToMock() {
+        [RecordLabel] <span class="keyword">as</span> <span class="predefined-type">Class</span><span class="type">[]</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">name cannot be blank</span><span class="delimiter">'</span></span>() {
+        <span class="key">when</span>:
+        RecordLabel recordLabel = <span class="keyword">new</span> RecordLabel(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>:
+        !recordLabel.validate()
+        recordLabel.errors[<span class="string"><span class="delimiter">'</span><span class="content">name</span><span class="delimiter">'</span></span>].code <span class="keyword">in</span> [<span class="string"><span class="delimiter">'</span><span class="content">blank</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">nullable</span><span class="delimiter">'</span></span>]
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">name must be unique</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        <span class="keyword">new</span> RecordLabel(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Motown</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">when</span>:
+        RecordLabel duplicate = <span class="keyword">new</span> RecordLabel(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Motown</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>:
+        !duplicate.validate()
+        duplicate.errors[<span class="string"><span class="delimiter">'</span><span class="content">name</span><span class="delimiter">'</span></span>].code == <span class="string"><span class="delimiter">'</span><span class="content">unique</span><span class="delimiter">'</span></span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Service delegation to the HTTP client with a mock:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/test/groovy/example/ItunesSearchServiceSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="type">class</span> <span class="class">ItunesSearchServiceSpec</span> <span class="directive">extends</span> Specification {
+
+    ItunesSearchService service = <span class="keyword">new</span> ItunesSearchService()
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">searchAlbums delegates to the ItunesClient HTTP service</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        <span class="keyword">def</span> client = Mock(ItunesClient)
+        service.itunesClient = client
+        <span class="keyword">def</span> albums = [<span class="keyword">new</span> Album(<span class="key">artistName</span>: <span class="string"><span class="delimiter">'</span><span class="content">U2</span><span class="delimiter">'</span></span>, <span class="key">collectionName</span>: <span class="string"><span class="delimiter">'</span><span class="content">The Joshua Tree</span><span class="delimiter">'</span></span>)]
+        client.search(<span class="string"><span class="delimiter">'</span><span class="content">U2</span><span class="delimiter">'</span></span>) &gt;&gt; <span class="keyword">new</span> <span class="predefined-type">SearchResult</span>(<span class="key">resultCount</span>: <span class="integer">1</span>, <span class="key">results</span>: albums)
+
+        <span class="key">expect</span>:
+        service.searchAlbums(<span class="string"><span class="delimiter">'</span><span class="content">U2</span><span class="delimiter">'</span></span>) == albums
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">searchAlbums returns an empty list for blank terms</span><span class="delimiter">'</span></span>() {
+        <span class="key">expect</span>:
+        service.searchAlbums(<span class="predefined-constant">null</span>).isEmpty()
+        service.searchAlbums(<span class="string"><span class="delimiter">'</span><span class="content">   </span><span class="delimiter">'</span></span>).isEmpty()
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="integrationTests">Integration tests</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Verify the HTTP client is registered as a Spring bean, encodes query values, accepts the iTunes API&#8217;s <code>text/javascript</code> response, and deserializes albums:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/integration-test/groovy/example/ItunesClientIntegrationSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Rollback</span>
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">okhttp3.mockwebserver.MockResponse</span>
+<span class="keyword">import</span> <span class="include">okhttp3.mockwebserver.MockWebServer</span>
+<span class="keyword">import</span> <span class="include">okhttp3.mockwebserver.RecordedRequest</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Autowired</span>
+<span class="keyword">import</span> <span class="include">org.springframework.test.context.DynamicPropertyRegistry</span>
+<span class="keyword">import</span> <span class="include">org.springframework.test.context.DynamicPropertySource</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="annotation">@Integration</span>
+<span class="annotation">@Rollback</span>
+<span class="type">class</span> <span class="class">ItunesClientIntegrationSpec</span> <span class="directive">extends</span> Specification {
+
+    <span class="directive">static</span> MockWebServer mockWebServer = <span class="keyword">new</span> MockWebServer()
+
+    <span class="directive">static</span> {
+        mockWebServer.start()
+    }
+
+    <span class="annotation">@Autowired</span>
+    ItunesClient itunesClient
+
+    <span class="annotation">@DynamicPropertySource</span>
+    <span class="directive">static</span> <span class="type">void</span> itunesBaseUrl(DynamicPropertyRegistry registry) {
+        <span class="predefined-type">String</span> baseUrl = mockWebServer.url(<span class="string"><span class="delimiter">'</span><span class="content">/</span><span class="delimiter">'</span></span>).toString()
+        <span class="keyword">if</span> (baseUrl.endsWith(<span class="string"><span class="delimiter">'</span><span class="content">/</span><span class="delimiter">'</span></span>)) {
+            baseUrl = baseUrl[<span class="integer">0</span>..-<span class="integer">2</span>]
+        }
+        registry.add(<span class="string"><span class="delimiter">'</span><span class="content">itunes.base-url</span><span class="delimiter">'</span></span>, { baseUrl })
+    }
+
+    <span class="type">void</span> cleanupSpec() {
+        mockWebServer.shutdown()
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">declarative ItunesClient HTTP service is registered as a Spring bean</span><span class="delimiter">'</span></span>() {
+        <span class="key">expect</span>:
+        itunesClient != <span class="predefined-constant">null</span>
+        itunesClient <span class="keyword">instanceof</span> ItunesClient
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">search binds the term query parameter and deserializes albums</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">String</span> searchTerm = <span class="string"><span class="delimiter">'</span><span class="content">U2 &amp; Friends</span><span class="delimiter">'</span></span>
+        mockWebServer.enqueue(<span class="keyword">new</span> MockResponse()
+                .setHeader(<span class="string"><span class="delimiter">'</span><span class="content">Content-Type</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">text/javascript; charset=utf-8</span><span class="delimiter">'</span></span>)
+                .setBody(<span class="string"><span class="delimiter">'''</span><span class="content">{&quot;resultCount&quot;:1,&quot;results&quot;:[{&quot;artistName&quot;:&quot;U2&quot;,&quot;collectionName&quot;:&quot;The Joshua Tree&quot;,&quot;collectionViewUrl&quot;:&quot;https://example.com/album&quot;}]}</span><span class="delimiter">'''</span></span>))
+
+        <span class="key">when</span>:
+        <span class="predefined-type">SearchResult</span> result = itunesClient.search(searchTerm)
+
+        <span class="key">then</span>:
+        result.resultCount == <span class="integer">1</span>
+        result.results.size() == <span class="integer">1</span>
+        result.results[<span class="integer">0</span>].artistName == <span class="string"><span class="delimiter">'</span><span class="content">U2</span><span class="delimiter">'</span></span>
+        result.results[<span class="integer">0</span>].collectionName == <span class="string"><span class="delimiter">'</span><span class="content">The Joshua Tree</span><span class="delimiter">'</span></span>
+        result.results[<span class="integer">0</span>].collectionViewUrl == <span class="string"><span class="delimiter">'</span><span class="content">https://example.com/album</span><span class="delimiter">'</span></span>
+
+        <span class="key">and</span>:
+        RecordedRequest request = mockWebServer.takeRequest()
+        request.method == <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>
+        request.path.contains(<span class="string"><span class="delimiter">'</span><span class="content">/search?</span><span class="delimiter">'</span></span>)
+        request.requestUrl.queryParameter(<span class="string"><span class="delimiter">'</span><span class="content">term</span><span class="delimiter">'</span></span>) == searchTerm
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Assert GORM persistence against real PostgreSQL (Testcontainers):</p>
+</div>
+<div class="listingblock">
+<div class="title">src/integration-test/groovy/example/RecordLabelIntegrationSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Rollback</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="annotation">@Integration</span>
+<span class="annotation">@Rollback</span>
+<span class="type">class</span> <span class="class">RecordLabelIntegrationSpec</span> <span class="directive">extends</span> Specification {
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">record labels persist in PostgreSQL</span><span class="delimiter">'</span></span>() {
+        <span class="key">when</span>:
+        RecordLabel.withTransaction {
+            <span class="keyword">new</span> RecordLabel(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Integration Label</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        }
+
+        <span class="key">then</span>:
+        RecordLabel.count() &gt;= <span class="integer">1</span>
+        RecordLabel.findByName(<span class="string"><span class="delimiter">'</span><span class="content">Integration Label</span><span class="delimiter">'</span></span>) != <span class="predefined-constant">null</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Run unit tests (from the repository root):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">cd complete
+./gradlew test</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Run integration tests (requires Docker):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">./gradlew integrationTest</code></pre>
+</div>
+</div>
+</div>
+</div>
+
+
+                <div style="clear:both;margin-top:15px;"></div>
+                
+                    <div class="toc-item prev-left"><a href="../guide/searchService.html">&lt;&lt; <strong>6</strong><span>Search service and controller</span></a></div>
+                
+                    <div class="toc-item next-right"><a href="../guide/runningTheApp.html"><strong>8</strong><span>Running the application</span> >></a></div>
+                
+                <div style="clear:both"></div>
+            </div>
+        </td>
+        <td id="col2">
+            <div class="local clearfix">
+                <div class="local-title" style="text-align: right"><a href="https://travis-ci.org/grails-guides/grails-http-client"><img src="https://travis-ci.org/grails-guides/grails-http-client.svg?branch=master" /></a></div>            
+                 <div class="local-title">
+                    <a href="https://github.com/grails-guides/grails-http-client">
+                    <svg height="35" class="octicon octicon-mark-github" viewBox="0 0 16 16" version="1.1" width="35" aria-hidden="true"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a> &nbsp;&nbsp;Get the Code
+                </div>
+                <div class="menu">
+                    <div class="input-group">                        
+                        <button href="#" onclick="document.getElementById('github-url').value='git@github.com:grails-guides/grails-http-client.git'" class="codeButton">SSH</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-http-client.git'" class="codeButton">HTTPS</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-http-client'" class="codeButton">Subversion</button>
+                    </div>
+       
+                    <div class="input-group">                    
+                        <!-- Target -->
+                        <input id="github-url" value="git@github.com:grails-guides/grails-http-client.git" type="text" />
+
+                        <!-- Trigger -->
+                        <button class="clipbtn" type="button" data-clipboard-target="#github-url">
+
+                            <img width="13" src="../img/clippy.svg" alt="Copy to clipboard">
+                        </button>       
+
+                    </div>
+                    <div class="input-group">
+                      <a href="https://github.com/grails-guides/grails-http-client/archive/master.zip" class="downloadButton">Download ZIP</a>
+                    </div>
+                </div>
+            </div>
+        </td>
+    </tr>
+</table>
+
+<div id="footer">
+    
+    
+</div>
+
+<script type="text/javascript" src="../js/docs.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Calling REST APIs with Spring HTTP Services in Grails 8 | Grails Guides | Apache Grails</title>
+    <meta name='description' content='Calling REST APIs with Spring HTTP Services in Grails 8. Add a declarative @HttpExchange client to a Grails 8 REST API, combine GORM data with external API results, and test with Spock.'/>
+    <link rel='canonical' href='https://grails.apache.org/guides/grails-http-client/8/guide/index.html'/>
+    <meta charset='UTF-8'/>
+<meta name='viewport' content='width=device-width, initial-scale=1'/>
+<link rel='icon' href='https://grails.apache.org/images/favicon.ico'/>
+<link rel='mask-icon' href='https://grails.apache.org/images/grails-pinned-icon.svg' color='feb672'/>
+<link rel='alternate' type='application/rss+xml' title='RSS' href='https://grails.apache.org/rss.xml'/>
+<link rel='stylesheet' href='https://grails.apache.org/stylesheets/screen.css'/>
+<link rel='stylesheet' href='https://grails.apache.org/stylesheets/plugin.css'/>
+<script src='https://grails.apache.org/javascripts/navigation.js'></script>
+
+<!-- Matomo -->
+<script>
+  var _paq = window._paq = window._paq || [];
+  _paq.push(['setDoNotTrack', true]);
+  _paq.push(['disableCookies']);
+  _paq.push(['trackPageView']);
+  _paq.push(['enableLinkTracking']);
+  (function() {
+    var u = 'https://analytics.apache.org/';
+    _paq.push(['setTrackerUrl', u + 'matomo.php']);
+    _paq.push(['setSiteId', '79']);
+    var d = document, g = d.createElement('script'), s = d.getElementsByTagName('script')[0];
+    g.async = true; g.src = u + 'matomo.js'; s.parentNode.insertBefore(g, s);
+  })();
+</script>
+<!-- End Matomo Code -->
+
+<script
+    async
+    src="https://widget.kapa.ai/kapa-widget.bundle.js"
+    data-website-id="d804a9f2-51a2-414c-97f7-12f2a1ba4609"
+    data-project-name="Apache Grails"
+    data-project-color="#3F4346"
+    data-font-family="system-ui,-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,Segoe UI,sans-serif,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol;"
+    data-project-logo="https://grails.apache.org/images/grails.png"
+    data-modal-override-open-id="ask-ai-input"
+    data-modal-override-open-class="search-input"
+    data-user-analytics-fingerprint-enabled="true"
+    data-modal-title="Apache Grails AI Assistant"
+    data-modal-example-questions-title="Try asking me..."
+    data-modal-example-questions="How does database migration work?,How does Spring Security work?"
+    data-button-text-color="#FBB576"
+    data-modal-header-bg-color="#FFFFFF"
+    data-modal-title-color="#FBB576"
+    data-consent-required="true"></script>
+
+    <link rel='stylesheet' href='../css/guide.css'/>
+    <script src='../js/clipboard.min.js'></script>
+</head>
+<body class='guide'>
+<header class='main-header'>
+    <div class='content'>
+        <a href='https://grails.apache.org/index.html'><img class='grails-logo' src='https://grails.apache.org/images/grails_logo.svg' alt='Grails Logo'/></a>
+        <a href='javascript:show("top-menus", "show-navigation-link")' id='show-navigation-link'
+           class='mobile align-center'>Show Navigation</a>
+        <div id='top-menus'>
+            <nav class='secondary-menu' id='secondary-menu'>
+                <ul>
+                    <li><a href='https://grails.apache.org/casestudies/index.html'>Case Studies</a></li>
+                    <li><a href='https://grails.apache.org/blog/index.html'>Blog</a></li>
+                    <li><a href='https://grails.apache.org/learning.html'>Learning</a></li>
+                    <li><a href='https://grails.apache.org/community.html'>Community</a></li>
+                    <li><a href='https://grails.apache.org/search.html'>Search</a></li>
+                </ul>
+            </nav>
+            <nav class='main-menu' id='main-menu'>
+                <ul>
+                    <li><a href='https://grails.apache.org/documentation.html'>Documentation</a></li>
+                    <li><a href='https://grails.apache.org/download.html'>Download</a></li>
+                    <li><a href='https://grails.apache.org/plugins.html'>Plugins</a></li>
+                    <li><a href='https://grails.apache.org/guides'>Guides</a></li>
+                    <li><a href='https://grails.apache.org/faq.html'>FAQ</a></li>
+                    <li><a href='https://grails.apache.org/support.html'>Support</a></li>
+                    <li><a href='https://start.grails.org'>Forge App</a></li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</header>
+
+<div class='fullwidth'><article class="guide">
+    <aside>
+        <button type="button" class="btn btn-large" onclick="window.location.href=&quot;https://github.com/grails-guides/grails-http-client&quot;"><img height="15" src="../img/github_white.svg" alt="GitHub"/><span>&nbsp;Get the Code</span></button>
+        <ul class="githublinks">
+            <li><button type="button" class="btn btn-default codeButton" onclick="document.getElementById('github-url').value='git@github.com:grails-guides/grails-http-client.git'">SSH</button></li>
+            <li><button type="button" class="btn btn-default codeButton" onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-http-client.git'">HTTPS</button></li>
+        </ul>
+        <div class="input-group">
+            <input id="github-url" value="git@github.com:grails-guides/grails-http-client.git" type="text"/>
+            <button type="button" class="clippy btn btn-default" data-clipboard-target="#github-url">
+                <img width="13" src="../img/clippy.svg" alt="Copy to clipboard">
+            </button>
+        </div>
+        <script>var clipboard = new Clipboard('.clippy');</script>
+        <button type="button" class="btn btn-large" onclick="window.location.href=&quot;https://github.com/grails-guides/grails-http-client/archive/master.zip&quot;">Download ZIP</button>
+        
+        <div id="table-of-content">
+            <h3>Table of Contents</h3>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#introduction"><strong>1</strong><span>Introduction</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#requirements"><strong>2</strong><span>What you will need</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#gettingStarted"><strong>3</strong><span>Getting Started</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#httpClientSetup"><strong>4</strong><span>HTTP client setup</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#domainAndControllers"><strong>5</strong><span>Domain and local REST API</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#searchService"><strong>6</strong><span>Search service and controller</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#testing"><strong>7</strong><span>Testing</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#runningTheApp"><strong>8</strong><span>Running the application</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#summary"><strong>9</strong><span>Summary</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#helpWithGrails"><strong>10</strong><span>Do you need help with Grails?</span></a></div>
+            
+            <div style="clear:both"></div>
+        </div>
+        
+    </aside>
+    <header>
+        <h1>Calling REST APIs with Spring HTTP Services in Grails 8</h1>
+        <p>Add a declarative @HttpExchange client to a Grails 8 REST API, combine GORM data with external API results, and test with Spock.</p>
+        <p><strong>Authors:</strong> Sanjana</p>
+        <p><strong>Grails Version:</strong> 8</p>
+    </header>
+    
+
+<h1 id="introduction">1 Introduction</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-http-client/v8/guide/introduction.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Learn how to call external REST APIs from a Grails 8 application using Spring Framework HTTP Services: define a <code>@HttpExchange</code> interface, register it with <code>@ImportHttpServices</code>, inject the generated client into a Grails service, and expose results through JSON views. Local <code>RecordLabel</code> data stays in GORM/PostgreSQL; album metadata comes from the iTunes Search API.</p>
+</div>
+<div class="paragraph">
+<p>No Micronaut plugin is required - this uses the same Spring stack Grails 8 already runs on. Add <code>spring-boot-starter-json</code> so the HTTP client can deserialize JSON responses.</p>
+</div>
+<div class="paragraph">
+<p>This guide follows the standard Grails guides layout: work in the <code>initial/</code> project and compare your progress with <code>complete/</code>.</p>
+</div>
+
+
+<h1 id="requirements">2 What you will need</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-http-client/v8/guide/requirements.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="ulist">
+<ul>
+<li>
+<p>Approximately 45 minutes</p>
+</li>
+<li>
+<p>JDK 21 (Apache Grails 8 requires Java 21)</p>
+</li>
+<li>
+<p>A <a href="https://www.grails.org/">Grails</a> installation or the bundled Gradle wrapper in <code>initial/</code> and <code>complete/</code></p>
+</li>
+<li>
+<p><strong>Docker</strong> - required for integration tests (Testcontainers PostgreSQL)</p>
+</li>
+<li>
+<p><strong>PostgreSQL</strong> on <code>localhost:5432</code> - required for <code>./gradlew bootRun</code> in both <code>initial/</code> and <code>complete/</code> (default database <code>devDb</code>; see <code>grails-app/conf/application.yml</code>)</p>
+</li>
+</ul>
+</div>
+
+
+<h1 id="gettingStarted">3 Getting Started</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-http-client/v8/guide/gettingStarted.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Clone the repository and run the starting application:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">git clone -b grails8 https://github.com/grails-guides/grails-http-client.git
+cd grails-http-client/initial
+./gradlew bootRun</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Open <a href="http://localhost:8080/">http://localhost:8080/</a> for the welcome JSON payload. The <code>initial/</code> project is a vanilla Grails 8 REST API starter with no HTTP client yet.</p>
+</div>
+<div class="paragraph">
+<p>To skip ahead, <code>cd ../complete</code> and run the same commands - that tree contains the finished <code>@HttpExchange</code> client, services, and tests.</p>
+</div>
+<div class="sect1">
+<h2 id="cloneAndRun">Verify tests</h2>
+<div class="sectionbody">
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">./gradlew test</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Both <code>initial</code> and <code>complete</code> must pass in CI (see <code>.github/workflows/grails8.yml</code>).</p>
+</div>
+</div>
+</div>
+
+
+<h1 id="httpClientSetup">4 HTTP client setup</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-http-client/v8/guide/httpClientSetup.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Register HTTP service interfaces with <code>@ImportHttpServices</code> and explicitly import the client configuration:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/init/example/Application.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.boot.GrailsApp</span>
+<span class="keyword">import</span> <span class="include">grails.boot.config.GrailsAutoConfiguration</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">org.springframework.context.annotation.Import</span>
+<span class="keyword">import</span> <span class="include">org.springframework.web.service.registry.ImportHttpServices</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="annotation">@ImportHttpServices</span>(basePackages = <span class="string"><span class="delimiter">'</span><span class="content">example</span><span class="delimiter">'</span></span>)
+<span class="annotation">@Import</span>(ItunesClientConfiguration)
+<span class="type">class</span> <span class="class">Application</span> <span class="directive">extends</span> GrailsAutoConfiguration {
+    <span class="directive">static</span> <span class="type">void</span> main(<span class="predefined-type">String</span><span class="type">[]</span> args) {
+        GrailsApp.run(Application, args)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>@ImportHttpServices</code> scans <code>example</code> for <code>@HttpExchange</code> interfaces and registers a <code>RestClient</code>-backed proxy bean for each one. <code>@Import(ItunesClientConfiguration)</code> ensures Grails loads the <code>RestClient</code> group configurer. This requires the Grails 8 Spring 7 / Boot 4 baseline.</p>
+</div>
+<div class="sect1">
+<h2 id="itunesClient">ItunesClient</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Declare the iTunes Search API client as a Spring HTTP service interface:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/main/groovy/example/ItunesClient.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">org.springframework.web.bind.annotation.PathVariable</span>
+<span class="keyword">import</span> <span class="include">org.springframework.web.service.annotation.GetExchange</span>
+<span class="keyword">import</span> <span class="include">org.springframework.web.service.annotation.HttpExchange</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="annotation">@HttpExchange</span>
+<span class="type">interface</span> ItunesClient {
+
+    <span class="annotation">@GetExchange</span>(<span class="string"><span class="delimiter">'</span><span class="content">/search?limit=25&amp;media=music&amp;entity=album&amp;term={term}</span><span class="delimiter">'</span></span>)
+    <span class="predefined-type">SearchResult</span> search(<span class="annotation">@PathVariable</span>(<span class="string"><span class="delimiter">'</span><span class="content">term</span><span class="delimiter">'</span></span>) <span class="predefined-type">String</span> term)
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Configure the <code>RestClient</code> base URL from <code>itunes.base-url</code> (defaults to the public iTunes API; integration tests override it with MockWebServer). The iTunes API returns JSON with a <code>text/javascript</code> content type, so add that media type to Spring&#8217;s Jackson converter:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/main/groovy/example/ItunesClientConfiguration.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Value</span>
+<span class="keyword">import</span> <span class="include">org.springframework.context.annotation.Bean</span>
+<span class="keyword">import</span> <span class="include">org.springframework.context.annotation.Configuration</span>
+<span class="keyword">import</span> <span class="include">org.springframework.http.MediaType</span>
+<span class="keyword">import</span> <span class="include">org.springframework.http.converter.HttpMessageConverter</span>
+<span class="keyword">import</span> <span class="include">org.springframework.http.converter.json.JacksonJsonHttpMessageConverter</span>
+<span class="keyword">import</span> <span class="include">org.springframework.web.client.support.RestClientHttpServiceGroupConfigurer</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="annotation">@Configuration</span>
+<span class="type">class</span> <span class="class">ItunesClientConfiguration</span> {
+
+    <span class="directive">private</span> <span class="directive">static</span> <span class="directive">final</span> MediaType JAVASCRIPT = MediaType.parseMediaType(<span class="string"><span class="delimiter">'</span><span class="content">text/javascript</span><span class="delimiter">'</span></span>)
+
+    <span class="annotation">@Bean</span>
+    RestClientHttpServiceGroupConfigurer itunesBaseUrlConfigurer(
+            <span class="annotation">@Value</span>(<span class="string"><span class="delimiter">'</span><span class="content">${itunes.base-url:https://itunes.apple.com}</span><span class="delimiter">'</span></span>) <span class="predefined-type">String</span> itunesBaseUrl) {
+        <span class="keyword">return</span> { groups -&gt;
+            groups.forEachClient { group, builder -&gt;
+                builder.baseUrl(itunesBaseUrl)
+                builder.messageConverters { <span class="predefined-type">List</span>&lt;HttpMessageConverter&lt;?&gt;&gt; converters -&gt;
+                    JacksonJsonHttpMessageConverter jacksonConverter =
+                            (JacksonJsonHttpMessageConverter) converters.find { HttpMessageConverter&lt;?&gt; converter -&gt;
+                                converter <span class="keyword">instanceof</span> JacksonJsonHttpMessageConverter
+                            }
+                    jacksonConverter.supportedMediaTypes = jacksonConverter.supportedMediaTypes + JAVASCRIPT
+                }
+            }
+        }
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="dtos">Response DTOs</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Map the JSON response with simple POGOs:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/main/groovy/example/Album.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">Album</span> {
+    <span class="predefined-type">String</span> artistName
+    <span class="predefined-type">String</span> collectionName
+    <span class="predefined-type">String</span> collectionViewUrl
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">src/main/groovy/example/SearchResult.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">SearchResult</span> {
+    <span class="type">int</span> resultCount
+    <span class="predefined-type">List</span>&lt;Album&gt; results = <span class="type">[]</span>
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>With <code>spring-boot-starter-json</code> on the classpath and <code>text/javascript</code> enabled above, Spring deserializes the iTunes JSON into these types automatically.</p>
+</div>
+</div>
+</div>
+
+
+<h1 id="domainAndControllers">5 Domain and local REST API</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-http-client/v8/guide/domainAndControllers.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Local record label data stays in GORM while album search results come from the external API.</p>
+</div>
+<div class="sect1">
+<h2 id="recordLabel">RecordLabel domain</h2>
+<div class="sectionbody">
+<div class="listingblock">
+<div class="title">grails-app/domain/example/RecordLabel.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.persistence.Entity</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
+
+<span class="annotation">@Slf4j</span>
+<span class="annotation">@Entity</span>
+<span class="type">class</span> <span class="class">RecordLabel</span> {
+
+    <span class="predefined-type">String</span> name
+
+    <span class="directive">static</span> constraints = {
+        name <span class="key">blank</span>: <span class="predefined-constant">false</span>, <span class="key">nullable</span>: <span class="predefined-constant">false</span>, <span class="key">maxSize</span>: <span class="integer">100</span>, <span class="key">unique</span>: <span class="predefined-constant">true</span>
+    }
+
+    <span class="predefined-type">String</span> toString() {
+        name
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Seed development data in <code>BootStrap</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/init/example/BootStrap.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="type">class</span> <span class="class">BootStrap</span> {
+
+    <span class="keyword">def</span> init = { servletContext -&gt;
+        environments {
+            development {
+                RecordLabel.withTransaction {
+                    <span class="keyword">if</span> (RecordLabel.count() == <span class="integer">0</span>) {
+                        [<span class="string"><span class="delimiter">'</span><span class="content">Island Records</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Motown</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Blue Note</span><span class="delimiter">'</span></span>].each { labelName -&gt;
+                            <span class="keyword">new</span> RecordLabel(<span class="key">name</span>: labelName).save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    <span class="keyword">def</span> destroy = {
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="urlMappings">URL mappings</h2>
+<div class="sectionbody">
+<div class="listingblock">
+<div class="title">grails-app/controllers/example/UrlMappings.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="type">class</span> <span class="class">UrlMappings</span> {
+
+    <span class="directive">static</span> mappings = {
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/</span><span class="inline"><span class="inline-delimiter">$</span>controller</span><span class="content">/</span><span class="inline"><span class="inline-delimiter">$</span>action</span><span class="content">?/</span><span class="inline"><span class="inline-delimiter">$</span>id</span><span class="content">?(.</span><span class="inline"><span class="inline-delimiter">$</span>format</span><span class="content">)?</span><span class="delimiter">&quot;</span></span>{
+            constraints {
+                <span class="comment">// apply constraints here</span>
+            }
+        }
+
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/api/search</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">search</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">index</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/api/recordLabels</span><span class="delimiter">&quot;</span></span>(<span class="key">resources</span>: <span class="string"><span class="delimiter">'</span><span class="content">recordLabel</span><span class="delimiter">'</span></span>)
+
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">application</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">index</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">500</span><span class="delimiter">&quot;</span></span>(<span class="key">view</span>: <span class="string"><span class="delimiter">'</span><span class="content">/error</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">404</span><span class="delimiter">&quot;</span></span>(<span class="key">view</span>: <span class="string"><span class="delimiter">'</span><span class="content">/notFound</span><span class="delimiter">'</span></span>)
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="recordLabelController">RecordLabelController</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The REST controller delegates persistence to GORM and returns JSON views:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/controllers/example/RecordLabelController.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+
+<span class="type">class</span> <span class="class">RecordLabelController</span> {
+
+    <span class="directive">static</span> responseFormats = [<span class="string"><span class="delimiter">'</span><span class="content">json</span><span class="delimiter">'</span></span>]
+    <span class="directive">static</span> allowedMethods = [<span class="key">index</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>, <span class="key">show</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>, <span class="key">save</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>, <span class="key">update</span>: <span class="string"><span class="delimiter">'</span><span class="content">PUT</span><span class="delimiter">'</span></span>, <span class="key">delete</span>: <span class="string"><span class="delimiter">'</span><span class="content">DELETE</span><span class="delimiter">'</span></span>]
+
+    <span class="keyword">def</span> <span class="function">index</span>(<span class="predefined-type">Integer</span> max) {
+        params.max = <span class="predefined-type">Math</span>.min(max ?: <span class="integer">10</span>, <span class="integer">100</span>)
+        respond RecordLabel.list(params), <span class="key">model</span>: [<span class="key">recordLabelCount</span>: RecordLabel.count()]
+    }
+
+    <span class="keyword">def</span> <span class="function">show</span>(<span class="predefined-type">Long</span> id) {
+        respond RecordLabel.get(id)
+    }
+
+    <span class="annotation">@Transactional</span>
+    <span class="keyword">def</span> <span class="function">save</span>() {
+        <span class="keyword">def</span> recordLabel = <span class="keyword">new</span> RecordLabel(request.JSON <span class="keyword">as</span> <span class="predefined-type">Map</span>)
+        <span class="keyword">if</span> (!recordLabel.validate()) {
+            respond recordLabel.errors, <span class="key">status</span>: <span class="integer">422</span>
+            <span class="keyword">return</span>
+        }
+        recordLabel.save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>, <span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        respond recordLabel, <span class="key">status</span>: <span class="integer">201</span>
+    }
+
+    <span class="annotation">@Transactional</span>
+    <span class="keyword">def</span> <span class="function">update</span>(<span class="predefined-type">Long</span> id) {
+        <span class="keyword">def</span> recordLabel = RecordLabel.get(id)
+        <span class="keyword">if</span> (!recordLabel) {
+            render <span class="key">status</span>: <span class="integer">404</span>
+            <span class="keyword">return</span>
+        }
+        recordLabel.properties = request.JSON
+        <span class="keyword">if</span> (!recordLabel.validate()) {
+            respond recordLabel.errors, <span class="key">status</span>: <span class="integer">422</span>
+            <span class="keyword">return</span>
+        }
+        recordLabel.save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>, <span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        respond recordLabel
+    }
+
+    <span class="annotation">@Transactional</span>
+    <span class="keyword">def</span> <span class="function">delete</span>(<span class="predefined-type">Long</span> id) {
+        <span class="keyword">def</span> recordLabel = RecordLabel.get(id)
+        <span class="keyword">if</span> (!recordLabel) {
+            render <span class="key">status</span>: <span class="integer">404</span>
+            <span class="keyword">return</span>
+        }
+        recordLabel.delete(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        render <span class="key">status</span>: <span class="integer">204</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Call <code>validate()</code> after binding request JSON and before <code>save</code>. That returns structured <code>422</code> responses for constraint violations.</p>
+</div>
+</div>
+</div>
+
+
+<h1 id="searchService">6 Search service and controller</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-http-client/v8/guide/searchService.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Inject the <code>@HttpExchange</code> client into a Grails service:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/services/example/ItunesSearchService.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Autowired</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">ItunesSearchService</span> {
+
+    <span class="annotation">@Autowired</span>
+    ItunesClient itunesClient
+
+    <span class="predefined-type">List</span>&lt;Album&gt; searchAlbums(<span class="predefined-type">String</span> searchTerm) {
+        <span class="keyword">if</span> (!searchTerm?.trim()) {
+            <span class="keyword">return</span> <span class="type">[]</span>
+        }
+        <span class="predefined-type">SearchResult</span> searchResult = itunesClient.search(searchTerm.trim())
+        searchResult?.results ?: <span class="type">[]</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Expose search results through a thin controller:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/controllers/example/SearchController.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">SearchController</span> {
+
+    <span class="directive">static</span> responseFormats = [<span class="string"><span class="delimiter">'</span><span class="content">json</span><span class="delimiter">'</span></span>]
+    <span class="directive">static</span> allowedMethods = [<span class="key">index</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>]
+
+    ItunesSearchService itunesSearchService
+
+    <span class="keyword">def</span> <span class="function">index</span>(<span class="predefined-type">String</span> q) {
+        <span class="keyword">if</span> (!q?.trim()) {
+            respond([<span class="key">searchTerm</span>: q, <span class="key">albums</span>: <span class="type">[]</span>])
+            <span class="keyword">return</span>
+        }
+        <span class="predefined-type">List</span>&lt;Album&gt; albums = itunesSearchService.searchAlbums(q)
+        respond([<span class="key">searchTerm</span>: q.trim(), <span class="key">albums</span>: albums])
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The service trims blank search terms and returns an empty list rather than calling the remote API with invalid input.</p>
+</div>
+
+
+<h1 id="testing">7 Testing</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-http-client/v8/guide/testing.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="sect1">
+<h2 id="unitTests">Unit tests</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Domain constraints:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/test/groovy/example/RecordLabelSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.testing.gorm.DataTest</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="type">class</span> <span class="class">RecordLabelSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> DataTest {
+
+    <span class="predefined-type">Class</span>&lt;?&gt;<span class="type">[]</span> getDomainClassesToMock() {
+        [RecordLabel] <span class="keyword">as</span> <span class="predefined-type">Class</span><span class="type">[]</span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">name cannot be blank</span><span class="delimiter">'</span></span>() {
+        <span class="key">when</span>:
+        RecordLabel recordLabel = <span class="keyword">new</span> RecordLabel(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>:
+        !recordLabel.validate()
+        recordLabel.errors[<span class="string"><span class="delimiter">'</span><span class="content">name</span><span class="delimiter">'</span></span>].code <span class="keyword">in</span> [<span class="string"><span class="delimiter">'</span><span class="content">blank</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">nullable</span><span class="delimiter">'</span></span>]
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">name must be unique</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        <span class="keyword">new</span> RecordLabel(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Motown</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+
+        <span class="key">when</span>:
+        RecordLabel duplicate = <span class="keyword">new</span> RecordLabel(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Motown</span><span class="delimiter">'</span></span>)
+
+        <span class="key">then</span>:
+        !duplicate.validate()
+        duplicate.errors[<span class="string"><span class="delimiter">'</span><span class="content">name</span><span class="delimiter">'</span></span>].code == <span class="string"><span class="delimiter">'</span><span class="content">unique</span><span class="delimiter">'</span></span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Service delegation to the HTTP client with a mock:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/test/groovy/example/ItunesSearchServiceSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="type">class</span> <span class="class">ItunesSearchServiceSpec</span> <span class="directive">extends</span> Specification {
+
+    ItunesSearchService service = <span class="keyword">new</span> ItunesSearchService()
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">searchAlbums delegates to the ItunesClient HTTP service</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        <span class="keyword">def</span> client = Mock(ItunesClient)
+        service.itunesClient = client
+        <span class="keyword">def</span> albums = [<span class="keyword">new</span> Album(<span class="key">artistName</span>: <span class="string"><span class="delimiter">'</span><span class="content">U2</span><span class="delimiter">'</span></span>, <span class="key">collectionName</span>: <span class="string"><span class="delimiter">'</span><span class="content">The Joshua Tree</span><span class="delimiter">'</span></span>)]
+        client.search(<span class="string"><span class="delimiter">'</span><span class="content">U2</span><span class="delimiter">'</span></span>) &gt;&gt; <span class="keyword">new</span> <span class="predefined-type">SearchResult</span>(<span class="key">resultCount</span>: <span class="integer">1</span>, <span class="key">results</span>: albums)
+
+        <span class="key">expect</span>:
+        service.searchAlbums(<span class="string"><span class="delimiter">'</span><span class="content">U2</span><span class="delimiter">'</span></span>) == albums
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">searchAlbums returns an empty list for blank terms</span><span class="delimiter">'</span></span>() {
+        <span class="key">expect</span>:
+        service.searchAlbums(<span class="predefined-constant">null</span>).isEmpty()
+        service.searchAlbums(<span class="string"><span class="delimiter">'</span><span class="content">   </span><span class="delimiter">'</span></span>).isEmpty()
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="integrationTests">Integration tests</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Verify the HTTP client is registered as a Spring bean, encodes query values, accepts the iTunes API&#8217;s <code>text/javascript</code> response, and deserializes albums:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/integration-test/groovy/example/ItunesClientIntegrationSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Rollback</span>
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">okhttp3.mockwebserver.MockResponse</span>
+<span class="keyword">import</span> <span class="include">okhttp3.mockwebserver.MockWebServer</span>
+<span class="keyword">import</span> <span class="include">okhttp3.mockwebserver.RecordedRequest</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Autowired</span>
+<span class="keyword">import</span> <span class="include">org.springframework.test.context.DynamicPropertyRegistry</span>
+<span class="keyword">import</span> <span class="include">org.springframework.test.context.DynamicPropertySource</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="annotation">@Integration</span>
+<span class="annotation">@Rollback</span>
+<span class="type">class</span> <span class="class">ItunesClientIntegrationSpec</span> <span class="directive">extends</span> Specification {
+
+    <span class="directive">static</span> MockWebServer mockWebServer = <span class="keyword">new</span> MockWebServer()
+
+    <span class="directive">static</span> {
+        mockWebServer.start()
+    }
+
+    <span class="annotation">@Autowired</span>
+    ItunesClient itunesClient
+
+    <span class="annotation">@DynamicPropertySource</span>
+    <span class="directive">static</span> <span class="type">void</span> itunesBaseUrl(DynamicPropertyRegistry registry) {
+        <span class="predefined-type">String</span> baseUrl = mockWebServer.url(<span class="string"><span class="delimiter">'</span><span class="content">/</span><span class="delimiter">'</span></span>).toString()
+        <span class="keyword">if</span> (baseUrl.endsWith(<span class="string"><span class="delimiter">'</span><span class="content">/</span><span class="delimiter">'</span></span>)) {
+            baseUrl = baseUrl[<span class="integer">0</span>..-<span class="integer">2</span>]
+        }
+        registry.add(<span class="string"><span class="delimiter">'</span><span class="content">itunes.base-url</span><span class="delimiter">'</span></span>, { baseUrl })
+    }
+
+    <span class="type">void</span> cleanupSpec() {
+        mockWebServer.shutdown()
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">declarative ItunesClient HTTP service is registered as a Spring bean</span><span class="delimiter">'</span></span>() {
+        <span class="key">expect</span>:
+        itunesClient != <span class="predefined-constant">null</span>
+        itunesClient <span class="keyword">instanceof</span> ItunesClient
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">search binds the term query parameter and deserializes albums</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">String</span> searchTerm = <span class="string"><span class="delimiter">'</span><span class="content">U2 &amp; Friends</span><span class="delimiter">'</span></span>
+        mockWebServer.enqueue(<span class="keyword">new</span> MockResponse()
+                .setHeader(<span class="string"><span class="delimiter">'</span><span class="content">Content-Type</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">text/javascript; charset=utf-8</span><span class="delimiter">'</span></span>)
+                .setBody(<span class="string"><span class="delimiter">'''</span><span class="content">{&quot;resultCount&quot;:1,&quot;results&quot;:[{&quot;artistName&quot;:&quot;U2&quot;,&quot;collectionName&quot;:&quot;The Joshua Tree&quot;,&quot;collectionViewUrl&quot;:&quot;https://example.com/album&quot;}]}</span><span class="delimiter">'''</span></span>))
+
+        <span class="key">when</span>:
+        <span class="predefined-type">SearchResult</span> result = itunesClient.search(searchTerm)
+
+        <span class="key">then</span>:
+        result.resultCount == <span class="integer">1</span>
+        result.results.size() == <span class="integer">1</span>
+        result.results[<span class="integer">0</span>].artistName == <span class="string"><span class="delimiter">'</span><span class="content">U2</span><span class="delimiter">'</span></span>
+        result.results[<span class="integer">0</span>].collectionName == <span class="string"><span class="delimiter">'</span><span class="content">The Joshua Tree</span><span class="delimiter">'</span></span>
+        result.results[<span class="integer">0</span>].collectionViewUrl == <span class="string"><span class="delimiter">'</span><span class="content">https://example.com/album</span><span class="delimiter">'</span></span>
+
+        <span class="key">and</span>:
+        RecordedRequest request = mockWebServer.takeRequest()
+        request.method == <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>
+        request.path.contains(<span class="string"><span class="delimiter">'</span><span class="content">/search?</span><span class="delimiter">'</span></span>)
+        request.requestUrl.queryParameter(<span class="string"><span class="delimiter">'</span><span class="content">term</span><span class="delimiter">'</span></span>) == searchTerm
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Assert GORM persistence against real PostgreSQL (Testcontainers):</p>
+</div>
+<div class="listingblock">
+<div class="title">src/integration-test/groovy/example/RecordLabelIntegrationSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Rollback</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="annotation">@Integration</span>
+<span class="annotation">@Rollback</span>
+<span class="type">class</span> <span class="class">RecordLabelIntegrationSpec</span> <span class="directive">extends</span> Specification {
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">record labels persist in PostgreSQL</span><span class="delimiter">'</span></span>() {
+        <span class="key">when</span>:
+        RecordLabel.withTransaction {
+            <span class="keyword">new</span> RecordLabel(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Integration Label</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+        }
+
+        <span class="key">then</span>:
+        RecordLabel.count() &gt;= <span class="integer">1</span>
+        RecordLabel.findByName(<span class="string"><span class="delimiter">'</span><span class="content">Integration Label</span><span class="delimiter">'</span></span>) != <span class="predefined-constant">null</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Run unit tests (from the repository root):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">cd complete
+./gradlew test</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Run integration tests (requires Docker):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">./gradlew integrationTest</code></pre>
+</div>
+</div>
+</div>
+</div>
+
+
+<h1 id="runningTheApp">8 Running the application</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-http-client/v8/guide/runningTheApp.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>From the repository root:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">cd complete
+./gradlew bootRun</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Example endpoints:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">curl -s http://localhost:8080/api/recordLabels
+curl -s 'http://localhost:8080/api/search?q=U2'</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The search endpoint returns album metadata from the iTunes Search API. Record labels are served from your local PostgreSQL database.</p>
+</div>
+
+
+<h1 id="summary">9 Summary</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-http-client/v8/guide/summary.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>You added a declarative HTTP client to a Grails 8 REST API:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>@ImportHttpServices</code> and a <code>@HttpExchange</code> interface for the iTunes Search API</p>
+</li>
+<li>
+<p>A Grails service that injects the generated client</p>
+</li>
+<li>
+<p>Local GORM data alongside external API results</p>
+</li>
+<li>
+<p>Spock unit and integration tests</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Next steps: add error handling for remote API failures, cache search results, or secure outbound calls with API keys.</p>
+</div>
+
+
+<h1 id="helpWithGrails">10 Do you need help with Grails?</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-http-client/v8/guide/helpWithGrails.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="sect1">
+<h2 id="_help_with_apache_grails">Help with Apache Grails</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Apache Grails is supported by an active community of contributors and the Apache Software Foundation. If you need help working through a guide, want to discuss the framework, or have run into something that looks like a bug, the channels below are the right place to start.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="https://slack.grails.org">Slack</a> - real-time conversation with the Apache Grails community.</p>
+</li>
+<li>
+<p><a href="https://lists.apache.org/list.html?dev@grails.apache.org">Developer mailing list</a> - design discussions and contributor coordination.</p>
+</li>
+<li>
+<p><a href="https://lists.apache.org/list.html?users@grails.apache.org">Users mailing list</a> - end-user questions and answers.</p>
+</li>
+<li>
+<p><a href="https://github.com/apache/grails-core/issues">Issue tracker on GitHub</a> - file a bug or feature request against the framework.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>For Grails plugins, see the matching project on <a href="https://github.com/apache?q=grails">the apache org</a> or the plugin&#8217;s own GitHub repository.</p>
+</div>
+</div>
+</div>
+
+</article></div>
+<footer>
+    <div class='content'>
+        <div class='apache-grails'>
+            <p>Apache Grails is supported by the Apache Software Foundation and the Grails community.</p>
+            <a href='https://apache.org'><img src='https://www.apache.org/img/asf_logo.png' width='200px' alt='Apache Software Foundation'/></a>
+            <p>Apache, Apache Grails, Grails, Groovy, and the ASF logo are either registered trademarks or trademarks of The Apache Software Foundation.</p>
+        </div>
+        <nav class='social-media-nav'>
+            <ul>
+                <li><a href='mailto:dev@grails.apache.org'><img src='https://grails.apache.org/images/email.svg' alt='Email Icon'/></a></li>
+                <li><a href='https://slack.grails.org'><img src='https://grails.apache.org/images/slack.svg' alt='Slack Icon'/></a></li>
+                <li><a href='https://www.youtube.com/@GrailsFramework'><img src='https://grails.apache.org/images/youtube.svg' alt='Youtube Icon'/></a></li>
+                <li><a href='https://bsky.app/profile/grails.apache.org'><img src='https://grails.apache.org/images/bsky.svg' alt='Bluesky Icon'/></a></li>
+                <li><a rel="me" href="https://fosstodon.org/@grails"><img src='https://grails.apache.org/images/mastodont.svg' alt='Mastodon Icon'/></a></li>
+                <li><a href='https://www.linkedin.com/showcase/official-grails/'><img src='https://grails.apache.org/images/linkedin.svg' alt='LinkedIn Icon'/></a></li>
+                <li><a href='https://github.com/apache/grails-core'><img src='https://grails.apache.org/images/github.svg' alt='GitHub Icon'/></a></li>
+                <li><a href='https://twitter.com/grailsframework'><img src='https://grails.apache.org/images/x-twitter.svg' alt='Twitter Icon'/></a></li>
+            </ul>
+        </nav>
+    </div>
+    <div class='footer-bottom'>
+        <p>&copy; 2005-2026 the Apache Grails project</p>
+        <p>Grails is Open Source:
+            <a href='https://www.apache.org/licenses/'>License</a>,
+            <a href='https://privacy.apache.org/policies/privacy-policy-public.html'>Privacy Policy</a>,
+            <a href='https://www.apache.org/foundation/sponsorship'>Sponsor Apache</a>,
+            <a href='https://www.apache.org/events/current-event'>Events</a>,
+            <a href='https://www.apache.org/security'>Security</a>,
+            <a href='https://www.apache.org/foundation/thanks.html'>Thanks</a>,
+            <a href='https://grails.apache.org/support-schedule.html'>Support Schedule</a>
+        </p>
+    </div>
+</footer>
+
+</body>
+</html>
