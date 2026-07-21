@@ -28180,6 +28180,77 @@ implementation <span class="string"><span class="delimiter">&quot;</span><span c
 <p>For more details on writing and using declarative clients, consult the <a href="https://docs.micronaut.io/latest/guide/index.html#clientAnnotation">Http Client section</a> of the <a href="https://docs.micronaut.io/latest/guide/index.html">Micronaut user guide</a>.</p>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_spring_http_interface_client">Spring HTTP Interface Client</h4>
+<div class="paragraph">
+<p>Spring Framework 7 can create an HTTP client from an interface annotated with <code>@HttpExchange</code> and <code>@GetExchange</code>. This is a Spring API, not a Grails DSL or a controller contract.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="java"><span class="keyword">import</span> <span class="include">org.springframework.web.bind.annotation.PathVariable</span>;
+<span class="keyword">import</span> <span class="include">org.springframework.web.service.annotation.GetExchange</span>;
+<span class="keyword">import</span> <span class="include">org.springframework.web.service.annotation.HttpExchange</span>;
+
+<span class="annotation">@HttpExchange</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">/books</span><span class="delimiter">&quot;</span></span>)
+<span class="directive">public</span> <span class="type">interface</span> <span class="class">BookClient</span> {
+
+    <span class="annotation">@GetExchange</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">/{id}</span><span class="delimiter">&quot;</span></span>)
+    <span class="predefined-type">Book</span> findById(<span class="annotation">@PathVariable</span> <span class="predefined-type">Long</span> id);
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>For a synchronous client, create a proxy with <code>RestClient</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="java"><span class="keyword">import</span> <span class="include">org.springframework.web.client.RestClient</span>;
+<span class="keyword">import</span> <span class="include">org.springframework.web.client.support.RestClientAdapter</span>;
+<span class="keyword">import</span> <span class="include">org.springframework.web.service.invoker.HttpServiceProxyFactory</span>;
+
+RestClient restClient = RestClient.builder()
+        .baseUrl(<span class="string"><span class="delimiter">&quot;</span><span class="content">https://example.com</span><span class="delimiter">&quot;</span></span>)
+        .build();
+BookClient bookClient = HttpServiceProxyFactory
+        .builderFor(RestClientAdapter.create(restClient))
+        .build()
+        .createClient(BookClient.class);</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Spring 7 can also register the proxy as a bean. Group related interfaces and configure their shared <code>RestClient</code> builder:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="java"><span class="keyword">import</span> <span class="include">org.springframework.context.annotation.Bean</span>;
+<span class="keyword">import</span> <span class="include">org.springframework.context.annotation.Configuration</span>;
+<span class="keyword">import</span> <span class="include">org.springframework.web.client.support.RestClientHttpServiceGroupConfigurer</span>;
+<span class="keyword">import</span> <span class="include">org.springframework.web.service.registry.HttpServiceGroup.ClientType</span>;
+<span class="keyword">import</span> <span class="include">org.springframework.web.service.registry.ImportHttpServices</span>;
+
+<span class="annotation">@Configuration</span>
+<span class="annotation">@ImportHttpServices</span>(group = <span class="string"><span class="delimiter">&quot;</span><span class="content">books</span><span class="delimiter">&quot;</span></span>, types = BookClient.class,
+        clientType = ClientType.REST_CLIENT)
+<span class="type">class</span> <span class="class">BookClientConfiguration</span> {
+
+    <span class="annotation">@Bean</span>
+    RestClientHttpServiceGroupConfigurer bookClientConfigurer() {
+        <span class="keyword">return</span> groups -&gt; groups.filterByName(<span class="string"><span class="delimiter">&quot;</span><span class="content">books</span><span class="delimiter">&quot;</span></span>)
+                .forEachClient((group, builder) -&gt; builder.baseUrl(<span class="string"><span class="delimiter">&quot;</span><span class="content">https://example.com</span><span class="delimiter">&quot;</span></span>));
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The registered <code>BookClient</code> can then be constructor-injected into an application bean and called like any other interface. Synchronous methods can return a decoded body, <code>HttpHeaders</code>, or <code>ResponseEntity</code>.</p>
+</div>
+<div class="paragraph">
+<p>For <code>Mono</code> or <code>Flux</code> return values, add Spring WebFlux to the classpath and use <code>WebClient</code> instead. Register the group with <code>clientType = ClientType.WEB_CLIENT</code> and configure it through <code>WebClientHttpServiceGroupConfigurer</code>; reactive applications also need Reactor types on the classpath.</p>
+</div>
+<div class="paragraph">
+<p>HTTP interface parameters cannot be <code>null</code> unless the parameter is optional. By default, 4xx and 5xx responses raise an exception. Configure status handling on the underlying <code>RestClient</code> or <code>WebClient</code> when an API requires different behavior.</p>
+</div>
+</div>
 
 
 <h2 id="restProfile">10.7 The REST Profile</h2>
