@@ -1,0 +1,361 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+                      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+    <title>8 Redesign tables and migrate data</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <link rel="canonical" href="https://grails.apache.org/guides/grails-database-migration/8/guide/index.html"/>
+    <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
+    <link rel="stylesheet" href="../css/guide.css" type="text/css" media="screen, print" title="Style" charset="utf-8" />            
+    <link rel="stylesheet" href="../css/pdf.css" type="text/css" media="print" title="PDF" charset="utf-8"/>
+    <script type="text/javascript">
+function addJsClass() {
+    var classes = document.body.className.split(" ");
+    classes.push("js");
+    document.body.className = classes.join(" ");
+}
+    </script>
+</head>
+
+<body class="body" onload="addJsClass();">
+<div id="navigation">
+    <div class="navTitle">
+        
+        Grails Framework Guide 
+    </div>
+    <div class="navLinks">
+        <ul>
+            <li>
+                <div id="nav-summary" onmouseover="toggleNavSummary(false)" onmouseout="toggleNavSummary(true)">
+                    <a href="../guide/index.html" class="button">Table of contents</a>
+
+                    <div id="nav-summary-childs" style="display:none;">
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/introduction.html"><strong>1</strong><span>Introduction</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/requirements.html"><strong>2</strong><span>What you will need</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/gettingStarted.html"><strong>3</strong><span>Getting Started</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/pluginSetup.html"><strong>4</strong><span>Plugin setup</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/baseline.html"><strong>5</strong><span>Baseline the schema</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/makeColumnNullable.html"><strong>6</strong><span>Make a column nullable</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/addAttributes.html"><strong>7</strong><span>Add address columns</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/redesignTables.html"><strong>8</strong><span>Redesign tables and migrate data</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/releaseRunbook.html"><strong>9</strong><span>Release runbook</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/designedRollback.html"><strong>10</strong><span>Designed rollback</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/legacyOnboarding.html"><strong>11</strong><span>Existing database onboarding</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/changelogDiscipline.html"><strong>12</strong><span>Changelog discipline</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/testing.html"><strong>13</strong><span>Testing migrations</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/runningTheApp.html"><strong>14</strong><span>Running the application</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/summary.html"><strong>15</strong><span>Summary</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>16</strong><span>Do you need help with Grails?</span></a>
+                        </div>
+                        
+                    </div>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+
+</div>
+
+<table id="colset" border="0" cellpadding="0" cellspacing="0">
+    <tr>
+        <td id="col1">
+            <div id="main" class="corner-all">
+
+                
+                    <div class="toc-item prev-left"><a href="../guide/addAttributes.html">&lt;&lt; <strong>7</strong><span>Add address columns</span></a></div>
+                
+
+                
+                    <div class="toc-item next-right"><a href="../guide/releaseRunbook.html"><strong>9</strong><span>Release runbook</span> >></a></div>
+                
+
+
+                
+
+                
+
+<h1 id="redesignTables">8 Redesign tables and migrate data</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-database-migration/v8/guide/redesignTables.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Introduce an <code>Address</code> domain and migrate existing column data with custom SQL. Address ownership is mandatory (<code>person</code> is required), matching <code>person_id NOT NULL</code> in the database:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/domain/example/Address.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.persistence.Entity</span>
+
+<span class="annotation">@Entity</span>
+<span class="type">class</span> <span class="class">Address</span> {
+
+    Person person
+    <span class="predefined-type">String</span> streetName
+    <span class="predefined-type">String</span> city
+    <span class="predefined-type">String</span> zipCode
+
+    <span class="directive">static</span> belongsTo = [<span class="key">person</span>: Person]
+
+    <span class="directive">static</span> mapping = {
+        id <span class="key">generator</span>: <span class="string"><span class="delimiter">'</span><span class="content">identity</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="directive">static</span> constraints = {
+        person <span class="key">nullable</span>: <span class="predefined-constant">false</span>
+        streetName <span class="key">nullable</span>: <span class="predefined-constant">true</span>
+        city <span class="key">nullable</span>: <span class="predefined-constant">true</span>
+        zipCode <span class="key">nullable</span>: <span class="predefined-constant">true</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This redesign is an expand-migrate-contract sequence: create <code>address</code>, copy data, then drop the denormalized <code>person</code> columns. Guard the destructive steps with <code>preConditions</code>, and supply explicit <code>rollback {}</code> blocks so <code>dbm-rollback</code> can restore columns and data:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/migrations/create-address-table.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">databaseChangeLog = {
+
+    changeSet(<span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">guide (generated)</span><span class="delimiter">'</span></span>, <span class="key">id</span>: <span class="string"><span class="delimiter">'</span><span class="content">create-address-table-1</span><span class="delimiter">'</span></span>) {
+        preConditions(<span class="key">onFail</span>: <span class="string"><span class="delimiter">'</span><span class="content">HALT</span><span class="delimiter">'</span></span>) {
+            tableExists(<span class="key">tableName</span>: <span class="string"><span class="delimiter">'</span><span class="content">person</span><span class="delimiter">'</span></span>)
+            not {
+                tableExists(<span class="key">tableName</span>: <span class="string"><span class="delimiter">'</span><span class="content">address</span><span class="delimiter">'</span></span>)
+            }
+        }
+        createTable(<span class="key">tableName</span>: <span class="string"><span class="delimiter">'</span><span class="content">address</span><span class="delimiter">'</span></span>) {
+            column(<span class="key">autoIncrement</span>: <span class="predefined-constant">true</span>, <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">id</span><span class="delimiter">'</span></span>, <span class="key">type</span>: <span class="string"><span class="delimiter">'</span><span class="content">BIGINT</span><span class="delimiter">'</span></span>) {
+                constraints(<span class="key">nullable</span>: <span class="predefined-constant">false</span>, <span class="key">primaryKey</span>: <span class="predefined-constant">true</span>, <span class="key">primaryKeyName</span>: <span class="string"><span class="delimiter">'</span><span class="content">addressPK</span><span class="delimiter">'</span></span>)
+            }
+            column(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">version</span><span class="delimiter">'</span></span>, <span class="key">type</span>: <span class="string"><span class="delimiter">'</span><span class="content">BIGINT</span><span class="delimiter">'</span></span>) {
+                constraints(<span class="key">nullable</span>: <span class="predefined-constant">false</span>)
+            }
+            column(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">person_id</span><span class="delimiter">'</span></span>, <span class="key">type</span>: <span class="string"><span class="delimiter">'</span><span class="content">BIGINT</span><span class="delimiter">'</span></span>) {
+                constraints(<span class="key">nullable</span>: <span class="predefined-constant">false</span>)
+            }
+            column(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">street_name</span><span class="delimiter">'</span></span>, <span class="key">type</span>: <span class="string"><span class="delimiter">'</span><span class="content">VARCHAR(255)</span><span class="delimiter">'</span></span>)
+            column(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">city</span><span class="delimiter">'</span></span>, <span class="key">type</span>: <span class="string"><span class="delimiter">'</span><span class="content">VARCHAR(255)</span><span class="delimiter">'</span></span>)
+            column(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">zip_code</span><span class="delimiter">'</span></span>, <span class="key">type</span>: <span class="string"><span class="delimiter">'</span><span class="content">VARCHAR(255)</span><span class="delimiter">'</span></span>)
+        }
+    }
+
+    changeSet(<span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">guide (generated)</span><span class="delimiter">'</span></span>, <span class="key">id</span>: <span class="string"><span class="delimiter">'</span><span class="content">create-address-fk-1</span><span class="delimiter">'</span></span>) {
+        preConditions(<span class="key">onFail</span>: <span class="string"><span class="delimiter">'</span><span class="content">HALT</span><span class="delimiter">'</span></span>) {
+            tableExists(<span class="key">tableName</span>: <span class="string"><span class="delimiter">'</span><span class="content">address</span><span class="delimiter">'</span></span>)
+            tableExists(<span class="key">tableName</span>: <span class="string"><span class="delimiter">'</span><span class="content">person</span><span class="delimiter">'</span></span>)
+        }
+        addForeignKeyConstraint(
+            <span class="key">baseColumnNames</span>: <span class="string"><span class="delimiter">'</span><span class="content">person_id</span><span class="delimiter">'</span></span>,
+            <span class="key">baseTableName</span>: <span class="string"><span class="delimiter">'</span><span class="content">address</span><span class="delimiter">'</span></span>,
+            <span class="key">constraintName</span>: <span class="string"><span class="delimiter">'</span><span class="content">fk_address_person</span><span class="delimiter">'</span></span>,
+            <span class="key">referencedColumnNames</span>: <span class="string"><span class="delimiter">'</span><span class="content">id</span><span class="delimiter">'</span></span>,
+            <span class="key">referencedTableName</span>: <span class="string"><span class="delimiter">'</span><span class="content">person</span><span class="delimiter">'</span></span>
+        )
+    }
+
+    changeSet(<span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">guide (generated)</span><span class="delimiter">'</span></span>, <span class="key">id</span>: <span class="string"><span class="delimiter">'</span><span class="content">migrate-address-data-1</span><span class="delimiter">'</span></span>) {
+        preConditions(<span class="key">onFail</span>: <span class="string"><span class="delimiter">'</span><span class="content">HALT</span><span class="delimiter">'</span></span>) {
+            tableExists(<span class="key">tableName</span>: <span class="string"><span class="delimiter">'</span><span class="content">address</span><span class="delimiter">'</span></span>)
+            columnExists(<span class="key">tableName</span>: <span class="string"><span class="delimiter">'</span><span class="content">person</span><span class="delimiter">'</span></span>, <span class="key">columnName</span>: <span class="string"><span class="delimiter">'</span><span class="content">street_name</span><span class="delimiter">'</span></span>)
+            columnExists(<span class="key">tableName</span>: <span class="string"><span class="delimiter">'</span><span class="content">person</span><span class="delimiter">'</span></span>, <span class="key">columnName</span>: <span class="string"><span class="delimiter">'</span><span class="content">city</span><span class="delimiter">'</span></span>)
+            columnExists(<span class="key">tableName</span>: <span class="string"><span class="delimiter">'</span><span class="content">person</span><span class="delimiter">'</span></span>, <span class="key">columnName</span>: <span class="string"><span class="delimiter">'</span><span class="content">zip_code</span><span class="delimiter">'</span></span>)
+        }
+        sql(<span class="string"><span class="delimiter">'''</span><span class="content">insert into address (version, person_id, street_name, city, zip_code)
+              select 0, id, street_name, city, zip_code from person
+              where street_name is not null or city is not null or zip_code is not null</span><span class="delimiter">'''</span></span>)
+        rollback {
+            sql(<span class="string"><span class="delimiter">'</span><span class="content">delete from address</span><span class="delimiter">'</span></span>)
+        }
+    }
+
+    changeSet(<span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">guide (generated)</span><span class="delimiter">'</span></span>, <span class="key">id</span>: <span class="string"><span class="delimiter">'</span><span class="content">drop-person-city-1</span><span class="delimiter">'</span></span>) {
+        preConditions(<span class="key">onFail</span>: <span class="string"><span class="delimiter">'</span><span class="content">HALT</span><span class="delimiter">'</span></span>) {
+            tableExists(<span class="key">tableName</span>: <span class="string"><span class="delimiter">'</span><span class="content">address</span><span class="delimiter">'</span></span>)
+            columnExists(<span class="key">tableName</span>: <span class="string"><span class="delimiter">'</span><span class="content">person</span><span class="delimiter">'</span></span>, <span class="key">columnName</span>: <span class="string"><span class="delimiter">'</span><span class="content">city</span><span class="delimiter">'</span></span>)
+        }
+        dropColumn(<span class="key">columnName</span>: <span class="string"><span class="delimiter">'</span><span class="content">city</span><span class="delimiter">'</span></span>, <span class="key">tableName</span>: <span class="string"><span class="delimiter">'</span><span class="content">person</span><span class="delimiter">'</span></span>)
+        rollback {
+            addColumn(<span class="key">tableName</span>: <span class="string"><span class="delimiter">'</span><span class="content">person</span><span class="delimiter">'</span></span>) {
+                column(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">city</span><span class="delimiter">'</span></span>, <span class="key">type</span>: <span class="string"><span class="delimiter">'</span><span class="content">VARCHAR(255)</span><span class="delimiter">'</span></span>)
+            }
+            sql(<span class="string"><span class="delimiter">'''</span><span class="content">update person p set city = a.city from address a where a.person_id = p.id</span><span class="delimiter">'''</span></span>)
+        }
+    }
+
+    changeSet(<span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">guide (generated)</span><span class="delimiter">'</span></span>, <span class="key">id</span>: <span class="string"><span class="delimiter">'</span><span class="content">drop-person-street-1</span><span class="delimiter">'</span></span>) {
+        preConditions(<span class="key">onFail</span>: <span class="string"><span class="delimiter">'</span><span class="content">HALT</span><span class="delimiter">'</span></span>) {
+            tableExists(<span class="key">tableName</span>: <span class="string"><span class="delimiter">'</span><span class="content">address</span><span class="delimiter">'</span></span>)
+            columnExists(<span class="key">tableName</span>: <span class="string"><span class="delimiter">'</span><span class="content">person</span><span class="delimiter">'</span></span>, <span class="key">columnName</span>: <span class="string"><span class="delimiter">'</span><span class="content">street_name</span><span class="delimiter">'</span></span>)
+        }
+        dropColumn(<span class="key">columnName</span>: <span class="string"><span class="delimiter">'</span><span class="content">street_name</span><span class="delimiter">'</span></span>, <span class="key">tableName</span>: <span class="string"><span class="delimiter">'</span><span class="content">person</span><span class="delimiter">'</span></span>)
+        rollback {
+            addColumn(<span class="key">tableName</span>: <span class="string"><span class="delimiter">'</span><span class="content">person</span><span class="delimiter">'</span></span>) {
+                column(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">street_name</span><span class="delimiter">'</span></span>, <span class="key">type</span>: <span class="string"><span class="delimiter">'</span><span class="content">VARCHAR(255)</span><span class="delimiter">'</span></span>)
+            }
+            sql(<span class="string"><span class="delimiter">'''</span><span class="content">update person p set street_name = a.street_name from address a where a.person_id = p.id</span><span class="delimiter">'''</span></span>)
+        }
+    }
+
+    changeSet(<span class="key">author</span>: <span class="string"><span class="delimiter">'</span><span class="content">guide (generated)</span><span class="delimiter">'</span></span>, <span class="key">id</span>: <span class="string"><span class="delimiter">'</span><span class="content">drop-person-zip-1</span><span class="delimiter">'</span></span>) {
+        preConditions(<span class="key">onFail</span>: <span class="string"><span class="delimiter">'</span><span class="content">HALT</span><span class="delimiter">'</span></span>) {
+            tableExists(<span class="key">tableName</span>: <span class="string"><span class="delimiter">'</span><span class="content">address</span><span class="delimiter">'</span></span>)
+            columnExists(<span class="key">tableName</span>: <span class="string"><span class="delimiter">'</span><span class="content">person</span><span class="delimiter">'</span></span>, <span class="key">columnName</span>: <span class="string"><span class="delimiter">'</span><span class="content">zip_code</span><span class="delimiter">'</span></span>)
+        }
+        dropColumn(<span class="key">columnName</span>: <span class="string"><span class="delimiter">'</span><span class="content">zip_code</span><span class="delimiter">'</span></span>, <span class="key">tableName</span>: <span class="string"><span class="delimiter">'</span><span class="content">person</span><span class="delimiter">'</span></span>)
+        rollback {
+            addColumn(<span class="key">tableName</span>: <span class="string"><span class="delimiter">'</span><span class="content">person</span><span class="delimiter">'</span></span>) {
+                column(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">zip_code</span><span class="delimiter">'</span></span>, <span class="key">type</span>: <span class="string"><span class="delimiter">'</span><span class="content">VARCHAR(255)</span><span class="delimiter">'</span></span>)
+            }
+            sql(<span class="string"><span class="delimiter">'''</span><span class="content">update person p set zip_code = a.zip_code from address a where a.person_id = p.id</span><span class="delimiter">'''</span></span>)
+        }
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Include the file in <code>changelog.groovy</code> and apply:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">./grailsw dbm-update</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If <code>./grailsw</code> is unavailable, use <code>./gradlew runCommand "-Pargs=dbm-update"</code>.</p>
+</div>
+<div class="paragraph">
+<p>Expose persisted data through a read-only REST endpoint:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/controllers/example/UrlMappings.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="type">class</span> <span class="class">UrlMappings</span> {
+
+    <span class="directive">static</span> mappings = {
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/</span><span class="inline"><span class="inline-delimiter">$</span>controller</span><span class="content">/</span><span class="inline"><span class="inline-delimiter">$</span>action</span><span class="content">?/</span><span class="inline"><span class="inline-delimiter">$</span>id</span><span class="content">?(.</span><span class="inline"><span class="inline-delimiter">$</span>format</span><span class="content">)?</span><span class="delimiter">&quot;</span></span>{
+            constraints {
+            }
+        }
+
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/api/persons</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">person</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">index</span><span class="delimiter">'</span></span>, <span class="key">method</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>)
+
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">application</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">index</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">500</span><span class="delimiter">&quot;</span></span>(<span class="key">view</span>: <span class="string"><span class="delimiter">'</span><span class="content">/error</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">404</span><span class="delimiter">&quot;</span></span>(<span class="key">view</span>: <span class="string"><span class="delimiter">'</span><span class="content">/notFound</span><span class="delimiter">'</span></span>)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/controllers/example/PersonController.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="type">class</span> <span class="class">PersonController</span> {
+
+    <span class="directive">static</span> responseFormats = [<span class="string"><span class="delimiter">'</span><span class="content">json</span><span class="delimiter">'</span></span>]
+    <span class="directive">static</span> allowedMethods = [<span class="key">index</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>]
+
+    <span class="keyword">def</span> <span class="function">index</span>(<span class="predefined-type">Integer</span> max) {
+        params.max = <span class="predefined-type">Math</span>.min(max ?: <span class="integer">10</span>, <span class="integer">100</span>)
+        respond Person.list(params), <span class="key">model</span>: [<span class="key">personCount</span>: Person.count()]
+    }
+}</code></pre>
+</div>
+</div>
+
+
+                <div style="clear:both;margin-top:15px;"></div>
+                
+                    <div class="toc-item prev-left"><a href="../guide/addAttributes.html">&lt;&lt; <strong>7</strong><span>Add address columns</span></a></div>
+                
+                    <div class="toc-item next-right"><a href="../guide/releaseRunbook.html"><strong>9</strong><span>Release runbook</span> >></a></div>
+                
+                <div style="clear:both"></div>
+            </div>
+        </td>
+        <td id="col2">
+            <div class="local clearfix">
+                <div class="local-title" style="text-align: right"><a href="https://travis-ci.org/grails-guides/grails-database-migration"><img src="https://travis-ci.org/grails-guides/grails-database-migration.svg?branch=master" /></a></div>            
+                 <div class="local-title">
+                    <a href="https://github.com/grails-guides/grails-database-migration">
+                    <svg height="35" class="octicon octicon-mark-github" viewBox="0 0 16 16" version="1.1" width="35" aria-hidden="true"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a> &nbsp;&nbsp;Get the Code
+                </div>
+                <div class="menu">
+                    <div class="input-group">                        
+                        <button href="#" onclick="document.getElementById('github-url').value='git@github.com:grails-guides/grails-database-migration.git'" class="codeButton">SSH</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-database-migration.git'" class="codeButton">HTTPS</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-database-migration'" class="codeButton">Subversion</button>
+                    </div>
+       
+                    <div class="input-group">                    
+                        <!-- Target -->
+                        <input id="github-url" value="git@github.com:grails-guides/grails-database-migration.git" type="text" />
+
+                        <!-- Trigger -->
+                        <button class="clipbtn" type="button" data-clipboard-target="#github-url">
+
+                            <img width="13" src="../img/clippy.svg" alt="Copy to clipboard">
+                        </button>       
+
+                    </div>
+                    <div class="input-group">
+                      <a href="https://github.com/grails-guides/grails-database-migration/archive/master.zip" class="downloadButton">Download ZIP</a>
+                    </div>
+                </div>
+            </div>
+        </td>
+    </tr>
+</table>
+
+<div id="footer">
+    
+    
+</div>
+
+<script type="text/javascript" src="../js/docs.js"></script>
+
+</body>
+</html>
