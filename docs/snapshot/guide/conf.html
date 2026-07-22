@@ -787,6 +787,83 @@ The filename <code>logback.xml</code> still works but <code>logback-spring.xml</
 <div class="paragraph">
 <p>More information can be found in the official <a href="https://logback.qos.ch/documentation.html">Logback documentation</a>.</p>
 </div>
+<div class="sect2">
+<h3 id="_structured_logging">Structured Logging</h3>
+<div class="paragraph">
+<p>Grails does not enable structured logging. Existing Logback configuration and plain-text output remain unchanged
+unless an application explicitly selects a Spring Boot structured format. Spring Boot 4.1 provides the JSON format
+IDs <code>ecs</code> (Elastic Common Schema), <code>gelf</code> (Graylog Extended Log Format), and <code>logstash</code> for console and file output.
+For the complete reference, see the <a href="https://docs.spring.io/spring-boot/reference/features/logging.html#features.logging.structured">Spring Boot structured logging documentation</a>.</p>
+</div>
+<div class="paragraph">
+<p>Configure the console and file outputs independently in <code>grails-app/conf/application.yml</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">logging</span>:
+    <span class="key">structured</span>:
+        <span class="key">format</span>:
+            <span class="key">console</span>: <span class="string"><span class="content">ecs</span></span>
+            <span class="key">file</span>: <span class="string"><span class="content">logstash</span></span>
+        <span class="key">json</span>:
+            <span class="key">exclude</span>: <span class="string"><span class="content">process.pid</span></span>
+            <span class="key">rename</span>:
+                <span class="key">log.level</span>: <span class="string"><span class="content">severity</span></span>
+            <span class="key">add</span>:
+                <span class="key">service.team</span>: <span class="string"><span class="content">web</span></span>
+            <span class="key">stacktrace</span>:
+                <span class="key">root</span>: <span class="string"><span class="content">first</span></span>
+                <span class="key">max-length</span>: <span class="string"><span class="content">1024</span></span>
+                <span class="key">max-throwable-depth</span>: <span class="string"><span class="content">20</span></span>
+                <span class="key">include-common-frames</span>: <span class="string"><span class="content">true</span></span>
+                <span class="key">include-hashes</span>: <span class="string"><span class="content">true</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>logging.structured.json.include</code> limits output to selected paths. Use <code>exclude</code>, <code>rename</code>, and <code>add</code> to remove,
+rename, or add JSON members. The <code>stacktrace</code> settings control root-cause order, length, throwable depth, common
+frames, and hashes. Use <code>logging.structured.format.console</code> and <code>logging.structured.format.file</code> only with Spring
+Boot&#8217;s default Logback configuration, or update a custom <code>logback-spring.xml</code> to use Spring Boot&#8217;s structured encoder.</p>
+</div>
+<div class="paragraph">
+<p>Structured formats include MDC entries and SLF4J fluent key-value pairs. For example, application code can add both:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">org.slf4j.LoggerFactory</span>
+<span class="keyword">import</span> <span class="include">org.slf4j.MDC</span>
+
+<span class="type">class</span> <span class="class">AuditService</span> {
+    <span class="directive">private</span> <span class="directive">static</span> <span class="directive">final</span> log = LoggerFactory.getLogger(AuditService)
+
+    <span class="type">void</span> record(<span class="predefined-type">String</span> orderId) {
+        MDC.put(<span class="string"><span class="delimiter">'</span><span class="content">tenantId</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">acme</span><span class="delimiter">'</span></span>)
+        <span class="keyword">try</span> {
+            log.atInfo().addKeyValue(<span class="string"><span class="delimiter">'</span><span class="content">order.id</span><span class="delimiter">'</span></span>, orderId).log(<span class="string"><span class="delimiter">'</span><span class="content">Order accepted</span><span class="delimiter">'</span></span>)
+        } <span class="keyword">finally</span> {
+            MDC.remove(<span class="string"><span class="delimiter">'</span><span class="content">tenantId</span><span class="delimiter">'</span></span>)
+        }
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Structured logging does not enable tracing. When Micrometer tracing is configured, tracing owns the <code>traceId</code> and
+<code>spanId</code> MDC context that structured formats include. To copy selected baggage fields to MDC, configure
+<code>management.tracing.baggage.correlation.fields</code>, for example:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">management</span>:
+    <span class="key">tracing</span>:
+        <span class="key">baggage</span>:
+            <span class="key">correlation</span>:
+                <span class="key">fields</span>: <span class="string"><span class="content">tenantId</span></span></code></pre>
+</div>
+</div>
+</div>
 
 
 <h2 id="loggerName">4.1.4.1 Logger Names</h2>
