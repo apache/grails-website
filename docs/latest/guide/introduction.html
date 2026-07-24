@@ -2,7 +2,7 @@
                       "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
 <head>
-    <title>1 Introduction 8.0.0-M3</title>
+    <title>1 Introduction 8.0.0-M4</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
     <link rel="stylesheet" href="../css/pdf.css" type="text/css" media="print" title="PDF" charset="utf-8"/>
@@ -176,7 +176,7 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
                 <div class="project">
                     <h1>1 Introduction</h1>
 
-                    <p><strong>Version:</strong> 8.0.0-M3</p>
+                    <p><strong>Version:</strong> 8.0.0-M4</p>
                 </div>
 
                 
@@ -380,6 +380,65 @@ See the <a href="upgrading.html#upgrading80x">upgrade guide</a> for details.</p>
 </div>
 </div>
 <div class="sect3">
+<h4 id="_cli_commands_move_to_companion_cli_artifacts">CLI Commands Move to Companion <code>-cli</code> Artifacts</h4>
+<div class="paragraph">
+<p>Grails commands (<code>ApplicationCommand</code> implementations such as the <code>dbm-<strong></code> database-migration
+commands, the scaffolding <code>generate-</strong></code> commands, <code>url-mappings-report</code>, and <code>schema-export</code>) no
+longer ship inside the runtime plugin artifacts.
+Each command-bearing module now publishes a companion artifact under its own Maven coordinate with
+a <code>-cli</code> suffix — for example <code>org.apache.grails:grails-core-cli</code> and
+<code>org.apache.grails:grails-data-hibernate7-dbmigration-cli</code>.</p>
+</div>
+<div class="paragraph">
+<p>The command contract itself moved from <code>grails.dev.commands.<strong></code> to <code>org.apache.grails.core.cli.</strong></code>
+in the new <code>grails-core-cli</code> artifact.
+Applications consume cli artifacts through the new <code>grailsCli</code> Gradle configuration, which is
+compile-visible for <code>grails-app/commands</code> sources and on the command-runner classpath, but never on
+<code>runtimeClasspath</code> — commands and their CLI-only dependencies (such as <code>grails-shell-cli</code>) are
+excluded from <code>bootRun</code>, <code>bootJar</code>, and <code>bootWar</code> entirely.
+The Grails Gradle plugin provisions <code>grailsCli</code> automatically: it adds <code>grails-core-cli</code> and
+<code>grails-console</code>, and discovers every companion cli artifact advertised by the application&#8217;s
+dependency graph — a command-bearing plugin advertises its companion through the
+<code>Grails-Cli-Artifact</code> manifest attribute of its runtime jar, and its commands are registered in a
+<code>META-INF/grails-cli.factories</code> file inside the companion jar. Declaring a plugin is therefore all
+that is needed; its commands (including the per-command Gradle tasks such as <code>dbmUpdate</code>) follow
+automatically, even when the plugin is only a transitive dependency:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
+    <span class="comment">// the dbm-* commands are discovered automatically: the plugin jar advertises</span>
+    <span class="comment">// org.apache.grails:grails-data-hibernate7-dbmigration-cli, which is added to grailsCli</span>
+    implementation <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-data-hibernate7-dbmigration</span><span class="delimiter">'</span></span>
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The auto-provisioning can be disabled with <code>grails { cliAutoProvision = false }</code>, in which case
+<code>grailsCli</code> dependencies are declared explicitly.</p>
+</div>
+<div class="paragraph">
+<p>Plugin authors get the whole publishing side from the new
+<code>org.apache.grails.gradle.grails-plugin-cli</code> Gradle plugin: it creates the <code>cli</code> source set as a
+feature variant, wires the command contract onto its compile classpath, advertises the companion
+from the runtime jar, and publishes it (via the Grails publish plugin) under the plugin&#8217;s
+coordinate with the <code>-cli</code> suffix — the framework&#8217;s own command-bearing modules are built with the
+same plugin.</p>
+</div>
+<div class="paragraph">
+<p>This removes CLI-only dependencies — and their side effects, such as the WAR-deployment failure
+caused by a CLI Spring Boot initializer on the runtime classpath — from packaged applications.</p>
+</div>
+<div class="paragraph">
+<p>The split does not hold up application upgrades on plugin re-releases: a plugin that ships no
+commands is unaffected, and a command-bearing plugin that has not yet been rebuilt for Grails 8
+keeps its runtime functionality — only its commands are unavailable until it publishes a companion
+<code>-cli</code> artifact. See the <a href="upgrading.html#upgrading80x">upgrade guide</a> for the migration steps and the
+full upgrade-impact breakdown.</p>
+</div>
+</div>
+<div class="sect3">
 <h4 id="_gsp_tag_library_improvements">GSP Tag Library Improvements</h4>
 <div class="paragraph">
 <p>Grails 8 continues the move toward method-based TagLib handlers while preserving compatibility with existing closure-based tags.
@@ -449,7 +508,7 @@ Use <code>namespace=""</code> in GSP markup, or <code>namespace: null</code> in 
 </div>
 </div>
 <div class="paragraph">
-<p>All three options are disabled by default and independent, or <code>compileStatic { all = true }</code> can be used as a shortcut to enable all of them. Any class that declares its own <code>@CompileDynamic</code> (or <code>@GrailsCompileStatic</code>/<code>@CompileStatic</code>/<code>@GrailsTypeChecked</code>/<code>@TypeChecked</code>) annotation keeps that setting, so the opt-in never overrides an explicit per-class choice. Tag libraries that still declare tags as closure fields (the deprecated form) are skipped automatically by the <code>tagLibs</code> opt-in — left dynamically compiled with a build warning — so define tags as methods to opt them in. See the <a href="#staticTypeCheckingAndCompilation/grailsCompileStatic">GrailsCompileStatic</a> section for details.</p>
+<p>All three options are disabled by default and independent, or <code>compileStatic { all = true }</code> can be used as a shortcut to enable all of them. Any class that declares its own <code>@CompileDynamic</code> (or <code>@GrailsCompileStatic</code>/<code>@CompileStatic</code>/<code>@GrailsTypeChecked</code>/<code>@TypeChecked</code>) annotation keeps that setting, so the opt-in never overrides an explicit per-class choice. Tag libraries that still declare tags as closure fields (the deprecated form) are skipped automatically by the <code>tagLibs</code> opt-in and left dynamically compiled with a build warning, so define tags as methods to opt them in. See the <a href="#staticTypeCheckingAndCompilation/grailsCompileStatic">GrailsCompileStatic</a> section for details.</p>
 </div>
 </div>
 <div class="sect3">
@@ -540,7 +599,7 @@ guide for details.</p>
 
 
 <div class="paragraph">
-<p>Grails 8.0.0-M3 ships with the following foundational dependency versions:</p>
+<p>Grails 8.0.0-M4 ships with the following foundational dependency versions:</p>
 </div>
 <div class="ulist">
 <ul>
