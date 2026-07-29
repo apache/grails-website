@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Sending Email from a Grails 8 Application (and Testing It) | Grails Guides | Apache Grails</title>
+    <meta name='description' content='Sending Email from a Grails 8 Application (and Testing It). Send mail over SMTP or through SendGrid / AWS SES, externalize configuration, and verify send interactions with Spock Spring integration tests, without live email.'/>
+    <link rel='canonical' href='https://grails.apache.org/guides/grails-email/8/guide/index.html'/>
+    <meta charset='UTF-8'/>
+<meta name='viewport' content='width=device-width, initial-scale=1'/>
+<link rel='icon' href='https://grails.apache.org/images/favicon.ico'/>
+<link rel='mask-icon' href='https://grails.apache.org/images/grails-pinned-icon.svg' color='#feb672'/>
+<link rel='alternate' type='application/rss+xml' title='RSS' href='https://grails.apache.org/rss.xml'/>
+<link rel='stylesheet' href='https://grails.apache.org/stylesheets/screen.css'/>
+<link rel='stylesheet' href='https://grails.apache.org/stylesheets/plugin.css'/>
+<script src='https://grails.apache.org/javascripts/navigation.js'></script>
+
+<!-- Matomo -->
+<script>
+  var _paq = window._paq || [];
+  window._paq = _paq;
+  _paq.push(['setDoNotTrack', true]);
+  _paq.push(['disableCookies']);
+  _paq.push(['trackPageView']);
+  _paq.push(['enableLinkTracking']);
+  (function() {
+    var u = 'https://analytics.apache.org/';
+    _paq.push(['setTrackerUrl', u + 'matomo.php']);
+    _paq.push(['setSiteId', '79']);
+    var d = document, g = d.createElement('script'), s = d.getElementsByTagName('script')[0];
+    g.async = true; g.src = u + 'matomo.js'; s.parentNode.insertBefore(g, s);
+  })();
+</script>
+<!-- End Matomo Code -->
+
+<script
+    async
+    src="https://widget.kapa.ai/kapa-widget.bundle.js"
+    data-website-id="d804a9f2-51a2-414c-97f7-12f2a1ba4609"
+    data-project-name="Apache Grails"
+    data-project-color="#3F4346"
+    data-font-family="system-ui,-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,Segoe UI,sans-serif,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol;"
+    data-project-logo="https://grails.apache.org/images/grails.png"
+    data-modal-override-open-id="ask-ai-input"
+    data-modal-override-open-class="search-input"
+    data-user-analytics-fingerprint-enabled="true"
+    data-modal-title="Apache Grails AI Assistant"
+    data-modal-example-questions-title="Try asking me..."
+    data-modal-example-questions="How does database migration work?,How does Spring Security work?"
+    data-button-text="Ask AI"
+    data-button-text-color="#feb672"
+    data-button-text-font-size="0"
+    data-button-bg-color="#3F4346"
+    data-button-height="44px"
+    data-button-width="44px"
+    data-button-image-height="24"
+    data-button-image-width="24"
+    data-button-padding="10px"
+    data-button-border-radius="50%"
+    data-button-position-bottom="12px"
+    data-button-position-right="12px"
+    data-launcher-button-text="Ask AI"
+    data-launcher-button-font-size="0"
+    data-launcher-button-background-color="#3F4346"
+    data-launcher-button-height="44px"
+    data-launcher-button-width="44px"
+    data-launcher-button-image-height="24"
+    data-launcher-button-image-width="24"
+    data-launcher-button-padding="10px"
+    data-launcher-button-border-radius="50%"
+    data-launcher-button-bottom="12px"
+    data-launcher-button-right="12px"
+    data-modal-header-bg-color="#FFFFFF"
+    data-modal-title-color="#255AA8"
+    data-consent-required="true"></script>
+
+    <link rel='stylesheet' href='../css/guide.css'/>
+    <script src='../js/clipboard.min.js'></script>
+</head>
+<body class='guide'>
+<header class='main-header'>
+    <div class='content'>
+        <a href='https://grails.apache.org/index.html'><img class='grails-logo' src='https://grails.apache.org/images/grails_logo.svg' alt='Grails Logo'/></a>
+        <button type='button' id='show-navigation-link'
+            class='mobile align-center navigation-toggle'
+            aria-expanded='false'
+            aria-controls='top-menus'
+            onclick='toggleNavigation()'>Show Navigation</button>
+        <div id='top-menus'>
+            <nav class='secondary-menu' id='secondary-menu'>
+                <ul>
+                    <li><a href='https://grails.apache.org/casestudies/index.html'>Case Studies</a></li>
+                    <li><a href='https://grails.apache.org/blog/index.html'>Blog</a></li>
+                    <li><a href='https://grails.apache.org/learning.html'>Learning</a></li>
+                    <li><a href='https://grails.apache.org/community.html'>Community</a></li>
+                    <li><a href='https://grails.apache.org/search.html'>Search</a></li>
+                </ul>
+            </nav>
+            <nav class='main-menu' id='main-menu'>
+                <ul>
+                    <li><a href='https://grails.apache.org/documentation.html'>Documentation</a></li>
+                    <li><a href='https://grails.apache.org/download.html'>Download</a></li>
+                    <li><a href='https://grails.apache.org/plugins.html'>Plugins</a></li>
+                    <li><a href='https://grails.apache.org/guides'>Guides</a></li>
+                    <li><a href='https://grails.apache.org/faq.html'>FAQ</a></li>
+                    <li><a href='https://grails.apache.org/support.html'>Support</a></li>
+                    <li><a href='https://start.grails.org'>Forge App</a></li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</header>
+
+<div class='fullwidth'><article class="guide">
+    <aside>
+        <button type="button" class="btn btn-large" onclick="window.location.href=&quot;https://github.com/grails-guides/grails-email&quot;"><img height="15" src="../img/github_white.svg" alt="GitHub"/><span>&nbsp;Get the Code</span></button>
+        <ul class="githublinks">
+            <li><button type="button" class="btn btn-default codeButton" onclick="document.getElementById('github-url').value='git@github.com:grails-guides/grails-email.git'">SSH</button></li>
+            <li><button type="button" class="btn btn-default codeButton" onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-email.git'">HTTPS</button></li>
+        </ul>
+        <div class="input-group">
+            <input id="github-url" value="git@github.com:grails-guides/grails-email.git" type="text"/>
+            <button type="button" class="clippy btn btn-default" data-clipboard-target="#github-url">
+                <img width="13" src="../img/clippy.svg" alt="Copy to clipboard">
+            </button>
+        </div>
+        <script>var clipboard = new Clipboard('.clippy');</script>
+        <button type="button" class="btn btn-large" onclick="window.location.href=&quot;https://github.com/grails-guides/grails-email/archive/master.zip&quot;">Download ZIP</button>
+        
+        <div id="table-of-content">
+            <h3>Table of Contents</h3>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#introduction"><strong>1</strong><span>Introduction</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#requirements"><strong>2</strong><span>What you will need</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#gettingStarted"><strong>3</strong><span>Getting Started</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#emailContract"><strong>4</strong><span>Email contract</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#smtpMail"><strong>5</strong><span>SMTP with the Mail plugin</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#sendGridService"><strong>6</strong><span>SendGrid</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#awsSesService"><strong>7</strong><span>AWS SES</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#mailConfiguration"><strong>8</strong><span>Wire the provider</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#controller"><strong>9</strong><span>Controller</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#testing"><strong>10</strong><span>Testing without live email</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#summary"><strong>11</strong><span>Summary</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#helpWithGrails"><strong>12</strong><span>Do you need help with Grails?</span></a></div>
+            
+            <div style="clear:both"></div>
+        </div>
+        
+    </aside>
+    <header>
+        <h1>Sending Email from a Grails 8 Application (and Testing It)</h1>
+        <p>Send mail over SMTP or through SendGrid / AWS SES, externalize configuration, and verify send interactions with Spock Spring integration tests, without live email.</p>
+        <p><strong>Authors:</strong> Sergio del Amo, Sanjana</p>
+        <p><strong>Grails Version:</strong> 8</p>
+    </header>
+    
+
+<h1 id="introduction">1 Introduction</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-email/v8/guide/introduction.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Learn how to send mail from a Grails 8 application over SMTP (Grails Mail plugin) and through a provider (SendGrid / AWS SES), externalize configuration in <code>application.yml</code>, and verify send interactions with Spock Spring integration tests, without dispatching real email in CI.</p>
+</div>
+<div class="paragraph">
+<p>This guide parallels the HTTP client guide in shape: an external integration behind a mockable service boundary, with tests that assert the contract.</p>
+</div>
+<div class="paragraph">
+<p>This guide follows the standard Grails guides layout: work in the <code>initial/</code> project and compare your progress with <code>complete/</code>.</p>
+</div>
+
+
+<h1 id="requirements">2 What you will need</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-email/v8/guide/requirements.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="ulist">
+<ul>
+<li>
+<p>Approximately 45 minutes</p>
+</li>
+<li>
+<p>JDK 21 (Apache Grails 8 requires Java 21)</p>
+</li>
+<li>
+<p>A <a href="https://www.grails.org/">Grails</a> installation or the bundled Gradle wrapper in <code>initial/</code> and <code>complete/</code></p>
+</li>
+<li>
+<p>Optional: local SMTP catcher on port <strong>1025</strong> for manual <code>bootRun</code> verification (for example <a href="https://github.com/mailhog/MailHog">MailHog</a>)</p>
+</li>
+</ul>
+</div>
+
+
+<h1 id="gettingStarted">3 Getting Started</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-email/v8/guide/gettingStarted.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Clone the repository and verify tests pass:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">git clone -b grails8 https://github.com/grails-guides/grails-email.git
+cd grails-email/initial
+./gradlew test</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The <code>initial/</code> project is a Grails 8 REST API starter with no mail wiring yet.</p>
+</div>
+<div class="paragraph">
+<p>To skip ahead, <code>cd ../complete</code> and run the same commands; that tree contains the finished mail services, controller, and integration spec.</p>
+</div>
+<div class="paragraph">
+<p>Both <code>initial</code> and <code>complete</code> must pass in CI (see <code>.github/workflows/grails8.yml</code>).</p>
+</div>
+
+
+<h1 id="emailContract">4 Email contract</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-email/v8/guide/emailContract.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Define a small <code>Email</code> contract and a single <code>EmailService</code> boundary that every provider implements:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/main/groovy/example/Email.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">interface</span> Email {
+    <span class="predefined-type">String</span> getRecipient()
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; getCc()
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; getBcc()
+    <span class="predefined-type">String</span> getSubject()
+    <span class="predefined-type">String</span> getHtmlBody()
+    <span class="predefined-type">String</span> getTextBody()
+    <span class="predefined-type">String</span> getReplyTo()
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">src/main/groovy/example/EmailService.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">interface</span> EmailService {
+    <span class="type">void</span> send(Email email)
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Controllers and tests depend on <code>EmailService</code>, not on SMTP, SendGrid, or SES directly. Swap providers by changing Spring wiring and configuration.</p>
+</div>
+<div class="paragraph">
+<p>Add the mail dependencies in <code>build.gradle</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">    implementation <span class="string"><span class="delimiter">&quot;</span><span class="content">org.grails.plugins:grails-mail:5.0.3</span><span class="delimiter">&quot;</span></span>
+    implementation <span class="string"><span class="delimiter">&quot;</span><span class="content">com.sendgrid:sendgrid-java:4.9.3</span><span class="delimiter">&quot;</span></span>
+    implementation <span class="string"><span class="delimiter">&quot;</span><span class="content">software.amazon.awssdk:ses:2.29.45</span><span class="delimiter">&quot;</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Grails 8 uses <code>org.grails.plugins:grails-mail</code> 5.x from the Grails plugin repository, compatible with Apache Grails 8.</p>
+</div>
+
+
+<h1 id="smtpMail">5 SMTP with the Mail plugin</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-email/v8/guide/smtpMail.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>The default provider delegates to the Grails Mail plugin:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/services/example/SmtpEmailService.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.plugins.mail.MailService</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
+
+<span class="annotation">@Slf4j</span>
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">SmtpEmailService</span> <span class="directive">implements</span> EmailService {  <i class="conum" data-value="1"></i><b>(1)</b>
+
+    MailService mailService
+
+    <span class="annotation">@Override</span>
+    <span class="type">void</span> send(Email email) {
+        mailService.sendMail {
+            to email.recipient
+            subject email.subject
+            <span class="keyword">if</span> (email.textBody) {
+                text email.textBody
+            }
+            <span class="keyword">if</span> (email.htmlBody) {
+                html email.htmlBody
+            }
+            <span class="keyword">if</span> (email.replyTo) {
+                replyTo email.replyTo
+            }
+            <span class="keyword">if</span> (email.cc) {
+                cc email.cc <span class="keyword">as</span> <span class="predefined-type">String</span><span class="type">[]</span>
+            }
+            <span class="keyword">if</span> (email.bcc) {
+                bcc email.bcc <span class="keyword">as</span> <span class="predefined-type">String</span><span class="type">[]</span>
+            }
+        }
+        log.debug(<span class="string"><span class="delimiter">'</span><span class="content">SMTP message handed off to MailService for {}</span><span class="delimiter">'</span></span>, email.recipient)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Configure SMTP settings in <code>application.yml</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="comment">#tag::mailConfig[]</span>
+<span class="key">grails</span>:
+  <span class="key">mail</span>:
+    <span class="key">host</span>: <span class="string"><span class="content">${SMTP_HOST:localhost}</span></span>
+    <span class="key">port</span>: <span class="string"><span class="content">${SMTP_PORT:1025}</span></span>
+    <span class="key">username</span>: <span class="string"><span class="content">${SMTP_USERNAME:}</span></span>
+    <span class="key">password</span>: <span class="string"><span class="content">${SMTP_PASSWORD:}</span></span>
+    <span class="key">default</span>:
+      <span class="key">from</span>: <span class="string"><span class="content">${SMTP_FROM:no-reply@example.com}</span></span>
+    <span class="key">props</span>:
+      <span class="key">mail.smtp.auth</span>: <span class="string"><span class="content">${SMTP_AUTH:false}</span></span>
+      <span class="key">mail.smtp.starttls.enable</span>: <span class="string"><span class="content">${SMTP_STARTTLS:false}</span></span>
+<span class="comment">#end::mailConfig[]</span>
+<span class="comment">#tag::emailProvider[]</span>
+<span class="key">email</span>:
+  <span class="key">provider</span>: <span class="string"><span class="content">${EMAIL_PROVIDER:smtp}</span></span>
+<span class="comment">#end::emailProvider[]</span>
+<span class="comment">#tag::sendgrid[]</span>
+<span class="key">sendgrid</span>:
+  <span class="key">api</span>: <span class="string"><span class="content">${SENDGRID_APIKEY:}</span></span>
+  <span class="key">from</span>: <span class="string"><span class="content">${SENDGRID_FROM_EMAIL:}</span></span>
+<span class="comment">#end::sendgrid[]</span>
+<span class="comment">#tag::awsses[]</span>
+<span class="key">aws</span>:
+  <span class="key">ses</span>:
+    <span class="key">source</span>: <span class="string"><span class="content">${AWS_SOURCE:}</span></span>
+    <span class="key">region</span>: <span class="string"><span class="content">${AWS_REGION:}</span></span>
+<span class="comment">#end::awsses[]</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>For local development, point <code>SMTP_HOST</code> and <code>SMTP_PORT</code> at a mail catcher on <code>localhost:1025</code>.</p>
+</div>
+
+
+<h1 id="sendGridService">6 SendGrid</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-email/v8/guide/sendGridService.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>SendGrid implements the same <code>EmailService</code> contract:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/main/groovy/example/SendGridEmailService.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">com.sendgrid.Method</span>
+<span class="keyword">import</span> <span class="include">com.sendgrid.Request</span>
+<span class="keyword">import</span> <span class="include">com.sendgrid.Response</span>
+<span class="keyword">import</span> <span class="include">com.sendgrid.SendGrid</span>
+<span class="keyword">import</span> <span class="include">com.sendgrid.helpers.mail.Mail</span>
+<span class="keyword">import</span> <span class="include">com.sendgrid.helpers.mail.objects.Content</span>
+<span class="keyword">import</span> <span class="include">com.sendgrid.helpers.mail.objects.Email</span> <span class="keyword">as</span> <span class="class">SendGridEmail</span>
+<span class="keyword">import</span> <span class="include">com.sendgrid.helpers.mail.objects.Personalization</span>
+<span class="keyword">import</span> <span class="include">grails.config.Config</span>
+<span class="keyword">import</span> <span class="include">grails.core.support.GrailsConfigurationAware</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
+
+<span class="annotation">@Slf4j</span>
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">SendGridEmailService</span> <span class="directive">implements</span> EmailService, GrailsConfigurationAware {  <i class="conum" data-value="1"></i><b>(1)</b>
+
+    <span class="predefined-type">String</span> api
+    <span class="predefined-type">String</span> from
+
+    <span class="annotation">@Override</span>
+    <span class="type">void</span> setConfiguration(Config co) {
+        <span class="local-variable">this</span>.api = co.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">sendgrid.api</span><span class="delimiter">'</span></span>, <span class="predefined-type">String</span>)
+        <span class="keyword">if</span> (!<span class="local-variable">this</span>.api) {
+            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="exception">IllegalStateException</span>(<span class="string"><span class="delimiter">'</span><span class="content">sendgrid.api not set</span><span class="delimiter">'</span></span>)
+        }
+        <span class="local-variable">this</span>.from = co.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">sendgrid.from</span><span class="delimiter">'</span></span>, <span class="predefined-type">String</span>)
+        <span class="keyword">if</span> (!<span class="local-variable">this</span>.from) {
+            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="exception">IllegalStateException</span>(<span class="string"><span class="delimiter">'</span><span class="content">sendgrid.from not set</span><span class="delimiter">'</span></span>)
+        }
+    }
+
+    <span class="annotation">@Override</span>
+    <span class="type">void</span> send(Email email) {
+        Mail mail = buildEmail(email)
+        SendGrid sg = <span class="keyword">new</span> SendGrid(api)
+        Request request = <span class="keyword">new</span> Request()
+        <span class="keyword">try</span> {
+            request.with {
+                method = <span class="predefined-type">Method</span>.POST
+                endpoint = <span class="string"><span class="delimiter">'</span><span class="content">mail/send</span><span class="delimiter">'</span></span>
+                body = mail.build()
+            }
+            Response response = sg.api(request)
+            log.info(<span class="string"><span class="delimiter">'</span><span class="content">Status Code: {}</span><span class="delimiter">'</span></span>, <span class="predefined-type">String</span>.valueOf(response.statusCode))
+            log.debug(<span class="string"><span class="delimiter">'</span><span class="content">Body: {}</span><span class="delimiter">'</span></span>, response.body)
+            <span class="keyword">if</span> (response.statusCode &lt; <span class="integer">200</span> || response.statusCode &gt;= <span class="integer">300</span>) {
+                <span class="keyword">throw</span> <span class="keyword">new</span> <span class="exception">IllegalStateException</span>(
+                        <span class="string"><span class="delimiter">&quot;</span><span class="content">SendGrid returned status </span><span class="inline"><span class="inline-delimiter">${</span>response.statusCode<span class="inline-delimiter">}</span></span><span class="content">: </span><span class="inline"><span class="inline-delimiter">${</span>response.body<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>)
+            }
+        } <span class="keyword">catch</span> (<span class="exception">IOException</span> ex) {
+            log.error(ex.message, ex)
+            <span class="keyword">throw</span> ex
+        }
+    }
+
+    <span class="directive">private</span> Personalization buildPersonalization(Email email) {
+        Personalization personalization = <span class="keyword">new</span> Personalization()
+        personalization.subject = email.subject
+
+        SendGridEmail to = <span class="keyword">new</span> SendGridEmail(email.recipient)
+        personalization.addTo(to)
+
+        <span class="keyword">if</span> (email.cc) {
+            <span class="keyword">for</span> (<span class="predefined-type">String</span> cc : email.cc) {
+                personalization.addCc(<span class="keyword">new</span> SendGridEmail(cc))
+            }
+        }
+        <span class="keyword">if</span> (email.bcc) {
+            <span class="keyword">for</span> (<span class="predefined-type">String</span> bcc : email.bcc) {
+                personalization.addBcc(<span class="keyword">new</span> SendGridEmail(bcc))
+            }
+        }
+        personalization
+    }
+
+    <span class="directive">private</span> Mail buildEmail(Email email) {
+        Personalization personalization = buildPersonalization(email)
+        Mail mail = <span class="keyword">new</span> Mail()
+        SendGridEmail fromEmail = <span class="keyword">new</span> SendGridEmail(<span class="local-variable">this</span>.from)
+        mail.from = fromEmail
+        mail.addPersonalization(personalization)
+        <span class="keyword">if</span> (email.textBody) {
+            mail.addContent(<span class="keyword">new</span> Content(<span class="string"><span class="delimiter">'</span><span class="content">text/plain</span><span class="delimiter">'</span></span>, email.textBody))
+        }
+        <span class="keyword">if</span> (email.htmlBody) {
+            mail.addContent(<span class="keyword">new</span> Content(<span class="string"><span class="delimiter">'</span><span class="content">text/html</span><span class="delimiter">'</span></span>, email.htmlBody))
+        }
+        mail
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Set <code>EMAIL_PROVIDER=sendgrid</code> and provide <code>SENDGRID_APIKEY</code> and <code>SENDGRID_FROM_EMAIL</code> (see the <code>sendgrid</code> block in <code>application.yml</code>).</p>
+</div>
+
+
+<h1 id="awsSesService">7 AWS SES</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-email/v8/guide/awsSesService.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>AWS SES is the third provider option:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/main/groovy/example/AwsSesEmailService.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.config.Config</span>
+<span class="keyword">import</span> <span class="include">grails.core.support.GrailsConfigurationAware</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
+<span class="keyword">import</span> <span class="include">software.amazon.awssdk.regions.Region</span>
+<span class="keyword">import</span> <span class="include">software.amazon.awssdk.services.ses.SesClient</span>
+<span class="keyword">import</span> <span class="include">software.amazon.awssdk.services.ses.model.Body</span>
+<span class="keyword">import</span> <span class="include">software.amazon.awssdk.services.ses.model.Content</span>
+<span class="keyword">import</span> <span class="include">software.amazon.awssdk.services.ses.model.Destination</span>
+<span class="keyword">import</span> <span class="include">software.amazon.awssdk.services.ses.model.Message</span>
+<span class="keyword">import</span> <span class="include">software.amazon.awssdk.services.ses.model.SendEmailRequest</span>
+<span class="keyword">import</span> <span class="include">software.amazon.awssdk.services.ses.model.SendEmailResponse</span>
+
+<span class="annotation">@Slf4j</span>
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">AwsSesEmailService</span> <span class="directive">implements</span> EmailService, GrailsConfigurationAware {  <i class="conum" data-value="1"></i><b>(1)</b>
+
+    <span class="predefined-type">String</span> sourceEmail
+    SesClient sesClient
+
+    <span class="annotation">@Override</span>
+    <span class="type">void</span> setConfiguration(Config co) {
+        <span class="predefined-type">String</span> awsRegion = co.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">aws.ses.region</span><span class="delimiter">'</span></span>, <span class="predefined-type">String</span>)
+        <span class="keyword">if</span> (!awsRegion) {
+            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="exception">IllegalStateException</span>(<span class="string"><span class="delimiter">'</span><span class="content">aws.ses.region not set</span><span class="delimiter">'</span></span>)
+        }
+        <span class="local-variable">this</span>.sesClient = SesClient.builder().region(<span class="predefined-type">Region</span>.of(awsRegion)).build()
+
+        <span class="local-variable">this</span>.sourceEmail = co.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">aws.ses.source</span><span class="delimiter">'</span></span>, <span class="predefined-type">String</span>)
+        <span class="keyword">if</span> (!<span class="local-variable">this</span>.sourceEmail) {
+            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="exception">IllegalStateException</span>(<span class="string"><span class="delimiter">'</span><span class="content">aws.ses.source not set</span><span class="delimiter">'</span></span>)
+        }
+    }
+
+    <span class="directive">private</span> Body bodyOfEmail(Email email) {
+        Body.Builder bodyBuilder = Body.builder()
+        <span class="keyword">if</span> (email.htmlBody) {
+            bodyBuilder.html(Content.builder().data(email.htmlBody).build())
+        }
+        <span class="keyword">if</span> (email.textBody) {
+            bodyBuilder.text(Content.builder().data(email.textBody).build())
+        }
+        bodyBuilder.build()
+    }
+
+    <span class="directive">private</span> <span class="predefined-type">Destination</span> destination(Email email) {
+        <span class="predefined-type">Destination</span>.Builder destinationBuilder = <span class="predefined-type">Destination</span>.builder().toAddresses(email.recipient)
+        <span class="keyword">if</span> (email.cc) {
+            destinationBuilder = destinationBuilder.ccAddresses(email.cc)
+        }
+        <span class="keyword">if</span> (email.bcc) {
+            destinationBuilder = destinationBuilder.bccAddresses(email.bcc)
+        }
+        destinationBuilder.build()
+    }
+
+    <span class="directive">private</span> Message composeMessage(Email email) {
+        Content subject = Content.builder().data(email.subject).build()
+        Body body = bodyOfEmail(email)
+        Message.builder().subject(subject).body(body).build()
+    }
+
+    <span class="annotation">@Override</span>
+    <span class="type">void</span> send(Email email) {
+        <span class="keyword">try</span> {
+            <span class="predefined-type">Destination</span> destination = destination(email)
+            Message message = composeMessage(email)
+            SendEmailRequest sendEmailRequest = SendEmailRequest.builder()
+                    .source(sourceEmail)
+                    .destination(destination)
+                    .message(message)
+                    .build()
+            SendEmailResponse response = sesClient.sendEmail(sendEmailRequest)
+            log.info(<span class="string"><span class="delimiter">'</span><span class="content">Email sent! {}</span><span class="delimiter">'</span></span>, response.messageId())
+
+        } <span class="keyword">catch</span> (<span class="exception">Exception</span> ex) {
+            log.warn(<span class="string"><span class="delimiter">'</span><span class="content">The email was not sent.</span><span class="delimiter">'</span></span>, ex)
+            <span class="keyword">throw</span> ex
+        }
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Set <code>EMAIL_PROVIDER=ses</code> and configure <code>AWS_REGION</code> and <code>AWS_SOURCE</code> plus standard AWS credentials for the SDK.</p>
+</div>
+
+
+<h1 id="mailConfiguration">8 Wire the provider</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-email/v8/guide/mailConfiguration.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Wire the active provider in <code>grails-app/conf/spring/resources.groovy</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/spring/resources.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">example.AwsSesEmailService</span>
+<span class="keyword">import</span> <span class="include">example.SendGridEmailService</span>
+<span class="keyword">import</span> <span class="include">example.SmtpEmailService</span>
+<span class="keyword">import</span> <span class="include">grails.util.Environment</span>
+
+beans = {
+    <span class="keyword">if</span> (Environment.current == Environment.TEST) {
+        <span class="keyword">return</span>
+    }
+    <span class="comment">//tag::emailServiceBeans[]</span>
+    <span class="keyword">def</span> provider = application.config.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">email.provider</span><span class="delimiter">'</span></span>, <span class="predefined-type">String</span>, <span class="string"><span class="delimiter">'</span><span class="content">smtp</span><span class="delimiter">'</span></span>)
+    <span class="keyword">switch</span> (provider) {
+        <span class="keyword">case</span> <span class="string"><span class="delimiter">'</span><span class="content">sendgrid</span><span class="delimiter">'</span></span>:
+            emailService(SendGridEmailService)
+            <span class="keyword">break</span>
+        <span class="keyword">case</span> <span class="string"><span class="delimiter">'</span><span class="content">ses</span><span class="delimiter">'</span></span>:
+            emailService(AwsSesEmailService)
+            <span class="keyword">break</span>
+        <span class="keyword">case</span> <span class="string"><span class="delimiter">'</span><span class="content">smtp</span><span class="delimiter">'</span></span>:
+            emailService(SmtpEmailService)
+            <span class="keyword">break</span>
+        <span class="keyword">default</span>:
+            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="exception">IllegalArgumentException</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">Unsupported email.provider: </span><span class="inline"><span class="inline-delimiter">${</span>provider<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>)
+    }
+    <span class="comment">//end::emailServiceBeans[]</span>
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The switch reads <code>email.provider</code> from configuration. Provider wiring is skipped in the <code>test</code> environment so integration tests can register a mock <code>EmailService</code> bean.</p>
+</div>
+
+
+<h1 id="controller">9 Controller</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-email/v8/guide/controller.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Accept JSON payloads with a command object that implements <code>Email</code> and validates required fields:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/controllers/example/EmailCmd.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.compiler.GrailsCompileStatic</span>
+<span class="keyword">import</span> <span class="include">grails.validation.Validateable</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.ToString</span>
+
+<span class="annotation">@ToString</span>
+<span class="annotation">@GrailsCompileStatic</span>
+<span class="type">class</span> <span class="class">EmailCmd</span> <span class="directive">implements</span> Validateable, Email {
+    <span class="predefined-type">String</span> recipient
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; cc = <span class="type">[]</span>
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; bcc = <span class="type">[]</span>
+    <span class="predefined-type">String</span> subject
+    <span class="predefined-type">String</span> htmlBody
+    <span class="predefined-type">String</span> textBody
+    <span class="predefined-type">String</span> replyTo
+
+    <span class="directive">static</span> constraints = {
+        recipient <span class="key">nullable</span>: <span class="predefined-constant">false</span> <i class="conum" data-value="1"></i><b>(1)</b>
+        subject <span class="key">nullable</span>: <span class="predefined-constant">false</span>  <i class="conum" data-value="2"></i><b>(2)</b>
+        htmlBody <span class="key">nullable</span>: <span class="predefined-constant">true</span>
+        textBody <span class="key">nullable</span>: <span class="predefined-constant">true</span>, <span class="key">validator</span>: { <span class="predefined-type">String</span> val, EmailCmd obj -&gt;  <i class="conum" data-value="3"></i><b>(3)</b>
+            !(!obj.htmlBody &amp;&amp; !val)
+        }
+        replyTo <span class="key">nullable</span>: <span class="predefined-constant">true</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The controller delegates to <code>EmailService</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/controllers/example/MailController.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
+
+<span class="keyword">import</span> <span class="include">static</span> <span class="include">org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY</span>
+
+<span class="annotation">@Slf4j</span>
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">MailController</span> {
+
+    EmailService emailService
+
+    <span class="directive">static</span> allowedMethods = [<span class="key">send</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>]
+
+    <span class="keyword">def</span> <span class="function">send</span>(EmailCmd cmd) {
+        <span class="keyword">if</span> (cmd.hasErrors()) {
+            respond cmd.errors, <span class="key">status</span>: UNPROCESSABLE_ENTITY
+            <span class="keyword">return</span>
+        }
+        log.info <span class="string"><span class="delimiter">'</span><span class="content">Sending mail</span><span class="delimiter">'</span></span>
+        emailService.send(cmd)
+        render <span class="key">status</span>: <span class="integer">200</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>When the command object fails validation, <code>respond</code> renders the errors through the JSON views error template. Grails resolves that template by convention, first at <code>grails-app/views/&lt;controllerName&gt;/_errors.gson</code> and then at <code>grails-app/views/errors/_errors.gson</code>. A <code>view:</code> argument is ignored on this path, so the template has to live at one of those two locations. Update the generated template to report the request path and an absolute self link:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/views/errors/_errors.gson</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">org.springframework.validation.*</span>
+
+<span class="comment">/**
+ * Renders validation errors according to vnd.error: https://github.com/blongden/vnd.error
+ */</span>
+model {
+    Errors errors
+}
+
+response.status UNPROCESSABLE_ENTITY
+
+json {
+    Errors errorsObject = (Errors)<span class="local-variable">this</span>.errors
+    <span class="keyword">def</span> allErrors = errorsObject.allErrors
+    <span class="type">int</span> errorCount = allErrors.size()
+    <span class="predefined-type">String</span> contextPath = request.contextPath ?: <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>
+    <span class="predefined-type">String</span> resourcePath = request.uri
+    <span class="predefined-type">String</span> contextRelativePath = resourcePath.startsWith(contextPath) ? resourcePath.substring(contextPath.length()) : resourcePath
+    <span class="predefined-type">String</span> resourceLink = g.link(<span class="key">uri</span>: contextRelativePath, <span class="key">absolute</span>: <span class="predefined-constant">true</span>)
+    <span class="keyword">if</span>(errorCount == <span class="integer">1</span>) {
+        <span class="keyword">def</span> error = allErrors.iterator().next()
+        message messageSource.getMessage(error, locale)
+        path resourcePath
+        _links {
+            self {
+                href resourceLink
+            }
+        }
+    }
+    <span class="keyword">else</span> {
+        total errorCount
+        _embedded {
+            errors(allErrors) { ObjectError error -&gt;
+                message messageSource.getMessage(error, locale)
+                path resourcePath
+                _links {
+                    self {
+                        href resourceLink
+                    }
+                }
+            }
+        }
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The template the application generator creates uses <code>g.link(resource: request.uri)</code>, which treats the URI as a resource name and reports <code>/send</code> instead of <code>/mail/send</code>. This version reports <code>request.uri</code> directly as <code>path</code>, and passes the same URI to <code>g.link</code> as <code>uri:</code> with <code>absolute: true</code> to build the self link. The context path is stripped before linking because <code>g.link</code> adds it back for absolute links, which would otherwise repeat it when the application runs under a servlet context path.</p>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>This endpoint is demonstration-only. It accepts arbitrary recipients and message content with no authentication, so a deployed copy can become an outbound mail relay through the configured provider. Before any public or production exposure, add authentication, authorization, recipient controls, and abuse/rate-limit protection.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Example request:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">curl -X POST http://localhost:8080/mail/send \
+  -H 'Content-Type: application/json' \
+  -d '{&quot;recipient&quot;:&quot;user@example.com&quot;,&quot;subject&quot;:&quot;Hello&quot;,&quot;textBody&quot;:&quot;Hi there&quot;}'</code></pre>
+</div>
+</div>
+
+
+<h1 id="testing">10 Testing without live email</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-email/v8/guide/testing.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Verify the HTTP endpoint builds the message and invokes <code>EmailService</code> without sending live email. Register a Spock mock as the primary <code>EmailService</code> bean:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/integration-test/groovy/example/MailControllerSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example
+
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">groovy.json.JsonSlurper</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Autowired</span>
+<span class="keyword">import</span> <span class="include">org.springframework.boot.test.context.TestConfiguration</span>
+<span class="keyword">import</span> <span class="include">org.springframework.context.annotation.Bean</span>
+<span class="keyword">import</span> <span class="include">org.springframework.context.annotation.Primary</span>
+<span class="keyword">import</span> <span class="include">org.springframework.http.HttpStatus</span>
+<span class="keyword">import</span> <span class="include">org.springframework.http.ResponseEntity</span>
+<span class="keyword">import</span> <span class="include">org.springframework.web.client.HttpClientErrorException</span>
+<span class="keyword">import</span> <span class="include">org.springframework.web.client.RestTemplate</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+<span class="keyword">import</span> <span class="include">spock.mock.DetachedMockFactory</span>
+
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">MailControllerSpec</span> <span class="directive">extends</span> Specification {
+
+    <span class="annotation">@Autowired</span>
+    EmailService emailService
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">/mail/send invokes email service with expected message</span><span class="delimiter">'</span></span>() {
+        <span class="key">when</span>:
+        RestTemplate client = <span class="keyword">new</span> RestTemplate()
+        ResponseEntity&lt;<span class="predefined-type">Map</span>&gt; resp = client.postForEntity(
+                <span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">$</span>serverPort</span><span class="content">/mail/send</span><span class="delimiter">&quot;</span></span>,
+                [
+                        subject  : <span class="string"><span class="delimiter">'</span><span class="content">Test</span><span class="delimiter">'</span></span>,
+                        <span class="key">recipient</span>: <span class="string"><span class="delimiter">'</span><span class="content">delamos@grails.example</span><span class="delimiter">'</span></span>,
+                        textBody : <span class="string"><span class="delimiter">'</span><span class="content">Hola hola</span><span class="delimiter">'</span></span>
+                ],
+                <span class="predefined-type">Map</span>
+        )
+
+        <span class="key">then</span>:
+        resp.statusCode == HttpStatus.OK
+        <span class="integer">1</span> * emailService.send({ Email email -&gt;
+            email.recipient == <span class="string"><span class="delimiter">'</span><span class="content">delamos@grails.example</span><span class="delimiter">'</span></span> &amp;&amp;
+                    email.subject == <span class="string"><span class="delimiter">'</span><span class="content">Test</span><span class="delimiter">'</span></span> &amp;&amp;
+                    email.textBody == <span class="string"><span class="delimiter">'</span><span class="content">Hola hola</span><span class="delimiter">'</span></span>
+        }) <i class="conum" data-value="1"></i><b>(1)</b>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">invalid request without recipient returns 422 with validation errors</span><span class="delimiter">'</span></span>() {
+        <span class="key">when</span>:
+        RestTemplate client = <span class="keyword">new</span> RestTemplate()
+        HttpClientErrorException ex = <span class="predefined-constant">null</span>
+        <span class="keyword">try</span> {
+            client.postForEntity(
+                    <span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">$</span>serverPort</span><span class="content">/mail/send</span><span class="delimiter">&quot;</span></span>,
+                    [
+                            subject : <span class="string"><span class="delimiter">'</span><span class="content">Test</span><span class="delimiter">'</span></span>,
+                            <span class="key">textBody</span>: <span class="string"><span class="delimiter">'</span><span class="content">Hola hola</span><span class="delimiter">'</span></span>
+                    ],
+                    <span class="predefined-type">Map</span>
+            )
+        } <span class="keyword">catch</span> (HttpClientErrorException e) {
+            ex = e
+        }
+
+        <span class="key">then</span>:
+        ex != <span class="predefined-constant">null</span>
+        ex.statusCode == HttpStatus.UNPROCESSABLE_CONTENT
+        <span class="keyword">def</span> body = <span class="keyword">new</span> JsonSlurper().parseText(ex.responseBodyAsString)
+        body.message
+        body.path == <span class="string"><span class="delimiter">'</span><span class="content">/mail/send</span><span class="delimiter">'</span></span>
+        body._links.self.href == <span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">$</span>serverPort</span><span class="content">/mail/send</span><span class="delimiter">&quot;</span></span>
+        <span class="integer">0</span> * emailService.send(_)
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">invalid request without subject returns 422 with validation errors</span><span class="delimiter">'</span></span>() {
+        <span class="key">when</span>:
+        RestTemplate client = <span class="keyword">new</span> RestTemplate()
+        HttpClientErrorException ex = <span class="predefined-constant">null</span>
+        <span class="keyword">try</span> {
+            client.postForEntity(
+                    <span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">$</span>serverPort</span><span class="content">/mail/send</span><span class="delimiter">&quot;</span></span>,
+                    [
+                            <span class="key">recipient</span>: <span class="string"><span class="delimiter">'</span><span class="content">delamos@grails.example</span><span class="delimiter">'</span></span>,
+                            textBody : <span class="string"><span class="delimiter">'</span><span class="content">Hola hola</span><span class="delimiter">'</span></span>
+                    ],
+                    <span class="predefined-type">Map</span>
+            )
+        } <span class="keyword">catch</span> (HttpClientErrorException e) {
+            ex = e
+        }
+
+        <span class="key">then</span>:
+        ex != <span class="predefined-constant">null</span>
+        ex.statusCode == HttpStatus.UNPROCESSABLE_CONTENT
+        <span class="keyword">def</span> body = <span class="keyword">new</span> JsonSlurper().parseText(ex.responseBodyAsString)
+        body.message
+        body.path == <span class="string"><span class="delimiter">'</span><span class="content">/mail/send</span><span class="delimiter">'</span></span>
+        body._links.self.href == <span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">$</span>serverPort</span><span class="content">/mail/send</span><span class="delimiter">&quot;</span></span>
+        <span class="integer">0</span> * emailService.send(_)
+    }
+
+    <span class="annotation">@TestConfiguration</span>
+    <span class="directive">static</span> <span class="type">class</span> <span class="class">EmailServiceConfiguration</span> {
+        <span class="directive">private</span> DetachedMockFactory factory = <span class="keyword">new</span> DetachedMockFactory()
+
+        <span class="annotation">@Bean</span>
+        <span class="annotation">@Primary</span>
+        EmailService emailService() {
+            factory.Mock(EmailService)
+        }
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The spec posts to <code>/mail/send</code> and asserts <code>emailService.send</code> is called with the expected recipient, subject, and body.</p>
+</div>
+<div class="paragraph">
+<p>Run tests:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">cd ../complete
+./gradlew test integrationTest</code></pre>
+</div>
+</div>
+
+
+<h1 id="summary">11 Summary</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-email/v8/guide/summary.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>You added outbound email to a Grails 8 application:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>An <code>EmailService</code> boundary with SMTP, SendGrid, and AWS SES implementations</p>
+</li>
+<li>
+<p>Externalized provider and mail settings in <code>application.yml</code></p>
+</li>
+<li>
+<p>A REST controller with command-object validation</p>
+</li>
+<li>
+<p>Spock Spring integration tests that mock the sender, with no live email in CI</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Next steps: add HTML templates, queue outbound mail asynchronously, or wire email into domain events.</p>
+</div>
+
+
+<h1 id="helpWithGrails">12 Do you need help with Grails?</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-email/v8/guide/helpWithGrails.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="sect1">
+<h2 id="_help_with_apache_grails">Help with Apache Grails</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Apache Grails is supported by an active community of contributors and the Apache Software Foundation. If you need help working through a guide, want to discuss the framework, or have run into something that looks like a bug, the channels below are the right place to start.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="https://slack.grails.org">Slack</a> - real-time conversation with the Apache Grails community.</p>
+</li>
+<li>
+<p><a href="https://lists.apache.org/list.html?dev@grails.apache.org">Developer mailing list</a> - design discussions and contributor coordination.</p>
+</li>
+<li>
+<p><a href="https://lists.apache.org/list.html?users@grails.apache.org">Users mailing list</a> - end-user questions and answers.</p>
+</li>
+<li>
+<p><a href="https://github.com/apache/grails-core/issues">Issue tracker on GitHub</a> - file a bug or feature request against the framework.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>For Grails plugins, see the matching project on <a href="https://github.com/apache?q=grails">the apache org</a> or the plugin&#8217;s own GitHub repository.</p>
+</div>
+</div>
+</div>
+
+</article></div>
+<footer>
+    <div class='content'>
+        <div class='apache-grails'>
+            <p>Apache Grails is supported by the Apache Software Foundation and the Grails community.</p>
+            <a href='https://apache.org'><img src='https://www.apache.org/img/asf_logo.png' width='200px' alt='Apache Software Foundation'/></a>
+            <p>Apache, Apache Grails, Grails, Groovy, and the ASF logo are either registered trademarks or trademarks of The Apache Software Foundation.</p>
+        </div>
+        <nav class='social-media-nav'>
+            <ul>
+                <li><a href='mailto:dev@grails.apache.org'><img src='https://grails.apache.org/images/email.svg' alt='Email Icon'/></a></li>
+                <li><a href='https://slack.grails.org'><img src='https://grails.apache.org/images/slack.svg' alt='Slack Icon'/></a></li>
+                <li><a href='https://www.youtube.com/@GrailsFramework'><img src='https://grails.apache.org/images/youtube.svg' alt='Youtube Icon'/></a></li>
+                <li><a href='https://bsky.app/profile/grails.apache.org'><img src='https://grails.apache.org/images/bsky.svg' alt='Bluesky Icon'/></a></li>
+                <li><a rel="me" href="https://fosstodon.org/@grails"><img src='https://grails.apache.org/images/mastodont.svg' alt='Mastodon Icon'/></a></li>
+                <li><a href='https://www.linkedin.com/showcase/official-grails/'><img src='https://grails.apache.org/images/linkedin.svg' alt='LinkedIn Icon'/></a></li>
+                <li><a href='https://github.com/apache/grails-core'><img src='https://grails.apache.org/images/github.svg' alt='GitHub Icon'/></a></li>
+                <li><a href='https://twitter.com/grailsframework'><img src='https://grails.apache.org/images/x-twitter.svg' alt='Twitter Icon'/></a></li>
+            </ul>
+        </nav>
+    </div>
+    <div class='footer-bottom'>
+        <p>&copy; 2005-2026 the Apache Grails project</p>
+        <p>Grails is Open Source:
+            <a href='https://www.apache.org/licenses/'>License</a>,
+            <a href='https://privacy.apache.org/policies/privacy-policy-public.html'>Privacy Policy</a>,
+            <a href='https://www.apache.org/foundation/sponsorship'>Sponsor Apache</a>,
+            <a href='https://www.apache.org/events/current-event'>Events</a>,
+            <a href='https://www.apache.org/security'>Security</a>,
+            <a href='https://www.apache.org/foundation/thanks.html'>Thanks</a>,
+            <a href='https://grails.apache.org/support-schedule.html'>Support Schedule</a>
+        </p>
+    </div>
+</footer>
+
+</body>
+</html>
