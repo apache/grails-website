@@ -278,7 +278,7 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
 
 
 <div class="sect3">
-<h4 id="_sql_injection">SQL injection</h4>
+<h4 id="sqlInjection">SQL injection</h4>
 <div class="paragraph">
 <p>Hibernate, which is the technology underlying GORM domain classes, automatically escapes data when committing to database so this is not an issue. However it is still possible to write bad dynamic HQL code that uses unchecked request parameters. For example doing the following is vulnerable to HQL injection attacks:</p>
 </div>
@@ -319,6 +319,92 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
     <span class="keyword">def</span> books = <span class="predefined-type">Book</span>.find(<span class="string"><span class="delimiter">&quot;</span><span class="content">from Book as b where b.title = :title</span><span class="delimiter">&quot;</span></span>,
                           [<span class="key">title</span>: params.title])
 }</code></pre>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_compile_time_detection_of_flattened_gstring_queries">Compile-time detection of flattened GString queries</h5>
+<div class="paragraph">
+<p>Passing a <code>GString</code> <strong>directly</strong> to a GORM query method such as <code>find</code>, <code>findAll</code>, <code>executeQuery</code>, or <code>executeUpdate</code> is safe: GORM converts each interpolated value into a bound query parameter rather than embedding it as text. The risk is a subtler pattern that looks harmless:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> <span class="function">vulnerable</span>() {
+    <span class="predefined-type">String</span> query = <span class="string"><span class="delimiter">&quot;</span><span class="content">from Book as b where b.title = </span><span class="inline"><span class="inline-delimiter">${</span>params.title<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>  <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="keyword">def</span> books = <span class="predefined-type">Book</span>.executeQuery(query)                              <i class="conum" data-value="2"></i><b>(2)</b>
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Groovy coerces the <code>GString</code> to a plain <code>String</code> right here, because <code>query</code> is declared as <code>String</code>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>By the time <code>executeQuery</code> receives it, it is an ordinary <code>String</code> with no trace of ever having been a <code>GString</code> — the interpolated value is now raw, unescaped text, and this call is genuinely vulnerable to HQL injection.</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>This is dangerous precisely because it can&#8217;t be caught at runtime: once a <code>GString</code> is flattened to a <code>String</code>, there is nothing left to distinguish it from HQL text that was always safe. Grails detects this pattern at <strong>compile time</strong> instead, and fails the build with an error identifying the call site. To fix it, keep the value as a <code>GString</code> (recommended) or pass named/positional parameters explicitly, as shown above.</p>
+</div>
+<div class="paragraph">
+<p>If a flagged call site has been reviewed and is genuinely safe, suppress the check on the enclosing method:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="annotation">@SuppressWarnings</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">GormUnsafeQueryString</span><span class="delimiter">&quot;</span></span>)
+<span class="keyword">def</span> <span class="function">reviewedAndSafe</span>() {
+    <span class="predefined-type">String</span> query = <span class="string"><span class="delimiter">&quot;</span><span class="content">from Book as b where b.title = </span><span class="inline"><span class="inline-delimiter">${</span>params.title<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>
+    <span class="keyword">def</span> books = <span class="predefined-type">Book</span>.executeQuery(query)
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This check runs automatically against every Grails application that has <code>grails-datamapping-core</code> on its compile classpath — no configuration is required, and it covers every GORM implementation whose query methods follow this convention (Hibernate and Neo4j today).</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_compile_time_warnings_for_lower_confidence_patterns">Compile-time warnings for lower-confidence patterns</h5>
+<div class="paragraph">
+<p>Two related patterns are detected by the same check but reported as compile-time <strong>warnings</strong> rather than build failures, because the detection is less certain than the local-variable case above:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">Book</span> {
+    <span class="predefined-type">String</span> title
+    <span class="predefined-type">String</span> cachedQuery = <span class="string"><span class="delimiter">&quot;</span><span class="content">from Book where title = </span><span class="inline"><span class="inline-delimiter">${</span>title<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>  <i class="conum" data-value="1"></i><b>(1)</b>
+
+    <span class="keyword">def</span> <span class="function">loadCached</span>() {
+        executeQuery(<span class="local-variable">this</span>.cachedQuery)                         <i class="conum" data-value="2"></i><b>(2)</b>
+    }
+
+    <span class="keyword">def</span> <span class="function">vulnerable</span>(<span class="predefined-type">String</span> title) {
+        <span class="predefined-type">String</span> query = <span class="string"><span class="delimiter">&quot;</span><span class="content">from Book where title = </span><span class="delimiter">&quot;</span></span> + title      <i class="conum" data-value="3"></i><b>(3)</b>
+        executeQuery(query)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>A field initialized from an interpolated <code>GString</code> — unlike a local variable, a field can be reassigned from a constructor, another method, or a subclass that this check never sees, so this is flagged rather than failed.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Reading that field later through <code>this.cachedQuery</code> in a query call.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>Query text built with <code>+</code> from a non-constant value and no <code>GString</code> involved at all. This is a real injection shape, but string concatenation is common enough for benign, non-query purposes that a hard build failure would be too blunt an instrument.</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Both warnings identify the call site and suppress the same way as the error above, with <code>@SuppressWarnings("GormUnsafeQueryString")</code> on the enclosing method. Concatenating a <code>GString</code> with additional text (e.g. <code>"&#8230;&#8203;${title}&#8230;&#8203;" + " order by title"</code>) is <strong>not</strong> one of these warnings — Groovy&#8217;s <code>GString.plus</code> returns a plain <code>String</code>, so this flattens the interpolation immediately and is reported as the build-breaking error instead.</p>
 </div>
 </div>
 </div>
