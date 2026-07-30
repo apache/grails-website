@@ -419,6 +419,22 @@ automatically, even when the plugin is only a transitive dependency:</p>
 <code>grailsCli</code> dependencies are declared explicitly.</p>
 </div>
 <div class="paragraph">
+<p>The plugin can also provision <code>grails-core-cli-legacy</code> into a separate execution-only
+<code>grailsCliLegacy</code> bucket when both <code>cliAutoProvision</code> (default <code>true</code>) and
+<code>legacyCommandSupport</code> (default <code>false</code>) are enabled. That bucket contributes to
+<code>grailsCliClasspath</code>, never to application or plugin compile classpaths. Opt in with
+<code>grails { legacyCommandSupport = true }</code> so unchanged Grails 7 command plugins keep working
+without a re-release, without leaking <code>grails.dev.commands.*</code> into the Grails 8
+command-authoring ABI.</p>
+</div>
+<div class="paragraph">
+<p>When that bridge is disabled, runtime command discovery still detects plugins that publish legacy
+<code>grails.dev.commands.ApplicationCommand</code> factories without loading their command classes. Grails
+logs the originating plugin artifact and appends the exact opt-in or upgrade remediation when an
+unknown command is requested. The detection remains on the resolved command runtime classpath and
+does not add a Gradle configuration-time dependency scan.</p>
+</div>
+<div class="paragraph">
 <p>Plugin authors get the whole publishing side from the new
 <code>org.apache.grails.gradle.grails-plugin-cli</code> Gradle plugin: it creates the <code>cli</code> source set as a
 feature variant, wires the command contract onto its compile classpath, advertises the companion
@@ -433,9 +449,15 @@ caused by a CLI Spring Boot initializer on the runtime classpath — from packag
 <div class="paragraph">
 <p>The split does not hold up application upgrades on plugin re-releases: a plugin that ships no
 commands is unaffected, and a command-bearing plugin that has not yet been rebuilt for Grails 8
-keeps its runtime functionality — only its commands are unavailable until it publishes a companion
-<code>-cli</code> artifact. See the <a href="upgrading.html#upgrading80x">upgrade guide</a> for the migration steps and the
-full upgrade-impact breakdown.</p>
+keeps its runtime functionality. Its legacy <code>grails.dev.commands.ApplicationCommand</code> registrations
+can continue to work through a deprecated compatibility layer when <code>legacyCommandSupport</code> is
+enabled, so those commands remain available without a re-release; publishing a companion <code>-cli</code>
+artifact is recommended when migrating to the Grails 8 command API. New commands should use
+<code>org.apache.grails.core.cli.*</code>. A plugin that still authors legacy commands must explicitly compile
+against <code>grails-core-cli-legacy</code>; consumers of an already-published legacy plugin enable the bridge
+with <code>grails { legacyCommandSupport = true }</code> (or declare <code>grailsCliLegacy</code> themselves). See the
+<a href="upgrading.html#upgrading80x">upgrade guide</a> for the migration steps and the full upgrade-impact
+breakdown.</p>
 </div>
 </div>
 <div class="sect3">

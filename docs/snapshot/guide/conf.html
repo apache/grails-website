@@ -767,10 +767,99 @@ tasks.withType(Test).configureEach {
 
 
 <div class="paragraph">
-<p>Logging is handled by the <a href="https://logback.qos.ch">Logback logging framework</a> and can be configured with the <code>grails-app/conf/logback-spring.xml</code> file. See the <a href="https://docs.spring.io/spring-boot/how-to/logging.html">Spring Boot Logging</a> and <a href="https://docs.spring.io/spring-boot/reference/features/logging.html#features.logging.logback-extensions">Logging Extensions</a> for all the available options.</p>
+<p>Logging is handled by the <a href="https://logback.qos.ch">Logback logging framework</a>. A new application works with <strong>zero logging configuration</strong>: it depends on <code>grails-logging</code>, which brings in Spring Boot&#8217;s logging starter, so Logback and Spring Boot&#8217;s default Logback configuration (an <code>INFO</code> root logger and a colorized console pattern) are applied automatically. See the <a href="https://docs.spring.io/spring-boot/how-to/logging.html">Spring Boot Logging</a> and <a href="https://docs.spring.io/spring-boot/reference/features/logging.html#features.logging.logback-extensions">Logging Extensions</a> documentation for all the available options.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+As of Grails 8, newly generated applications no longer include a <code>grails-app/conf/logback-spring.xml</code> file; logging works out of the box using Spring Boot&#8217;s defaults. Add the file (see below) only when you need to customize logging.
+</td>
+</tr>
+</table>
 </div>
 <div class="paragraph">
-<p>The Grails Environments <code>development</code>, <code>test</code> and <code>production</code> can be used with &lt;springProfile name="development"&gt; to configure environment specific logging.  This was one of the features lost when logback removed groovy configuration.</p>
+<p>For most needs, levels and patterns can be adjusted entirely from <code>application.yml</code> without any XML:</p>
+</div>
+<div class="listingblock">
+<div class="title">application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">logging</span>:
+    <span class="key">level</span>:
+        <span class="key">root</span>: <span class="string"><span class="content">INFO</span></span>
+        <span class="key">com.example.myapp</span>: <span class="string"><span class="content">DEBUG</span></span>          <span class="comment"># your packages</span>
+        <span class="key">org.hibernate.SQL</span>: <span class="string"><span class="content">DEBUG</span></span>          <span class="comment"># see the generated SQL</span>
+    <span class="key">file</span>:
+        <span class="key">name</span>: <span class="string"><span class="content">logs/myapp.log</span></span>              <span class="comment"># activates Boot's file appender only when no logback-spring.xml is present</span>
+                                          <span class="comment"># (otherwise include Boot's file-appender.xml in that file)</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Per-environment levels need no XML either. Grails environments map to Spring profiles, so an <code>environments</code> block in <code>application.yml</code> applies levels to a single environment — for example, verbose logging for your own packages in development only (a profile-specific <code>application-development.yml</code> works as well):</p>
+</div>
+<div class="listingblock">
+<div class="title">application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">environments</span>:
+    <span class="key">development</span>:
+        <span class="key">logging</span>:
+            <span class="key">level</span>:
+                <span class="key">com.example.myapp</span>: <span class="string"><span class="content">DEBUG</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Further Spring Boot logging properties cover most remaining needs — output patterns, logger groups, per-appender thresholds, and rotation of the file appender:</p>
+</div>
+<div class="listingblock">
+<div class="title">application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">logging</span>:
+    <span class="key">pattern</span>:
+        <span class="key">console</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">%d{HH:mm:ss.SSS} %-5level %logger{36} - %msg%n</span><span class="delimiter">&quot;</span></span>
+        <span class="key">file</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">%d %-5level [%thread] %logger : %msg%n</span><span class="delimiter">&quot;</span></span>
+    <span class="key">group</span>:
+        <span class="key">myapp</span>:                            <span class="comment"># define a named group of loggers...</span>
+            - <span class="string"><span class="content">com.example.myapp.api</span></span>
+            - <span class="string"><span class="content">com.example.myapp.security</span></span>
+    <span class="key">level</span>:
+        <span class="key">myapp</span>: <span class="string"><span class="content">DEBUG</span></span>                      <span class="comment"># ...and set one level for the whole group</span>
+        <span class="key">web</span>: <span class="string"><span class="content">DEBUG</span></span>                        <span class="comment"># predefined group: Spring web loggers</span>
+    <span class="key">threshold</span>:
+        <span class="key">console</span>: <span class="string"><span class="content">INFO</span></span>                     <span class="comment"># per-appender thresholds</span>
+        <span class="key">file</span>: <span class="string"><span class="content">WARN</span></span>
+    <span class="key">logback</span>:
+        <span class="key">rollingpolicy</span>:
+            <span class="key">max-file-size</span>: <span class="string"><span class="content">10MB</span></span>
+            <span class="key">max-history</span>: <span class="string"><span class="content">7</span></span>
+            <span class="key">total-size-cap</span>: <span class="string"><span class="content">100MB</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Spring Boot predefines the <code>web</code> and <code>sql</code> logger groups. The <code>logging.threshold.<strong></code> and <code>logging.logback.rollingpolicy.</strong></code> properties are consumed by Spring Boot&#8217;s appenders, so they apply whenever those appenders are in use — either with no configuration file, or from a <code>logback-spring.xml</code> that composes Boot&#8217;s <code>console-appender.xml</code> / <code>file-appender.xml</code> includes (see below).</p>
+</div>
+<div class="paragraph">
+<p>For quick diagnosis there are also two top-level shortcuts: <code>debug: true</code> raises a curated set of core loggers (embedded container, Hibernate, Spring Boot) to <code>DEBUG</code>, and <code>trace: true</code> does the same at <code>TRACE</code>. Console color can be controlled with <code>spring.output.ansi.enabled</code> (<code>detect</code> (the default), <code>always</code> or <code>never</code>).</p>
+</div>
+<div class="paragraph">
+<p>When properties are not enough — custom appenders, structured output, or per-environment appender routing — add a <code>grails-app/conf/logback-spring.xml</code> file. Use the <code>-spring</code> variant (not plain <code>logback.xml</code>), because it is processed by Spring Boot and unlocks <code>&lt;springProfile&gt;</code> and <code>&lt;springProperty&gt;</code>. The Grails environments <code>development</code>, <code>test</code> and <code>production</code> map to the corresponding Spring profiles, so <code>&lt;springProfile name="development"&gt;</code> blocks configure environment-specific logging — one of the features lost when Logback removed Groovy configuration. Note that once the file exists it <strong>replaces</strong> Spring Boot&#8217;s bundled configuration entirely, so it must declare its own appenders; the simplest approach is to compose Spring Boot&#8217;s own <code>defaults.xml</code> and <code>console-appender.xml</code> includes with a <code>&lt;root&gt;</code> that references the <code>CONSOLE</code> appender.</p>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+When generating a project with <a href="https://start.grails.org">Grails Forge</a>, select the <strong>Logback Configuration</strong> feature to start with a ready-made <code>grails-app/conf/logback-spring.xml</code> in exactly that shape, including a <code>&lt;springProfile name="development"&gt;</code> block.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Everything above works the same with or without the file, with these boundaries: without a <code>logback-spring.xml</code> you give up anything only XML can express — most notably <code>&lt;springProfile&gt;</code>-conditional <strong>appenders</strong> and routing (per-environment <strong>levels</strong> still work via the <code>environments</code> block). Conversely, activating a file appender purely by setting <code>logging.file.name</code> only works <strong>without</strong> the file; when a <code>logback-spring.xml</code> is present it replaces Spring Boot&#8217;s bundled configuration, so file output requires including Boot&#8217;s <code>file-appender.xml</code> in it.</p>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -1131,6 +1220,25 @@ This preserves the pre-7.1 behaviour where any caller of the filterer — <code>
 log record. It means non-resolver code paths (for example, a scheduled job that calls
 <code>GrailsUtil.sanitizeRootCause(ex)</code> before logging via its own logger) continue to populate the <code>StackTrace</code>
 appender without an explicit emission call.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Both <code>grails.logging.stackTraceFiltererClass</code> and <code>grails.exceptionresolver.logFullStackTraceOnFilter</code>
+apply outside the exception resolver too — including GSP view-render exceptions — so this property controls
+emission everywhere the filterer is used, not just for resolver-driven requests. In any context not started
+through <code>SpringApplication</code> — the CLI, plain <code>main()</code> usage, Grails unit tests — the previous fallback
+behaviour applies unchanged: a plain <code>DefaultStackTraceFilterer</code> with no configuration applied. The
+configured filterer is JVM-global rather than per-context, so in a JVM hosting more than one application
+context the last one booted supplies the filterer for all of them. Custom <code>StackTraceFilterer</code>
+implementations that don&#8217;t extend <code>DefaultStackTraceFilterer</code> are responsible for their own logging policy.
+</td>
+</tr>
+</table>
 </div>
 <div class="paragraph">
 <p>The behaviour is enabled by default. To disable the side-effect emission and rely solely on
