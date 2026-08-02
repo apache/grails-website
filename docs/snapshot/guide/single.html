@@ -5278,10 +5278,12 @@ of already-published Grails 7 command plugins must opt in with
 <ul>
 <li>
 <p>Code generation scripts created with <code>create-script</code>, including scripts packaged as
-<code>META-INF/commands/*.groovy</code> such as <code>audit-quickstart</code> and <code>s2-quickstart</code>, are unaffected.</p>
-</li>
-<li>
-<p>YAML commands packaged as <code>META-INF/commands/*.yml</code> are unaffected.</p>
+<code>META-INF/commands/<strong>.groovy</code> such as <code>audit-quickstart</code> and <code>s2-quickstart</code>, remain executable
+through the CLI. When a plugin publishes a companion <code>-cli</code> artifact, those scripts (and
+<code>META-INF/commands/</strong>.yml</code> / <code>*.json</code> multi-step commands under <code>src/main/scripts</code>) are packaged
+into the companion only - not the runtime plugin jar - and stay available via
+<code>grailsCliClasspath</code>. Plugins without a companion continue to ship <code>src/main/scripts</code> in the
+runtime jar, matching Grails 7 packaging.</p>
 </li>
 <li>
 <p>Existing published Grails 7 application-command plugins continue to work on Grails 8 without a
@@ -5313,7 +5315,32 @@ declare <code>grailsCliLegacy 'org.apache.grails:grails-core-cli-legacy'</code> 
 <li>
 <p>Publish commands in a companion <code>-cli</code> artifact for the CLI classpath split and per-command
 Gradle task support. See <a href="commandLine.html#creatingCustomCommands">Creating Custom Commands</a> for
-the complete workflow.</p>
+the complete workflow. Applying <code>org.apache.grails.gradle.grails-plugin-cli</code> also routes
+<code>src/main/scripts</code> into that companion automatically - leave scripts under <code>src/main/scripts</code>
+or place them under <code>src/cli/resources/META-INF/commands</code>.</p>
+</li>
+<li>
+<p>The <code>copyCommands</code> and <code>copyTemplates</code> tasks stage into a directory of their own instead of
+writing into the <code>processResources</code> output, and are registered when the plugin is applied rather
+than in <code>afterEvaluate</code>. They are still <code>Copy</code> tasks, and paths are still relative to
+<code>META-INF/templates</code> (or <code>META-INF/commands</code>), so a build script that configures them only needs
+to drop the <code>afterEvaluate { }</code> wrapper that used to be required:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">tasks.named(<span class="string"><span class="delimiter">'</span><span class="content">copyTemplates</span><span class="delimiter">'</span></span>, Copy) {
+    from(layout.projectDirectory.dir(<span class="string"><span class="delimiter">'</span><span class="content">grails-app/views</span><span class="delimiter">'</span></span>)) {
+        into(<span class="string"><span class="delimiter">'</span><span class="content">views</span><span class="delimiter">'</span></span>)
+    }
+}</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>After first applying <code>grails-plugin-cli</code> on a project that was already built without it, consider
+running <code>./gradlew clean</code> once. Older plugin packaging wrote command scripts directly into
+<code>build/resources/main/META-INF/commands</code>; the first build on 8.0 drops those files, but the empty
+directories they lived in remain until the build directory is cleaned. Fresh builds never place
+companion scripts on the runtime classpath.</p>
 </li>
 </ul>
 </div>
@@ -13883,9 +13910,12 @@ application&#8217;s runtime classpath (<code>bootRun</code>, <code>bootJar</code
 </div>
 </li>
 <li>
-<p><strong>Define the Command in a <code>cli</code> source set:</strong> plugin commands live in <code>src/cli/groovy</code> (not
-<code>grails-app/commands</code>, which is compiled into the runtime jar). Give them a package that is unique
-to the cli artifact:</p>
+<p><strong>Define the Command in a <code>cli</code> source set:</strong> compiled plugin commands live in <code>src/cli/groovy</code>
+(not <code>grails-app/commands</code>, which is compiled into the runtime jar). Give them a package that is
+unique to the cli artifact. Code-generation scripts and multi-step YAML/JSON commands may stay in
+<code>src/main/scripts</code>; when <code>grails-plugin-cli</code> is applied they are copied into the companion jar as
+<code>META-INF/commands</code> and excluded from the runtime plugin jar. You may also place them directly under
+<code>src/cli/resources/META-INF/commands</code>:</p>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">// src/cli/groovy/com/example/myplugin/cli/AuditReportCommand.groovy</span>
@@ -54524,6 +54554,16 @@ If you have created a Grails plugin and want it to be listed on the <a href="htt
 </div>
 <div class="paragraph">
 <p>Code generation scripts can be used to create artefacts within the project tree and automate interactions with Gradle.</p>
+</div>
+<div class="paragraph">
+<p>When the plugin also applies <code>org.apache.grails.gradle.grails-plugin-cli</code> (see
+<a href="#Ship plugin commands as a companion -cli artifact">[Ship plugin commands as a companion -cli artifact]</a> below), files under <code>src/main/scripts</code>
+(including <code><strong>.groovy</code>, <code></strong>.yml</code>, and <code>*.json</code> multi-step commands) are packaged into the companion
+<code>-cli</code> jar as <code>META-INF/commands</code> and are <strong>not</strong> copied into the runtime plugin jar. That keeps
+command-only resources off <code>runtimeClasspath</code>, <code>bootJar</code>, and <code>bootWar</code> while still making them
+discoverable through <code>grailsCliClasspath</code>. Plugins that do <strong>not</strong> publish a companion keep the
+historical behavior and continue to ship <code>src/main/scripts</code> in the runtime jar so unmigrated
+Grails 7 plugins remain discoverable under <code>legacyCommandSupport</code>.</p>
 </div>
 <div class="paragraph">
 <p>If you want to create a new shell command that interacts with a loaded Grails application instance then you should use the <code>create-command</code> command:</p>

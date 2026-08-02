@@ -2874,10 +2874,12 @@ of already-published Grails 7 command plugins must opt in with
 <ul>
 <li>
 <p>Code generation scripts created with <code>create-script</code>, including scripts packaged as
-<code>META-INF/commands/*.groovy</code> such as <code>audit-quickstart</code> and <code>s2-quickstart</code>, are unaffected.</p>
-</li>
-<li>
-<p>YAML commands packaged as <code>META-INF/commands/*.yml</code> are unaffected.</p>
+<code>META-INF/commands/<strong>.groovy</code> such as <code>audit-quickstart</code> and <code>s2-quickstart</code>, remain executable
+through the CLI. When a plugin publishes a companion <code>-cli</code> artifact, those scripts (and
+<code>META-INF/commands/</strong>.yml</code> / <code>*.json</code> multi-step commands under <code>src/main/scripts</code>) are packaged
+into the companion only - not the runtime plugin jar - and stay available via
+<code>grailsCliClasspath</code>. Plugins without a companion continue to ship <code>src/main/scripts</code> in the
+runtime jar, matching Grails 7 packaging.</p>
 </li>
 <li>
 <p>Existing published Grails 7 application-command plugins continue to work on Grails 8 without a
@@ -2909,7 +2911,32 @@ declare <code>grailsCliLegacy 'org.apache.grails:grails-core-cli-legacy'</code> 
 <li>
 <p>Publish commands in a companion <code>-cli</code> artifact for the CLI classpath split and per-command
 Gradle task support. See <a href="commandLine.html#creatingCustomCommands">Creating Custom Commands</a> for
-the complete workflow.</p>
+the complete workflow. Applying <code>org.apache.grails.gradle.grails-plugin-cli</code> also routes
+<code>src/main/scripts</code> into that companion automatically - leave scripts under <code>src/main/scripts</code>
+or place them under <code>src/cli/resources/META-INF/commands</code>.</p>
+</li>
+<li>
+<p>The <code>copyCommands</code> and <code>copyTemplates</code> tasks stage into a directory of their own instead of
+writing into the <code>processResources</code> output, and are registered when the plugin is applied rather
+than in <code>afterEvaluate</code>. They are still <code>Copy</code> tasks, and paths are still relative to
+<code>META-INF/templates</code> (or <code>META-INF/commands</code>), so a build script that configures them only needs
+to drop the <code>afterEvaluate { }</code> wrapper that used to be required:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">tasks.named(<span class="string"><span class="delimiter">'</span><span class="content">copyTemplates</span><span class="delimiter">'</span></span>, Copy) {
+    from(layout.projectDirectory.dir(<span class="string"><span class="delimiter">'</span><span class="content">grails-app/views</span><span class="delimiter">'</span></span>)) {
+        into(<span class="string"><span class="delimiter">'</span><span class="content">views</span><span class="delimiter">'</span></span>)
+    }
+}</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>After first applying <code>grails-plugin-cli</code> on a project that was already built without it, consider
+running <code>./gradlew clean</code> once. Older plugin packaging wrote command scripts directly into
+<code>build/resources/main/META-INF/commands</code>; the first build on 8.0 drops those files, but the empty
+directories they lived in remain until the build directory is cleaned. Fresh builds never place
+companion scripts on the runtime classpath.</p>
 </li>
 </ul>
 </div>
