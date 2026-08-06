@@ -530,7 +530,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <div id="header">
 <h1>GORM for MongoDB</h1>
 <div class="details">
-<span id="revnumber">version 8.0.0-M5</span>
+<span id="revnumber">version 7.2.2</span>
 </div>
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
@@ -552,7 +552,6 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#advancedConfig">Advanced Configuration</a></li>
 <li><a href="#springBoot">Using GORM in Spring Boot</a></li>
 <li><a href="#outsideGrails">GORM for MongoDB without Grails</a></li>
-<li><a href="#springDataInterop">Spring Data MongoDB Interoperability</a></li>
 </ul>
 </li>
 <li><a href="#objectMapping">Mapping Domain Classes</a>
@@ -705,22 +704,6 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <h3 id="releaseNotes">Release Notes</h3>
 <div class="paragraph">
 <p>Below are the details of the changes across releases:</p>
-</div>
-<div class="sect3">
-<h4 id="_8_0">8.0</h4>
-<div class="ulist">
-<ul>
-<li>
-<p>TTL indexes via <code>indexAttributes: [expireAfterSeconds: N]</code> in the mapping DSL</p>
-</li>
-<li>
-<p>Text and other special indexes via <code>indexAttributes: [type: 'text']</code></p>
-</li>
-<li>
-<p>In-place reconciliation of changed index options, with opt-in <code>indexAttributes: [recreateOnConflict: true]</code></p>
-</li>
-</ul>
-</div>
 </div>
 <div class="sect3">
 <h4 id="_7_1">7.1</h4>
@@ -968,29 +951,6 @@ abstract class BookService {
 <p>Please note that with autowire by-type as the default, when multiple beans for same type are found the application with throw Exception. Use the Spring `@Qualifier annotation for <a href="https://docs.spring.io/spring-framework/docs/5.3.10/reference/html/core.html#beans-autowired-annotation-qualifiers">Fine-tuning Annotation Based Autowiring with Qualifiers</a>.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="_mongoclient_lifecycle_for_an_externally_supplied_client">MongoClient Lifecycle for an Externally-Supplied Client</h4>
-<div class="paragraph">
-<p>When you construct a <code>MongoDatastore</code> with a <code>MongoClient</code> that you created yourself, GORM no longer closes that client when the datastore shuts down. The client is owned by whoever created it, so closing it is now your responsibility.</p>
-</div>
-<div class="paragraph">
-<p>This only affects you if you previously relied on <code>MongoDatastore.close()</code> to also close a client you passed in:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">MongoClient mongoClient = MongoClients.create(<span class="string"><span class="delimiter">&quot;</span><span class="content">mongodb://localhost/mydb</span><span class="delimiter">&quot;</span></span>)
-MongoDatastore datastore = <span class="keyword">new</span> MongoDatastore(mongoClient, Person)
-
-<span class="comment">// ...</span>
-
-datastore.close()    <span class="comment">// no longer closes mongoClient</span>
-mongoClient.close()  <span class="comment">// close the client you created</span></code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>No change is required when GORM creates the client itself — for example <code>new MongoDatastore(Person)</code>, or configuration-driven setups where GORM builds the client from <code>grails.mongodb.*</code> settings — because GORM continues to own and close those clients. A <code>MongoClient</code> registered as a Spring bean likewise continues to be closed by the <code>ApplicationContext</code>.</p>
-</div>
-</div>
 </div>
 </div>
 </div>
@@ -1005,7 +965,7 @@ mongoClient.close()  <span class="comment">// close the client you created</span
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
-    compile 'org.grails.plugins:mongodb:8.0.0-M5'
+    compile 'org.grails.plugins:mongodb:7.2.2'
 }</code></pre>
 </div>
 </div>
@@ -1042,7 +1002,7 @@ mongoClient.close()  <span class="comment">// close the client you created</span
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.mongodb:mongodb-driver:5.8.0"</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.mongodb:mongodb-driver:5.5.2"</code></pre>
 </div>
 </div>
 </div>
@@ -1244,105 +1204,6 @@ mongoClient.close()  <span class="comment">// close the client you created</span
 <p>You can also set a global default for the storage type of <code>String id</code> fields via <code>grails.mongodb.stringIds.defaultStoredAs</code> (values <code>string</code> or <code>objectid</code>). See <a href="#idGeneration">Identity Generation</a> for details.</p>
 </div>
 </div>
-<div class="sect3">
-<h4 id="_multi_document_transactions">Multi-Document Transactions</h4>
-<div class="paragraph">
-<p>By default a GORM transaction for MongoDB is a client-side unit of work: pending inserts, updates and deletes are batched and flushed to the server when the transaction commits, but each write is applied individually and is not rolled back if a later operation fails.</p>
-</div>
-<div class="paragraph">
-<p>Since MongoDB 4.0, the server supports multi-document ACID transactions. To have GORM run transactional operations inside a real server-side transaction — so that all writes within a <code>withTransaction</code> block (or a <code>@Transactional</code> service method) commit or roll back atomically — enable:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">grails {
-    mongodb {
-        transactional = <span class="predefined-constant">true</span>
-    }
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>With this enabled, a GORM transaction starts a MongoDB session and transaction; on commit all buffered writes are committed together, and on rollback they are discarded on the server:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">Person.withTransaction {
-    <span class="keyword">new</span> Person(<span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Fred</span><span class="delimiter">&quot;</span></span>).save()
-    <span class="keyword">new</span> Person(<span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Wilma</span><span class="delimiter">&quot;</span></span>).save()
-    <span class="comment">// both inserts commit together, or neither is applied if an exception is thrown</span>
-}</code></pre>
-</div>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-Multi-document transactions require a replica set or a sharded cluster; they are not supported on a standalone <code>mongod</code>. If <code>transactional</code> is enabled but a standalone topology is detected, GORM logs a warning once and falls back to the default client-side flush behavior. Identifier generation for native (<code>Long</code>) identity uses an independent counter and is intentionally not enrolled in the transaction, mirroring the non-transactional semantics of database sequences.
-</td>
-</tr>
-</table>
-</div>
-<div class="admonitionblock warning">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-warning" title="Warning"></i>
-</td>
-<td class="content">
-A per-transaction timeout is not supported for MongoDB server-side transactions. The session and transaction are started before the transaction manager applies a timeout, so a timeout on the <code>withTransaction</code> or <code>@Transactional</code> definition cannot be honored. Rather than silently ignore it, GORM throws a <code>TransactionUsageException</code> when a non-default timeout is requested. The server enforces its own maximum transaction duration via <code>transactionLifetimeLimitSeconds</code> (60 seconds by default).
-</td>
-</tr>
-</table>
-</div>
-<div class="sect4">
-<h5 id="_retry_semantics">Retry Semantics</h5>
-<div class="paragraph">
-<p>MongoDB labels two categories of transaction errors as retryable, and GORM deliberately handles only one of them:</p>
-</div>
-<div class="dlist">
-<dl>
-<dt class="hdlist1"><code>UnknownTransactionCommitResult</code></dt>
-<dd>
-<p>The outcome of the commit is unknown — for example a network failure or a replica set election occurred while the commit was in flight. The commit may already have succeeded on the server, and MongoDB guarantees that re-issuing it is safe and will not apply the writes twice. GORM therefore retries the commit automatically (up to three times) before propagating the error.</p>
-</dd>
-<dt class="hdlist1"><code>TransientTransactionError</code></dt>
-<dd>
-<p>The entire transaction has failed — for example a write conflict with a concurrent transaction — and can only be recovered by re-executing everything inside it. GORM intentionally does <strong>not</strong> retry these. Re-running the transaction body would also re-run any side effects it contains (sending email, calling external services, publishing messages), which is only safe when the body is idempotent — something only the application can know. The exception is propagated and whole-transaction retry is left to application code, matching the behavior of Spring Data MongoDB&#8217;s <code>MongoTransactionManager</code>.</p>
-</dd>
-</dl>
-</div>
-<div class="paragraph">
-<p>Applications whose transaction body is safe to re-run can implement the retry themselves by checking for the <code>TransientTransactionError</code> label:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">com.mongodb.MongoException</span>
-
-<span class="type">int</span> attempts = <span class="integer">0</span>
-<span class="keyword">while</span> (<span class="predefined-constant">true</span>) {
-    <span class="keyword">try</span> {
-        Person.withTransaction {
-            <span class="comment">// transactional work that is safe to re-run</span>
-        }
-        <span class="keyword">break</span>
-    }
-    <span class="keyword">catch</span> (MongoException e) {
-        <span class="keyword">if</span> (e.hasErrorLabel(MongoException.TRANSIENT_TRANSACTION_ERROR_LABEL) &amp;&amp; ++attempts &lt; <span class="integer">3</span>) {
-            <span class="keyword">continue</span>
-        }
-        <span class="keyword">throw</span> e
-    }
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Declarative retry libraries such as Spring Retry (<code>@Retryable</code>) can be used instead of a manual loop, applied around the transactional method.</p>
-</div>
-</div>
-</div>
 </div>
 <div class="sect2">
 <h3 id="springBoot">Using GORM in Spring Boot</h3>
@@ -1351,7 +1212,7 @@ A per-transaction timeout is not supported for MongoDB server-side transactions.
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">compile("org.apache.grails:grails-data-mongodb-spring-boot:8.0.0-M5")</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">compile("org.apache.grails:grails-data-mongodb-spring-boot:7.2.2")</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1408,7 +1269,7 @@ If your GORM entities are in a different package specify the package name as the
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.grails:grails-datastore-gorm-mongodb:8.0.0-M5"</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.grails:grails-datastore-gorm-mongodb:7.2.2"</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1433,29 +1294,6 @@ println Person.count()</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>You can also supply your own <code>com.mongodb.client.MongoClient</code> if you need to configure the driver directly:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">MongoClient mongoClient = MongoClients.create(<span class="string"><span class="delimiter">&quot;</span><span class="content">mongodb://localhost/mydb</span><span class="delimiter">&quot;</span></span>)
-<span class="keyword">def</span> datastore = <span class="keyword">new</span> MongoDatastore(mongoClient, Person)
-
-println Person.count()</code></pre>
-</div>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-When you supply your own <code>MongoClient</code>, GORM does not close it when the datastore shuts down — the client is owned by whoever created it, so you are responsible for closing it. When GORM creates the client itself (for example <code>new MongoDatastore(Person)</code>), it closes it for you.
-</td>
-</tr>
-</table>
-</div>
-<div class="paragraph">
 <p>For configuration you can either pass a map or an instance of the <code>org.springframework.core.env.PropertyResolver</code> interface:</p>
 </div>
 <div class="listingblock">
@@ -1475,95 +1313,6 @@ def initializer = <span class="keyword">new</span> MongoDbDataStoreSpringInitial
 initializer.configureForBeanDefinitionRegistry(myApplicationContext)
 
 println Person.count()</code></pre>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="springDataInterop">Spring Data MongoDB Interoperability</h3>
-<div class="paragraph">
-<p>The optional <code>grails-data-mongodb-spring-data</code> module lets an application use GORM for MongoDB and <a href="https://spring.io/projects/spring-data-mongodb">Spring Data MongoDB</a> (its <code>MongoTemplate</code> and repositories) side by side, sharing one <code>MongoClient</code>, one database and one transaction. Add the dependency:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">implementation "org.apache.grails:grails-data-mongodb-spring-data:8.0.0-M5"</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>When the module and Spring Data MongoDB are on the classpath of a Spring Boot application that already has a GORM <code>MongoDatastore</code>, it auto-configures, over GORM&#8217;s existing connection:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>a <code>MongoDatabaseFactory</code> bound to GORM&#8217;s <code>MongoClient</code> and default database (GORM keeps ownership of the client; the factory will not close it),</p>
-</li>
-<li>
-<p>a <code>MongoTemplate</code> (named <code>mongoTemplate</code>) and its <code>MappingMongoConverter</code>, sharing the driver-level codec registry,</p>
-</li>
-<li>
-<p>a primary <code>transactionManager</code> that lets GORM and Spring Data participate in a single MongoDB transaction.</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>Spring Data repositories are enabled the usual way, in a package separate from your GORM <code>@Entity</code> classes:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="annotation">@EnableMongoRepositories</span>(basePackages = <span class="string"><span class="delimiter">&quot;</span><span class="content">com.example.repositories</span><span class="delimiter">&quot;</span></span>)
-<span class="type">class</span> <span class="class">Application</span> {
-    <span class="directive">static</span> <span class="type">void</span> main(<span class="predefined-type">String</span><span class="type">[]</span> args) {
-        GrailsApp.run(Application, args)
-    }
-}</code></pre>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_shared_transactions">Shared transactions</h4>
-<div class="paragraph">
-<p>With GORM multi-document transactions enabled (<code>grails.mongodb.transactional = true</code>, see <a href="#advancedConfig">Advanced Configuration</a>), a single transactional method commits or rolls back GORM writes and Spring Data writes together on one server-side <code>ClientSession</code>:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="annotation">@Transactional</span>
-<span class="type">void</span> transfer(MongoTemplate mongoTemplate) {
-    <span class="keyword">new</span> Account(<span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">from</span><span class="delimiter">&quot;</span></span>).save()                 <span class="comment">// GORM</span>
-    mongoTemplate.insert(<span class="keyword">new</span> LedgerEntry(<span class="key">amount</span>: <span class="integer">10</span>)) <span class="comment">// Spring Data</span>
-    <span class="comment">// both commit together, or neither is applied if an exception is thrown</span>
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The unified manager is registered as the primary <code>transactionManager</code> (it has to be, to be chosen over GORM&#8217;s plain <code>mongoTransactionManager</code> for an unqualified <code>@Transactional</code>). It backs off automatically if the application already defines a bean named <code>transactionManager</code>. To run a block with GORM-only semantics, qualify the manager: <code>@Transactional("mongoTransactionManager")</code>.</p>
-</div>
-<div class="admonitionblock warning">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-warning" title="Warning"></i>
-</td>
-<td class="content">
-Because it is primary, in an application that mixes this with another persistence stack (for example Hibernate/JPA), an unqualified <code>@Transactional</code> resolves to this MongoDB manager. If you run multiple persistence stacks, define your own primary <code>transactionManager</code> (or qualify every <code>@Transactional</code> explicitly) so each method targets the intended manager.
-</td>
-</tr>
-</table>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-Like GORM&#8217;s own transaction manager, the unified manager supports a single flat transaction (<code>PROPAGATION_REQUIRED</code>). Spring-native suspension propagations such as <code>REQUIRES_NEW</code> and <code>NESTED</code> are not supported — a nested transactional call joins the surrounding transaction rather than starting an independent one.
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_boundary">Boundary</h4>
-<div class="paragraph">
-<p>Only the connection, codecs and (within a transaction) the <code>ClientSession</code> are shared. The two object-mapping models remain separate: GORM maps its <code>@Entity</code> classes through its own mapping context, and Spring Data maps its own document classes through <code>MappingMongoConverter</code>. Do not point <code>@EnableMongoRepositories</code> at GORM <code>@Entity</code> packages, and do not register GORM entities with Spring Data&#8217;s mapping context. Two classes may map the same collection only if you keep their field mappings compatible.</p>
 </div>
 </div>
 </div>
@@ -1996,81 +1745,6 @@ dirty checking and prevent the property from being updated.</p>
 </div>
 <div class="paragraph">
 <p>As per the MongoDB docs 1 is for ascending and -1 is for descending.</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_ttl_indexes">TTL Indexes</h4>
-<div class="paragraph">
-<p>MongoDB can automatically remove documents from a collection once they reach a certain age using a <a href="https://www.mongodb.com/docs/manual/core/index-ttl/">TTL index</a>. Declare one by adding <code>expireAfterSeconds</code> to the <code>indexAttributes</code> of a single date-valued property:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">LoginEvent</span> {
-    <span class="predefined-type">Date</span> dateCreated
-    <span class="directive">static</span> mapping = {
-        dateCreated <span class="key">index</span>:<span class="predefined-constant">true</span>, <span class="key">indexAttributes</span>: [<span class="key">expireAfterSeconds</span>: <span class="integer">3600</span>]
-    }
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>With the mapping above MongoDB expires each <code>LoginEvent</code> roughly one hour (3600 seconds) after the value stored in its <code>dateCreated</code> property. The indexed property must hold a <code>Date</code> (or an array of dates), and TTL is supported on single-field indexes only — MongoDB ignores <code>expireAfterSeconds</code> if it is applied to a <code>compoundIndex</code>.</p>
-</div>
-<div class="paragraph">
-<p>If you later change the declared <code>expireAfterSeconds</code>, GORM reconciles the existing index in place on startup (using MongoDB&#8217;s <a href="https://www.mongodb.com/docs/manual/reference/command/collMod/">collMod</a> command) so that the new expiry takes effect without dropping or rebuilding the index.</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_text_indexes">Text Indexes</h4>
-<div class="paragraph">
-<p>In addition to declaring a text index with the <code>index</code> method (see <a href="#textSearch">Full Text Search</a>), you can declare one on a single property through <code>indexAttributes</code> using <code>type: 'text'</code>:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">Product</span> {
-    <span class="predefined-type">String</span> title
-    <span class="directive">static</span> mapping = {
-        title <span class="key">index</span>:<span class="predefined-constant">true</span>, <span class="key">indexAttributes</span>: [<span class="key">type</span>: <span class="string"><span class="delimiter">'</span><span class="content">text</span><span class="delimiter">'</span></span>]
-    }
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The <code>type</code> attribute sets the index type for that field, so it can equally be used to declare other special index types such as <code>'2d'</code> or <code>'2dsphere'</code>. Note that MongoDB allows at most one text index per collection. See <a href="#textSearch">Full Text Search</a> for how to query a text index once it has been created.</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_reconciling_index_option_changes">Reconciling Index Option Changes</h4>
-<div class="paragraph">
-<p>An index is created from its declared options the first time the collection is initialised. If you later change the options of an already-created index — for example marking it <code>unique</code> — MongoDB cannot alter most options in place and reports an <code>IndexOptionsConflict</code>. By default GORM logs this conflict and leaves the existing index untouched.</p>
-</div>
-<div class="paragraph">
-<p>To have GORM drop the existing index and recreate it with the newly declared options, add <code>recreateOnConflict: true</code> to the <code>indexAttributes</code>:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">Person</span> {
-    <span class="predefined-type">String</span> name
-    <span class="directive">static</span> mapping = {
-        name <span class="key">index</span>:<span class="predefined-constant">true</span>, <span class="key">indexAttributes</span>: [<span class="key">unique</span>:<span class="predefined-constant">true</span>, <span class="key">recreateOnConflict</span>:<span class="predefined-constant">true</span>]
-    }
-}</code></pre>
-</div>
-</div>
-<div class="admonitionblock warning">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-warning" title="Warning"></i>
-</td>
-<td class="content">
-Dropping and recreating an index rebuilds it from scratch, during which queries that rely on the index are not served by it. Enable <code>recreateOnConflict</code> deliberately, and prefer applying it during a maintenance window for large collections.
-</td>
-</tr>
-</table>
-</div>
-<div class="paragraph">
-<p>A change to a TTL index&#8217;s <code>expireAfterSeconds</code> is handled automatically and does not require <code>recreateOnConflict</code>, because GORM updates the expiry in place rather than rebuilding the index.</p>
 </div>
 </div>
 <div class="sect3">
@@ -4180,7 +3854,7 @@ Hotel.findByLocationWithinCircle( Circle.valueOf( [[<span class="integer">40</sp
 </div>
 <div id="footer">
 <div id="footer-text">
-Version 8.0.0-M5<br>
+Version 7.2.2<br>
 </div>
 </div>
 </body>
