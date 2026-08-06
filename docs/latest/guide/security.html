@@ -2,7 +2,7 @@
                       "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
 <head>
-    <title>18 Security 7.0.15</title>
+    <title>18 Security 8.0.0-M5</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
     <link rel="stylesheet" href="../css/pdf.css" type="text/css" media="print" title="PDF" charset="utf-8"/>
@@ -178,7 +178,7 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
                 <div class="project">
                     <h1>18 Security</h1>
 
-                    <p><strong>Version:</strong> 7.0.15</p>
+                    <p><strong>Version:</strong> 8.0.0-M5</p>
                 </div>
 
                 
@@ -232,7 +232,7 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
 <h1 id="security">18 Security</h1>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/7.0.x/grails-doc/src/en/guide/security.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/security.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -271,14 +271,14 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
 <h2 id="securingAgainstAttacks">18.1 Securing Against Attacks</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/7.0.x/grails-doc/src/en/guide/security/securingAgainstAttacks.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/security/securingAgainstAttacks.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
 
 
 <div class="sect3">
-<h4 id="_sql_injection">SQL injection</h4>
+<h4 id="sqlInjection">SQL injection</h4>
 <div class="paragraph">
 <p>Hibernate, which is the technology underlying GORM domain classes, automatically escapes data when committing to database so this is not an issue. However it is still possible to write bad dynamic HQL code that uses unchecked request parameters. For example doing the following is vulnerable to HQL injection attacks:</p>
 </div>
@@ -319,6 +319,92 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
     <span class="keyword">def</span> books = <span class="predefined-type">Book</span>.find(<span class="string"><span class="delimiter">&quot;</span><span class="content">from Book as b where b.title = :title</span><span class="delimiter">&quot;</span></span>,
                           [<span class="key">title</span>: params.title])
 }</code></pre>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_compile_time_detection_of_flattened_gstring_queries">Compile-time detection of flattened GString queries</h5>
+<div class="paragraph">
+<p>Passing a <code>GString</code> <strong>directly</strong> to a GORM query method such as <code>find</code>, <code>findAll</code>, <code>executeQuery</code>, or <code>executeUpdate</code> is safe: GORM converts each interpolated value into a bound query parameter rather than embedding it as text. The risk is a subtler pattern that looks harmless:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> <span class="function">vulnerable</span>() {
+    <span class="predefined-type">String</span> query = <span class="string"><span class="delimiter">&quot;</span><span class="content">from Book as b where b.title = </span><span class="inline"><span class="inline-delimiter">${</span>params.title<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>  <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="keyword">def</span> books = <span class="predefined-type">Book</span>.executeQuery(query)                              <i class="conum" data-value="2"></i><b>(2)</b>
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Groovy coerces the <code>GString</code> to a plain <code>String</code> right here, because <code>query</code> is declared as <code>String</code>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>By the time <code>executeQuery</code> receives it, it is an ordinary <code>String</code> with no trace of ever having been a <code>GString</code> — the interpolated value is now raw, unescaped text, and this call is genuinely vulnerable to HQL injection.</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>This is dangerous precisely because it can&#8217;t be caught at runtime: once a <code>GString</code> is flattened to a <code>String</code>, there is nothing left to distinguish it from HQL text that was always safe. Grails detects this pattern at <strong>compile time</strong> instead, and fails the build with an error identifying the call site. To fix it, keep the value as a <code>GString</code> (recommended) or pass named/positional parameters explicitly, as shown above.</p>
+</div>
+<div class="paragraph">
+<p>If a flagged call site has been reviewed and is genuinely safe, suppress the check on the enclosing method:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="annotation">@SuppressWarnings</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">GormUnsafeQueryString</span><span class="delimiter">&quot;</span></span>)
+<span class="keyword">def</span> <span class="function">reviewedAndSafe</span>() {
+    <span class="predefined-type">String</span> query = <span class="string"><span class="delimiter">&quot;</span><span class="content">from Book as b where b.title = </span><span class="inline"><span class="inline-delimiter">${</span>params.title<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>
+    <span class="keyword">def</span> books = <span class="predefined-type">Book</span>.executeQuery(query)
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This check runs automatically against every Grails application that has <code>grails-datamapping-core</code> on its compile classpath — no configuration is required, and it covers every GORM implementation whose query methods follow this convention (Hibernate and Neo4j today).</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_compile_time_warnings_for_lower_confidence_patterns">Compile-time warnings for lower-confidence patterns</h5>
+<div class="paragraph">
+<p>Two related patterns are detected by the same check but reported as compile-time <strong>warnings</strong> rather than build failures, because the detection is less certain than the local-variable case above:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">Book</span> {
+    <span class="predefined-type">String</span> title
+    <span class="predefined-type">String</span> cachedQuery = <span class="string"><span class="delimiter">&quot;</span><span class="content">from Book where title = </span><span class="inline"><span class="inline-delimiter">${</span>title<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>  <i class="conum" data-value="1"></i><b>(1)</b>
+
+    <span class="keyword">def</span> <span class="function">loadCached</span>() {
+        executeQuery(<span class="local-variable">this</span>.cachedQuery)                         <i class="conum" data-value="2"></i><b>(2)</b>
+    }
+
+    <span class="keyword">def</span> <span class="function">vulnerable</span>(<span class="predefined-type">String</span> title) {
+        <span class="predefined-type">String</span> query = <span class="string"><span class="delimiter">&quot;</span><span class="content">from Book where title = </span><span class="delimiter">&quot;</span></span> + title      <i class="conum" data-value="3"></i><b>(3)</b>
+        executeQuery(query)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>A field initialized from an interpolated <code>GString</code> — unlike a local variable, a field can be reassigned from a constructor, another method, or a subclass that this check never sees, so this is flagged rather than failed.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Reading that field later through <code>this.cachedQuery</code> in a query call.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>Query text built with <code>+</code> from a non-constant value and no <code>GString</code> involved at all. This is a real injection shape, but string concatenation is common enough for benign, non-query purposes that a hard build failure would be too blunt an instrument.</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Both warnings identify the call site and suppress the same way as the error above, with <code>@SuppressWarnings("GormUnsafeQueryString")</code> on the enclosing method. Concatenating a <code>GString</code> with additional text (e.g. <code>"&#8230;&#8203;${title}&#8230;&#8203;" + " order by title"</code>) is <strong>not</strong> one of these warnings — Groovy&#8217;s <code>GString.plus</code> returns a plain <code>String</code>, so this flattens the interpolation immediately and is reported as the build-breaking error instead.</p>
 </div>
 </div>
 </div>
@@ -391,7 +477,7 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
 <h2 id="xssPrevention">18.2 Cross Site Scripting (XSS) Prevention</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/7.0.x/grails-doc/src/en/guide/security/xssPrevention.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/security/xssPrevention.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -670,7 +756,7 @@ Although Grails plays it safe by default, that is no guarantee that your applica
 <h2 id="codecs">18.3 Encoding and Decoding Objects</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/7.0.x/grails-doc/src/en/guide/security/codecs.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/security/codecs.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -941,14 +1027,14 @@ Repeat last search
 <h2 id="authentication">18.4 Authentication</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/7.0.x/grails-doc/src/en/guide/security/authentication.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/security/authentication.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
 
 
 <div class="paragraph">
-<p>Grails has no default mechanism for authentication as it is possible to implement authentication in many different ways. It is however, easy to implement a simple authentication mechanism using <a href="theWebLayer.html#interceptors">interceptors</a>. This is sufficient for simple use cases but it&#8217;s highly preferable to use an established security framework, for example by using the <a href="#springSecurity">Spring Security</a> or the <a href="#shiro">Shiro</a> plugin.</p>
+<p>Grails has no default mechanism for authentication as it is possible to implement authentication in many different ways. It is however, easy to implement a simple authentication mechanism using <a href="#interceptors">interceptors</a>. This is sufficient for simple use cases but it&#8217;s highly preferable to use an established security framework, for example by using the <a href="#springSecurity">Spring Security</a> plugin.</p>
 </div>
 <div class="paragraph">
 <p>Interceptors let you apply authentication across all controllers or across a URI space. For example you can create a new set of filters in a class called <code>grails-app/controllers/SecurityInterceptor.groovy</code> by running:</p>
@@ -1015,7 +1101,7 @@ Repeat last search
 <h2 id="securityPlugins">18.5 Security Plugins</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/7.0.x/grails-doc/src/en/guide/security/securityPlugins.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/security/securityPlugins.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -1029,7 +1115,7 @@ Repeat last search
 <h2 id="springSecurity">18.5.1 Spring Security</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/7.0.x/grails-doc/src/en/guide/security/securityPlugins/springSecurity.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/security/securityPlugins/springSecurity.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -1086,7 +1172,7 @@ These plugins were previously developed and released independently from the <a h
 <h2 id="springSecurityCore">18.5.1.1 Core Plugin</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/7.0.x/grails-doc/src/en/guide/security/securityPlugins/springSecurity/springSecurityCore.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/security/securityPlugins/springSecurity/springSecurityCore.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -1157,7 +1243,7 @@ These plugins were previously developed and released independently from the <a h
 </div>
 </li>
 <li>
-<p>The Spring Security Core Plugin 7.0.15 is now installed and integrated into your Grails project.</p>
+<p>The Spring Security Core Plugin 8.0.0-M5 is now installed and integrated into your Grails project.</p>
 </li>
 <li>
 <p>You can start using the plugin&#8217;s features and commands in your application.</p>
@@ -1176,10 +1262,81 @@ These plugins were previously developed and released independently from the <a h
 <div class="sect4">
 <h5 id="_spring_boot_auto_configuration">Spring Boot Auto-Configuration</h5>
 <div class="paragraph">
-<p>The plugin automatically excludes Spring Boot security auto-configuration classes (such as <code>SecurityAutoConfiguration</code>, <code>SecurityFilterAutoConfiguration</code>, and <code>UserDetailsServiceAutoConfiguration</code>) that conflict with the plugin&#8217;s own security setup. This means you do not need to manually add <code>spring.autoconfigure.exclude</code> entries to your <code>application.yml</code>.</p>
+<p>The plugin automatically excludes Spring Boot&#8217;s servlet security auto-configuration classes (such as <code>SecurityAutoConfiguration</code>, <code>SecurityFilterAutoConfiguration</code>, <code>UserDetailsServiceAutoConfiguration</code>, the OAuth2 client/resource-server/authorization-server starters, and the SAML2 relying-party starter) that conflict with the plugin&#8217;s own security setup. This means you do not need to manually add <code>spring.autoconfigure.exclude</code> entries to your <code>application.yml</code>.</p>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+While the plugin is active, <code>grails.plugin.springsecurity.<strong></code> is the authoritative configuration namespace for security. Spring Boot&#8217;s <code>spring.security.</strong></code> properties are not merged into the plugin configuration. Use the plugin&#8217;s keys to configure security; do not mix them with Boot&#8217;s <code>spring.security.*</code> keys.
+</td>
+</tr>
+</table>
+</div>
+<div class="sect5">
+<h6 id="_coexistence_with_the_component_based_spring_security_configuration_model">Coexistence with the component-based Spring Security configuration model</h6>
+<div class="paragraph">
+<p>Spring Security 5.7 deprecated and Spring Security 6 removed <code>WebSecurityConfigurerAdapter</code>, replacing it with a component-based configuration model that registers individual <code>@Bean</code> components (see <a href="https://spring.io/blog/2022/02/21/spring-security-without-the-websecurityconfigureradapter">Spring Security without the WebSecurityConfigurerAdapter</a>). This plugin pre-dates that model and provides equivalent functionality through the <code>grails.plugin.springsecurity.<strong></code> configuration namespace, but it now *blends</strong> the most common component-based patterns automatically. You can configure security from either side (or both) and the effective configuration is the union of both sources.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Spring component-based pattern</th>
+<th class="tableblock halign-left valign-top">Blending behaviour with this plugin active</th>
+<th class="tableblock halign-left valign-top">Disable via</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>@Bean SecurityFilterChain</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Auto-merged</strong> into the plugin&#8217;s <code>FilterChainProxy</code>; user chains are prepended (higher precedence) so their typically more-specific request matchers win against the plugin&#8217;s catch-all chain.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails.plugin.springsecurity.componentBased.autoMergeSecurityFilterChain: false</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>@Bean AuthenticationProvider</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Auto-merged</strong> into the plugin&#8217;s <code>authenticationManager</code> (<code>ProviderManager</code>); user providers are appended so the plugin&#8217;s primary GORM-backed provider runs first; providers already declared via <code>providerNames</code> are not re-added.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails.plugin.springsecurity.componentBased.autoMergeAuthenticationProviders: false</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>@Bean InMemoryUserDetailsManager</code> / <code>JdbcUserDetailsManager</code> (or any extra <code>UserDetailsService</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">For each additional <code>UserDetailsService</code> bean, a new <code>DaoAuthenticationProvider</code> is created and <strong>appended</strong> to the plugin&#8217;s <code>authenticationManager</code> providers list. The plugin&#8217;s primary GORM-backed provider runs first; if it does not authenticate the user, each additional provider is tried in turn. (Spring Security 7 made <code>DaoAuthenticationProvider.userDetailsService</code> final, so we add new providers instead of mutating the existing one.)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails.plugin.springsecurity.componentBased.autoChainUserDetailsServices: false</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.security.user.name</code> / <code>spring.security.user.password</code> / <code>spring.security.user.roles</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">If <code>spring.security.user.name</code> is set, an <code>InMemoryUserDetailsManager</code> is created from those properties (mimicking what Spring Boot&#8217;s <code>UserDetailsServiceAutoConfiguration</code> would have done), wrapped in a <code>DaoAuthenticationProvider</code>, and added to the plugin&#8217;s authenticationManager.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails.plugin.springsecurity.componentBased.bridgeSpringSecurityUserProperties: false</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>@Bean WebSecurityCustomizer</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Still a no-op. The plugin does not use Spring&#8217;s <code>WebSecurity</code> builder. To exclude URLs from security checks, use <code>grails.plugin.springsecurity.staticRules</code> with <code>permitAll</code>, or <code>grails.plugin.springsecurity.ipRestrictions</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">n/a</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>@Bean AuthenticationManager</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Conflicts with the plugin&#8217;s <code>authenticationManager</code> (<code>ProviderManager</code>) bean by name. Use <code>@Bean AuthenticationProvider</code> (auto-merged - see above) or <code>grails.plugin.springsecurity.providerNames</code> instead.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">n/a</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">LDAP factory beans (<code>EmbeddedLdapServerContextSourceFactoryBean</code>, <code>LdapBindAuthenticationManagerFactory</code>, <code>LdapPasswordComparisonAuthenticationManagerFactory</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Coexist but are not wired into the plugin&#8217;s authentication providers.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Use the <code>grails-spring-security-ldap</code> plugin and the <code>grails.plugin.springsecurity.ldap.*</code> configuration.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>To delegate the entire servlet security stack to Spring Boot&#8217;s component-based model (and stop using the plugin&#8217;s <code>grails.plugin.springsecurity.*</code> configuration), disable the excluder via the property below.</p>
 </div>
 <div class="paragraph">
-<p>If you need to disable this automatic exclusion - for example, to use Spring Boot&#8217;s security auto-configuration directly alongside the plugin - set the following property in <code>application.yml</code>:</p>
+<p>If you need to disable this automatic exclusion - for example, to delegate the entire servlet security stack to Spring Boot instead of the plugin - set the following property in <code>application.yml</code>:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -1187,6 +1344,19 @@ These plugins were previously developed and released independently from the <a h
   <span class="key">plugin</span>:
     <span class="key">springsecurity</span>:
       <span class="key">excludeSpringSecurityAutoConfiguration</span>: <span class="string"><span class="content">false</span></span></code></pre>
+</div>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+Disabling the exclusion is intentionally a footgun. The plugin can no longer guarantee that its filter chain is the only servlet security stack in the application context, and a startup <code>WARN</code> will be logged.
+</td>
+</tr>
+</table>
 </div>
 </div>
 </div>
@@ -2939,7 +3109,7 @@ springSecurityService.clearCachedRequestmaps()</code></pre>
 <div class="sect3">
 <h4 id="core-expressions">Using Expressions to Create Descriptive, Fine-Grained Rules</h4>
 <div class="paragraph">
-<p>Spring Security uses the <a href="https://docs.spring.io/spring-framework/reference/6.2.19/expressions.html">Spring Expression Language (SpEL)</a>, which allows you to declare the rules for guarding URLs more descriptively than does the traditional approach, and also allows much more fine-grained rules. Where you traditionally would specify a list of role names and/or special tokens (for example, <code>IS_AUTHENTICATED_FULLY</code>), with <a href="https://https://docs.spring.io/spring-security/reference/current/#el-access">Spring Security&#8217;s expression support</a>, you can instead use the embedded scripting language to define simple or complex access rules.</p>
+<p>Spring Security uses the <a href="https://docs.spring.io/spring-framework/reference/7.0.8/expressions.html">Spring Expression Language (SpEL)</a>, which allows you to declare the rules for guarding URLs more descriptively than does the traditional approach, and also allows much more fine-grained rules. Where you traditionally would specify a list of role names and/or special tokens (for example, <code>IS_AUTHENTICATED_FULLY</code>), with <a href="https://https://docs.spring.io/spring-security/reference/current/#el-access">Spring Security&#8217;s expression support</a>, you can instead use the embedded scripting language to define simple or complex access rules.</p>
 </div>
 <div class="paragraph">
 <p>You can use expressions with any of the previously described approaches to securing application URLs. For example, consider this annotated controller:</p>
@@ -3894,7 +4064,7 @@ You're not a user
 <div class="sect4">
 <h5 id="_authenticationeventpublisher">AuthenticationEventPublisher</h5>
 <div class="paragraph">
-<p>Spring Security publishes events using an <a href="https://docs.spring.io/spring-security/site/docs/current/api/org/springframework/security/authentication/AuthenticationEventPublisher.html">AuthenticationEventPublisher</a> which in turn fire events using the <a href="https://docs.spring.io/spring-framework/docs/6.2.19/javadoc-api/org/springframework/context/ApplicationEventPublisher.html">ApplicationEventPublisher</a>. By default no events are fired since the <code>AuthenticationEventPublisher</code> instance registered is a <code>grails.plugin.springsecurity.authentication.NullAuthenticationEventPublisher</code>. But you can enable event publishing by setting <code>grails.plugin.springsecurity.useSecurityEventListener = true</code> in <code>grails-app/conf/application.groovy</code>.</p>
+<p>Spring Security publishes events using an <a href="https://docs.spring.io/spring-security/site/docs/current/api/org/springframework/security/authentication/AuthenticationEventPublisher.html">AuthenticationEventPublisher</a> which in turn fire events using the <a href="https://docs.spring.io/spring-framework/docs/7.0.8/javadoc-api/org/springframework/context/ApplicationEventPublisher.html">ApplicationEventPublisher</a>. By default no events are fired since the <code>AuthenticationEventPublisher</code> instance registered is a <code>grails.plugin.springsecurity.authentication.NullAuthenticationEventPublisher</code>. But you can enable event publishing by setting <code>grails.plugin.springsecurity.useSecurityEventListener = true</code> in <code>grails-app/conf/application.groovy</code>.</p>
 </div>
 <div class="paragraph">
 <p>You can use the <code>useSecurityEventListener</code> setting to temporarily disable and enable the callbacks, or enable them per-environment.</p>
@@ -7954,7 +8124,7 @@ logger <span class="string"><span class="delimiter">'</span><span class="content
 <h2 id="springSecurityAcl">18.5.1.2 ACL Plugin</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/7.0.x/grails-doc/src/en/guide/security/securityPlugins/springSecurity/springSecurityAcl.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/security/securityPlugins/springSecurity/springSecurityAcl.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -9795,7 +9965,7 @@ the body content
 <h2 id="springSecurityCas">18.5.1.3 CAS Plugin</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/7.0.x/grails-doc/src/en/guide/security/securityPlugins/springSecurity/springSecurityCas.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/security/securityPlugins/springSecurity/springSecurityCas.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -10015,7 +10185,7 @@ the body content
 <h2 id="springSecurityLdap">18.5.1.4 LDAP Plugin</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/7.0.x/grails-doc/src/en/guide/security/securityPlugins/springSecurity/springSecurityLdap.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/security/securityPlugins/springSecurity/springSecurityLdap.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -10060,7 +10230,7 @@ the body content
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
    ...
-   implementation 'org.apache.grails:grails-spring-security-ldap:7.0.15'
+   implementation 'org.apache.grails:grails-spring-security-ldap:8.0.0-M5'
 }</code></pre>
 </div>
 </div>
@@ -10071,8 +10241,8 @@ the body content
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
     ...
-    implementation "org.apache.grails:grails-spring-security:7.0.15"
-    implementation "org.apache.grails:grails-spring-security-ldap:7.0.15"
+    implementation "org.apache.grails:grails-spring-security:8.0.0-M5"
+    implementation "org.apache.grails:grails-spring-security-ldap:8.0.0-M5"
 }</code></pre>
 </div>
 </div>
@@ -10663,7 +10833,7 @@ beans = {
 <h2 id="springSecurityOauth2">18.5.1.5 OAuth2 Plugin</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/7.0.x/grails-doc/src/en/guide/security/securityPlugins/springSecurity/springSecurityOauth2.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/security/securityPlugins/springSecurity/springSecurityOauth2.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -11045,7 +11215,7 @@ it prevents people from using tokens from other providers to try to grain access
 <h2 id="springSecurityRest">18.5.1.6 REST Plugin</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/7.0.x/grails-doc/src/en/guide/security/securityPlugins/springSecurity/springSecurityRest.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/security/securityPlugins/springSecurity/springSecurityRest.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -11440,7 +11610,7 @@ look at the [new chapter in the documentation|guide:tokenValidation].</p>
 
     <span class="comment">//Other dependencies</span>
 
-    implementation <span class="string"><span class="delimiter">&quot;</span><span class="content">org.apache.grails:grails-spring-security-rest:7.0.15</span><span class="delimiter">&quot;</span></span>
+    implementation <span class="string"><span class="delimiter">&quot;</span><span class="content">org.apache.grails:grails-spring-security-rest:8.0.0-M5</span><span class="delimiter">&quot;</span></span>
 
 }</code></pre>
 </div>
@@ -11452,7 +11622,7 @@ artifact. For instance, for Memcached:</p>
 <div class="listingblock">
 <div class="title"><code>build.gradle</code></div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">ext.springSecurityRestVersion = <span class="string"><span class="delimiter">'</span><span class="content">7.0.15</span><span class="delimiter">'</span></span>
+<pre class="CodeRay highlight"><code data-lang="groovy">ext.springSecurityRestVersion = <span class="string"><span class="delimiter">'</span><span class="content">8.0.0-M5</span><span class="delimiter">'</span></span>
 
 dependencies {
 
@@ -11489,7 +11659,7 @@ used. Every submodule of the above list will automatically configure the token s
 </div>
 <div class="paragraph">
 <p>If you want your own token storage system, you need to implement
-<a href="https://grails.apache.org/docs/7.0.15/api/grails/plugin/springsecurity/rest/token/storage/TokenStorageService.html">TokenStorageService</a>
+<a href="https://grails.apache.org/docs/8.0.0-M5/api/grails/plugin/springsecurity/rest/token/storage/TokenStorageService.html">TokenStorageService</a>
 and register it in <code>resources.groovy</code> as <code>tokenStorageService</code>.</p>
 </div>
 </div>
@@ -11673,7 +11843,7 @@ grails.plugin.springsecurity.onRestTokenCreationEvent = { e, appCtx -&gt;
 that you need.</p>
 </div>
 <div class="paragraph">
-<p>The <a href="https://grails.apache.org/docs/7.0.15/api/grails/plugin/springsecurity/rest/RestAuthenticationFilter.html">authentication filter</a>
+<p>The <a href="https://grails.apache.org/docs/8.0.0-M5/api/grails/plugin/springsecurity/rest/RestAuthenticationFilter.html">authentication filter</a>
 uses the default <code>authenticationManager</code> bean, which in turn uses all the registered authentication
 providers. See the <a href="https://apache.github.io/grails-spring-security/latest/index.html#authenticationProviders">Spring Security Core guide</a>
 for more information about how to define your own providers. Note that you can easily plug any Spring Security sub-plugin
@@ -11807,7 +11977,7 @@ grails.plugin.springsecurity.rest.login.passwordPropertyName = <span class="stri
 </div>
 <div class="paragraph">
 <p>If your JSON request format is different, you can plug your own implementation by defining a class which extends
-<a href="https://grails.apache.org/docs/7.0.15/api/grails/plugin/springsecurity/rest/credentials/AbstractJsonPayloadCredentialsExtractor.html">AbstractJsonPayloadCredentialsExtractor</a>.
+<a href="https://grails.apache.org/docs/8.0.0-M5/api/grails/plugin/springsecurity/rest/credentials/AbstractJsonPayloadCredentialsExtractor.html">AbstractJsonPayloadCredentialsExtractor</a>.
 The default implementation looks like this:</p>
 </div>
 <div class="listingblock">
@@ -11891,7 +12061,7 @@ The default implementation looks like this:</p>
 <div class="paragraph">
 <p>Logout is not possible when using JWT tokens (the default strategy), as no state is kept in the server. If
 you still want to have logout, you can provide your own implementation by creating a subclass of
-<a href="https://grails.apache.org/docs/7.0.15/api/grails/plugin/springsecurity/rest/token/storage/jwt/JwtTokenStorageService.html">JwtTokenStorageService</a>
+<a href="https://grails.apache.org/docs/8.0.0-M5/api/grails/plugin/springsecurity/rest/token/storage/jwt/JwtTokenStorageService.html">JwtTokenStorageService</a>
 and overriding the methods <code>storeToken</code> and <code>removeToken</code>.</p>
 </div>
 <div class="paragraph">
@@ -11907,7 +12077,7 @@ on every access).</p>
 </table>
 </div>
 <div class="paragraph">
-<p>The <a href="https://grails.apache.org/docs/7.0.15/api/grails/plugin/springsecurity/rest/RestLogoutFilter.html">logout filter</a>
+<p>The <a href="https://grails.apache.org/docs/8.0.0-M5/api/grails/plugin/springsecurity/rest/RestLogoutFilter.html">logout filter</a>
 exposes an endpoint for deleting tokens. It will read the token from an HTTP header. If found, will delete it from the
 storage, sending a 200 response. Otherwise, it will send a 404 response.</p>
 </div>
@@ -11948,12 +12118,12 @@ more information about how this plugin uses JWT&#8217;s, check the <a href="#res
 <h4 id="_claims">Claims</h4>
 <div class="paragraph">
 <p>It is possible, to include additional claims in the JWT generated. To do so, you can plug one or more implementations of the interface
-<a href="https://grails.apache.org/docs/7.0.15/api/grails/plugin/springsecurity/rest/token/generation/jwt/CustomClaimProvider.html">CustomClaimProvider</a>,
+<a href="https://grails.apache.org/docs/8.0.0-M5/api/grails/plugin/springsecurity/rest/token/generation/jwt/CustomClaimProvider.html">CustomClaimProvider</a>,
 and register them in Spring.</p>
 </div>
 <div class="paragraph">
 <p>The plugin comes prepackaged with a
-<a href="https://grails.apache.org/docs/7.0.15/api/grails/plugin/springsecurity/rest/token/generation/jwt/IssuerClaimProvider.html">IssuerClaimProvider</a>,
+<a href="https://grails.apache.org/docs/8.0.0-M5/api/grails/plugin/springsecurity/rest/token/generation/jwt/IssuerClaimProvider.html">IssuerClaimProvider</a>,
 that sets the <code>iss</code> field of the JWT claim set, and which value is configurable using the following configuration property:
 <code>grails.plugin.springsecurity.rest.token.generation.jwt.issuer</code>.</p>
 </div>
@@ -12061,10 +12231,10 @@ and the signing / encryption algorithms are configurable, as long as they are su
 <div class="ulist">
 <ul>
 <li>
-<p><a href="https://grails.apache.org/docs/7.0.15/api/grails/plugin/springsecurity/rest/token/generation/SecureRandomTokenGenerator.html">Using java.security.SecureRandom</a>.</p>
+<p><a href="https://grails.apache.org/docs/8.0.0-M5/api/grails/plugin/springsecurity/rest/token/generation/SecureRandomTokenGenerator.html">Using java.security.SecureRandom</a>.</p>
 </li>
 <li>
-<p><a href="https://grails.apache.org/docs/7.0.15/api/grails/plugin/springsecurity/rest/token/generation/UUIDTokenGenerator.html">Using java.util.UUID</a>.</p>
+<p><a href="https://grails.apache.org/docs/8.0.0-M5/api/grails/plugin/springsecurity/rest/token/generation/UUIDTokenGenerator.html">Using java.util.UUID</a>.</p>
 </li>
 </ul>
 </div>
@@ -12100,13 +12270,13 @@ and the signing / encryption algorithms are configurable, as long as they are su
 <div class="paragraph">
 <p>That should be enough for most of the human beings. But if you still want to provide your own implementation,
 simply write a class implementing
-<a href="https://grails.apache.org/docs/7.0.15/api/grails/plugin/springsecurity/rest/token/generation/TokenGenerator.html">TokenGenerator</a>
+<a href="https://grails.apache.org/docs/8.0.0-M5/api/grails/plugin/springsecurity/rest/token/generation/TokenGenerator.html">TokenGenerator</a>
 and wire it up in <code>resources.groovy</code> as <code>tokenGenerator</code>.</p>
 </div>
 <div class="paragraph">
 <p>The tokens are stored on the server using a <code>tokenStorageService</code> bean. The plugin comes with out-of-the-box support
 for JWT, Memcached, GORM and <a href="http://grails.org/plugin/cache">Grails Cache</a>, but you can use your own strategy implementing the
-<a href="https://grails.apache.org/docs/7.0.15/api/grails/plugin/springsecurity/rest/token/storage/TokenStorageService.html">TokenStorageService</a>
+<a href="https://grails.apache.org/docs/8.0.0-M5/api/grails/plugin/springsecurity/rest/token/storage/TokenStorageService.html">TokenStorageService</a>
 interface.</p>
 </div>
 <div class="admonitionblock note">
@@ -12848,7 +13018,7 @@ the chapter about token validation first.</p>
 </div>
 <div class="paragraph">
 <p>If you want your own implementation, simply create a class implementing
-<a href="https://grails.apache.org/docs/7.0.15/api/grails/plugin/springsecurity/rest/token/rendering/AccessTokenJsonRenderer.html">AccessTokenJsonRenderer</a>
+<a href="https://grails.apache.org/docs/8.0.0-M5/api/grails/plugin/springsecurity/rest/token/rendering/AccessTokenJsonRenderer.html">AccessTokenJsonRenderer</a>
 and wire it up in <code>resources.groovy</code> with name <code>accessTokenJsonRenderer</code>.</p>
 </div>
 <div class="admonitionblock note">
@@ -12948,7 +13118,7 @@ grails.plugin.springsecurity.rest.token.validation.headerName = <span class="str
 </div>
 <div class="paragraph">
 <p>If you still want to have full access and read the token from a different part of the request, you can implement a
-<a href="https://grails.apache.org/docs/7.0.15/api/grails/plugin/springsecurity/rest/token/reader/TokenReader.html">TokenReader</a>
+<a href="https://grails.apache.org/docs/8.0.0-M5/api/grails/plugin/springsecurity/rest/token/reader/TokenReader.html">TokenReader</a>
 and register it in your <code>resources.groovy</code>  as <code>tokenReader</code>.</p>
 </div>
 <div class="admonitionblock note">
@@ -13215,9 +13385,9 @@ the token value as parameter:</p>
 </div>
 <div class="paragraph">
 <p>Upon successful OAuth authorisation (after step 6.1 in the above diagram), an
-<a href="https://grails.apache.org/docs/7.0.15/api/grails/plugin/springsecurity/rest/oauth/OauthUser.html">OauthUser</a>
+<a href="https://grails.apache.org/docs/8.0.0-M5/api/grails/plugin/springsecurity/rest/oauth/OauthUser.html">OauthUser</a>
 will be stored in the security context. This is done by a bean named <code>oauthUserDetailsService</code>. The
-<a href="https://grails.apache.org/docs/7.0.15/api/grails/plugin/springsecurity/rest/oauth/DefaultOauthUserDetailsService.html">default implementation</a>
+<a href="https://grails.apache.org/docs/8.0.0-M5/api/grails/plugin/springsecurity/rest/oauth/DefaultOauthUserDetailsService.html">default implementation</a>
 delegates to the configured <code>userDetailsService</code> bean, passing the profile ID as the username:</p>
 </div>
 <div class="listingblock">
@@ -13593,7 +13763,7 @@ way of using HTTP sessions. So not acceptable.</p>
 <h2 id="springSecurityUi">18.5.1.7 UI Plugin</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/7.0.x/grails-doc/src/en/guide/security/securityPlugins/springSecurity/springSecurityUi.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/security/securityPlugins/springSecurity/springSecurityUi.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -15759,7 +15929,7 @@ The second service is a listener service which ensures that anytime an answer is
                             <div class="menu-item"><a href="../ref/Database%20Mapping/type.html">type</a>
                             </div>
                             
-                            <div class="menu-item"><a href="../ref/Database%20Mapping/updateable.html">updateable</a>
+                            <div class="menu-item"><a href="../ref/Database%20Mapping/updatable.html">updatable</a>
                             </div>
                             
                             <div class="menu-item"><a href="../ref/Database%20Mapping/version.html">version</a>
@@ -16175,6 +16345,9 @@ The second service is a listener service which ensures that anytime an answer is
                             <div class="menu-item"><a href="../ref/Tags%20-%20GSP/findAll.html">findAll</a>
                             </div>
                             
+                            <div class="menu-item"><a href="../ref/Tags%20-%20GSP/flashMessages.html">flashMessages</a>
+                            </div>
+                            
                             <div class="menu-item"><a href="../ref/Tags%20-%20GSP/form.html">form</a>
                             </div>
                             
@@ -16307,7 +16480,7 @@ The second service is a listener service which ensures that anytime an answer is
                             <div class="menu-item"><a href="../ref/Versions/Grails%20BOM%20Hibernate5.html">Grails BOM Hibernate5</a>
                             </div>
                             
-                            <div class="menu-item"><a href="../ref/Versions/Grails%20BOM%20Micronaut.html">Grails BOM Micronaut</a>
+                            <div class="menu-item"><a href="../ref/Versions/Grails%20BOM%20Hibernate7.html">Grails BOM Hibernate7</a>
                             </div>
                             
                             <div class="menu-item"><a href="../ref/Versions/Grails%20BOM.html">Grails BOM</a>
