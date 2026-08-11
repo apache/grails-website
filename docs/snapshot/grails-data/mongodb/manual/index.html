@@ -550,6 +550,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#mongoOnly">Using MongoDB Standalone</a></li>
 <li><a href="#withHibernate">Combining MongoDB and Hibernate</a></li>
 <li><a href="#advancedConfig">Advanced Configuration</a></li>
+<li><a href="#embeddedMongo">Embedded MongoDB</a></li>
 <li><a href="#springBoot">Using GORM in Spring Boot</a></li>
 <li><a href="#outsideGrails">GORM for MongoDB without Grails</a></li>
 <li><a href="#springDataInterop">Spring Data MongoDB Interoperability</a></li>
@@ -1341,6 +1342,224 @@ A per-transaction timeout is not supported for MongoDB server-side transactions.
 <div class="paragraph">
 <p>Declarative retry libraries such as Spring Retry (<code>@Retryable</code>) can be used instead of a manual loop, applied around the transactional method.</p>
 </div>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="embeddedMongo">Embedded MongoDB</h3>
+<div class="paragraph">
+<p><code>grails-data-mongodb-embedded</code> starts a MongoDB server as the application starts, so
+development and testing need neither a MongoDB installation nor Docker. Applications created
+by Grails Forge with MongoDB selected include it, asked for by the development and test
+environments.</p>
+</div>
+<div class="paragraph">
+<p>A server is asked for by the URL, the way an in-memory SQL database is. Where an application
+would name a host, it names <code>embedded</code> instead:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">implementation <span class="string"><span class="delimiter">&quot;</span><span class="content">org.apache.grails:grails-data-mongodb-embedded</span><span class="delimiter">&quot;</span></span></code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">environments</span>:
+    <span class="key">development</span>:
+        <span class="key">grails</span>:
+            <span class="key">mongodb</span>:
+                <span class="key">url</span>: <span class="string"><span class="content">mongodb://embedded/bookstore</span></span>
+    <span class="key">test</span>:
+        <span class="key">grails</span>:
+            <span class="key">mongodb</span>:
+                <span class="key">url</span>: <span class="string"><span class="content">mongodb://embedded/bookstore</span></span>
+    <span class="key">production</span>:
+        <span class="key">grails</span>:
+            <span class="key">mongodb</span>:
+                <span class="key">url</span>: <span class="string"><span class="content">mongodb://localhost:27017/bookstore</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Nothing else switches it on and nothing switches it off. A URL naming a host is served by the
+driver and no server is started, so adding the dependency alone never changes how an
+application connects — in the same way that an application with <code>h2</code> on its classpath and a
+PostgreSQL URL never starts H2.</p>
+</div>
+<div class="paragraph">
+<p>A port may be given as <code>mongodb://embedded:27018/bookstore</code>. Without one, the port is 27017
+offset by however far <code>server.port</code> has moved from 8080, so two applications run side by side
+without colliding.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+A host genuinely named <code>embedded</code> cannot be reached this way. Name it by its address or
+its fully qualified name instead.
+</td>
+</tr>
+</table>
+</div>
+<div class="sect3">
+<h4 id="_choosing_a_backend">Choosing a backend</h4>
+<div class="paragraph">
+<p>Two backends are supported.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 14.2857%;">
+<col style="width: 42.8571%;">
+<col style="width: 42.8572%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top"></th>
+<th class="tableblock halign-left valign-top"><code>in-memory</code></th>
+<th class="tableblock halign-left valign-top"><code>flapdoodle</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Included</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Yes, with this module</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No, add <code>de.flapdoodle.embed:de.flapdoodle.embed.mongo</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Startup</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Milliseconds, inside this JVM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">About a second, after downloading a MongoDB binary once to <code>~/.embedmongo</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fidelity</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reimplements the wire protocol, so transactions, change streams, <code>$text</code> and some <code>$expr</code>
+operators are unsupported</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A real <code>mongod</code>, so everything behaves as it does in production</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Keeps data</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Yes, with <code>embedded.mongodb.database-dir</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reported version</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>5.0.0</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The version started, <code>8.0</code> by default</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><code>in-memory</code> is used unless flapdoodle is on the classpath, in which case flapdoodle is
+preferred, so adding the dependency is all that is needed to move to a real <code>mongod</code>.
+Set <code>embedded.mongodb.backend</code> to choose explicitly.</p>
+</div>
+<div class="paragraph">
+<p>Flapdoodle is not a dependency of this module because it requires <code>jgrapht</code>, which is
+offered under LGPL-2.1 or EPL-2.0 and so cannot be required by an Apache release. An
+application adds it in the same way it chooses a SQL driver:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">implementation <span class="string"><span class="delimiter">&quot;</span><span class="content">de.flapdoodle.embed:de.flapdoodle.embed.mongo:4.33.0</span><span class="delimiter">&quot;</span></span></code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_configuration">Configuration</h4>
+<div class="paragraph">
+<p>Whether to start a server, which port, and which database are all read from the URL. These
+configure the server behind it.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 66.6667%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Property</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>embedded.mongodb.backend</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>in-memory</code> or <code>flapdoodle</code>. Defaults to flapdoodle when it is on the classpath,
+otherwise <code>in-memory</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>embedded.mongodb.database-dir</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Where to keep the data so it outlives the server. Only the flapdoodle backend supports
+this; the <code>in-memory</code> backend reports an error rather than discarding the data silently.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>embedded.mongodb.version</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The MongoDB version for backends that can choose one, such as <code>V8_0</code> for flapdoodle.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>embedded.mongodb.property-names</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Comma separated properties that may name an embedded server. Defaults to
+<code>grails.mongodb.url</code>.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="_production">Production</h4>
+<div class="paragraph">
+<p>A generated application names a real host in production, so nothing is started there.</p>
+</div>
+<div class="paragraph">
+<p>Where an embedded server in production is genuinely wanted, ask for one in that
+environment&#8217;s url and use flapdoodle with a directory, so the data survives a restart:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">environments</span>:
+    <span class="key">production</span>:
+        <span class="key">grails</span>:
+            <span class="key">mongodb</span>:
+                <span class="key">url</span>: <span class="string"><span class="content">mongodb://embedded/bookstore</span></span>
+        <span class="key">embedded</span>:
+            <span class="key">mongodb</span>:
+                <span class="key">backend</span>: <span class="string"><span class="content">flapdoodle</span></span>
+                <span class="key">database-dir</span>: <span class="string"><span class="content">./prodMongoDb</span></span></code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_restarts_and_ports">Restarts and ports</h4>
+<div class="paragraph">
+<p>A server started by this module runs until the JVM exits, so a Spring Boot DevTools
+restart reuses it instead of starting another. Only a server this module started is
+reused: if anything else is already holding the port, startup fails with an error naming
+the port rather than connecting to an unrelated service. To use a MongoDB started by hand,
+name its host in <code>grails.mongodb.url</code> as usual.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_outside_grails">Outside Grails</h4>
+<div class="paragraph">
+<p>The module is plain Java and knows nothing about Grails beyond the default property name,
+so <code>embedded.mongodb.property-names</code> makes it usable from any Spring application:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">spring</span>:
+    <span class="key">data</span>:
+        <span class="key">mongodb</span>:
+            <span class="key">uri</span>: <span class="string"><span class="content">mongodb://embedded/bookstore</span></span>
+<span class="key">embedded</span>:
+    <span class="key">mongodb</span>:
+        <span class="key">property-names</span>: <span class="string"><span class="content">spring.data.mongodb.uri</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Spring Data MongoDB applications are usually better served by flapdoodle&#8217;s own
+<code>de.flapdoodle.embed.mongo.spring3x</code> auto configuration, which this module deliberately
+does not duplicate.</p>
 </div>
 </div>
 </div>
