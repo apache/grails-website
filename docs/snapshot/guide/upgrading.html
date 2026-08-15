@@ -220,7 +220,27 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
 </div>
 
 
-
+<div class="sect2">
+<h3 id="_data_binding_defaults">Data Binding Defaults</h3>
+<div class="paragraph">
+<p>Grails 8 retains permissive mass data binding by default for compatibility, so properties without a <code>bindable</code> constraint continue to bind.  Properties marked <code>bindable: false</code> remain non-bindable in either mode.  Empty <code>include</code> lists bind no properties.</p>
+</div>
+<div class="paragraph">
+<p>Applications can opt into deny-by-default mass data binding by setting <code>grails.databinding.denyByDefault=true</code>.  In secure mode, declare each permitted property with <code>bindable: true</code>, add it to an explicit <code>include</code> list, or list it in <code>@BindAllowed</code>; only in this mode does <code>bindable: true</code> act as a restrictive allowlist.</p>
+</div>
+<div class="paragraph">
+<p>An empty include list passed directly to <code>SimpleDataBinder</code> now binds no properties.  The <code>grails.databinding.denyByDefault</code> setting does not change this direct binder behavior.</p>
+</div>
+<div class="paragraph">
+<p>In compatibility mode, a <code>bindData</code> call that supplies only <code>exclude</code> continues to bind every other eligible property.  Secure mode also applies the generated allowlist when only <code>exclude</code> is supplied.</p>
+</div>
+<div class="paragraph">
+<p>Values of typed <code>Map</code> properties are converted to the declared value type.  Conversion failures are added to the binding errors and data binding listeners receive the corresponding events.</p>
+</div>
+<div class="paragraph">
+<p>The values <code>true</code>, <code>false</code>, <code>'true'</code>, and <code>'false'</code> are accepted for <code>grails.databinding.denyByDefault</code>, ignoring case and surrounding whitespace for strings.  An unrecognised value logs a warning and enables secure deny-by-default binding.</p>
+</div>
+</div>
 
 
 <h2 id="upgrading80x">3.1 Upgrading from Grails 7 to Grails 8</h2>
@@ -1430,6 +1450,10 @@ The Spring annotations still work, so this is non-blocking, but new code should 
 <li>
 <p><strong>Namespaced link generation is namespace-aware.</strong>
 When a link, form action, pagination link, sortable column link, redirect, chain, or include targets a controller without an explicit <code>namespace</code>, Grails now resolves the namespace automatically. In the normal case, where only one controller has the target name, <code>controller</code> and <code>action</code> generate the correct namespaced or non-namespaced URL. Ambiguity only occurs when multiple controllers share the same name. In that case, specify <code>namespace</code> to choose the target explicitly. Pass <code>namespace: null</code> from Groovy code or <code>namespace=""</code> in a GSP tag to target the non-namespaced controller explicitly.</p>
+</li>
+<li>
+<p><strong><code>bindData</code> can clear omitted included fields.</strong>
+<code>bindData(target, source, [include: [&#8230;&#8203;], clearMissing: true])</code> now clears included properties that are absent from the binding source. The behavior is opt-in, requires an <code>include</code> list, and does not apply globally. Existing <code>bindData</code> calls without <code>clearMissing: true</code> keep omitted fields unchanged.</p>
 </li>
 </ul>
 </div>
