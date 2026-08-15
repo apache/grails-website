@@ -2,7 +2,7 @@
                       "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
 <head>
-    <title>3 Upgrading from the previous versions 8.1.0-SNAPSHOT</title>
+    <title>3 Upgrading from the previous versions 8.0.0-SNAPSHOT</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
     <link rel="stylesheet" href="../css/pdf.css" type="text/css" media="print" title="PDF" charset="utf-8"/>
@@ -178,7 +178,7 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
                 <div class="project">
                     <h1>3 Upgrading from the previous versions</h1>
 
-                    <p><strong>Version:</strong> 8.1.0-SNAPSHOT</p>
+                    <p><strong>Version:</strong> 8.0.0-SNAPSHOT</p>
                 </div>
 
                 
@@ -214,7 +214,7 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
 <h1 id="upgrading">3 Upgrading from the previous versions</h1>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.1.x/grails-doc/src/en/guide/upgrading.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/upgrading.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -226,7 +226,7 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
 <h2 id="upgrading80x">3.1 Upgrading from Grails 7 to Grails 8</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.1.x/grails-doc/src/en/guide/upgrading/upgrading80x.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/upgrading/upgrading80x.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -235,7 +235,7 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
 <div class="sect2">
 <h3 id="_upgrade_instructions_for_grails_and_related_dependencies">Upgrade Instructions for Grails and Related Dependencies</h3>
 <div class="paragraph">
-<p>To ensure compatibility with Grails 8.1.0-SNAPSHOT, please review the following upgrade instructions carefully.
+<p>To ensure compatibility with Grails 8.0.0-SNAPSHOT, please review the following upgrade instructions carefully.
 This guide outlines the necessary steps and warnings to upgrade your Grails project from Grails 7.x to Grails 8.</p>
 </div>
 <div class="admonitionblock tip">
@@ -761,7 +761,7 @@ If an external API contract still requires that shape, register a custom object 
 </div>
 </div>
 <div class="sect3">
-<h4 id="_9_jackson_3_is_the_new_default">9. Jackson 3 is the New Default</h4>
+<h4 id="jackson3-default">9. Jackson 3 is the New Default</h4>
 <div class="paragraph">
 <p>Spring Boot 4 ships Jackson 3 (<code>tools.jackson.*</code>) and auto-configures a <code>JsonMapper</code> bean instead of the Jackson 2 <code>ObjectMapper</code>.
 Grails 8 follows that change: any Grails module that previously declared <code>com.fasterxml.jackson.core:jackson-databind</code> (Jackson 2) now declares <code>tools.jackson.core:jackson-databind</code> (Jackson 3.1.x via the Spring Boot 4.1 BOM).</p>
@@ -1655,23 +1655,154 @@ The <code>@Tag</code>-annotated method itself produces no compile-time warning, 
 <div class="sect3">
 <h4 id="_23_known_plugin_incompatibilities">23. Known Plugin Incompatibilities</h4>
 <div class="paragraph">
-<p>Some third-party plugins have not yet been updated for Spring Boot 4 / Spring Framework 7 compatibility.
-The following are known blockers at this time:</p>
+<p>A Grails 7 plugin is not automatically incompatible with Grails 8. A plugin resolving, appearing in the load order, and letting the application start is encouraging, but it is not enough to establish compatibility. Exercise the plugin&#8217;s documented public behavior, including web requests, outbound calls, serialization, commands, and any domain traits or annotations it exposes.</p>
+</div>
+<div class="paragraph">
+<p>When a released Grails 7 plugin fails, first check whether the maintainer has published a Grails 8 version. Some failures have a temporary application-side workaround. Others are binary incompatibilities in already-published bytecode and require the plugin author to rebuild and release the plugin against Grails 8. Do not add framework-internal compatibility classes to an application to work around those failures.</p>
+</div>
+<div class="paragraph">
+<p>Use the first distinctive failure to choose the next step:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>grails-spring-security</strong> - Uses <code>ReflectionUtils.getApplication()</code> which was removed in Spring Boot 4.
-Integration tests for modules depending on Spring Security are disabled until the plugin is updated.</p>
+<p><code>NoClassDefFoundError</code> mentioning <code>com/fasterxml/jackson/databind/exc/InvalidDefinitionException</code> while creating <code>OrderedFormContentFilter</code>: add the BOM-managed Jackson 2 <code>jackson-databind</code> dependency described below, then retest the plugin&#8217;s public behavior.</p>
 </li>
 <li>
-<p><strong>SiteMesh 3</strong> - The decorator/layout mechanism is not compatible with Spring Framework 7.
-Applications using <code>grails-sitemesh3</code> should remain on the <code>grails-layout</code> plugin (SiteMesh 2.6.x) until SiteMesh 3 is updated.</p>
+<p><code>Could not find org.grails:&#8230;&#8203;:.</code>: use a plugin version built against <code>org.apache.grails</code>, or use narrowly targeted dependency substitution as a temporary migration aid.</p>
+</li>
+<li>
+<p><code>MissingPropertyException</code> or <code>MissingMethodException</code> from <code>Metadata</code>: the plugin must be rebuilt against the typed metadata API.</p>
+</li>
+<li>
+<p><code>MalformedParameterizedTypeException</code> mentioning <code>$Trait$FieldHelper</code>, <code>NoClassDefFoundError</code> mentioning <code>ObjectUtil</code>, <code>IncompatibleClassChangeError</code> involving <code>HttpHeaders</code>, or an unexpected internal property after using a plugin annotation: the plugin must be rebuilt for Grails 8.</p>
+</li>
+</ul>
+</div>
+<div class="sect4">
+<h5 id="_23_1_metadata_dynamic_and_map_style_access">23.1 Metadata dynamic and map-style access</h5>
+<div class="paragraph">
+<p>A plugin that reads metadata through <code>Metadata.current.'some.key'</code> or <code>Metadata.current.get('some.key')</code> can start normally and fail only when that code path runs. The usual symptoms are <code>MissingPropertyException</code> or <code>MissingMethodException</code>, often as an HTTP 500 on a plugin endpoint. See <a href="https://github.com/apache/grails-core/issues/16122">Issue #16122</a>.</p>
+</div>
+<div class="paragraph">
+<p>Plugin authors must replace the removed dynamic accessors with the typed public API:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">// Grails 7</span>
+<span class="keyword">def</span> version = Metadata.current.<span class="string"><span class="delimiter">'</span><span class="content">info.app.grailsVersion</span><span class="delimiter">'</span></span>
+<span class="keyword">def</span> name = Metadata.current.get(<span class="string"><span class="delimiter">'</span><span class="content">info.app.name</span><span class="delimiter">'</span></span>)
+
+<span class="comment">// Grails 8</span>
+<span class="predefined-type">String</span> version = Metadata.current.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">info.app.grailsVersion</span><span class="delimiter">'</span></span>, <span class="predefined-type">String</span>, <span class="predefined-constant">null</span>)
+<span class="predefined-type">String</span> name = Metadata.current.getProperty(<span class="string"><span class="delimiter">'</span><span class="content">info.app.name</span><span class="delimiter">'</span></span>, <span class="predefined-type">String</span>, <span class="predefined-constant">null</span>)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>For a nested metadata value that does not need type conversion, <code>Metadata.current.navigate('some', 'nested', 'key')</code> is also available. This is a rebuild-only change for a published binary plugin. No Metadata compatibility shim is available.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_23_2_groovy_4_trait_and_ast_transform_bytecode">23.2 Groovy 4 trait and AST-transform bytecode</h5>
+<div class="paragraph">
+<p>Groovy 5 can compile application code against a Groovy 4 plugin, but the following generated-bytecode patterns are known to be incompatible. These failures commonly occur only when the plugin&#8217;s public feature is used, rather than at dependency resolution or startup. Rebuild the plugin with Grails 8 and Groovy 5. Consumers cannot reliably repair an already-published jar.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Generic traits with fields.</strong> A Grails 7 plugin that exposes a generic trait with fields can fail when an application implements that trait. JavaBeans, Spring, or Jackson introspection then throws <code>MalformedParameterizedTypeException</code> mentioning <code>&lt;Trait&gt;$Trait$FieldHelper</code>. The plugin&#8217;s trait must be recompiled with Groovy 5. See <a href="https://github.com/apache/grails-core/issues/16123">Issue #16123</a>. Non-generic traits are not affected by this specific issue.</p>
+</li>
+<li>
+<p><strong>AST transformations that target private trait methods.</strong> A plugin transformation can compile successfully but silently lose a private trait method from the emitted application class. Using the annotated public feature then throws <code>MissingPropertyException</code> for an unexpected internal property. Plugin authors should change the transform to target a member emitted on the implementing class, then rebuild with Groovy 5. See <a href="https://github.com/apache/grails-core/issues/16126">Issue #16126</a>.</p>
+</li>
+<li>
+<p><strong><code>@Immutable</code> classes.</strong> A Groovy 4-compiled <code>@Immutable</code> class can throw <code>NoClassDefFoundError: org/apache/groovy/runtime/ObjectUtil</code> when constructed on Groovy 5. The missing call is generated by Groovy 4&#8217;s AST transformation, so updating application source does not fix a released plugin jar. Rebuild affected plugin artifacts with Groovy 5. See <a href="https://github.com/apache/grails-core/issues/16128">Issue #16128</a>.</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>Check the <a href="https://github.com/apache/grails-core/issues">Grails issue tracker</a> for the latest status of plugin compatibility.</p>
+<p>See <a href="#groovy5-behavior-changes">Apache Groovy 5 Behavior Changes</a> for source-level Groovy 5 changes that may affect the rebuilt plugin.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_23_3_jackson_2_dataformats_without_jackson_2_databind">23.3 Jackson 2 dataformats without Jackson 2 databind</h5>
+<div class="paragraph">
+<p>Grails 8 uses Jackson 3 for databind, while a released plugin may still bring Jackson 2 Smile, CBOR, or YAML dataformat artifacts. If one of those dataformats is present while Jackson 2 databind is absent, Spring Framework detects an incomplete Jackson 2 classpath and application startup fails with <code>NoClassDefFoundError: com/fasterxml/jackson/databind/exc/InvalidDefinitionException</code>, usually while creating <code>OrderedFormContentFilter</code>. Jackson 2 core, annotations, and XML dataformat alone do not trigger this specific failure.</p>
+</div>
+<div class="paragraph">
+<p>The immediate consumer workaround is to supply the matching Jackson 2 databind artifact while the plugin is being migrated:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
+    implementation <span class="string"><span class="delimiter">'</span><span class="content">com.example:plugin-that-needs-jackson2-dataformats:1.0.0</span><span class="delimiter">'</span></span>
+
+    <span class="comment">// Keep the Jackson 2 runtime classpath complete.</span>
+    runtimeOnly <span class="string"><span class="delimiter">'</span><span class="content">com.fasterxml.jackson.core:jackson-databind</span><span class="delimiter">'</span></span>
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Use the Jackson 2 version managed by the Grails and Spring Boot platform. Do not add a version if the active BOM already manages it. Plugin authors should release a Grails 8 version that migrates to Jackson 3 where possible, or declares a complete, compatible Jackson 2 runtime when it must retain Jackson 2 dataformats. See <a href="https://github.com/apache/grails-core/issues/16124">Issue #16124</a> and <a href="#jackson3-default">Jackson 3 is the New Default</a>.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_23_4_pre_apache_org_grails_coordinates">23.4 Pre-Apache <code>org.grails</code> coordinates</h5>
+<div class="paragraph">
+<p>Some older plugins import a pre-Apache <code>org.grails</code> BOM and declare versionless <code>org.grails:*</code> dependencies. Grails 8 does not publish those coordinates. Gradle often reports an unhelpful empty-version error such as <code>Could not find org.grails:grails-core:.</code>.</p>
+</div>
+<div class="paragraph">
+<p>No complete, general coordinate substitution map exists. A narrowly targeted application-level substitution rule can resolve some plugins, but module names and binary compatibility are not always one-to-one after the Apache group rename. Treat substitution as a temporary diagnostic or migration aid, not proof that a plugin is compatible. The supported migration is for plugin authors to rebuild against <code>org.apache.grails</code> coordinates and publish a Grails 8 release. See <a href="https://github.com/apache/grails-core/issues/16125">Issue #16125</a>.</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle - Plugin author migration</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">// Before: imported by an early Grails 7 plugin POM</span>
+implementation platform(<span class="string"><span class="delimiter">'</span><span class="content">org.grails:grails-bom:7.0.0-M1</span><span class="delimiter">'</span></span>)
+
+<span class="comment">// After: compile against the Apache Grails 8 BOM</span>
+implementation platform(<span class="string"><span class="delimiter">&quot;</span><span class="content">org.apache.grails:grails-bom:</span><span class="inline"><span class="inline-delimiter">$</span>grailsVersion</span><span class="delimiter">&quot;</span></span>)</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_23_5_spring_framework_7_httpheaders_binary_incompatibility">23.5 Spring Framework 7 <code>HttpHeaders</code> binary incompatibility</h5>
+<div class="paragraph">
+<p>Spring Framework 7&#8217;s <code>HttpHeaders</code> no longer implements <code>MultiValueMap</code>. A Grails 7 plugin compiled against Spring 6 can therefore boot and then throw <code>IncompatibleClassChangeError</code> when it passes <code>HttpHeaders</code> to an API expecting <code>MultiValueMap</code>, often during an outbound HTTP request. See <a href="https://github.com/apache/grails-core/issues/16127">Issue #16127</a>.</p>
+</div>
+<div class="paragraph">
+<p>Plugin authors must compile against Spring Framework 7 and use the <code>HttpHeaders</code>-typed API. Remove any explicit <code>MultiValueMap</code> cast so recompilation selects Spring 7&#8217;s <code>HttpEntity(T, HttpHeaders)</code> constructor instead of the deprecated <code>HttpEntity(T, MultiValueMap)</code> constructor:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">// Grails 7 / Spring 6 code that selected the MultiValueMap API</span>
+HttpHeaders headers = <span class="keyword">new</span> HttpHeaders()
+<span class="keyword">new</span> HttpEntity(body, (MultiValueMap&lt;<span class="predefined-type">String</span>, <span class="predefined-type">String</span>&gt;) headers)
+
+<span class="comment">// Grails 8 / Spring 7: use the HttpHeaders API</span>
+HttpHeaders headers = <span class="keyword">new</span> HttpHeaders()
+<span class="keyword">new</span> HttpEntity(body, headers)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Changing only an application&#8217;s dependencies cannot repair the plugin&#8217;s existing bytecode. Upgrade to a plugin release compiled for Grails 8, or ask the maintainer to publish one.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_23_6_commands_and_plugin_bean_timing">23.6 Commands and plugin bean timing</h5>
+<div class="paragraph">
+<p>For a released Grails 7 plugin that implements <code>grails.dev.commands.ApplicationCommand</code>, keep the default <code>cliAutoProvision = true</code> and enable <code>grails { legacyCommandSupport = true }</code>. Run its commands with <code>./gradlew runCommand "-Pargs=&lt;command&gt; &lt;arguments&gt;"</code> or through the shell. Legacy commands do not create named Gradle tasks. Script, YAML, and profile commands do not need this bridge.</p>
+</div>
+<div class="paragraph">
+<p>The complete command migration, including the legacy bridge, script packaging, and companion artifact support delivered by <a href="https://github.com/apache/grails-core/pull/16011">PR #16011</a>, <a href="https://github.com/apache/grails-core/pull/16082">PR #16082</a>, and <a href="https://github.com/apache/grails-core/pull/15948">PR #15948</a>, is covered in <a href="#cli-companion-artifacts">CLI Commands Move to Companion <code>-cli</code> Artifacts</a>. Plugin authors should still migrate commands to the current API and publish companion <code>-cli</code> artifacts.</p>
+</div>
+<div class="paragraph">
+<p>The plugin bean lifecycle change is not a compatibility bridge. Existing <code>doWithSpring</code> plugins still run, but <a href="https://github.com/apache/grails-core/pull/15934">PR #15934</a> moved them before Spring Boot auto-configuration. During that callback, the initializing application is available through the plugin&#8217;s <code>grailsApplication</code> property, but it has not yet been published to the process-global <code>Holders.grailsApplication</code> fallback. Plugins that read the global Holder from <code>doWithSpring</code> must instead use their injected application, configuration, or environment. See <a href="#plugin-beans-before-autoconfiguration">Plugin Beans Now Register Before Spring Boot Auto-Configuration</a> for the timing change and migration to <code>beanRegistrar()</code>.</p>
+</div>
+<div class="paragraph">
+<p>Plugin compatibility continues to evolve. Check the plugin&#8217;s release notes and the <a href="https://github.com/apache/grails-core/issues?q=state%3Aopen%20label%3A%22relates-to%3A%20external-plugin%22">Grails external-plugin issues</a> for current status.</p>
+</div>
 </div>
 </div>
 <div class="sect3">
@@ -2043,7 +2174,7 @@ Command objects are also unaffected: <code>Validateable</code> command-object fi
 </div>
 </div>
 <div class="sect3">
-<h4 id="_28_apache_groovy_5_behavior_changes">28. Apache Groovy 5 Behavior Changes</h4>
+<h4 id="groovy5-behavior-changes">28. Apache Groovy 5 Behavior Changes</h4>
 <div class="paragraph">
 <p>Grails 8 upgrades from Apache Groovy 4 to Apache Groovy 5.
 Most applications need no changes, but a few stricter behaviors can affect application code.</p>
@@ -2335,7 +2466,7 @@ Beans contributed through the application&#8217;s <code>resources.groovy</code> 
 </div>
 </div>
 <div class="sect3">
-<h4 id="_33_plugin_beans_now_register_before_spring_boot_auto_configuration">33. Plugin Beans Now Register Before Spring Boot Auto-Configuration</h4>
+<h4 id="plugin-beans-before-autoconfiguration">33. Plugin Beans Now Register Before Spring Boot Auto-Configuration</h4>
 <div class="paragraph">
 <p>In Grails 7 and earlier, the beans a plugin contributed through <code>doWithSpring</code> were registered <strong>after</strong> Spring Boot had processed its auto-configurations.
 A plugin that wanted to replace a Boot-provided bean therefore had to rely on bean-definition overriding, and Boot beans guarded by <code>@ConditionalOnMissingBean</code> never saw the plugin&#8217;s bean in time to back off.</p>
@@ -2349,7 +2480,7 @@ A plugin that wanted to replace a Boot-provided bean therefore had to rely on be
 <p><strong>Plugin beans win <code>@ConditionalOnMissingBean</code> races.</strong> When a plugin registers a bean, a Boot auto-configuration bean of the same name or type that is guarded by <code>@ConditionalOnMissingBean</code> now backs off in favor of the plugin&#8217;s bean. Plugins no longer need to override or remove Boot&#8217;s defaults after the fact.</p>
 </li>
 <li>
-<p><strong>A single plugin manager and <code>GrailsApplication</code>.</strong> The plugin manager and the <code>grailsApplication</code> are built once, early in the context lifecycle, and reused for the rest of startup, so plugins are loaded by a single manager pass rather than a throwaway pass followed by the real one. <code>Holders.grailsApplication</code> is available earlier than before.</p>
+<p><strong>A single plugin manager and <code>GrailsApplication</code>.</strong> The plugin manager and the <code>grailsApplication</code> are built once, early in the context lifecycle, and reused for the rest of startup, so plugins are loaded by a single manager pass rather than a throwaway pass followed by the real one. The global <code>Holders.grailsApplication</code> fallback is published after plugin <code>doWithSpring</code> and <code>beanRegistrar()</code> callbacks complete; plugins must not use it during those callbacks.</p>
 </li>
 <li>
 <p><strong>Artefact discovery happens earlier.</strong> Controllers, services, domain classes and other artefacts are discovered before plugin beans are registered, because core plugins iterate the application&#8217;s artefacts while defining beans. The set of discovered artefacts is unchanged — only the timing moved.</p>
@@ -2453,7 +2584,7 @@ A plugin that wanted to replace a Boot-provided bean therefore had to rely on be
 </div>
 </div>
 <div class="sect3">
-<h4 id="_34_extension_api_compatibility_notes">34. Extension API Compatibility Notes</h4>
+<h4 id="_35_extension_api_compatibility_notes">35. Extension API Compatibility Notes</h4>
 <div class="paragraph">
 <p>Most Grails applications do not call the Grails extension APIs listed below directly.
 They can affect applications, plugins, or build logic that import these public classes or override these public extension points directly.
@@ -2519,7 +2650,22 @@ This was introduced during the Grails 7.1 plugin-loading changes and remains req
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails-domain-class</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ConstraintEvaluatorAdapter</code> and <code>GrailsDomainClassAutoConfiguration.constraintsEvaluator(&#8230;&#8203;)</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Code that imported the auto-configuration method should use the current <code>validateableConstraintsEvaluator(&#8230;&#8203;)</code> bean path and the datastore constraint evaluator APIs.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Code that imported the auto-configuration method should use the current <code>validateableConstraintsEvaluator(&#8230;&#8203;)</code> bean path and the datastore constraint evaluator APIs. The auto-configuration itself is now named <code>org.grails.plugins.domain.DomainClassAutoConfiguration</code>, following the <code>*GrailsPlugin</code> &#8594; <code>*AutoConfiguration</code> convention; update any <code>@EnableAutoConfiguration(exclude = &#8230;&#8203;)</code> or <code>spring.autoconfigure.exclude</code> entry that referenced the old name.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails-core</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.plugins.core.CoreAutoConfiguration</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Now <code>org.grails.plugins.CoreAutoConfiguration</code>. The class is generated beside the plugin descriptor that declares its beans, and <code>CoreGrailsPlugin</code> lives in <code>org.grails.plugins</code>, so the simple name is unchanged but the package is not. Update any <code>@EnableAutoConfiguration(exclude = &#8230;&#8203;)</code>, <code>spring.autoconfigure.exclude</code>, or <code>@AutoConfigureAfter(name = &#8230;&#8203;)</code> entry naming the old package. Spring Boot only reports an invalid exclude for a class still on the classpath, so a stale entry is silently ignored rather than reported, and the beans it was meant to suppress are registered anyway.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails-cache</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails.plugin.cache.GrailsCacheAutoConfiguration</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Now <code>grails.plugin.cache.CacheAutoConfiguration</code>, following the <code>*GrailsPlugin</code> &#8594; <code>*AutoConfiguration</code> convention. Update any <code>@EnableAutoConfiguration(exclude = &#8230;&#8203;)</code> or <code>spring.autoconfigure.exclude</code> entry that referenced the old name; the same silent-ignore applies as above.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails-databinding</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.plugins.databinding.DataBindingConfiguration</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Now <code>org.grails.plugins.databinding.DataBindingAutoConfiguration</code>. It was registered as an auto-configuration while named only <code>*Configuration</code>; the name now says what it is. Update any <code>@EnableAutoConfiguration(exclude = &#8230;&#8203;)</code> or <code>spring.autoconfigure.exclude</code> entry that referenced the old name; the same silent-ignore applies as above.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails-fields</code></p></td>
@@ -2552,7 +2698,7 @@ Spring theme APIs removed from the same area are covered in section 10.</p></td>
 </table>
 </div>
 <div class="sect3">
-<h4 id="_35_logback_configuration_no_longer_generated_by_default">35. Logback Configuration No Longer Generated by Default</h4>
+<h4 id="_36_logback_configuration_no_longer_generated_by_default">36. Logback Configuration No Longer Generated by Default</h4>
 <div class="paragraph">
 <p>Newly generated Grails 8 applications no longer include a <code>grails-app/conf/logback-spring.xml</code> file.</p>
 </div>
@@ -2639,7 +2785,7 @@ When generating a project with <a href="https://start.grails.org">Grails Forge</
 </div>
 </div>
 <div class="sect3">
-<h4 id="_36_cli_commands_move_to_companion_cli_artifacts">36. CLI Commands Move to Companion <code>-cli</code> Artifacts</h4>
+<h4 id="cli-companion-artifacts">37. CLI Commands Move to Companion <code>-cli</code> Artifacts</h4>
 <div class="paragraph">
 <p>Grails commands (<code>ApplicationCommand</code> implementations) no longer ship inside runtime plugin
 artifacts. Each command-bearing module publishes a companion artifact under its own coordinate with
@@ -2957,7 +3103,7 @@ changes still requires an update.
 </div>
 </div>
 <div class="sect3">
-<h4 id="_37_jquery_webjar_upgraded_to_4_0_0">37. jQuery Webjar Upgraded to 4.0.0</h4>
+<h4 id="_38_jquery_webjar_upgraded_to_4_0_0">38. jQuery Webjar Upgraded to 4.0.0</h4>
 <div class="paragraph">
 <p>The jQuery webjar managed by the <code>grails-bom</code> (<code>org.webjars.npm:jquery</code>) moves from 3.7.1 to 4.0.0.
 jQuery 4 is a major release: it drops Internet Explorer and other legacy browsers and removes long-deprecated utilities such as <code>jQuery.trim</code>, <code>jQuery.type</code>, <code>jQuery.isArray</code>, <code>jQuery.isFunction</code>, <code>jQuery.proxy</code>, and <code>jQuery.isWindow</code>.
@@ -2979,7 +3125,7 @@ If you are not ready to migrate, pin the previous version in your gradle build:<
 </div>
 </div>
 <div class="sect3">
-<h4 id="_38_spring_security_ui_rewritten_on_bootstrap_5">38. spring-security-ui Rewritten on Bootstrap 5</h4>
+<h4 id="_39_spring_security_ui_rewritten_on_bootstrap_5">39. spring-security-ui Rewritten on Bootstrap 5</h4>
 <div class="paragraph">
 <p>The <code>spring-security-ui</code> plugin&#8217;s screens are rewritten on Bootstrap 5 with no bundled styling of their own.
 The plugin no longer ships or depends on jQuery UI, jquery-form, jGrowl, DataTables, bgiframe or the bundled jdMenu/positionBy plugins, and every plugin stylesheet and image has been removed — dialogs are Bootstrap modals, tabs are nav-tabs, notifications render through <code>g:flashMessages</code>, and the autocomplete search uses a native <code>datalist</code>.
@@ -3013,7 +3159,7 @@ The security menu and login state are contributed to the host navbar through <co
 </div>
 </div>
 <div class="sect3">
-<h4 id="_38_stack_trace_filterer_configuration_reaches_all_callers">38. Stack Trace Filterer Configuration Reaches All Callers</h4>
+<h4 id="_40_stack_trace_filterer_configuration_reaches_all_callers">40. Stack Trace Filterer Configuration Reaches All Callers</h4>
 <div class="paragraph">
 <p><code>grails.logging.stackTraceFiltererClass</code> and <code>grails.exceptionresolver.logFullStackTraceOnFilter</code> now also
 apply to paths outside the exception resolver — including GSP view-render exceptions — so the same two keys
@@ -3043,7 +3189,7 @@ application context the last one booted supplies the filterer for all of them.</
 </div>
 </div>
 <div class="sect3">
-<h4 id="_39_jansi_removed_and_developer_tooling_off_the_application_classpath">39. Jansi Removed and Developer Tooling Off the Application Classpath</h4>
+<h4 id="_41_jansi_removed_and_developer_tooling_off_the_application_classpath">41. Jansi Removed and Developer Tooling Off the Application Classpath</h4>
 <div class="paragraph">
 <p>Grails no longer depends on a separate ANSI library. The console renders its escape sequences directly,
 and the FuseSource Jansi artifact - unmaintained, and the subject of an unfixed CVE - is gone from the
@@ -3288,7 +3434,7 @@ directly instead.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_40_plugin_authors_separate_source_sets_for_the_cli_tier">40. Plugin Authors: Separate Source Sets for the CLI Tier</h4>
+<h4 id="_42_plugin_authors_separate_source_sets_for_the_cli_tier">42. Plugin Authors: Separate Source Sets for the CLI Tier</h4>
 <div class="paragraph">
 <p>This affects plugins that apply <code>org.apache.grails.gradle.grails-plugin-cli</code> and therefore publish a
 companion <code>-cli</code> artifact.</p>
@@ -3344,7 +3490,7 @@ production.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_41_gspcompile_configuration_removed">41. <code>gspCompile</code> Configuration Removed</h4>
+<h4 id="_43_gspcompile_configuration_removed">43. <code>gspCompile</code> Configuration Removed</h4>
 <div class="paragraph">
 <p>The <code>org.apache.grails.gradle.grails-gsp</code> plugin no longer registers a <code>gspCompile</code> configuration.</p>
 </div>
@@ -3375,13 +3521,60 @@ those declarations to <code>compileOnly</code>, which places them on the compile
 </div>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_44_grails_spring_bean_packages_scanning_fixed_outside_the_project_directory">44. <code>grails.spring.bean.packages</code> Scanning Fixed Outside the Project Directory</h4>
+<div class="paragraph">
+<p>The component scan driven by <code>grails.spring.bean.packages</code> resolved its search root from a probe of the
+<strong>working directory</strong> — it looked for a <code>grails-app</code> directory or an <code>Application.groovy</code> beside it — and
+returned nothing when neither was there. An application started from anywhere other than its project root
+therefore registered none of the <code>@Component</code> classes in the configured packages, silently.</p>
+</div>
+<div class="paragraph">
+<p>That covers most production shapes: a systemd unit with its own <code>WorkingDirectory</code>, a container with a
+<code>WORKDIR</code>, an application server. <code>java -jar build/libs/app.jar</code> run from the project root was unaffected,
+which is why the gap survived. The scan now uses Spring&#8217;s own resource resolution, so the packages are
+scanned wherever the process is started from.</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">spring</span>:
+        <span class="key">bean</span>:
+            <span class="key">packages</span>:
+                - <span class="string"><span class="content">com.example.components</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><strong>Applications deployed this way will start getting beans they previously did not.</strong> The scan registers
+every <code>@Component</code>, <code>@Service</code>, <code>@Repository</code> and <code>@Controller</code> in the listed packages. Two things to check
+before upgrading:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>A class in one of those packages that was never actually reaching the context — because it duplicates a
+bean the application defines elsewhere, or because it was left behind — now registers. A duplicate under the
+same bean name will fail startup rather than pass silently.</p>
+</li>
+<li>
+<p>Beans that were previously absent may now participate in autowiring by type, so an injection point that
+resolved unambiguously before can become ambiguous.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Removing the packages from <code>grails.spring.bean.packages</code>, or the stray classes from those packages, restores
+the previous set of beans.</p>
+</div>
+</div>
 </div>
 
 
 <h2 id="upgrading72x">3.2 Upgrading from Grails 7.1 to Grails 7.2</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.1.x/grails-doc/src/en/guide/upgrading/upgrading72x.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/upgrading/upgrading72x.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -3511,7 +3704,7 @@ those declarations to <code>compileOnly</code>, which places them on the compile
 <h2 id="upgrading71x">3.3 Upgrading from Grails 7.0 to Grails 7.1</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.1.x/grails-doc/src/en/guide/upgrading/upgrading71x.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/upgrading/upgrading71x.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -4672,7 +4865,7 @@ Stack Traces section of the user guide includes a matrix of behaviours for the f
 <h2 id="upgrading70x">3.4 Upgrading from Grails 6 to Grails 7.0</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.1.x/grails-doc/src/en/guide/upgrading/upgrading70x.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/upgrading/upgrading70x.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -4779,7 +4972,7 @@ Please remove older properties such as <code>gormVersion</code> &amp; <code>grai
 <div class="listingblock">
 <div class="title">gradle.properties</div>
 <div class="content">
-<pre>grailsVersion=8.1.0-SNAPSHOT</pre>
+<pre>grailsVersion=8.0.0-SNAPSHOT</pre>
 </div>
 </div>
 </div>
@@ -4971,7 +5164,7 @@ The script is located in the <code>etc/bin</code> directory of the <a href="http
 <div class="sect3">
 <h4 id="_6_gradle_changes">6. Gradle Changes:</h4>
 <div class="paragraph">
-<p>One of the major changes in Grails 7 is the modernization of it&#8217;s build system. As a side effect of this modernization, the Grails build is fully parallel &amp; <a href="https://docs.gradle.org/current/userguide/task_configuration_avoidance.html">lazy</a>. Moreover, most tasks have been enhanced to be cacheable. When updating to Grails 8.1.0-SNAPSHOT, there may be required updates to various tasks we distribute since the inputs of those tasks have changed to support lazy configuration.</p>
+<p>One of the major changes in Grails 7 is the modernization of it&#8217;s build system. As a side effect of this modernization, the Grails build is fully parallel &amp; <a href="https://docs.gradle.org/current/userguide/task_configuration_avoidance.html">lazy</a>. Moreover, most tasks have been enhanced to be cacheable. When updating to Grails 8.0.0-SNAPSHOT, there may be required updates to various tasks we distribute since the inputs of those tasks have changed to support lazy configuration.</p>
 </div>
 <div class="sect4">
 <h5 id="_6_1_gradle_plugin_changes">6.1. Gradle Plugin Changes</h5>
@@ -6115,7 +6308,7 @@ Applications generated by the Grails Forge automatically use <code>enforcedPlatf
 <h2 id="upgrading60x">3.5 Upgrading from Grails 5 to Grails 6</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.1.x/grails-doc/src/en/guide/upgrading/upgrading60x.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/upgrading/upgrading60x.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -6613,7 +6806,7 @@ With the unified Grails BOM, versions are managed automatically when using a Gra
 <h2 id="upgrading50x">3.6 Upgrading from Grails 4 to Grails 5</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.1.x/grails-doc/src/en/guide/upgrading/upgrading50x.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/upgrading/upgrading50x.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -6842,7 +7035,7 @@ More information <a href="https://docs.gradle.org/current/userguide/java_library
 <h2 id="upgrading40x">3.7 Upgrading from Grails 3.3.x to Grails 4</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.1.x/grails-doc/src/en/guide/upgrading/upgrading40x.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/upgrading/upgrading40x.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
