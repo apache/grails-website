@@ -1,0 +1,299 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+                      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+    <title>3 Configure Dedicated Job Storage</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="canonical" href="https://grails.apache.org/guides/grails-jobrunr/8/guide/index.html"/>
+    <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
+    <link rel="stylesheet" href="../css/guide.css" type="text/css" media="screen, print" title="Style" charset="utf-8" />            
+    <link rel="stylesheet" href="../css/pdf.css" type="text/css" media="print" title="PDF" charset="utf-8"/>
+    <script type="text/javascript" src="../js/clipboard.min.js"></script>
+    <script type="text/javascript">
+function addJsClass() {
+    var classes = document.body.className.split(" ");
+    classes.push("js");
+    document.body.className = classes.join(" ");
+}
+    </script>
+</head>
+
+<body class="body" onload="addJsClass();">
+<div id="navigation">
+    <div class="navTitle">
+        
+        Grails Framework Guide 
+    </div>
+    <div class="navLinks">
+        <ul>
+            <li>
+                <div id="nav-summary">
+                    <a href="../guide/index.html" class="button" aria-haspopup="true">Table of contents</a>
+
+                    <div id="nav-summary-childs">
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/gettingStarted.html"><strong>1</strong><span>Getting Started</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/dependencySetup.html"><strong>2</strong><span>Add JobRunr and Jackson</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/storageConfiguration.html"><strong>3</strong><span>Configure Dedicated Job Storage</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/jobRequests.html"><strong>4</strong><span>Use Job Requests From Groovy</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/durableEnqueue.html"><strong>5</strong><span>Enqueue After Commit</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/jobApis.html"><strong>6</strong><span>Schedule and Track Jobs</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/runningTheApp.html"><strong>7</strong><span>Run and Inspect Jobs</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/testing.html"><strong>8</strong><span>Test the Integration</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/operations.html"><strong>9</strong><span>Production Operations</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>10</strong><span>Do You Need Help With Grails?</span></a>
+                        </div>
+                        
+                    </div>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+
+</div>
+
+<table id="colset" border="0" cellpadding="0" cellspacing="0">
+    <tr>
+        <td id="col1">
+            <div id="main" class="corner-all">
+
+                <nav class="chapter-navigation" aria-label="Chapter navigation">
+                    
+                        <div class="toc-item prev-left"><a href="../guide/dependencySetup.html">&lt;&lt; <strong>2</strong><span>Add JobRunr and Jackson</span></a></div>
+                    
+
+                    
+                        <div class="toc-item next-right"><a href="../guide/jobRequests.html"><strong>4</strong><span>Use Job Requests From Groovy</span> >></a></div>
+                    
+                </nav>
+
+
+                
+
+                
+
+<h1 id="storageConfiguration">3 Configure Dedicated Job Storage</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-jobrunr/v8/guide/storageConfiguration.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>JobRunr needs one durable writer data source. Do not point JobRunr at a read replica: workers both read and write job state. The <a href="https://www.jobrunr.io/en/documentation/storage/">JobRunr storage documentation</a> explains the storage requirements.</p>
+</div>
+<div class="paragraph">
+<p>The sample separates application persistence from JobRunr persistence. Grails names the default bean <code>dataSource</code> and the named <code>jobrunr</code> source <code>dataSource_jobrunr</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">profile</span>: <span class="string"><span class="content">web</span></span>
+    <span class="key">codegen</span>:
+        <span class="key">defaultPackage</span>: <span class="string"><span class="content">example.grails</span></span>
+    <span class="key">gorm</span>:
+        <span class="key">reactor</span>:
+            <span class="key">events</span>: <span class="string"><span class="content">false</span></span>
+
+<span class="key">dataSource</span>:
+    <span class="key">dbCreate</span>: <span class="string"><span class="content">create-drop</span></span>
+    <span class="key">url</span>: <span class="string"><span class="content">jdbc:h2:mem:application;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE</span></span>
+    <span class="key">driverClassName</span>: <span class="string"><span class="content">org.h2.Driver</span></span>
+    <span class="key">username</span>: <span class="string"><span class="content">sa</span></span>
+    <span class="key">password</span>: <span class="string"><span class="content">''</span></span>
+
+<span class="key">dataSources</span>:
+    <span class="key">jobrunr</span>:
+        <span class="key">dbCreate</span>: <span class="string"><span class="content">none</span></span>
+        <span class="key">url</span>: <span class="string"><span class="content">jdbc:h2:mem:jobrunr;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE</span></span>
+        <span class="key">driverClassName</span>: <span class="string"><span class="content">org.h2.Driver</span></span>
+        <span class="key">username</span>: <span class="string"><span class="content">sa</span></span>
+        <span class="key">password</span>: <span class="string"><span class="content">''</span></span>
+
+<span class="key">hibernate</span>:
+    <span class="key">cache</span>:
+        <span class="key">queries</span>: <span class="string"><span class="content">false</span></span>
+        <span class="key">use_second_level_cache</span>: <span class="string"><span class="content">false</span></span>
+        <span class="key">use_query_cache</span>: <span class="string"><span class="content">false</span></span>
+
+<span class="key">jobrunr</span>:
+    <span class="key">jobs</span>:
+        <span class="key">default-number-of-retries</span>: <span class="string"><span class="content">3</span></span>
+
+<span class="key">server</span>:
+    <span class="key">port</span>: <span class="string"><span class="content">8080</span></span>
+
+<span class="key">environments</span>:
+    <span class="key">development</span>:
+        <span class="key">jobrunr</span>:
+            <span class="key">background-job-server</span>:
+                <span class="key">enabled</span>: <span class="string"><span class="content">true</span></span>
+                <span class="key">worker-count</span>: <span class="string"><span class="content">2</span></span>
+                <span class="key">poll-interval-in-seconds</span>: <span class="string"><span class="content">5</span></span>
+            <span class="key">dashboard</span>:
+                <span class="key">enabled</span>: <span class="string"><span class="content">true</span></span>
+                <span class="key">port</span>: <span class="string"><span class="content">8000</span></span>
+    <span class="key">test</span>:
+        <span class="key">jobrunr</span>:
+            <span class="key">background-job-server</span>:
+                <span class="key">enabled</span>: <span class="string"><span class="content">true</span></span>
+                <span class="key">worker-count</span>: <span class="string"><span class="content">1</span></span>
+                <span class="key">poll-interval-in-seconds</span>: <span class="string"><span class="content">5</span></span>
+            <span class="key">dashboard</span>:
+                <span class="key">enabled</span>: <span class="string"><span class="content">false</span></span>
+    <span class="key">production</span>:
+        <span class="key">jobrunr</span>:
+            <span class="key">database</span>:
+                <span class="key">skip-create</span>: <span class="string"><span class="content">true</span></span>
+            <span class="key">background-job-server</span>:
+                <span class="key">enabled</span>: <span class="string"><span class="content">false</span></span>
+            <span class="key">dashboard</span>:
+                <span class="key">enabled</span>: <span class="string"><span class="content">false</span></span>
+            <span class="key">miscellaneous</span>:
+                <span class="key">allow-anonymous-data-usage</span>: <span class="string"><span class="content">false</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>With multiple data sources, relying on type-only auto-configuration can be ambiguous. Instead, the sample supplies an explicit <code>StorageProvider</code> and qualifies the dedicated source. It also installs the <code>JobMapper</code> eagerly:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/main/groovy/example/grails/jobrunr/JobRunrStorageConfig.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails.jobrunr
+
+<span class="keyword">import</span> <span class="include">javax.sql.DataSource</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.jobs.mappers.JobMapper</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.spring.autoconfigure.JobRunrProperties</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.storage.StorageProvider</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.storage.StorageProviderUtils.DatabaseOptions</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.storage.sql.common.SqlStorageProviderFactory</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.utils.mapper.jackson.JacksonJsonMapper</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Qualifier</span>
+<span class="keyword">import</span> <span class="include">org.springframework.context.annotation.Bean</span>
+<span class="keyword">import</span> <span class="include">org.springframework.context.annotation.Configuration</span>
+
+<span class="annotation">@Configuration</span>
+<span class="type">class</span> <span class="class">JobRunrStorageConfig</span> {
+    <span class="annotation">@Bean</span>
+    StorageProvider storageProvider(
+        <span class="annotation">@Qualifier</span>(<span class="string"><span class="delimiter">'</span><span class="content">dataSource_jobrunr</span><span class="delimiter">'</span></span>) <span class="predefined-type">DataSource</span> jobrunrDataSource,
+        JobRunrProperties jobRunrProperties
+    ) {
+        StorageProvider storageProvider = SqlStorageProviderFactory.using(
+            jobrunrDataSource,
+            jobRunrProperties.database.tablePrefix,
+            jobRunrProperties.database.skipCreate ? DatabaseOptions.SKIP_CREATE : DatabaseOptions.CREATE
+        )
+        storageProvider.setJobMapper(<span class="keyword">new</span> JobMapper(<span class="keyword">new</span> JacksonJsonMapper()))
+        storageProvider
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The configuration reads <code>jobrunr.database.table-prefix</code> and <code>jobrunr.database.skip-create</code> from JobRunr properties. Set a table prefix when JobRunr must share a schema with other applications or deployments. With <code>skip-create: false</code>, the provider creates its tables, which is useful for this guide&#8217;s disposable H2 storage. With <code>skip-create: true</code>, it uses <code>DatabaseOptions.SKIP_CREATE</code> and does not create tables at application startup.</p>
+</div>
+<div class="paragraph">
+<p>Before any production node starts with <code>skip-create: true</code>, apply the JobRunr schema migrations for the configured database and table prefix. Missing tables must fail startup rather than allowing an application instance to take ownership of production DDL. Production schema management is covered in <a href="operations.html#operations">Production Operations and OSS Boundaries</a>.</p>
+</div>
+<div class="paragraph">
+<p>Grails must see the configuration class and its components. The application imports the configuration and scans the package containing the listener and handlers:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/init/example/grails/Application.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">example.grails.jobrunr.JobRunrStorageConfig</span>
+<span class="keyword">import</span> <span class="include">grails.boot.GrailsApp</span>
+<span class="keyword">import</span> <span class="include">grails.boot.config.GrailsAutoConfiguration</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.gorm.boot.autoconfigure.HibernateGormAutoConfiguration</span>
+<span class="keyword">import</span> <span class="include">org.springframework.context.annotation.ComponentScan</span>
+<span class="keyword">import</span> <span class="include">org.springframework.context.annotation.Import</span>
+
+<span class="annotation">@Import</span>([HibernateGormAutoConfiguration, JobRunrStorageConfig])
+<span class="annotation">@ComponentScan</span>(<span class="string"><span class="delimiter">'</span><span class="content">example.grails</span><span class="delimiter">'</span></span>)
+<span class="type">class</span> <span class="class">Application</span> <span class="directive">extends</span> GrailsAutoConfiguration {
+    <span class="directive">static</span> <span class="type">void</span> main(<span class="predefined-type">String</span><span class="type">[]</span> args) {
+        GrailsApp.run(Application, args)
+    }
+}</code></pre>
+</div>
+</div>
+
+
+                <div style="clear:both;margin-top:15px;"></div>
+                
+                    <div class="toc-item prev-left"><a href="../guide/dependencySetup.html">&lt;&lt; <strong>2</strong><span>Add JobRunr and Jackson</span></a></div>
+                
+                    <div class="toc-item next-right"><a href="../guide/jobRequests.html"><strong>4</strong><span>Use Job Requests From Groovy</span> >></a></div>
+                
+                <div style="clear:both"></div>
+            </div>
+        </td>
+        <td id="col2">
+            <div class="local clearfix">
+                <div class="local-title">
+                    <a href="https://github.com/grails-guides/grails-jobrunr">
+                    <svg height="35" class="octicon octicon-mark-github" viewBox="0 0 16 16" version="1.1" width="35" aria-hidden="true"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a> &nbsp;&nbsp;Get the Code
+                </div>
+                <div class="menu">
+                    <div class="input-group">                        
+                        <button href="#" onclick="document.getElementById('github-url').value='git@github.com:grails-guides/grails-jobrunr.git'" class="codeButton">SSH</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-jobrunr.git'" class="codeButton">HTTPS</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-jobrunr'" class="codeButton">Subversion</button>
+                    </div>
+       
+                    <div class="input-group">                    
+                        <!-- Target -->
+                        <input id="github-url" aria-label="Git repository URL" value="git@github.com:grails-guides/grails-jobrunr.git" type="text" />
+
+                        <!-- Trigger -->
+                        <button class="clipbtn" type="button" data-clipboard-target="#github-url" aria-label="Copy Git repository URL">
+
+                            <img width="13" src="../img/clippy.svg" alt="Copy to clipboard">
+                        </button>       
+                        <script type="text/javascript">new Clipboard('.clipbtn');</script>
+
+                    </div>
+                    <div class="input-group">
+                      <a href="https://github.com/grails-guides/grails-jobrunr/archive/grails8.zip" class="downloadButton">Download ZIP</a>
+                    </div>
+                </div>
+            </div>
+        </td>
+    </tr>
+</table>
+
+<div id="footer">
+    
+    
+</div>
+
+<script type="text/javascript" src="../js/docs.js"></script>
+
+</body>
+</html>

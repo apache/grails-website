@@ -1,0 +1,516 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+                      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+    <title>8 Test the Integration</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="canonical" href="https://grails.apache.org/guides/grails-jobrunr/8/guide/index.html"/>
+    <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
+    <link rel="stylesheet" href="../css/guide.css" type="text/css" media="screen, print" title="Style" charset="utf-8" />            
+    <link rel="stylesheet" href="../css/pdf.css" type="text/css" media="print" title="PDF" charset="utf-8"/>
+    <script type="text/javascript" src="../js/clipboard.min.js"></script>
+    <script type="text/javascript">
+function addJsClass() {
+    var classes = document.body.className.split(" ");
+    classes.push("js");
+    document.body.className = classes.join(" ");
+}
+    </script>
+</head>
+
+<body class="body" onload="addJsClass();">
+<div id="navigation">
+    <div class="navTitle">
+        
+        Grails Framework Guide 
+    </div>
+    <div class="navLinks">
+        <ul>
+            <li>
+                <div id="nav-summary">
+                    <a href="../guide/index.html" class="button" aria-haspopup="true">Table of contents</a>
+
+                    <div id="nav-summary-childs">
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/gettingStarted.html"><strong>1</strong><span>Getting Started</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/dependencySetup.html"><strong>2</strong><span>Add JobRunr and Jackson</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/storageConfiguration.html"><strong>3</strong><span>Configure Dedicated Job Storage</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/jobRequests.html"><strong>4</strong><span>Use Job Requests From Groovy</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/durableEnqueue.html"><strong>5</strong><span>Enqueue After Commit</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/jobApis.html"><strong>6</strong><span>Schedule and Track Jobs</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/runningTheApp.html"><strong>7</strong><span>Run and Inspect Jobs</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/testing.html"><strong>8</strong><span>Test the Integration</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/operations.html"><strong>9</strong><span>Production Operations</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>10</strong><span>Do You Need Help With Grails?</span></a>
+                        </div>
+                        
+                    </div>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+
+</div>
+
+<table id="colset" border="0" cellpadding="0" cellspacing="0">
+    <tr>
+        <td id="col1">
+            <div id="main" class="corner-all">
+
+                <nav class="chapter-navigation" aria-label="Chapter navigation">
+                    
+                        <div class="toc-item prev-left"><a href="../guide/runningTheApp.html">&lt;&lt; <strong>7</strong><span>Run and Inspect Jobs</span></a></div>
+                    
+
+                    
+                        <div class="toc-item next-right"><a href="../guide/operations.html"><strong>9</strong><span>Production Operations</span> >></a></div>
+                    
+                </nav>
+
+
+                
+
+                
+
+<h1 id="testing">8 Test the Integration</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-jobrunr/v8/guide/testing.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>The sample uses both focused unit tests and a live integration test. First, the request test protects the deserialization-friendly no-argument constructor and handler mapping:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/test/groovy/example/grails/jobrunr/JobRequestSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails.jobrunr
+
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="type">class</span> <span class="class">JobRequestSpec</span> <span class="directive">extends</span> Specification {
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">process request maps to its Spring handler and supports deserialization</span><span class="delimiter">'</span></span>() {
+        <span class="key">when</span>:
+        ProcessDeliveryJobRequest request = <span class="keyword">new</span> ProcessDeliveryJobRequest(<span class="integer">42L</span>)
+        ProcessDeliveryJobRequest emptyRequest = <span class="keyword">new</span> ProcessDeliveryJobRequest()
+
+        <span class="key">then</span>:
+        request.deliveryId == <span class="integer">42L</span>
+        emptyRequest.deliveryId == <span class="predefined-constant">null</span>
+        request.jobRequestHandler == DeliveryJobRequestHandler
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">retry request maps to its dedicated handler</span><span class="delimiter">'</span></span>() {
+        <span class="key">expect</span>:
+        <span class="keyword">new</span> RetryDeliveryJobRequest(<span class="integer">7L</span>).jobRequestHandler == RetryDeliveryJobRequestHandler
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The listener test checks that the production wiring keeps the decisive <code>AFTER_COMMIT</code> phase and submits the expected request:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/test/groovy/example/grails/DeliveryJobEnqueuerSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">org.jobrunr.scheduling.JobRequestScheduler</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+<span class="keyword">import</span> <span class="include">org.springframework.transaction.event.TransactionPhase</span>
+<span class="keyword">import</span> <span class="include">org.springframework.transaction.event.TransactionalEventListener</span>
+
+<span class="type">class</span> <span class="class">DeliveryJobEnqueuerSpec</span> <span class="directive">extends</span> Specification {
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">listener runs only after the delivery transaction commits</span><span class="delimiter">'</span></span>() {
+        <span class="key">when</span>:
+        TransactionalEventListener annotation = DeliveryJobEnqueuer
+            .getMethod(<span class="string"><span class="delimiter">'</span><span class="content">enqueue</span><span class="delimiter">'</span></span>, DeliveryCreatedEvent)
+            .getAnnotation(TransactionalEventListener)
+
+        <span class="key">then</span>:
+        annotation != <span class="predefined-constant">null</span>
+        annotation.phase() == TransactionPhase.AFTER_COMMIT
+        !annotation.fallbackExecution()
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">listener maps a committed delivery event to a JobRequest</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        JobRequestScheduler scheduler = Mock()
+        DeliveryJobEnqueuer enqueuer = <span class="keyword">new</span> DeliveryJobEnqueuer(<span class="key">jobRequestScheduler</span>: scheduler)
+
+        <span class="key">when</span>:
+        enqueuer.enqueue(<span class="keyword">new</span> DeliveryCreatedEvent(<span class="integer">17L</span>))
+
+        <span class="key">then</span>:
+        <span class="integer">1</span> * scheduler.enqueue({ request -&gt; request.deliveryId == <span class="integer">17L</span> })
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The storage configuration test verifies that the configured table prefix is used and that <code>skip-create</code> leaves an empty data source without JobRunr tables:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/test/groovy/example/grails/jobrunr/JobRunrStorageConfigSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails.jobrunr
+
+<span class="keyword">import</span> <span class="include">javax.sql.DataSource</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.JobRunrException</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.spring.autoconfigure.JobRunrProperties</span>
+<span class="keyword">import</span> <span class="include">org.springframework.jdbc.datasource.DriverManagerDataSource</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="type">class</span> <span class="class">JobRunrStorageConfigSpec</span> <span class="directive">extends</span> Specification {
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">storage configuration applies the JobRunr database properties</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">DataSource</span> dataSource = <span class="keyword">new</span> DriverManagerDataSource(
+            <span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc:h2:mem:jobrunr-storage-config-</span><span class="inline"><span class="inline-delimiter">${</span><span class="predefined-type">System</span>.nanoTime()<span class="inline-delimiter">}</span></span><span class="content">;DB_CLOSE_DELAY=-1</span><span class="delimiter">&quot;</span></span>,
+            <span class="string"><span class="delimiter">'</span><span class="content">sa</span><span class="delimiter">'</span></span>,
+            <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>
+        )
+        JobRunrProperties properties = <span class="keyword">new</span> JobRunrProperties()
+        properties.database.tablePrefix = <span class="string"><span class="delimiter">'</span><span class="content">GUIDE_</span><span class="delimiter">'</span></span>
+        properties.database.skipCreate = <span class="predefined-constant">false</span>
+
+        <span class="key">when</span>:
+        <span class="keyword">new</span> JobRunrStorageConfig().storageProvider(dataSource, properties)
+
+        <span class="key">then</span>:
+        dataSource.connection.withCloseable { connection -&gt;
+            connection.metaData.getTables(<span class="predefined-constant">null</span>, <span class="predefined-constant">null</span>, <span class="string"><span class="delimiter">'</span><span class="content">GUIDE%</span><span class="delimiter">'</span></span>, <span class="predefined-constant">null</span>).next()
+        }
+
+        <span class="key">when</span>:
+        <span class="predefined-type">DataSource</span> skipCreateDataSource = <span class="keyword">new</span> DriverManagerDataSource(
+            <span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc:h2:mem:jobrunr-storage-config-skip-</span><span class="inline"><span class="inline-delimiter">${</span><span class="predefined-type">System</span>.nanoTime()<span class="inline-delimiter">}</span></span><span class="content">;DB_CLOSE_DELAY=-1</span><span class="delimiter">&quot;</span></span>,
+            <span class="string"><span class="delimiter">'</span><span class="content">sa</span><span class="delimiter">'</span></span>,
+            <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>
+        )
+        properties.database.skipCreate = <span class="predefined-constant">true</span>
+        properties.database.tablePrefix = <span class="string"><span class="delimiter">'</span><span class="content">SKIP_</span><span class="delimiter">'</span></span>
+        <span class="keyword">new</span> JobRunrStorageConfig().storageProvider(skipCreateDataSource, properties)
+
+        <span class="key">then</span>:
+        thrown(JobRunrException)
+        !skipCreateDataSource.connection.withCloseable { connection -&gt;
+            connection.metaData.getTables(<span class="predefined-constant">null</span>, <span class="predefined-constant">null</span>, <span class="string"><span class="delimiter">'</span><span class="content">SKIP%</span><span class="delimiter">'</span></span>, <span class="predefined-constant">null</span>).next()
+        }
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The HTTP integration test discovers the controller action and URL mapping, then sends a real request to the embedded server:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/test/groovy/example/grails/DeliveryHttpApiSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">grails.core.GrailsApplication</span>
+<span class="keyword">import</span> <span class="include">grails.core.GrailsControllerClass</span>
+<span class="keyword">import</span> <span class="include">grails.web.mapping.UrlMappingInfo</span>
+<span class="keyword">import</span> <span class="include">grails.web.mapping.UrlMappingsHolder</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Autowired</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Value</span>
+<span class="keyword">import</span> <span class="include">org.springframework.http.HttpMethod</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">DeliveryHttpApiSpec</span> <span class="directive">extends</span> Specification {
+    <span class="annotation">@Autowired</span>
+    GrailsApplication grailsApplication
+
+    <span class="annotation">@Autowired</span>
+    UrlMappingsHolder urlMappingsHolder
+
+    <span class="annotation">@Value</span>(<span class="string"><span class="delimiter">'</span><span class="content">${local.server.port}</span><span class="delimiter">'</span></span>)
+    <span class="type">int</span> port
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">POST deliveries routes to the documented create action</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        GrailsControllerClass deliveryController = grailsApplication.getArtefact(<span class="string"><span class="delimiter">'</span><span class="content">Controller</span><span class="delimiter">'</span></span>, DeliveryController.name)
+        UrlMappingInfo<span class="type">[]</span> deliveryMappings = urlMappingsHolder.matchAll(<span class="string"><span class="delimiter">'</span><span class="content">/deliveries</span><span class="delimiter">'</span></span>, HttpMethod.POST)
+
+        <span class="key">when</span>:
+        <span class="predefined-type">HttpURLConnection</span> connection = <span class="keyword">new</span> <span class="predefined-type">URL</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>port<span class="inline-delimiter">}</span></span><span class="content">/deliveries</span><span class="delimiter">&quot;</span></span>).openConnection()
+        connection.requestMethod = <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>
+        connection.doOutput = <span class="predefined-constant">true</span>
+        connection.setRequestProperty(<span class="string"><span class="delimiter">'</span><span class="content">Accept</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+        connection.setRequestProperty(<span class="string"><span class="delimiter">'</span><span class="content">Content-Type</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/x-www-form-urlencoded</span><span class="delimiter">'</span></span>)
+        connection.outputStream.withCloseable { output -&gt;
+            output.write(<span class="string"><span class="delimiter">'</span><span class="content">reference=delivery-http-route</span><span class="delimiter">'</span></span>.bytes)
+        }
+
+        <span class="key">then</span>:
+        deliveryController.actions.contains(<span class="string"><span class="delimiter">'</span><span class="content">create</span><span class="delimiter">'</span></span>)
+        deliveryMappings.any { <span class="local-variable">it</span>.controllerName == <span class="string"><span class="delimiter">'</span><span class="content">delivery</span><span class="delimiter">'</span></span> &amp;&amp; <span class="local-variable">it</span>.actionName == <span class="string"><span class="delimiter">'</span><span class="content">create</span><span class="delimiter">'</span></span> }
+        connection.responseCode == <span class="integer">201</span>
+
+        <span class="key">cleanup</span>:
+        connection.disconnect()
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">POST deliveries without a reference returns 422 and does not persist a delivery</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        <span class="type">int</span> deliveryCount = Delivery.withNewSession { Delivery.count() }
+
+        <span class="key">when</span>:
+        <span class="predefined-type">HttpURLConnection</span> connection = <span class="keyword">new</span> <span class="predefined-type">URL</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>port<span class="inline-delimiter">}</span></span><span class="content">/deliveries</span><span class="delimiter">&quot;</span></span>).openConnection()
+        connection.requestMethod = <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>
+        connection.doOutput = <span class="predefined-constant">true</span>
+        connection.setRequestProperty(<span class="string"><span class="delimiter">'</span><span class="content">Accept</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+        connection.setRequestProperty(<span class="string"><span class="delimiter">'</span><span class="content">Content-Type</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/x-www-form-urlencoded</span><span class="delimiter">'</span></span>)
+        connection.outputStream.withCloseable { output -&gt;
+            output.write(<span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>.bytes)
+        }
+
+        <span class="key">then</span>:
+        connection.responseCode == <span class="integer">422</span>
+        Delivery.withNewSession { Delivery.count() } == deliveryCount
+
+        <span class="key">cleanup</span>:
+        connection?.disconnect()
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The sample also includes unit tests for the scheduler endpoints and service. They are not required to follow the earlier chapters, but they keep the <code>JobExamplesController</code> and <code>JobExamplesService</code> behavior in lockstep with the companion app:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/test/groovy/example/grails/JobExamplesControllerSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">grails.testing.web.controllers.ControllerUnitTest</span>
+<span class="keyword">import</span> <span class="include">groovy.json.JsonSlurper</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="type">class</span> <span class="class">JobExamplesControllerSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> ControllerUnitTest&lt;JobExamplesController&gt; {
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">immediate job endpoint returns an accepted response with a string job id</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        controller.jobExamplesService = <span class="predefined-type">Stub</span>(JobExamplesService) {
+            enqueueImmediately(<span class="integer">7L</span>) &gt;&gt; <span class="string"><span class="delimiter">'</span><span class="content">b5ab0831-a3af-4554-9b7a-5571137e9aaa</span><span class="delimiter">'</span></span>
+        }
+        request.method = <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>
+        request.addHeader(<span class="string"><span class="delimiter">'</span><span class="content">Accept</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+
+        <span class="key">when</span>:
+        controller.immediate(<span class="integer">7L</span>)
+
+        <span class="key">then</span>:
+        response.status == <span class="integer">202</span>
+        <span class="keyword">new</span> JsonSlurper().parseText(response.text).jobId == <span class="string"><span class="delimiter">'</span><span class="content">b5ab0831-a3af-4554-9b7a-5571137e9aaa</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">recurring job endpoint requires a delivery id and returns its stable identifier</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        controller.jobExamplesService = <span class="predefined-type">Stub</span>(JobExamplesService) {
+            registerRecurringDelivery(<span class="integer">19L</span>) &gt;&gt; <span class="string"><span class="delimiter">'</span><span class="content">delivery-19</span><span class="delimiter">'</span></span>
+        }
+        request.method = <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>
+        request.addHeader(<span class="string"><span class="delimiter">'</span><span class="content">Accept</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+
+        <span class="key">when</span>:
+        controller.recurring(<span class="integer">19L</span>)
+
+        <span class="key">then</span>:
+        response.status == <span class="integer">202</span>
+        <span class="keyword">new</span> JsonSlurper().parseText(response.text).recurringJobId == <span class="string"><span class="delimiter">'</span><span class="content">delivery-19</span><span class="delimiter">'</span></span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">src/test/groovy/example/grails/JobExamplesServiceSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">example.grails.jobrunr.ProcessDeliveryJobRequest</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.scheduling.JobRequestScheduler</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="type">class</span> <span class="class">JobExamplesServiceSpec</span> <span class="directive">extends</span> Specification {
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">recurring delivery uses the delivery id for its stable JobRunr identifier and request</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        JobRequestScheduler scheduler = Mock()
+        JobExamplesService service = <span class="keyword">new</span> JobExamplesService(<span class="key">jobRequestScheduler</span>: scheduler)
+
+        <span class="key">when</span>:
+        <span class="predefined-type">String</span> recurringJobId = service.registerRecurringDelivery(<span class="integer">19L</span>)
+
+        <span class="key">then</span>:
+        recurringJobId == <span class="string"><span class="delimiter">'</span><span class="content">delivery-19</span><span class="delimiter">'</span></span>
+        <span class="integer">1</span> * scheduler.scheduleRecurrently(
+            <span class="string"><span class="delimiter">'</span><span class="content">delivery-19</span><span class="delimiter">'</span></span>,
+            <span class="string"><span class="delimiter">'</span><span class="content">0 3 * * *</span><span class="delimiter">'</span></span>,
+            { ProcessDeliveryJobRequest request -&gt; request.deliveryId == <span class="integer">19L</span> }
+        ) &gt;&gt; <span class="string"><span class="delimiter">'</span><span class="content">delivery-19</span><span class="delimiter">'</span></span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Finally, the integration test starts JobRunr and GORM together. It proves that a live <code>JobRequest</code> runs to completion and that <code>JOBRUNR_JOBS</code> exists only in the dedicated JobRunr data source:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/test/groovy/example/grails/JobRunrIntegrationSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">javax.sql.DataSource</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.storage.StorageProvider</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Autowired</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Qualifier</span>
+<span class="keyword">import</span> <span class="include">org.springframework.transaction.event.TransactionalEventListenerFactory</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">JobRunrIntegrationSpec</span> <span class="directive">extends</span> Specification {
+    <span class="annotation">@Autowired</span>
+    DeliveryService deliveryService
+
+    <span class="annotation">@Autowired</span>
+    StorageProvider storageProvider
+
+    <span class="annotation">@Autowired</span>
+    TransactionalEventListenerFactory transactionalEventListenerFactory
+
+    <span class="annotation">@Autowired</span>
+    <span class="annotation">@Qualifier</span>(<span class="string"><span class="delimiter">'</span><span class="content">dataSource</span><span class="delimiter">'</span></span>)
+    <span class="predefined-type">DataSource</span> applicationDataSource
+
+    <span class="annotation">@Autowired</span>
+    <span class="annotation">@Qualifier</span>(<span class="string"><span class="delimiter">'</span><span class="content">dataSource_jobrunr</span><span class="delimiter">'</span></span>)
+    <span class="predefined-type">DataSource</span> jobrunrDataSource
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">JobRequest completes a GORM delivery while JobRunr owns separate tables</span><span class="delimiter">'</span></span>() {
+        <span class="key">when</span>:
+        <span class="type">int</span> existingJobs = storageProvider.jobStats.total
+        Delivery delivery = deliveryService.create(<span class="string"><span class="delimiter">&quot;</span><span class="content">delivery-</span><span class="inline"><span class="inline-delimiter">${</span><span class="predefined-type">System</span>.nanoTime()<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>)
+
+        <span class="key">then</span>:
+        eventually { storageProvider.jobStats.total == existingJobs + <span class="integer">1</span> }
+        eventually { loadDelivery(delivery.id)?.status == <span class="string"><span class="delimiter">'</span><span class="content">SUCCEEDED</span><span class="delimiter">'</span></span> }
+        loadDelivery(delivery.id).progress == <span class="integer">100</span>
+        loadDelivery(delivery.id).completedAt != <span class="predefined-constant">null</span>
+        storageProvider != <span class="predefined-constant">null</span>
+        transactionalEventListenerFactory != <span class="predefined-constant">null</span>
+        tableExists(jobrunrDataSource, <span class="string"><span class="delimiter">'</span><span class="content">JOBRUNR_JOBS</span><span class="delimiter">'</span></span>)
+        !tableExists(applicationDataSource, <span class="string"><span class="delimiter">'</span><span class="content">JOBRUNR_JOBS</span><span class="delimiter">'</span></span>)
+    }
+
+    <span class="directive">private</span> <span class="directive">static</span> <span class="type">boolean</span> eventually(Closure&lt;<span class="predefined-type">Boolean</span>&gt; condition) {
+        <span class="keyword">for</span> (<span class="type">int</span> attempt = <span class="integer">0</span>; attempt &lt; <span class="integer">120</span>; attempt++) {
+            <span class="keyword">if</span> (condition.call()) {
+                <span class="keyword">return</span> <span class="predefined-constant">true</span>
+            }
+            <span class="predefined-type">Thread</span>.sleep(<span class="integer">250</span>)
+        }
+        <span class="predefined-constant">false</span>
+    }
+
+    <span class="directive">private</span> <span class="directive">static</span> <span class="type">boolean</span> tableExists(<span class="predefined-type">DataSource</span> dataSource, <span class="predefined-type">String</span> tableName) {
+        dataSource.connection.withCloseable { connection -&gt;
+            connection.metaData.getTables(<span class="predefined-constant">null</span>, <span class="predefined-constant">null</span>, tableName, <span class="predefined-constant">null</span>).next()
+        }
+    }
+
+    <span class="directive">private</span> <span class="directive">static</span> Delivery loadDelivery(<span class="predefined-type">Long</span> id) {
+        Delivery.withNewTransaction {
+            Delivery.get(id)
+        }
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Run the complete suite with:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">cd complete
+./gradlew test</code></pre>
+</div>
+</div>
+
+
+                <div style="clear:both;margin-top:15px;"></div>
+                
+                    <div class="toc-item prev-left"><a href="../guide/runningTheApp.html">&lt;&lt; <strong>7</strong><span>Run and Inspect Jobs</span></a></div>
+                
+                    <div class="toc-item next-right"><a href="../guide/operations.html"><strong>9</strong><span>Production Operations</span> >></a></div>
+                
+                <div style="clear:both"></div>
+            </div>
+        </td>
+        <td id="col2">
+            <div class="local clearfix">
+                <div class="local-title">
+                    <a href="https://github.com/grails-guides/grails-jobrunr">
+                    <svg height="35" class="octicon octicon-mark-github" viewBox="0 0 16 16" version="1.1" width="35" aria-hidden="true"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a> &nbsp;&nbsp;Get the Code
+                </div>
+                <div class="menu">
+                    <div class="input-group">                        
+                        <button href="#" onclick="document.getElementById('github-url').value='git@github.com:grails-guides/grails-jobrunr.git'" class="codeButton">SSH</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-jobrunr.git'" class="codeButton">HTTPS</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-jobrunr'" class="codeButton">Subversion</button>
+                    </div>
+       
+                    <div class="input-group">                    
+                        <!-- Target -->
+                        <input id="github-url" aria-label="Git repository URL" value="git@github.com:grails-guides/grails-jobrunr.git" type="text" />
+
+                        <!-- Trigger -->
+                        <button class="clipbtn" type="button" data-clipboard-target="#github-url" aria-label="Copy Git repository URL">
+
+                            <img width="13" src="../img/clippy.svg" alt="Copy to clipboard">
+                        </button>       
+                        <script type="text/javascript">new Clipboard('.clipbtn');</script>
+
+                    </div>
+                    <div class="input-group">
+                      <a href="https://github.com/grails-guides/grails-jobrunr/archive/grails8.zip" class="downloadButton">Download ZIP</a>
+                    </div>
+                </div>
+            </div>
+        </td>
+    </tr>
+</table>
+
+<div id="footer">
+    
+    
+</div>
+
+<script type="text/javascript" src="../js/docs.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,1531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Background Jobs with JobRunr in Grails 8 | Grails Guides | Apache Grails</title>
+    <meta name='description' content='Background Jobs with JobRunr in Grails 8. Run durable background work safely with JobRunr OSS, Grails transactions, and explicit storage wiring.'/>
+    <link rel='canonical' href='https://grails.apache.org/guides/grails-jobrunr/8/guide/index.html'/>
+    <meta charset='UTF-8'/>
+<meta name='viewport' content='width=device-width, initial-scale=1'/>
+<link rel='icon' href='https://grails.apache.org/images/favicon.ico'/>
+<link rel='mask-icon' href='https://grails.apache.org/images/grails-pinned-icon.svg' color='#feb672'/>
+<link rel='alternate' type='application/rss+xml' title='RSS' href='https://grails.apache.org/rss.xml'/>
+<link rel='stylesheet' href='https://grails.apache.org/stylesheets/screen.css'/>
+<link rel='stylesheet' href='https://grails.apache.org/stylesheets/plugin.css'/>
+<script src='https://grails.apache.org/javascripts/navigation.js'></script>
+
+<!-- Matomo -->
+<script>
+  var _paq = window._paq || [];
+  window._paq = _paq;
+  _paq.push(['setDoNotTrack', true]);
+  _paq.push(['disableCookies']);
+  _paq.push(['trackPageView']);
+  _paq.push(['enableLinkTracking']);
+  (function() {
+    var u = 'https://analytics.apache.org/';
+    _paq.push(['setTrackerUrl', u + 'matomo.php']);
+    _paq.push(['setSiteId', '79']);
+    var d = document, g = d.createElement('script'), s = d.getElementsByTagName('script')[0];
+    g.async = true; g.src = u + 'matomo.js'; s.parentNode.insertBefore(g, s);
+  })();
+</script>
+<!-- End Matomo Code -->
+
+<script
+    async
+    src="https://widget.kapa.ai/kapa-widget.bundle.js"
+    data-website-id="d804a9f2-51a2-414c-97f7-12f2a1ba4609"
+    data-project-name="Apache Grails"
+    data-project-color="#3F4346"
+    data-font-family="system-ui,-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,Segoe UI,sans-serif,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol;"
+    data-project-logo="https://grails.apache.org/images/grails.png"
+    data-modal-override-open-id="ask-ai-input"
+    data-modal-override-open-class="search-input"
+    data-user-analytics-fingerprint-enabled="true"
+    data-modal-title="Apache Grails AI Assistant"
+    data-modal-example-questions-title="Try asking me..."
+    data-modal-example-questions="How does database migration work?,How does Spring Security work?"
+    data-button-text="Ask AI"
+    data-button-text-color="#feb672"
+    data-button-text-font-size="0"
+    data-button-bg-color="#3F4346"
+    data-button-height="44px"
+    data-button-width="44px"
+    data-button-image-height="24"
+    data-button-image-width="24"
+    data-button-padding="10px"
+    data-button-border-radius="50%"
+    data-button-position-bottom="12px"
+    data-button-position-right="12px"
+    data-launcher-button-text="Ask AI"
+    data-launcher-button-font-size="0"
+    data-launcher-button-background-color="#3F4346"
+    data-launcher-button-height="44px"
+    data-launcher-button-width="44px"
+    data-launcher-button-image-height="24"
+    data-launcher-button-image-width="24"
+    data-launcher-button-padding="10px"
+    data-launcher-button-border-radius="50%"
+    data-launcher-button-bottom="12px"
+    data-launcher-button-right="12px"
+    data-modal-header-bg-color="#FFFFFF"
+    data-modal-title-color="#255AA8"
+    data-consent-required="true"></script>
+
+    <link rel='stylesheet' href='../css/guide.css'/>
+    <script src='../js/clipboard.min.js'></script>
+</head>
+<body class='guide'>
+<header class='main-header'>
+    <div class='content'>
+        <a href='https://grails.apache.org/index.html'><img class='grails-logo' src='https://grails.apache.org/images/grails_logo.svg' alt='Grails Logo'/></a>
+        <button type='button' id='show-navigation-link'
+            class='mobile align-center navigation-toggle'
+            aria-expanded='false'
+            aria-controls='top-menus'
+            onclick='toggleNavigation()'>Show Navigation</button>
+        <div id='top-menus'>
+            <nav class='secondary-menu' id='secondary-menu'>
+                <ul>
+                    <li><a href='https://grails.apache.org/casestudies/index.html'>Case Studies</a></li>
+                    <li><a href='https://grails.apache.org/blog/index.html'>Blog</a></li>
+                    <li><a href='https://grails.apache.org/learning.html'>Learning</a></li>
+                    <li><a href='https://grails.apache.org/community.html'>Community</a></li>
+                    <li><a href='https://grails.apache.org/search.html'>Search</a></li>
+                </ul>
+            </nav>
+            <nav class='main-menu' id='main-menu'>
+                <ul>
+                    <li><a href='https://grails.apache.org/documentation.html'>Documentation</a></li>
+                    <li><a href='https://grails.apache.org/download.html'>Download</a></li>
+                    <li><a href='https://grails.apache.org/plugins.html'>Plugins</a></li>
+                    <li><a href='https://grails.apache.org/guides'>Guides</a></li>
+                    <li><a href='https://grails.apache.org/faq.html'>FAQ</a></li>
+                    <li><a href='https://grails.apache.org/support.html'>Support</a></li>
+                    <li><a href='https://start.grails.org'>Forge App</a></li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</header>
+
+<div class='fullwidth'><article class="guide">
+    <aside>
+        <button type="button" class="btn btn-large" onclick="window.location.href=&quot;https://github.com/grails-guides/grails-jobrunr&quot;"><img height="15" src="../img/github_white.svg" alt="GitHub"/><span>&nbsp;Get the Code</span></button>
+        <ul class="githublinks">
+            <li><button type="button" class="btn btn-default codeButton" onclick="document.getElementById('github-url').value='git@github.com:grails-guides/grails-jobrunr.git'">SSH</button></li>
+            <li><button type="button" class="btn btn-default codeButton" onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-jobrunr.git'">HTTPS</button></li>
+        </ul>
+        <div class="input-group">
+            <input id="github-url" aria-label="Git repository URL" value="git@github.com:grails-guides/grails-jobrunr.git" type="text"/>
+            <button type="button" class="clippy btn btn-default" data-clipboard-target="#github-url" aria-label="Copy Git repository URL">
+                <img width="13" src="../img/clippy.svg" alt="Copy to clipboard">
+            </button>
+        </div>
+        <script>var clipboard = new Clipboard('.clippy');</script>
+        <button type="button" class="btn btn-large" onclick="window.location.href=&quot;https://github.com/grails-guides/grails-jobrunr/archive/grails8.zip&quot;">Download ZIP</button>
+        
+        <div id="table-of-content">
+            <h3>Table of Contents</h3>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#gettingStarted"><strong>1</strong><span>Getting Started</span></a></div>
+            
+            <div class="toc-item" style="margin-left:10px"><a href="#requirements"><strong>1.1</strong><span>What you will need</span></a></div>
+            
+            <div class="toc-item" style="margin-left:10px"><a href="#howto"><strong>1.2</strong><span>How to Complete the Guide</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#dependencySetup"><strong>2</strong><span>Add JobRunr and Jackson</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#storageConfiguration"><strong>3</strong><span>Configure Dedicated Job Storage</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#jobRequests"><strong>4</strong><span>Use Job Requests From Groovy</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#durableEnqueue"><strong>5</strong><span>Enqueue After Commit</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#jobApis"><strong>6</strong><span>Schedule and Track Jobs</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#runningTheApp"><strong>7</strong><span>Run and Inspect Jobs</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#testing"><strong>8</strong><span>Test the Integration</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#operations"><strong>9</strong><span>Production Operations</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#helpWithGrails"><strong>10</strong><span>Do You Need Help With Grails?</span></a></div>
+            
+            <div style="clear:both"></div>
+        </div>
+        
+    </aside>
+    <header>
+        <h1>Background Jobs with JobRunr in Grails 8</h1>
+        <p>Run durable background work safely with JobRunr OSS, Grails transactions, and explicit storage wiring.</p>
+        <p><strong>Authors:</strong> James Fredley</p>
+        <p><strong>Grails Version:</strong> 8</p>
+    </header>
+    
+
+<h1 id="gettingStarted">1 Getting Started</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-jobrunr/v8/guide/gettingStarted.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>JobRunr is a durable background-job system: it stores job details, lets workers execute them after a request returns, retries failures, and provides an operational dashboard. This guide builds a small delivery API in which creating a delivery commits a GORM row, then schedules a JobRunr job that marks that delivery complete.</p>
+</div>
+<div class="paragraph">
+<p>The sample is verified with Grails <code>8.0.0-M5</code>, Gradle <code>9.6.1</code>, Java 21, and JobRunr OSS <code>8.8.1</code>. Grails <code>8.0.0-M5</code> is a milestone release, while JobRunr <code>8.8.1</code> is a GA release. Check the current <a href="https://grails.apache.org">Apache Grails</a> and <a href="https://github.com/jobrunr/jobrunr/releases/tag/v8.8.1">JobRunr 8.8.1 release</a> before choosing versions for a new production application.</p>
+</div>
+<div class="paragraph">
+<p>The design deliberately uses JobRunr OSS only. It stores JobRunr tables in a dedicated data source, sends a small delivery ID rather than an entity graph, waits for the delivery transaction to commit before enqueueing, and makes the handler safe to run again.</p>
+</div>
+<div class="sect1">
+<h2 id="_what_you_will_build">What you will build</h2>
+<div class="sectionbody">
+<div class="ulist">
+<ul>
+<li>
+<p>A Grails JSON API that creates a <code>Delivery</code> and returns <code>201 Created</code>.</p>
+</li>
+<li>
+<p>A durable <code>JobRequest</code> queued after the delivery transaction commits.</p>
+</li>
+<li>
+<p>A statically compiled handler that reports progress and marks the delivery successful.</p>
+</li>
+<li>
+<p>Endpoints that demonstrate immediate, delayed, recurring, and retrying jobs.</p>
+</li>
+<li>
+<p>An H2-backed development dashboard and tests that prove routing, storage separation, and live execution.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+
+
+<h2 id="requirements">1.1 What you will need</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-jobrunr/v8/guide/requirements.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>To complete this guide, you will need:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>JDK 21. Grails 8 requires Java 21.</p>
+</li>
+<li>
+<p>About 45 minutes.</p>
+</li>
+<li>
+<p>An IDE with Groovy support.</p>
+</li>
+<li>
+<p>The Gradle wrapper included with the sample. It is pinned to Gradle <code>9.6.1</code>.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The sample uses in-memory H2 databases for application and JobRunr storage. That is suitable for learning and tests only. The production section explains the persistent writer database and schema workflow.</p>
+</div>
+
+
+<h2 id="howto">1.2 How to Complete the Guide</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-jobrunr/v8/guide/howto.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>You can work through the code in the guide or clone the finished application:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">git clone -b grails8 https://github.com/grails-guides/grails-jobrunr.git
+cd grails-jobrunr/complete
+./gradlew test</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>initial/</code> is a plain Grails 8 web application. <code>complete/</code> adds the JobRunr starter, Jackson, the dedicated data source, an after-commit event listener, <code>JobRequest</code> handlers, HTTP endpoints, and the tests discussed below.</p>
+</div>
+
+
+<h1 id="dependencySetup">2 Add JobRunr and Jackson</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-jobrunr/v8/guide/dependencySetup.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Grails 8 runs on Spring Boot 4, so use JobRunr&#8217;s Spring Boot 4 starter. The <a href="https://www.jobrunr.io/en/guides/jvm-frameworks/grails/">JobRunr Grails guide</a> documents this starter family, and the <a href="https://search.maven.org/artifact/org.jobrunr/jobrunr-spring-boot-4-starter/8.8.1/jar">Maven Central artifact</a> identifies the selected GA release.</p>
+</div>
+<div class="paragraph">
+<p>The initial build has no JobRunr runtime dependency:</p>
+</div>
+<div class="listingblock">
+<div class="title">initial/build.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">plugins {
+    id <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails.gradle.grails-web</span><span class="delimiter">'</span></span> version <span class="string"><span class="delimiter">&quot;</span><span class="inline"><span class="inline-delimiter">${</span>grailsVersion<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>
+    id <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails.gradle.grails-gsp</span><span class="delimiter">'</span></span> version <span class="string"><span class="delimiter">&quot;</span><span class="inline"><span class="inline-delimiter">${</span>grailsVersion<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>
+}
+
+group = <span class="string"><span class="delimiter">'</span><span class="content">example.grails</span><span class="delimiter">'</span></span>
+version = <span class="string"><span class="delimiter">'</span><span class="content">0.1.0</span><span class="delimiter">'</span></span>
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(<span class="integer">21</span>)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-dependencies-starter-web</span><span class="delimiter">'</span></span>
+    implementation <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-data-hibernate5</span><span class="delimiter">'</span></span>
+    implementation <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-data-hibernate5-spring-boot</span><span class="delimiter">'</span></span>
+    implementation <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-datasource</span><span class="delimiter">'</span></span>
+    runtimeOnly <span class="string"><span class="delimiter">'</span><span class="content">com.h2database:h2</span><span class="delimiter">'</span></span>
+    testImplementation <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-testing-support-web</span><span class="delimiter">'</span></span>
+    testImplementation <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-testing-support-datamapping</span><span class="delimiter">'</span></span>
+}
+
+tasks.named(<span class="string"><span class="delimiter">'</span><span class="content">test</span><span class="delimiter">'</span></span>) {
+    useJUnitPlatform()
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The complete build adds the Boot 4 starter and explicit <code>jackson-databind</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">complete/build.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">plugins {
+    id <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails.gradle.grails-web</span><span class="delimiter">'</span></span> version <span class="string"><span class="delimiter">&quot;</span><span class="inline"><span class="inline-delimiter">${</span>grailsVersion<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>
+    id <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails.gradle.grails-gsp</span><span class="delimiter">'</span></span> version <span class="string"><span class="delimiter">&quot;</span><span class="inline"><span class="inline-delimiter">${</span>grailsVersion<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>
+}
+
+group = <span class="string"><span class="delimiter">'</span><span class="content">example.grails</span><span class="delimiter">'</span></span>
+version = <span class="string"><span class="delimiter">'</span><span class="content">0.1.0</span><span class="delimiter">'</span></span>
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(<span class="integer">21</span>)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-dependencies-starter-web</span><span class="delimiter">'</span></span>
+    implementation <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-data-hibernate5</span><span class="delimiter">'</span></span>
+    implementation <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-data-hibernate5-spring-boot</span><span class="delimiter">'</span></span>
+    implementation <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-datasource</span><span class="delimiter">'</span></span>
+    implementation <span class="string"><span class="delimiter">&quot;</span><span class="content">org.jobrunr:jobrunr-spring-boot-4-starter:</span><span class="inline"><span class="inline-delimiter">${</span>jobrunrVersion<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>
+    implementation <span class="string"><span class="delimiter">'</span><span class="content">com.fasterxml.jackson.core:jackson-databind</span><span class="delimiter">'</span></span>
+    runtimeOnly <span class="string"><span class="delimiter">'</span><span class="content">com.h2database:h2</span><span class="delimiter">'</span></span>
+    testImplementation <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-testing-support-web</span><span class="delimiter">'</span></span>
+    testImplementation <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-testing-support-datamapping</span><span class="delimiter">'</span></span>
+}
+
+tasks.named(<span class="string"><span class="delimiter">'</span><span class="content">test</span><span class="delimiter">'</span></span>) {
+    useJUnitPlatform()
+}
+
+bootRun {
+    jvmArgs <span class="string"><span class="delimiter">'</span><span class="content">-Dgrails.env=development</span><span class="delimiter">'</span></span>
+    sourceResources sourceSets.main
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The starter supplies Jackson version constraints but not an application Jackson Databind runtime dependency. Add <code>com.fasterxml.jackson.core:jackson-databind</code> explicitly so JobRunr can create its job mapper. Keep the version managed by the Grails dependency platform rather than pinning a competing version.</p>
+</div>
+<div class="paragraph">
+<p>The version delta is visible in the two Gradle property files:</p>
+</div>
+<div class="listingblock">
+<div class="title">initial/gradle.properties</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="properties">grailsVersion=8.0.0-M5
+org.gradle.caching=true
+org.gradle.jvmargs=-Dfile.encoding=UTF-8 -Xmx1g</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">complete/gradle.properties</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="properties">grailsVersion=8.0.0-M5
+jobrunrVersion=8.8.1
+org.gradle.caching=true
+org.gradle.jvmargs=-Dfile.encoding=UTF-8 -Xmx1g</code></pre>
+</div>
+</div>
+
+
+<h1 id="storageConfiguration">3 Configure Dedicated Job Storage</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-jobrunr/v8/guide/storageConfiguration.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>JobRunr needs one durable writer data source. Do not point JobRunr at a read replica: workers both read and write job state. The <a href="https://www.jobrunr.io/en/documentation/storage/">JobRunr storage documentation</a> explains the storage requirements.</p>
+</div>
+<div class="paragraph">
+<p>The sample separates application persistence from JobRunr persistence. Grails names the default bean <code>dataSource</code> and the named <code>jobrunr</code> source <code>dataSource_jobrunr</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">profile</span>: <span class="string"><span class="content">web</span></span>
+    <span class="key">codegen</span>:
+        <span class="key">defaultPackage</span>: <span class="string"><span class="content">example.grails</span></span>
+    <span class="key">gorm</span>:
+        <span class="key">reactor</span>:
+            <span class="key">events</span>: <span class="string"><span class="content">false</span></span>
+
+<span class="key">dataSource</span>:
+    <span class="key">dbCreate</span>: <span class="string"><span class="content">create-drop</span></span>
+    <span class="key">url</span>: <span class="string"><span class="content">jdbc:h2:mem:application;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE</span></span>
+    <span class="key">driverClassName</span>: <span class="string"><span class="content">org.h2.Driver</span></span>
+    <span class="key">username</span>: <span class="string"><span class="content">sa</span></span>
+    <span class="key">password</span>: <span class="string"><span class="content">''</span></span>
+
+<span class="key">dataSources</span>:
+    <span class="key">jobrunr</span>:
+        <span class="key">dbCreate</span>: <span class="string"><span class="content">none</span></span>
+        <span class="key">url</span>: <span class="string"><span class="content">jdbc:h2:mem:jobrunr;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE</span></span>
+        <span class="key">driverClassName</span>: <span class="string"><span class="content">org.h2.Driver</span></span>
+        <span class="key">username</span>: <span class="string"><span class="content">sa</span></span>
+        <span class="key">password</span>: <span class="string"><span class="content">''</span></span>
+
+<span class="key">hibernate</span>:
+    <span class="key">cache</span>:
+        <span class="key">queries</span>: <span class="string"><span class="content">false</span></span>
+        <span class="key">use_second_level_cache</span>: <span class="string"><span class="content">false</span></span>
+        <span class="key">use_query_cache</span>: <span class="string"><span class="content">false</span></span>
+
+<span class="key">jobrunr</span>:
+    <span class="key">jobs</span>:
+        <span class="key">default-number-of-retries</span>: <span class="string"><span class="content">3</span></span>
+
+<span class="key">server</span>:
+    <span class="key">port</span>: <span class="string"><span class="content">8080</span></span>
+
+<span class="key">environments</span>:
+    <span class="key">development</span>:
+        <span class="key">jobrunr</span>:
+            <span class="key">background-job-server</span>:
+                <span class="key">enabled</span>: <span class="string"><span class="content">true</span></span>
+                <span class="key">worker-count</span>: <span class="string"><span class="content">2</span></span>
+                <span class="key">poll-interval-in-seconds</span>: <span class="string"><span class="content">5</span></span>
+            <span class="key">dashboard</span>:
+                <span class="key">enabled</span>: <span class="string"><span class="content">true</span></span>
+                <span class="key">port</span>: <span class="string"><span class="content">8000</span></span>
+    <span class="key">test</span>:
+        <span class="key">jobrunr</span>:
+            <span class="key">background-job-server</span>:
+                <span class="key">enabled</span>: <span class="string"><span class="content">true</span></span>
+                <span class="key">worker-count</span>: <span class="string"><span class="content">1</span></span>
+                <span class="key">poll-interval-in-seconds</span>: <span class="string"><span class="content">5</span></span>
+            <span class="key">dashboard</span>:
+                <span class="key">enabled</span>: <span class="string"><span class="content">false</span></span>
+    <span class="key">production</span>:
+        <span class="key">jobrunr</span>:
+            <span class="key">database</span>:
+                <span class="key">skip-create</span>: <span class="string"><span class="content">true</span></span>
+            <span class="key">background-job-server</span>:
+                <span class="key">enabled</span>: <span class="string"><span class="content">false</span></span>
+            <span class="key">dashboard</span>:
+                <span class="key">enabled</span>: <span class="string"><span class="content">false</span></span>
+            <span class="key">miscellaneous</span>:
+                <span class="key">allow-anonymous-data-usage</span>: <span class="string"><span class="content">false</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>With multiple data sources, relying on type-only auto-configuration can be ambiguous. Instead, the sample supplies an explicit <code>StorageProvider</code> and qualifies the dedicated source. It also installs the <code>JobMapper</code> eagerly:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/main/groovy/example/grails/jobrunr/JobRunrStorageConfig.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails.jobrunr
+
+<span class="keyword">import</span> <span class="include">javax.sql.DataSource</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.jobs.mappers.JobMapper</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.spring.autoconfigure.JobRunrProperties</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.storage.StorageProvider</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.storage.StorageProviderUtils.DatabaseOptions</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.storage.sql.common.SqlStorageProviderFactory</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.utils.mapper.jackson.JacksonJsonMapper</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Qualifier</span>
+<span class="keyword">import</span> <span class="include">org.springframework.context.annotation.Bean</span>
+<span class="keyword">import</span> <span class="include">org.springframework.context.annotation.Configuration</span>
+
+<span class="annotation">@Configuration</span>
+<span class="type">class</span> <span class="class">JobRunrStorageConfig</span> {
+    <span class="annotation">@Bean</span>
+    StorageProvider storageProvider(
+        <span class="annotation">@Qualifier</span>(<span class="string"><span class="delimiter">'</span><span class="content">dataSource_jobrunr</span><span class="delimiter">'</span></span>) <span class="predefined-type">DataSource</span> jobrunrDataSource,
+        JobRunrProperties jobRunrProperties
+    ) {
+        StorageProvider storageProvider = SqlStorageProviderFactory.using(
+            jobrunrDataSource,
+            jobRunrProperties.database.tablePrefix,
+            jobRunrProperties.database.skipCreate ? DatabaseOptions.SKIP_CREATE : DatabaseOptions.CREATE
+        )
+        storageProvider.setJobMapper(<span class="keyword">new</span> JobMapper(<span class="keyword">new</span> JacksonJsonMapper()))
+        storageProvider
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The configuration reads <code>jobrunr.database.table-prefix</code> and <code>jobrunr.database.skip-create</code> from JobRunr properties. Set a table prefix when JobRunr must share a schema with other applications or deployments. With <code>skip-create: false</code>, the provider creates its tables, which is useful for this guide&#8217;s disposable H2 storage. With <code>skip-create: true</code>, it uses <code>DatabaseOptions.SKIP_CREATE</code> and does not create tables at application startup.</p>
+</div>
+<div class="paragraph">
+<p>Before any production node starts with <code>skip-create: true</code>, apply the JobRunr schema migrations for the configured database and table prefix. Missing tables must fail startup rather than allowing an application instance to take ownership of production DDL. Production schema management is covered in <a href="operations.html#operations">Production Operations and OSS Boundaries</a>.</p>
+</div>
+<div class="paragraph">
+<p>Grails must see the configuration class and its components. The application imports the configuration and scans the package containing the listener and handlers:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/init/example/grails/Application.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">example.grails.jobrunr.JobRunrStorageConfig</span>
+<span class="keyword">import</span> <span class="include">grails.boot.GrailsApp</span>
+<span class="keyword">import</span> <span class="include">grails.boot.config.GrailsAutoConfiguration</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.gorm.boot.autoconfigure.HibernateGormAutoConfiguration</span>
+<span class="keyword">import</span> <span class="include">org.springframework.context.annotation.ComponentScan</span>
+<span class="keyword">import</span> <span class="include">org.springframework.context.annotation.Import</span>
+
+<span class="annotation">@Import</span>([HibernateGormAutoConfiguration, JobRunrStorageConfig])
+<span class="annotation">@ComponentScan</span>(<span class="string"><span class="delimiter">'</span><span class="content">example.grails</span><span class="delimiter">'</span></span>)
+<span class="type">class</span> <span class="class">Application</span> <span class="directive">extends</span> GrailsAutoConfiguration {
+    <span class="directive">static</span> <span class="type">void</span> main(<span class="predefined-type">String</span><span class="type">[]</span> args) {
+        GrailsApp.run(Application, args)
+    }
+}</code></pre>
+</div>
+</div>
+
+
+<h1 id="jobRequests">4 Use Job Requests From Groovy</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-jobrunr/v8/guide/jobRequests.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="sect1">
+<h2 id="_do_not_enqueue_groovy_closures">Do not enqueue Groovy closures</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>JobRunr needs a durable description of the method to execute. An ordinary Groovy closure does not provide one. More subtly, this tempting cast does not make the job safe:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">jobScheduler.enqueue((JobLambda) (() -&gt; processDelivery(deliveryId)))</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The cast chooses a Java functional-interface overload, but it does not produce a javac-style JobRunr target. Executed checks against Groovy <code>4.0.33</code> and against Grails <code>8.0.0-M5</code> with Groovy <code>5.0.8</code> both persisted a generated <code>Closure#doCall</code> target. The jobs failed before the intended method ran. Never claim this cast-arrow form is a workaround.</p>
+</div>
+<div class="paragraph">
+<p>Use JobRunr&#8217;s explicit <a href="https://github.com/jobrunr/jobrunr/blob/v8.8.1/core/src/main/java/org/jobrunr/jobs/lambdas/JobRequest.java"><code>JobRequest</code></a> and <a href="https://github.com/jobrunr/jobrunr/blob/v8.8.1/core/src/main/java/org/jobrunr/jobs/lambdas/JobRequestHandler.java"><code>JobRequestHandler</code></a> contract instead. The request carries only the durable delivery ID, has a no-argument constructor for deserialization, and maps itself to a Spring handler:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/main/groovy/example/grails/jobrunr/ProcessDeliveryJobRequest.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails.jobrunr
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.jobs.lambdas.JobRequest</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">ProcessDeliveryJobRequest</span> <span class="directive">implements</span> JobRequest {
+    <span class="predefined-type">Long</span> deliveryId
+
+    ProcessDeliveryJobRequest() {
+    }
+
+    ProcessDeliveryJobRequest(<span class="predefined-type">Long</span> deliveryId) {
+        <span class="local-variable">this</span>.deliveryId = deliveryId
+    }
+
+    <span class="annotation">@Override</span>
+    <span class="predefined-type">Class</span>&lt;DeliveryJobRequestHandler&gt; getJobRequestHandler() {
+        DeliveryJobRequestHandler
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The handler is a Spring component, statically compiled, and transactional. It reloads current state rather than serializing a <code>Delivery</code> instance. It returns for a missing or previously completed delivery, reports progress, and preserves interruption by restoring the interrupt flag before throwing:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/main/groovy/example/grails/jobrunr/DeliveryJobRequestHandler.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails.jobrunr
+
+<span class="keyword">import</span> <span class="include">example.grails.Delivery</span>
+<span class="keyword">import</span> <span class="include">grails.compiler.GrailsCompileStatic</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.jobs.annotations.Job</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.jobs.lambdas.JobRequestHandler</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.server.runner.ThreadLocalJobContext</span>
+<span class="keyword">import</span> <span class="include">org.springframework.stereotype.Component</span>
+
+<span class="annotation">@Component</span>
+<span class="annotation">@GrailsCompileStatic</span>
+<span class="annotation">@Transactional</span>
+<span class="type">class</span> <span class="class">DeliveryJobRequestHandler</span> <span class="directive">implements</span> JobRequestHandler&lt;ProcessDeliveryJobRequest&gt; {
+    <span class="annotation">@Override</span>
+    <span class="annotation">@Job</span>(name = <span class="string"><span class="delimiter">'</span><span class="content">Process delivery</span><span class="delimiter">'</span></span>, retries = <span class="integer">3</span>, labels = [<span class="string"><span class="delimiter">'</span><span class="content">delivery</span><span class="delimiter">'</span></span>])
+    <span class="type">void</span> run(ProcessDeliveryJobRequest request) <span class="directive">throws</span> <span class="exception">Exception</span> {
+        <span class="keyword">try</span> {
+            <span class="keyword">if</span> (<span class="predefined-type">Thread</span>.currentThread().isInterrupted()) {
+                <span class="keyword">throw</span> <span class="keyword">new</span> <span class="exception">InterruptedException</span>(<span class="string"><span class="delimiter">'</span><span class="content">Delivery worker was interrupted</span><span class="delimiter">'</span></span>)
+            }
+
+            <span class="keyword">if</span> (request.deliveryId == <span class="predefined-constant">null</span>) {
+                <span class="keyword">return</span>
+            }
+
+            Delivery delivery = Delivery.get(request.deliveryId)
+            <span class="keyword">if</span> (delivery == <span class="predefined-constant">null</span> || delivery.status == <span class="string"><span class="delimiter">'</span><span class="content">SUCCEEDED</span><span class="delimiter">'</span></span>) {
+                <span class="keyword">return</span>
+            }
+
+            <span class="keyword">def</span> context = ThreadLocalJobContext.getJobContext()
+            <span class="keyword">def</span> progressBar = context.progressBar(<span class="integer">3</span>)
+            <span class="keyword">for</span> (<span class="type">int</span> step = <span class="integer">1</span>; step &lt;= <span class="integer">3</span>; step++) {
+                delivery.progress = step * <span class="integer">33</span>
+                progressBar.incrementSucceeded()
+            }
+            delivery.progress = <span class="integer">100</span>
+            delivery.status = <span class="string"><span class="delimiter">'</span><span class="content">SUCCEEDED</span><span class="delimiter">'</span></span>
+            delivery.completedAt = <span class="keyword">new</span> <span class="predefined-type">Date</span>()
+            delivery.save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>, <span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        } <span class="keyword">catch</span> (<span class="exception">InterruptedException</span> exception) {
+            <span class="predefined-type">Thread</span>.currentThread().interrupt()
+            <span class="keyword">throw</span> exception
+        }
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The <code>SUCCEEDED</code> guard makes retries and repeated delivery harmless for this state transition. Real handlers need the same kind of idempotency around every externally visible effect.</p>
+</div>
+</div>
+</div>
+
+
+<h1 id="durableEnqueue">5 Enqueue After Commit</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-jobrunr/v8/guide/durableEnqueue.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>The job must not run for a delivery that rolls back. The delivery model records the business state and progress that the job updates:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/domain/example/grails/Delivery.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="type">class</span> <span class="class">Delivery</span> {
+    <span class="predefined-type">String</span> reference
+    <span class="predefined-type">String</span> status = <span class="string"><span class="delimiter">'</span><span class="content">PENDING</span><span class="delimiter">'</span></span>
+    <span class="predefined-type">Integer</span> progress = <span class="integer">0</span>
+    <span class="predefined-type">Date</span> completedAt
+
+    <span class="directive">static</span> constraints = {
+        reference <span class="key">nullable</span>: <span class="predefined-constant">false</span>, <span class="key">blank</span>: <span class="predefined-constant">false</span>, <span class="key">unique</span>: <span class="predefined-constant">true</span>
+        status <span class="key">blank</span>: <span class="predefined-constant">false</span>
+        completedAt <span class="key">nullable</span>: <span class="predefined-constant">true</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The service first persists the delivery and publishes a small event within its GORM transaction:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/services/example/grails/DeliveryService.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">grails.compiler.GrailsCompileStatic</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Autowired</span>
+<span class="keyword">import</span> <span class="include">org.springframework.context.ApplicationEventPublisher</span>
+
+<span class="annotation">@GrailsCompileStatic</span>
+<span class="annotation">@Transactional</span>
+<span class="type">class</span> <span class="class">DeliveryService</span> {
+    <span class="annotation">@Autowired</span>
+    ApplicationEventPublisher applicationEventPublisher
+
+    Delivery create(<span class="predefined-type">String</span> reference) {
+        Delivery delivery = <span class="keyword">new</span> Delivery(<span class="key">reference</span>: reference)
+        <span class="keyword">if</span> (!delivery.validate()) {
+            <span class="keyword">return</span> delivery
+        }
+        delivery.save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>, <span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        applicationEventPublisher.publishEvent(<span class="keyword">new</span> DeliveryCreatedEvent(delivery.id))
+        delivery
+    }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">src/main/groovy/example/grails/DeliveryCreatedEvent.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">DeliveryCreatedEvent</span> {
+    <span class="directive">final</span> <span class="predefined-type">Long</span> deliveryId
+
+    DeliveryCreatedEvent(<span class="predefined-type">Long</span> deliveryId) {
+        <span class="local-variable">this</span>.deliveryId = deliveryId
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The listener uses Spring&#8217;s <a href="https://docs.spring.io/spring-framework/reference/data-access/transaction/event.html">transaction-bound event support</a> to run only after that transaction commits, then enqueues the request:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/main/groovy/example/grails/DeliveryJobEnqueuer.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">example.grails.jobrunr.ProcessDeliveryJobRequest</span>
+<span class="keyword">import</span> <span class="include">grails.compiler.GrailsCompileStatic</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.scheduling.JobRequestScheduler</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Autowired</span>
+<span class="keyword">import</span> <span class="include">org.springframework.stereotype.Component</span>
+<span class="keyword">import</span> <span class="include">org.springframework.transaction.event.TransactionPhase</span>
+<span class="keyword">import</span> <span class="include">org.springframework.transaction.event.TransactionalEventListener</span>
+
+<span class="annotation">@Component</span>
+<span class="annotation">@GrailsCompileStatic</span>
+<span class="type">class</span> <span class="class">DeliveryJobEnqueuer</span> {
+    <span class="annotation">@Autowired</span>
+    JobRequestScheduler jobRequestScheduler
+
+    <span class="annotation">@TransactionalEventListener</span>(phase = TransactionPhase.AFTER_COMMIT)
+    <span class="type">void</span> enqueue(DeliveryCreatedEvent event) {
+        jobRequestScheduler.enqueue(<span class="keyword">new</span> ProcessDeliveryJobRequest(event.deliveryId))
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Grails does not register Spring&#8217;s <code>TransactionalEventListenerFactory</code> through <code>@EnableTransactionManagement</code>, so declare it explicitly or the transactional listener is silently ignored:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/spring/resources.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">org.springframework.transaction.event.TransactionalEventListenerFactory</span>
+
+beans = {
+    transactionalEventListenerFactory(TransactionalEventListenerFactory)
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This is a best-effort OSS pattern, not an atomic cross-database transaction. A process can fail after the GORM commit but before enqueueing. For business-critical delivery, write an application-managed transactional outbox in the application transaction and dispatch it reliably, or evaluate JobRunr Pro&#8217;s <a href="https://www.jobrunr.io/en/documentation/pro/transactions/">transaction plugin</a>. The transaction plugin is a Pro feature and is intentionally not used by this sample.</p>
+</div>
+
+
+<h1 id="jobApis">6 Schedule and Track Jobs</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-jobrunr/v8/guide/jobApis.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p><code>JobRequestScheduler</code> supports immediate enqueueing, delayed work, recurring work, and retries in OSS. The sample keeps each operation on the explicit request type:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/services/example/grails/JobExamplesService.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">example.grails.jobrunr.ProcessDeliveryJobRequest</span>
+<span class="keyword">import</span> <span class="include">example.grails.jobrunr.RetryDeliveryJobRequest</span>
+<span class="keyword">import</span> <span class="include">grails.compiler.GrailsCompileStatic</span>
+<span class="keyword">import</span> <span class="include">java.time.Instant</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.scheduling.JobRequestScheduler</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Autowired</span>
+
+<span class="annotation">@GrailsCompileStatic</span>
+<span class="type">class</span> <span class="class">JobExamplesService</span> {
+    <span class="annotation">@Autowired</span>
+    JobRequestScheduler jobRequestScheduler
+
+    <span class="predefined-type">String</span> enqueueImmediately(<span class="predefined-type">Long</span> deliveryId) {
+        jobRequestScheduler.enqueue(<span class="keyword">new</span> ProcessDeliveryJobRequest(deliveryId)).asUUID().toString()
+    }
+
+    <span class="predefined-type">String</span> enqueueForLater(<span class="predefined-type">Long</span> deliveryId) {
+        jobRequestScheduler.schedule(Instant.now().plusSeconds(<span class="integer">30</span>), <span class="keyword">new</span> ProcessDeliveryJobRequest(deliveryId)).asUUID().toString()
+    }
+
+    <span class="predefined-type">String</span> registerRecurringDelivery(<span class="predefined-type">Long</span> deliveryId) {
+        jobRequestScheduler.scheduleRecurrently(
+            <span class="string"><span class="delimiter">&quot;</span><span class="content">delivery-</span><span class="inline"><span class="inline-delimiter">${</span>deliveryId<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>,
+            <span class="string"><span class="delimiter">'</span><span class="content">0 3 * * *</span><span class="delimiter">'</span></span>,
+            <span class="keyword">new</span> ProcessDeliveryJobRequest(deliveryId)
+        )
+    }
+
+    <span class="predefined-type">String</span> enqueueRetryDemo(<span class="predefined-type">Long</span> deliveryId) {
+        jobRequestScheduler.enqueue(<span class="keyword">new</span> RetryDeliveryJobRequest(deliveryId)).asUUID().toString()
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>enqueue</code> returns a one-off job ID. <code>schedule</code> stores a job for an <code>Instant</code> in the future. <code>scheduleRecurrently</code> uses a stable recurring ID and a cron expression, so a repeated registration updates the same recurring job rather than creating an unbounded set. The handler&#8217;s <code>@Job(retries = 3)</code> controls its retry count; the application-level default in <code>application.yml</code> supplies the fallback.</p>
+</div>
+<div class="paragraph">
+<p>Progress belongs inside the handler, where the <code>ThreadLocalJobContext</code> is available. <code>DeliveryJobRequestHandler</code> creates a three-step progress bar and increments it as it writes the visible progress value. Progress is operational feedback, not a substitute for an idempotent business state transition.</p>
+</div>
+<div class="paragraph">
+<p>The retry endpoint deliberately schedules a handler that fails. This makes retry state visible in the dashboard without disguising a failure as successful work:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/main/groovy/example/grails/jobrunr/RetryDeliveryJobRequest.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails.jobrunr
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.jobs.lambdas.JobRequest</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">RetryDeliveryJobRequest</span> <span class="directive">implements</span> JobRequest {
+    <span class="predefined-type">Long</span> deliveryId
+
+    RetryDeliveryJobRequest() {
+    }
+
+    RetryDeliveryJobRequest(<span class="predefined-type">Long</span> deliveryId) {
+        <span class="local-variable">this</span>.deliveryId = deliveryId
+    }
+
+    <span class="annotation">@Override</span>
+    <span class="predefined-type">Class</span>&lt;RetryDeliveryJobRequestHandler&gt; getJobRequestHandler() {
+        RetryDeliveryJobRequestHandler
+    }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">src/main/groovy/example/grails/jobrunr/RetryDeliveryJobRequestHandler.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails.jobrunr
+
+<span class="keyword">import</span> <span class="include">grails.compiler.GrailsCompileStatic</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.jobs.annotations.Job</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.jobs.lambdas.JobRequestHandler</span>
+<span class="keyword">import</span> <span class="include">org.springframework.stereotype.Component</span>
+
+<span class="annotation">@Component</span>
+<span class="annotation">@GrailsCompileStatic</span>
+<span class="type">class</span> <span class="class">RetryDeliveryJobRequestHandler</span> <span class="directive">implements</span> JobRequestHandler&lt;RetryDeliveryJobRequest&gt; {
+    <span class="annotation">@Override</span>
+    <span class="annotation">@Job</span>(name = <span class="string"><span class="delimiter">'</span><span class="content">Retry delivery example</span><span class="delimiter">'</span></span>, retries = <span class="integer">2</span>, labels = [<span class="string"><span class="delimiter">'</span><span class="content">delivery</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">retry</span><span class="delimiter">'</span></span>])
+    <span class="type">void</span> run(RetryDeliveryJobRequest request) {
+        <span class="keyword">throw</span> <span class="keyword">new</span> <span class="exception">IllegalStateException</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">Retry example for delivery </span><span class="inline"><span class="inline-delimiter">${</span>request.deliveryId<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>DeliveryController</code> exposes the delivery creation and lookup API, returning <code>201 Created</code>, validation errors, or <code>404 Not Found</code> as appropriate:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/controllers/example/grails/DeliveryController.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">grails.compiler.GrailsCompileStatic</span>
+
+<span class="annotation">@GrailsCompileStatic</span>
+<span class="type">class</span> <span class="class">DeliveryController</span> {
+    <span class="directive">static</span> allowedMethods = [<span class="key">create</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>, <span class="key">show</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>]
+    <span class="directive">static</span> responseFormats = [<span class="string"><span class="delimiter">'</span><span class="content">json</span><span class="delimiter">'</span></span>]
+
+    DeliveryService deliveryService
+
+    <span class="predefined-type">Object</span> create(<span class="predefined-type">String</span> reference) {
+        Delivery delivery = deliveryService.create(reference)
+        <span class="keyword">if</span> (delivery.hasErrors()) {
+            respond(delivery.errors, <span class="key">status</span>: <span class="integer">422</span>)
+            <span class="keyword">return</span>
+        }
+        respond(delivery, <span class="key">status</span>: <span class="integer">201</span>)
+    }
+
+    <span class="predefined-type">Object</span> show(<span class="predefined-type">Long</span> id) {
+        Delivery delivery = Delivery.get(id)
+        <span class="keyword">if</span> (delivery == <span class="predefined-constant">null</span>) {
+            render <span class="key">status</span>: <span class="integer">404</span>
+            <span class="keyword">return</span>
+        }
+        respond(delivery)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>JobExamplesController</code> and the URL mappings separately expose the asynchronous examples as <code>202 Accepted</code> operations:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/controllers/example/grails/JobExamplesController.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">grails.compiler.GrailsCompileStatic</span>
+
+<span class="annotation">@GrailsCompileStatic</span>
+<span class="type">class</span> <span class="class">JobExamplesController</span> {
+    <span class="directive">static</span> allowedMethods = [<span class="key">immediate</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>, <span class="key">delayed</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>, <span class="key">recurring</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>, <span class="key">retry</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>]
+    <span class="directive">static</span> responseFormats = [<span class="string"><span class="delimiter">'</span><span class="content">json</span><span class="delimiter">'</span></span>]
+
+    JobExamplesService jobExamplesService
+
+    <span class="predefined-type">Object</span> immediate(<span class="predefined-type">Long</span> id) {
+        respond([<span class="key">jobId</span>: jobExamplesService.enqueueImmediately(id)], <span class="key">status</span>: <span class="integer">202</span>)
+    }
+
+    <span class="predefined-type">Object</span> delayed(<span class="predefined-type">Long</span> id) {
+        respond([<span class="key">jobId</span>: jobExamplesService.enqueueForLater(id)], <span class="key">status</span>: <span class="integer">202</span>)
+    }
+
+    <span class="predefined-type">Object</span> recurring(<span class="predefined-type">Long</span> id) {
+        respond([<span class="key">recurringJobId</span>: jobExamplesService.registerRecurringDelivery(id)], <span class="key">status</span>: <span class="integer">202</span>)
+    }
+
+    <span class="predefined-type">Object</span> retry(<span class="predefined-type">Long</span> id) {
+        respond([<span class="key">jobId</span>: jobExamplesService.enqueueRetryDemo(id)], <span class="key">status</span>: <span class="integer">202</span>)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/controllers/example/grails/UrlMappings.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="type">class</span> <span class="class">UrlMappings</span> {
+    <span class="directive">static</span> mappings = {
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/deliveries</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">delivery</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">create</span><span class="delimiter">'</span></span>, <span class="key">method</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/deliveries/</span><span class="inline"><span class="inline-delimiter">$</span>id</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">delivery</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">show</span><span class="delimiter">'</span></span>, <span class="key">method</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/jobs/immediate/</span><span class="inline"><span class="inline-delimiter">$</span>id</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">jobExamples</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">immediate</span><span class="delimiter">'</span></span>, <span class="key">method</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/jobs/delayed/</span><span class="inline"><span class="inline-delimiter">$</span>id</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">jobExamples</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">delayed</span><span class="delimiter">'</span></span>, <span class="key">method</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/jobs/recurring/</span><span class="inline"><span class="inline-delimiter">$</span>id</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">jobExamples</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">recurring</span><span class="delimiter">'</span></span>, <span class="key">method</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/jobs/retry/</span><span class="inline"><span class="inline-delimiter">$</span>id</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">jobExamples</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">retry</span><span class="delimiter">'</span></span>, <span class="key">method</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><a href="https://www.jobrunr.io/en/documentation/background-methods/">JobRunr&#8217;s background-method documentation</a> distinguishes these OSS operations from Pro-only workflows. Batches, chains or continuations, replacement, and custom retry policies are Pro features and do not appear as runnable code here.</p>
+</div>
+
+
+<h1 id="runningTheApp">7 Run and Inspect Jobs</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-jobrunr/v8/guide/runningTheApp.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Start the completed application:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">cd complete
+./gradlew bootRun</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In the development environment, the sample starts two workers and enables the dashboard on port <code>8000</code>. Create a delivery, then read it after the worker completes:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">curl -i -X POST http://localhost:8080/deliveries -H &quot;Accept: application/json&quot; -H &quot;Content-Type: application/x-www-form-urlencoded&quot; -d &quot;reference=guide-delivery-1&quot;
+curl http://localhost:8080/deliveries/1</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The first response is <code>201 Created</code> with a <code>PENDING</code> delivery. The second eventually reports <code>SUCCEEDED</code>, <code>progress: 100</code>, and a completion time. Open <code><a href="http://localhost:8000/dashboard" class="bare">http://localhost:8000/dashboard</a></code> to inspect the job and its progress.</p>
+</div>
+<div class="paragraph">
+<p>Exercise the scheduler endpoints with the delivery ID returned by the create request:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">curl -X POST http://localhost:8080/jobs/immediate/1
+curl -X POST http://localhost:8080/jobs/delayed/1
+curl -X POST http://localhost:8080/jobs/recurring/1
+curl -X POST http://localhost:8080/jobs/retry/1</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Each responds with <code>202 Accepted</code>. The retry example intentionally transitions through retry states before failing. Do not enable this development dashboard configuration unchanged in production; see <a href="operations.html#operations">Production Operations and OSS Boundaries</a>.</p>
+</div>
+
+
+<h1 id="testing">8 Test the Integration</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-jobrunr/v8/guide/testing.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>The sample uses both focused unit tests and a live integration test. First, the request test protects the deserialization-friendly no-argument constructor and handler mapping:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/test/groovy/example/grails/jobrunr/JobRequestSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails.jobrunr
+
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="type">class</span> <span class="class">JobRequestSpec</span> <span class="directive">extends</span> Specification {
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">process request maps to its Spring handler and supports deserialization</span><span class="delimiter">'</span></span>() {
+        <span class="key">when</span>:
+        ProcessDeliveryJobRequest request = <span class="keyword">new</span> ProcessDeliveryJobRequest(<span class="integer">42L</span>)
+        ProcessDeliveryJobRequest emptyRequest = <span class="keyword">new</span> ProcessDeliveryJobRequest()
+
+        <span class="key">then</span>:
+        request.deliveryId == <span class="integer">42L</span>
+        emptyRequest.deliveryId == <span class="predefined-constant">null</span>
+        request.jobRequestHandler == DeliveryJobRequestHandler
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">retry request maps to its dedicated handler</span><span class="delimiter">'</span></span>() {
+        <span class="key">expect</span>:
+        <span class="keyword">new</span> RetryDeliveryJobRequest(<span class="integer">7L</span>).jobRequestHandler == RetryDeliveryJobRequestHandler
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The listener test checks that the production wiring keeps the decisive <code>AFTER_COMMIT</code> phase and submits the expected request:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/test/groovy/example/grails/DeliveryJobEnqueuerSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">org.jobrunr.scheduling.JobRequestScheduler</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+<span class="keyword">import</span> <span class="include">org.springframework.transaction.event.TransactionPhase</span>
+<span class="keyword">import</span> <span class="include">org.springframework.transaction.event.TransactionalEventListener</span>
+
+<span class="type">class</span> <span class="class">DeliveryJobEnqueuerSpec</span> <span class="directive">extends</span> Specification {
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">listener runs only after the delivery transaction commits</span><span class="delimiter">'</span></span>() {
+        <span class="key">when</span>:
+        TransactionalEventListener annotation = DeliveryJobEnqueuer
+            .getMethod(<span class="string"><span class="delimiter">'</span><span class="content">enqueue</span><span class="delimiter">'</span></span>, DeliveryCreatedEvent)
+            .getAnnotation(TransactionalEventListener)
+
+        <span class="key">then</span>:
+        annotation != <span class="predefined-constant">null</span>
+        annotation.phase() == TransactionPhase.AFTER_COMMIT
+        !annotation.fallbackExecution()
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">listener maps a committed delivery event to a JobRequest</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        JobRequestScheduler scheduler = Mock()
+        DeliveryJobEnqueuer enqueuer = <span class="keyword">new</span> DeliveryJobEnqueuer(<span class="key">jobRequestScheduler</span>: scheduler)
+
+        <span class="key">when</span>:
+        enqueuer.enqueue(<span class="keyword">new</span> DeliveryCreatedEvent(<span class="integer">17L</span>))
+
+        <span class="key">then</span>:
+        <span class="integer">1</span> * scheduler.enqueue({ request -&gt; request.deliveryId == <span class="integer">17L</span> })
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The storage configuration test verifies that the configured table prefix is used and that <code>skip-create</code> leaves an empty data source without JobRunr tables:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/test/groovy/example/grails/jobrunr/JobRunrStorageConfigSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails.jobrunr
+
+<span class="keyword">import</span> <span class="include">javax.sql.DataSource</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.JobRunrException</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.spring.autoconfigure.JobRunrProperties</span>
+<span class="keyword">import</span> <span class="include">org.springframework.jdbc.datasource.DriverManagerDataSource</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="type">class</span> <span class="class">JobRunrStorageConfigSpec</span> <span class="directive">extends</span> Specification {
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">storage configuration applies the JobRunr database properties</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">DataSource</span> dataSource = <span class="keyword">new</span> DriverManagerDataSource(
+            <span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc:h2:mem:jobrunr-storage-config-</span><span class="inline"><span class="inline-delimiter">${</span><span class="predefined-type">System</span>.nanoTime()<span class="inline-delimiter">}</span></span><span class="content">;DB_CLOSE_DELAY=-1</span><span class="delimiter">&quot;</span></span>,
+            <span class="string"><span class="delimiter">'</span><span class="content">sa</span><span class="delimiter">'</span></span>,
+            <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>
+        )
+        JobRunrProperties properties = <span class="keyword">new</span> JobRunrProperties()
+        properties.database.tablePrefix = <span class="string"><span class="delimiter">'</span><span class="content">GUIDE_</span><span class="delimiter">'</span></span>
+        properties.database.skipCreate = <span class="predefined-constant">false</span>
+
+        <span class="key">when</span>:
+        <span class="keyword">new</span> JobRunrStorageConfig().storageProvider(dataSource, properties)
+
+        <span class="key">then</span>:
+        dataSource.connection.withCloseable { connection -&gt;
+            connection.metaData.getTables(<span class="predefined-constant">null</span>, <span class="predefined-constant">null</span>, <span class="string"><span class="delimiter">'</span><span class="content">GUIDE%</span><span class="delimiter">'</span></span>, <span class="predefined-constant">null</span>).next()
+        }
+
+        <span class="key">when</span>:
+        <span class="predefined-type">DataSource</span> skipCreateDataSource = <span class="keyword">new</span> DriverManagerDataSource(
+            <span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc:h2:mem:jobrunr-storage-config-skip-</span><span class="inline"><span class="inline-delimiter">${</span><span class="predefined-type">System</span>.nanoTime()<span class="inline-delimiter">}</span></span><span class="content">;DB_CLOSE_DELAY=-1</span><span class="delimiter">&quot;</span></span>,
+            <span class="string"><span class="delimiter">'</span><span class="content">sa</span><span class="delimiter">'</span></span>,
+            <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>
+        )
+        properties.database.skipCreate = <span class="predefined-constant">true</span>
+        properties.database.tablePrefix = <span class="string"><span class="delimiter">'</span><span class="content">SKIP_</span><span class="delimiter">'</span></span>
+        <span class="keyword">new</span> JobRunrStorageConfig().storageProvider(skipCreateDataSource, properties)
+
+        <span class="key">then</span>:
+        thrown(JobRunrException)
+        !skipCreateDataSource.connection.withCloseable { connection -&gt;
+            connection.metaData.getTables(<span class="predefined-constant">null</span>, <span class="predefined-constant">null</span>, <span class="string"><span class="delimiter">'</span><span class="content">SKIP%</span><span class="delimiter">'</span></span>, <span class="predefined-constant">null</span>).next()
+        }
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The HTTP integration test discovers the controller action and URL mapping, then sends a real request to the embedded server:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/test/groovy/example/grails/DeliveryHttpApiSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">grails.core.GrailsApplication</span>
+<span class="keyword">import</span> <span class="include">grails.core.GrailsControllerClass</span>
+<span class="keyword">import</span> <span class="include">grails.web.mapping.UrlMappingInfo</span>
+<span class="keyword">import</span> <span class="include">grails.web.mapping.UrlMappingsHolder</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Autowired</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Value</span>
+<span class="keyword">import</span> <span class="include">org.springframework.http.HttpMethod</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">DeliveryHttpApiSpec</span> <span class="directive">extends</span> Specification {
+    <span class="annotation">@Autowired</span>
+    GrailsApplication grailsApplication
+
+    <span class="annotation">@Autowired</span>
+    UrlMappingsHolder urlMappingsHolder
+
+    <span class="annotation">@Value</span>(<span class="string"><span class="delimiter">'</span><span class="content">${local.server.port}</span><span class="delimiter">'</span></span>)
+    <span class="type">int</span> port
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">POST deliveries routes to the documented create action</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        GrailsControllerClass deliveryController = grailsApplication.getArtefact(<span class="string"><span class="delimiter">'</span><span class="content">Controller</span><span class="delimiter">'</span></span>, DeliveryController.name)
+        UrlMappingInfo<span class="type">[]</span> deliveryMappings = urlMappingsHolder.matchAll(<span class="string"><span class="delimiter">'</span><span class="content">/deliveries</span><span class="delimiter">'</span></span>, HttpMethod.POST)
+
+        <span class="key">when</span>:
+        <span class="predefined-type">HttpURLConnection</span> connection = <span class="keyword">new</span> <span class="predefined-type">URL</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>port<span class="inline-delimiter">}</span></span><span class="content">/deliveries</span><span class="delimiter">&quot;</span></span>).openConnection()
+        connection.requestMethod = <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>
+        connection.doOutput = <span class="predefined-constant">true</span>
+        connection.setRequestProperty(<span class="string"><span class="delimiter">'</span><span class="content">Accept</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+        connection.setRequestProperty(<span class="string"><span class="delimiter">'</span><span class="content">Content-Type</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/x-www-form-urlencoded</span><span class="delimiter">'</span></span>)
+        connection.outputStream.withCloseable { output -&gt;
+            output.write(<span class="string"><span class="delimiter">'</span><span class="content">reference=delivery-http-route</span><span class="delimiter">'</span></span>.bytes)
+        }
+
+        <span class="key">then</span>:
+        deliveryController.actions.contains(<span class="string"><span class="delimiter">'</span><span class="content">create</span><span class="delimiter">'</span></span>)
+        deliveryMappings.any { <span class="local-variable">it</span>.controllerName == <span class="string"><span class="delimiter">'</span><span class="content">delivery</span><span class="delimiter">'</span></span> &amp;&amp; <span class="local-variable">it</span>.actionName == <span class="string"><span class="delimiter">'</span><span class="content">create</span><span class="delimiter">'</span></span> }
+        connection.responseCode == <span class="integer">201</span>
+
+        <span class="key">cleanup</span>:
+        connection.disconnect()
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">POST deliveries without a reference returns 422 and does not persist a delivery</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        <span class="type">int</span> deliveryCount = Delivery.withNewSession { Delivery.count() }
+
+        <span class="key">when</span>:
+        <span class="predefined-type">HttpURLConnection</span> connection = <span class="keyword">new</span> <span class="predefined-type">URL</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>port<span class="inline-delimiter">}</span></span><span class="content">/deliveries</span><span class="delimiter">&quot;</span></span>).openConnection()
+        connection.requestMethod = <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>
+        connection.doOutput = <span class="predefined-constant">true</span>
+        connection.setRequestProperty(<span class="string"><span class="delimiter">'</span><span class="content">Accept</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+        connection.setRequestProperty(<span class="string"><span class="delimiter">'</span><span class="content">Content-Type</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/x-www-form-urlencoded</span><span class="delimiter">'</span></span>)
+        connection.outputStream.withCloseable { output -&gt;
+            output.write(<span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>.bytes)
+        }
+
+        <span class="key">then</span>:
+        connection.responseCode == <span class="integer">422</span>
+        Delivery.withNewSession { Delivery.count() } == deliveryCount
+
+        <span class="key">cleanup</span>:
+        connection?.disconnect()
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The sample also includes unit tests for the scheduler endpoints and service. They are not required to follow the earlier chapters, but they keep the <code>JobExamplesController</code> and <code>JobExamplesService</code> behavior in lockstep with the companion app:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/test/groovy/example/grails/JobExamplesControllerSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">grails.testing.web.controllers.ControllerUnitTest</span>
+<span class="keyword">import</span> <span class="include">groovy.json.JsonSlurper</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="type">class</span> <span class="class">JobExamplesControllerSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> ControllerUnitTest&lt;JobExamplesController&gt; {
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">immediate job endpoint returns an accepted response with a string job id</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        controller.jobExamplesService = <span class="predefined-type">Stub</span>(JobExamplesService) {
+            enqueueImmediately(<span class="integer">7L</span>) &gt;&gt; <span class="string"><span class="delimiter">'</span><span class="content">b5ab0831-a3af-4554-9b7a-5571137e9aaa</span><span class="delimiter">'</span></span>
+        }
+        request.method = <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>
+        request.addHeader(<span class="string"><span class="delimiter">'</span><span class="content">Accept</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+
+        <span class="key">when</span>:
+        controller.immediate(<span class="integer">7L</span>)
+
+        <span class="key">then</span>:
+        response.status == <span class="integer">202</span>
+        <span class="keyword">new</span> JsonSlurper().parseText(response.text).jobId == <span class="string"><span class="delimiter">'</span><span class="content">b5ab0831-a3af-4554-9b7a-5571137e9aaa</span><span class="delimiter">'</span></span>
+    }
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">recurring job endpoint requires a delivery id and returns its stable identifier</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        controller.jobExamplesService = <span class="predefined-type">Stub</span>(JobExamplesService) {
+            registerRecurringDelivery(<span class="integer">19L</span>) &gt;&gt; <span class="string"><span class="delimiter">'</span><span class="content">delivery-19</span><span class="delimiter">'</span></span>
+        }
+        request.method = <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>
+        request.addHeader(<span class="string"><span class="delimiter">'</span><span class="content">Accept</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+
+        <span class="key">when</span>:
+        controller.recurring(<span class="integer">19L</span>)
+
+        <span class="key">then</span>:
+        response.status == <span class="integer">202</span>
+        <span class="keyword">new</span> JsonSlurper().parseText(response.text).recurringJobId == <span class="string"><span class="delimiter">'</span><span class="content">delivery-19</span><span class="delimiter">'</span></span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">src/test/groovy/example/grails/JobExamplesServiceSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">example.grails.jobrunr.ProcessDeliveryJobRequest</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.scheduling.JobRequestScheduler</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="type">class</span> <span class="class">JobExamplesServiceSpec</span> <span class="directive">extends</span> Specification {
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">recurring delivery uses the delivery id for its stable JobRunr identifier and request</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        JobRequestScheduler scheduler = Mock()
+        JobExamplesService service = <span class="keyword">new</span> JobExamplesService(<span class="key">jobRequestScheduler</span>: scheduler)
+
+        <span class="key">when</span>:
+        <span class="predefined-type">String</span> recurringJobId = service.registerRecurringDelivery(<span class="integer">19L</span>)
+
+        <span class="key">then</span>:
+        recurringJobId == <span class="string"><span class="delimiter">'</span><span class="content">delivery-19</span><span class="delimiter">'</span></span>
+        <span class="integer">1</span> * scheduler.scheduleRecurrently(
+            <span class="string"><span class="delimiter">'</span><span class="content">delivery-19</span><span class="delimiter">'</span></span>,
+            <span class="string"><span class="delimiter">'</span><span class="content">0 3 * * *</span><span class="delimiter">'</span></span>,
+            { ProcessDeliveryJobRequest request -&gt; request.deliveryId == <span class="integer">19L</span> }
+        ) &gt;&gt; <span class="string"><span class="delimiter">'</span><span class="content">delivery-19</span><span class="delimiter">'</span></span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Finally, the integration test starts JobRunr and GORM together. It proves that a live <code>JobRequest</code> runs to completion and that <code>JOBRUNR_JOBS</code> exists only in the dedicated JobRunr data source:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/test/groovy/example/grails/JobRunrIntegrationSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">javax.sql.DataSource</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.storage.StorageProvider</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Autowired</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Qualifier</span>
+<span class="keyword">import</span> <span class="include">org.springframework.transaction.event.TransactionalEventListenerFactory</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">JobRunrIntegrationSpec</span> <span class="directive">extends</span> Specification {
+    <span class="annotation">@Autowired</span>
+    DeliveryService deliveryService
+
+    <span class="annotation">@Autowired</span>
+    StorageProvider storageProvider
+
+    <span class="annotation">@Autowired</span>
+    TransactionalEventListenerFactory transactionalEventListenerFactory
+
+    <span class="annotation">@Autowired</span>
+    <span class="annotation">@Qualifier</span>(<span class="string"><span class="delimiter">'</span><span class="content">dataSource</span><span class="delimiter">'</span></span>)
+    <span class="predefined-type">DataSource</span> applicationDataSource
+
+    <span class="annotation">@Autowired</span>
+    <span class="annotation">@Qualifier</span>(<span class="string"><span class="delimiter">'</span><span class="content">dataSource_jobrunr</span><span class="delimiter">'</span></span>)
+    <span class="predefined-type">DataSource</span> jobrunrDataSource
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">JobRequest completes a GORM delivery while JobRunr owns separate tables</span><span class="delimiter">'</span></span>() {
+        <span class="key">when</span>:
+        <span class="type">int</span> existingJobs = storageProvider.jobStats.total
+        Delivery delivery = deliveryService.create(<span class="string"><span class="delimiter">&quot;</span><span class="content">delivery-</span><span class="inline"><span class="inline-delimiter">${</span><span class="predefined-type">System</span>.nanoTime()<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>)
+
+        <span class="key">then</span>:
+        eventually { storageProvider.jobStats.total == existingJobs + <span class="integer">1</span> }
+        eventually { loadDelivery(delivery.id)?.status == <span class="string"><span class="delimiter">'</span><span class="content">SUCCEEDED</span><span class="delimiter">'</span></span> }
+        loadDelivery(delivery.id).progress == <span class="integer">100</span>
+        loadDelivery(delivery.id).completedAt != <span class="predefined-constant">null</span>
+        storageProvider != <span class="predefined-constant">null</span>
+        transactionalEventListenerFactory != <span class="predefined-constant">null</span>
+        tableExists(jobrunrDataSource, <span class="string"><span class="delimiter">'</span><span class="content">JOBRUNR_JOBS</span><span class="delimiter">'</span></span>)
+        !tableExists(applicationDataSource, <span class="string"><span class="delimiter">'</span><span class="content">JOBRUNR_JOBS</span><span class="delimiter">'</span></span>)
+    }
+
+    <span class="directive">private</span> <span class="directive">static</span> <span class="type">boolean</span> eventually(Closure&lt;<span class="predefined-type">Boolean</span>&gt; condition) {
+        <span class="keyword">for</span> (<span class="type">int</span> attempt = <span class="integer">0</span>; attempt &lt; <span class="integer">120</span>; attempt++) {
+            <span class="keyword">if</span> (condition.call()) {
+                <span class="keyword">return</span> <span class="predefined-constant">true</span>
+            }
+            <span class="predefined-type">Thread</span>.sleep(<span class="integer">250</span>)
+        }
+        <span class="predefined-constant">false</span>
+    }
+
+    <span class="directive">private</span> <span class="directive">static</span> <span class="type">boolean</span> tableExists(<span class="predefined-type">DataSource</span> dataSource, <span class="predefined-type">String</span> tableName) {
+        dataSource.connection.withCloseable { connection -&gt;
+            connection.metaData.getTables(<span class="predefined-constant">null</span>, <span class="predefined-constant">null</span>, tableName, <span class="predefined-constant">null</span>).next()
+        }
+    }
+
+    <span class="directive">private</span> <span class="directive">static</span> Delivery loadDelivery(<span class="predefined-type">Long</span> id) {
+        Delivery.withNewTransaction {
+            Delivery.get(id)
+        }
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Run the complete suite with:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">cd complete
+./gradlew test</code></pre>
+</div>
+</div>
+
+
+<h1 id="operations">9 Production Operations</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-jobrunr/v8/guide/operations.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="sect1">
+<h2 id="_persistent_storage_and_schema_ownership">Persistent storage and schema ownership</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Use a supported persistent database and route all JobRunr nodes to the same writer storage. Do not use a read replica for JobRunr storage. Set <code>jobrunr.database.table-prefix</code> when the JobRunr tables must be namespaced in a shared schema, and use that same prefix in migrations and every application node. Apply the JobRunr schema migrations before deployment, then set <code>jobrunr.database.skip-create: true</code> in production so <code>DatabaseOptions.SKIP_CREATE</code> expects a pre-applied schema without application startup owning DDL. The <a href="https://www.jobrunr.io/en/documentation/storage/">storage documentation</a> is the first-party reference for supported databases and schema behavior.</p>
+</div>
+<div class="paragraph">
+<p>JobRunr <code>8.8.1</code> moved retention configuration to <code>jobrunr.jobs.delete-succeeded-jobs-after</code> and <code>jobrunr.jobs.permanently-delete-deleted-jobs-after</code>. Do not copy deprecated retention keys nested below the background server.</p>
+</div>
+<div class="paragraph">
+<p>The production sample sets <code>jobrunr.miscellaneous.allow-anonymous-data-usage: false</code> to opt out of anonymous JobRunr data usage. Keep that setting unless your organization has intentionally approved participation.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_dashboard_and_workers">Dashboard and workers</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The background server is disabled by default. Its default poll interval is 15 seconds and default shutdown wait is 10 seconds. Size worker count for the work and downstream capacity, then scale horizontally only when all nodes use the same writer storage and handlers remain idempotent.</p>
+</div>
+<div class="paragraph">
+<p>The OSS dashboard is a separate server, not a Grails controller. It is disabled by default and uses <code><a href="http://localhost:8000/dashboard" class="bare">http://localhost:8000/dashboard</a></code> when enabled. It binds a wildcard address, so keep it disabled by default in production. If you enable it, configure both <code>jobrunr.dashboard.username</code> and <code>jobrunr.dashboard.password</code> from external secrets, restrict network access, and put it behind a TLS-terminating reverse proxy. OSS Basic authentication protects the dashboard but does not provide the SSO, role authorization, Spring Security integration, or context-path controls offered by Pro. See the <a href="https://www.jobrunr.io/en/documentation/background-methods/dashboard/">dashboard documentation</a>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_delivery_semantics_payloads_and_observability">Delivery semantics, payloads, and observability</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Job execution is at-least-once at the business-effect level. A retry restarts the handler, and a process failure can leave a job eligible to execute again. Make every effect idempotent, preserve interruption as the sample handler does, and record a business idempotency key where the effect cannot be safely repeated.</p>
+</div>
+<div class="paragraph">
+<p>Pass small, serializable values, preferably IDs, not live GORM entities, request objects, credentials, or large payloads. Jobs may run much later and may be inspected in storage. The <a href="https://www.jobrunr.io/en/documentation/background-methods/passing-arguments/">JobRunr argument guidance</a> explains this boundary.</p>
+</div>
+<div class="paragraph">
+<p>Expose JobRunr logs, job counts, failure rates, queue latency, and worker capacity to your telemetry system. JobRunr&#8217;s <a href="https://www.jobrunr.io/en/documentation/configuration/metrics/">metrics configuration</a> documents its metrics integrations. Alert on sustained failed jobs and on a growing scheduled or enqueued backlog, not only on process health.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_oss_and_pro_boundary">OSS and Pro boundary</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>This guide uses the supported OSS path: durable storage, background workers, dashboard, immediate and delayed jobs, recurring jobs, progress, and standard retries. It intentionally excludes Pro-only batches, chains or continuations, replacement, custom retry policy, and the transaction plugin. Use an application outbox when OSS needs reliable coupling to a GORM transaction; do not paste Pro APIs into this sample and expect them to work on OSS.</p>
+</div>
+</div>
+</div>
+
+
+<h1 id="helpWithGrails">10 Do You Need Help With Grails?</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-jobrunr/v8/guide/helpWithGrails.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="sect1">
+<h2 id="_help_with_apache_grails">Help with Apache Grails</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Apache Grails is supported by an active community of contributors and the Apache Software Foundation. If you need help working through a guide, want to discuss the framework, or have run into something that looks like a bug, the channels below are the right place to start.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="https://slack.grails.org">Slack</a> - real-time conversation with the Apache Grails community.</p>
+</li>
+<li>
+<p><a href="https://lists.apache.org/list.html?dev@grails.apache.org">Developer mailing list</a> - design discussions and contributor coordination.</p>
+</li>
+<li>
+<p><a href="https://lists.apache.org/list.html?users@grails.apache.org">Users mailing list</a> - end-user questions and answers.</p>
+</li>
+<li>
+<p><a href="https://github.com/apache/grails-core/issues">Issue tracker on GitHub</a> - file a bug or feature request against the framework.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>For Grails plugins, see the matching project on <a href="https://github.com/apache?q=grails">the apache org</a> or the plugin&#8217;s own GitHub repository.</p>
+</div>
+</div>
+</div>
+
+</article></div>
+<footer>
+    <div class='content'>
+        <div class='apache-grails'>
+            <p>Apache Grails is supported by the Apache Software Foundation and the Grails community.</p>
+            <a href='https://apache.org'><img src='https://www.apache.org/img/asf_logo.png' width='200px' alt='Apache Software Foundation'/></a>
+            <p>Apache, Apache Grails, Grails, Groovy, and the ASF logo are either registered trademarks or trademarks of The Apache Software Foundation.</p>
+        </div>
+        <nav class='social-media-nav'>
+            <ul>
+                <li><a href='mailto:dev@grails.apache.org'><img src='https://grails.apache.org/images/email.svg' alt='Email Icon'/></a></li>
+                <li><a href='https://slack.grails.org'><img src='https://grails.apache.org/images/slack.svg' alt='Slack Icon'/></a></li>
+                <li><a href='https://www.youtube.com/@GrailsFramework'><img src='https://grails.apache.org/images/youtube.svg' alt='Youtube Icon'/></a></li>
+                <li><a href='https://bsky.app/profile/grails.apache.org'><img src='https://grails.apache.org/images/bsky.svg' alt='Bluesky Icon'/></a></li>
+                <li><a rel="me" href="https://fosstodon.org/@grails"><img src='https://grails.apache.org/images/mastodont.svg' alt='Mastodon Icon'/></a></li>
+                <li><a href='https://www.linkedin.com/showcase/official-grails/'><img src='https://grails.apache.org/images/linkedin.svg' alt='LinkedIn Icon'/></a></li>
+                <li><a href='https://github.com/apache/grails-core'><img src='https://grails.apache.org/images/github.svg' alt='GitHub Icon'/></a></li>
+                <li><a href='https://twitter.com/grailsframework'><img src='https://grails.apache.org/images/x-twitter.svg' alt='Twitter Icon'/></a></li>
+            </ul>
+        </nav>
+    </div>
+    <div class='footer-bottom'>
+        <p>&copy; 2005-2026 the Apache Grails project</p>
+        <p>Grails is Open Source:
+            <a href='https://www.apache.org/licenses/'>License</a>,
+            <a href='https://privacy.apache.org/policies/privacy-policy-public.html'>Privacy Policy</a>,
+            <a href='https://www.apache.org/foundation/sponsorship'>Sponsor Apache</a>,
+            <a href='https://www.apache.org/events/current-event'>Events</a>,
+            <a href='https://www.apache.org/security'>Security</a>,
+            <a href='https://www.apache.org/foundation/thanks.html'>Thanks</a>,
+            <a href='https://grails.apache.org/support-schedule.html'>Support Schedule</a>
+        </p>
+    </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,347 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+                      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+    <title>6 Schedule and Track Jobs</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="canonical" href="https://grails.apache.org/guides/grails-jobrunr/8/guide/index.html"/>
+    <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
+    <link rel="stylesheet" href="../css/guide.css" type="text/css" media="screen, print" title="Style" charset="utf-8" />            
+    <link rel="stylesheet" href="../css/pdf.css" type="text/css" media="print" title="PDF" charset="utf-8"/>
+    <script type="text/javascript" src="../js/clipboard.min.js"></script>
+    <script type="text/javascript">
+function addJsClass() {
+    var classes = document.body.className.split(" ");
+    classes.push("js");
+    document.body.className = classes.join(" ");
+}
+    </script>
+</head>
+
+<body class="body" onload="addJsClass();">
+<div id="navigation">
+    <div class="navTitle">
+        
+        Grails Framework Guide 
+    </div>
+    <div class="navLinks">
+        <ul>
+            <li>
+                <div id="nav-summary">
+                    <a href="../guide/index.html" class="button" aria-haspopup="true">Table of contents</a>
+
+                    <div id="nav-summary-childs">
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/gettingStarted.html"><strong>1</strong><span>Getting Started</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/dependencySetup.html"><strong>2</strong><span>Add JobRunr and Jackson</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/storageConfiguration.html"><strong>3</strong><span>Configure Dedicated Job Storage</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/jobRequests.html"><strong>4</strong><span>Use Job Requests From Groovy</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/durableEnqueue.html"><strong>5</strong><span>Enqueue After Commit</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/jobApis.html"><strong>6</strong><span>Schedule and Track Jobs</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/runningTheApp.html"><strong>7</strong><span>Run and Inspect Jobs</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/testing.html"><strong>8</strong><span>Test the Integration</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/operations.html"><strong>9</strong><span>Production Operations</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>10</strong><span>Do You Need Help With Grails?</span></a>
+                        </div>
+                        
+                    </div>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+
+</div>
+
+<table id="colset" border="0" cellpadding="0" cellspacing="0">
+    <tr>
+        <td id="col1">
+            <div id="main" class="corner-all">
+
+                <nav class="chapter-navigation" aria-label="Chapter navigation">
+                    
+                        <div class="toc-item prev-left"><a href="../guide/durableEnqueue.html">&lt;&lt; <strong>5</strong><span>Enqueue After Commit</span></a></div>
+                    
+
+                    
+                        <div class="toc-item next-right"><a href="../guide/runningTheApp.html"><strong>7</strong><span>Run and Inspect Jobs</span> >></a></div>
+                    
+                </nav>
+
+
+                
+
+                
+
+<h1 id="jobApis">6 Schedule and Track Jobs</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-jobrunr/v8/guide/jobApis.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p><code>JobRequestScheduler</code> supports immediate enqueueing, delayed work, recurring work, and retries in OSS. The sample keeps each operation on the explicit request type:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/services/example/grails/JobExamplesService.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">example.grails.jobrunr.ProcessDeliveryJobRequest</span>
+<span class="keyword">import</span> <span class="include">example.grails.jobrunr.RetryDeliveryJobRequest</span>
+<span class="keyword">import</span> <span class="include">grails.compiler.GrailsCompileStatic</span>
+<span class="keyword">import</span> <span class="include">java.time.Instant</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.scheduling.JobRequestScheduler</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Autowired</span>
+
+<span class="annotation">@GrailsCompileStatic</span>
+<span class="type">class</span> <span class="class">JobExamplesService</span> {
+    <span class="annotation">@Autowired</span>
+    JobRequestScheduler jobRequestScheduler
+
+    <span class="predefined-type">String</span> enqueueImmediately(<span class="predefined-type">Long</span> deliveryId) {
+        jobRequestScheduler.enqueue(<span class="keyword">new</span> ProcessDeliveryJobRequest(deliveryId)).asUUID().toString()
+    }
+
+    <span class="predefined-type">String</span> enqueueForLater(<span class="predefined-type">Long</span> deliveryId) {
+        jobRequestScheduler.schedule(Instant.now().plusSeconds(<span class="integer">30</span>), <span class="keyword">new</span> ProcessDeliveryJobRequest(deliveryId)).asUUID().toString()
+    }
+
+    <span class="predefined-type">String</span> registerRecurringDelivery(<span class="predefined-type">Long</span> deliveryId) {
+        jobRequestScheduler.scheduleRecurrently(
+            <span class="string"><span class="delimiter">&quot;</span><span class="content">delivery-</span><span class="inline"><span class="inline-delimiter">${</span>deliveryId<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>,
+            <span class="string"><span class="delimiter">'</span><span class="content">0 3 * * *</span><span class="delimiter">'</span></span>,
+            <span class="keyword">new</span> ProcessDeliveryJobRequest(deliveryId)
+        )
+    }
+
+    <span class="predefined-type">String</span> enqueueRetryDemo(<span class="predefined-type">Long</span> deliveryId) {
+        jobRequestScheduler.enqueue(<span class="keyword">new</span> RetryDeliveryJobRequest(deliveryId)).asUUID().toString()
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>enqueue</code> returns a one-off job ID. <code>schedule</code> stores a job for an <code>Instant</code> in the future. <code>scheduleRecurrently</code> uses a stable recurring ID and a cron expression, so a repeated registration updates the same recurring job rather than creating an unbounded set. The handler&#8217;s <code>@Job(retries = 3)</code> controls its retry count; the application-level default in <code>application.yml</code> supplies the fallback.</p>
+</div>
+<div class="paragraph">
+<p>Progress belongs inside the handler, where the <code>ThreadLocalJobContext</code> is available. <code>DeliveryJobRequestHandler</code> creates a three-step progress bar and increments it as it writes the visible progress value. Progress is operational feedback, not a substitute for an idempotent business state transition.</p>
+</div>
+<div class="paragraph">
+<p>The retry endpoint deliberately schedules a handler that fails. This makes retry state visible in the dashboard without disguising a failure as successful work:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/main/groovy/example/grails/jobrunr/RetryDeliveryJobRequest.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails.jobrunr
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.jobs.lambdas.JobRequest</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">RetryDeliveryJobRequest</span> <span class="directive">implements</span> JobRequest {
+    <span class="predefined-type">Long</span> deliveryId
+
+    RetryDeliveryJobRequest() {
+    }
+
+    RetryDeliveryJobRequest(<span class="predefined-type">Long</span> deliveryId) {
+        <span class="local-variable">this</span>.deliveryId = deliveryId
+    }
+
+    <span class="annotation">@Override</span>
+    <span class="predefined-type">Class</span>&lt;RetryDeliveryJobRequestHandler&gt; getJobRequestHandler() {
+        RetryDeliveryJobRequestHandler
+    }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">src/main/groovy/example/grails/jobrunr/RetryDeliveryJobRequestHandler.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails.jobrunr
+
+<span class="keyword">import</span> <span class="include">grails.compiler.GrailsCompileStatic</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.jobs.annotations.Job</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.jobs.lambdas.JobRequestHandler</span>
+<span class="keyword">import</span> <span class="include">org.springframework.stereotype.Component</span>
+
+<span class="annotation">@Component</span>
+<span class="annotation">@GrailsCompileStatic</span>
+<span class="type">class</span> <span class="class">RetryDeliveryJobRequestHandler</span> <span class="directive">implements</span> JobRequestHandler&lt;RetryDeliveryJobRequest&gt; {
+    <span class="annotation">@Override</span>
+    <span class="annotation">@Job</span>(name = <span class="string"><span class="delimiter">'</span><span class="content">Retry delivery example</span><span class="delimiter">'</span></span>, retries = <span class="integer">2</span>, labels = [<span class="string"><span class="delimiter">'</span><span class="content">delivery</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">retry</span><span class="delimiter">'</span></span>])
+    <span class="type">void</span> run(RetryDeliveryJobRequest request) {
+        <span class="keyword">throw</span> <span class="keyword">new</span> <span class="exception">IllegalStateException</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">Retry example for delivery </span><span class="inline"><span class="inline-delimiter">${</span>request.deliveryId<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>DeliveryController</code> exposes the delivery creation and lookup API, returning <code>201 Created</code>, validation errors, or <code>404 Not Found</code> as appropriate:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/controllers/example/grails/DeliveryController.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">grails.compiler.GrailsCompileStatic</span>
+
+<span class="annotation">@GrailsCompileStatic</span>
+<span class="type">class</span> <span class="class">DeliveryController</span> {
+    <span class="directive">static</span> allowedMethods = [<span class="key">create</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>, <span class="key">show</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>]
+    <span class="directive">static</span> responseFormats = [<span class="string"><span class="delimiter">'</span><span class="content">json</span><span class="delimiter">'</span></span>]
+
+    DeliveryService deliveryService
+
+    <span class="predefined-type">Object</span> create(<span class="predefined-type">String</span> reference) {
+        Delivery delivery = deliveryService.create(reference)
+        <span class="keyword">if</span> (delivery.hasErrors()) {
+            respond(delivery.errors, <span class="key">status</span>: <span class="integer">422</span>)
+            <span class="keyword">return</span>
+        }
+        respond(delivery, <span class="key">status</span>: <span class="integer">201</span>)
+    }
+
+    <span class="predefined-type">Object</span> show(<span class="predefined-type">Long</span> id) {
+        Delivery delivery = Delivery.get(id)
+        <span class="keyword">if</span> (delivery == <span class="predefined-constant">null</span>) {
+            render <span class="key">status</span>: <span class="integer">404</span>
+            <span class="keyword">return</span>
+        }
+        respond(delivery)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>JobExamplesController</code> and the URL mappings separately expose the asynchronous examples as <code>202 Accepted</code> operations:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/controllers/example/grails/JobExamplesController.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="keyword">import</span> <span class="include">grails.compiler.GrailsCompileStatic</span>
+
+<span class="annotation">@GrailsCompileStatic</span>
+<span class="type">class</span> <span class="class">JobExamplesController</span> {
+    <span class="directive">static</span> allowedMethods = [<span class="key">immediate</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>, <span class="key">delayed</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>, <span class="key">recurring</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>, <span class="key">retry</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>]
+    <span class="directive">static</span> responseFormats = [<span class="string"><span class="delimiter">'</span><span class="content">json</span><span class="delimiter">'</span></span>]
+
+    JobExamplesService jobExamplesService
+
+    <span class="predefined-type">Object</span> immediate(<span class="predefined-type">Long</span> id) {
+        respond([<span class="key">jobId</span>: jobExamplesService.enqueueImmediately(id)], <span class="key">status</span>: <span class="integer">202</span>)
+    }
+
+    <span class="predefined-type">Object</span> delayed(<span class="predefined-type">Long</span> id) {
+        respond([<span class="key">jobId</span>: jobExamplesService.enqueueForLater(id)], <span class="key">status</span>: <span class="integer">202</span>)
+    }
+
+    <span class="predefined-type">Object</span> recurring(<span class="predefined-type">Long</span> id) {
+        respond([<span class="key">recurringJobId</span>: jobExamplesService.registerRecurringDelivery(id)], <span class="key">status</span>: <span class="integer">202</span>)
+    }
+
+    <span class="predefined-type">Object</span> retry(<span class="predefined-type">Long</span> id) {
+        respond([<span class="key">jobId</span>: jobExamplesService.enqueueRetryDemo(id)], <span class="key">status</span>: <span class="integer">202</span>)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/controllers/example/grails/UrlMappings.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails
+
+<span class="type">class</span> <span class="class">UrlMappings</span> {
+    <span class="directive">static</span> mappings = {
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/deliveries</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">delivery</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">create</span><span class="delimiter">'</span></span>, <span class="key">method</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/deliveries/</span><span class="inline"><span class="inline-delimiter">$</span>id</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">delivery</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">show</span><span class="delimiter">'</span></span>, <span class="key">method</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/jobs/immediate/</span><span class="inline"><span class="inline-delimiter">$</span>id</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">jobExamples</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">immediate</span><span class="delimiter">'</span></span>, <span class="key">method</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/jobs/delayed/</span><span class="inline"><span class="inline-delimiter">$</span>id</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">jobExamples</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">delayed</span><span class="delimiter">'</span></span>, <span class="key">method</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/jobs/recurring/</span><span class="inline"><span class="inline-delimiter">$</span>id</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">jobExamples</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">recurring</span><span class="delimiter">'</span></span>, <span class="key">method</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>)
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">/jobs/retry/</span><span class="inline"><span class="inline-delimiter">$</span>id</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">jobExamples</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">retry</span><span class="delimiter">'</span></span>, <span class="key">method</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><a href="https://www.jobrunr.io/en/documentation/background-methods/">JobRunr&#8217;s background-method documentation</a> distinguishes these OSS operations from Pro-only workflows. Batches, chains or continuations, replacement, and custom retry policies are Pro features and do not appear as runnable code here.</p>
+</div>
+
+
+                <div style="clear:both;margin-top:15px;"></div>
+                
+                    <div class="toc-item prev-left"><a href="../guide/durableEnqueue.html">&lt;&lt; <strong>5</strong><span>Enqueue After Commit</span></a></div>
+                
+                    <div class="toc-item next-right"><a href="../guide/runningTheApp.html"><strong>7</strong><span>Run and Inspect Jobs</span> >></a></div>
+                
+                <div style="clear:both"></div>
+            </div>
+        </td>
+        <td id="col2">
+            <div class="local clearfix">
+                <div class="local-title">
+                    <a href="https://github.com/grails-guides/grails-jobrunr">
+                    <svg height="35" class="octicon octicon-mark-github" viewBox="0 0 16 16" version="1.1" width="35" aria-hidden="true"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a> &nbsp;&nbsp;Get the Code
+                </div>
+                <div class="menu">
+                    <div class="input-group">                        
+                        <button href="#" onclick="document.getElementById('github-url').value='git@github.com:grails-guides/grails-jobrunr.git'" class="codeButton">SSH</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-jobrunr.git'" class="codeButton">HTTPS</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-jobrunr'" class="codeButton">Subversion</button>
+                    </div>
+       
+                    <div class="input-group">                    
+                        <!-- Target -->
+                        <input id="github-url" aria-label="Git repository URL" value="git@github.com:grails-guides/grails-jobrunr.git" type="text" />
+
+                        <!-- Trigger -->
+                        <button class="clipbtn" type="button" data-clipboard-target="#github-url" aria-label="Copy Git repository URL">
+
+                            <img width="13" src="../img/clippy.svg" alt="Copy to clipboard">
+                        </button>       
+                        <script type="text/javascript">new Clipboard('.clipbtn');</script>
+
+                    </div>
+                    <div class="input-group">
+                      <a href="https://github.com/grails-guides/grails-jobrunr/archive/grails8.zip" class="downloadButton">Download ZIP</a>
+                    </div>
+                </div>
+            </div>
+        </td>
+    </tr>
+</table>
+
+<div id="footer">
+    
+    
+</div>
+
+<script type="text/javascript" src="../js/docs.js"></script>
+
+</body>
+</html>

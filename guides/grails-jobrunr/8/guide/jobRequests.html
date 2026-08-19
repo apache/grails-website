@@ -1,0 +1,260 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+                      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+    <title>4 Use Job Requests From Groovy</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="canonical" href="https://grails.apache.org/guides/grails-jobrunr/8/guide/index.html"/>
+    <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
+    <link rel="stylesheet" href="../css/guide.css" type="text/css" media="screen, print" title="Style" charset="utf-8" />            
+    <link rel="stylesheet" href="../css/pdf.css" type="text/css" media="print" title="PDF" charset="utf-8"/>
+    <script type="text/javascript" src="../js/clipboard.min.js"></script>
+    <script type="text/javascript">
+function addJsClass() {
+    var classes = document.body.className.split(" ");
+    classes.push("js");
+    document.body.className = classes.join(" ");
+}
+    </script>
+</head>
+
+<body class="body" onload="addJsClass();">
+<div id="navigation">
+    <div class="navTitle">
+        
+        Grails Framework Guide 
+    </div>
+    <div class="navLinks">
+        <ul>
+            <li>
+                <div id="nav-summary">
+                    <a href="../guide/index.html" class="button" aria-haspopup="true">Table of contents</a>
+
+                    <div id="nav-summary-childs">
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/gettingStarted.html"><strong>1</strong><span>Getting Started</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/dependencySetup.html"><strong>2</strong><span>Add JobRunr and Jackson</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/storageConfiguration.html"><strong>3</strong><span>Configure Dedicated Job Storage</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/jobRequests.html"><strong>4</strong><span>Use Job Requests From Groovy</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/durableEnqueue.html"><strong>5</strong><span>Enqueue After Commit</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/jobApis.html"><strong>6</strong><span>Schedule and Track Jobs</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/runningTheApp.html"><strong>7</strong><span>Run and Inspect Jobs</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/testing.html"><strong>8</strong><span>Test the Integration</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/operations.html"><strong>9</strong><span>Production Operations</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>10</strong><span>Do You Need Help With Grails?</span></a>
+                        </div>
+                        
+                    </div>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+
+</div>
+
+<table id="colset" border="0" cellpadding="0" cellspacing="0">
+    <tr>
+        <td id="col1">
+            <div id="main" class="corner-all">
+
+                <nav class="chapter-navigation" aria-label="Chapter navigation">
+                    
+                        <div class="toc-item prev-left"><a href="../guide/storageConfiguration.html">&lt;&lt; <strong>3</strong><span>Configure Dedicated Job Storage</span></a></div>
+                    
+
+                    
+                        <div class="toc-item next-right"><a href="../guide/durableEnqueue.html"><strong>5</strong><span>Enqueue After Commit</span> >></a></div>
+                    
+                </nav>
+
+
+                
+
+                
+
+<h1 id="jobRequests">4 Use Job Requests From Groovy</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-jobrunr/v8/guide/jobRequests.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="sect1">
+<h2 id="_do_not_enqueue_groovy_closures">Do not enqueue Groovy closures</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>JobRunr needs a durable description of the method to execute. An ordinary Groovy closure does not provide one. More subtly, this tempting cast does not make the job safe:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">jobScheduler.enqueue((JobLambda) (() -&gt; processDelivery(deliveryId)))</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The cast chooses a Java functional-interface overload, but it does not produce a javac-style JobRunr target. Executed checks against Groovy <code>4.0.33</code> and against Grails <code>8.0.0-M5</code> with Groovy <code>5.0.8</code> both persisted a generated <code>Closure#doCall</code> target. The jobs failed before the intended method ran. Never claim this cast-arrow form is a workaround.</p>
+</div>
+<div class="paragraph">
+<p>Use JobRunr&#8217;s explicit <a href="https://github.com/jobrunr/jobrunr/blob/v8.8.1/core/src/main/java/org/jobrunr/jobs/lambdas/JobRequest.java"><code>JobRequest</code></a> and <a href="https://github.com/jobrunr/jobrunr/blob/v8.8.1/core/src/main/java/org/jobrunr/jobs/lambdas/JobRequestHandler.java"><code>JobRequestHandler</code></a> contract instead. The request carries only the durable delivery ID, has a no-argument constructor for deserialization, and maps itself to a Spring handler:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/main/groovy/example/grails/jobrunr/ProcessDeliveryJobRequest.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails.jobrunr
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.jobs.lambdas.JobRequest</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">ProcessDeliveryJobRequest</span> <span class="directive">implements</span> JobRequest {
+    <span class="predefined-type">Long</span> deliveryId
+
+    ProcessDeliveryJobRequest() {
+    }
+
+    ProcessDeliveryJobRequest(<span class="predefined-type">Long</span> deliveryId) {
+        <span class="local-variable">this</span>.deliveryId = deliveryId
+    }
+
+    <span class="annotation">@Override</span>
+    <span class="predefined-type">Class</span>&lt;DeliveryJobRequestHandler&gt; getJobRequestHandler() {
+        DeliveryJobRequestHandler
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The handler is a Spring component, statically compiled, and transactional. It reloads current state rather than serializing a <code>Delivery</code> instance. It returns for a missing or previously completed delivery, reports progress, and preserves interruption by restoring the interrupt flag before throwing:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/main/groovy/example/grails/jobrunr/DeliveryJobRequestHandler.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> example.grails.jobrunr
+
+<span class="keyword">import</span> <span class="include">example.grails.Delivery</span>
+<span class="keyword">import</span> <span class="include">grails.compiler.GrailsCompileStatic</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.jobs.annotations.Job</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.jobs.lambdas.JobRequestHandler</span>
+<span class="keyword">import</span> <span class="include">org.jobrunr.server.runner.ThreadLocalJobContext</span>
+<span class="keyword">import</span> <span class="include">org.springframework.stereotype.Component</span>
+
+<span class="annotation">@Component</span>
+<span class="annotation">@GrailsCompileStatic</span>
+<span class="annotation">@Transactional</span>
+<span class="type">class</span> <span class="class">DeliveryJobRequestHandler</span> <span class="directive">implements</span> JobRequestHandler&lt;ProcessDeliveryJobRequest&gt; {
+    <span class="annotation">@Override</span>
+    <span class="annotation">@Job</span>(name = <span class="string"><span class="delimiter">'</span><span class="content">Process delivery</span><span class="delimiter">'</span></span>, retries = <span class="integer">3</span>, labels = [<span class="string"><span class="delimiter">'</span><span class="content">delivery</span><span class="delimiter">'</span></span>])
+    <span class="type">void</span> run(ProcessDeliveryJobRequest request) <span class="directive">throws</span> <span class="exception">Exception</span> {
+        <span class="keyword">try</span> {
+            <span class="keyword">if</span> (<span class="predefined-type">Thread</span>.currentThread().isInterrupted()) {
+                <span class="keyword">throw</span> <span class="keyword">new</span> <span class="exception">InterruptedException</span>(<span class="string"><span class="delimiter">'</span><span class="content">Delivery worker was interrupted</span><span class="delimiter">'</span></span>)
+            }
+
+            <span class="keyword">if</span> (request.deliveryId == <span class="predefined-constant">null</span>) {
+                <span class="keyword">return</span>
+            }
+
+            Delivery delivery = Delivery.get(request.deliveryId)
+            <span class="keyword">if</span> (delivery == <span class="predefined-constant">null</span> || delivery.status == <span class="string"><span class="delimiter">'</span><span class="content">SUCCEEDED</span><span class="delimiter">'</span></span>) {
+                <span class="keyword">return</span>
+            }
+
+            <span class="keyword">def</span> context = ThreadLocalJobContext.getJobContext()
+            <span class="keyword">def</span> progressBar = context.progressBar(<span class="integer">3</span>)
+            <span class="keyword">for</span> (<span class="type">int</span> step = <span class="integer">1</span>; step &lt;= <span class="integer">3</span>; step++) {
+                delivery.progress = step * <span class="integer">33</span>
+                progressBar.incrementSucceeded()
+            }
+            delivery.progress = <span class="integer">100</span>
+            delivery.status = <span class="string"><span class="delimiter">'</span><span class="content">SUCCEEDED</span><span class="delimiter">'</span></span>
+            delivery.completedAt = <span class="keyword">new</span> <span class="predefined-type">Date</span>()
+            delivery.save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>, <span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        } <span class="keyword">catch</span> (<span class="exception">InterruptedException</span> exception) {
+            <span class="predefined-type">Thread</span>.currentThread().interrupt()
+            <span class="keyword">throw</span> exception
+        }
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The <code>SUCCEEDED</code> guard makes retries and repeated delivery harmless for this state transition. Real handlers need the same kind of idempotency around every externally visible effect.</p>
+</div>
+</div>
+</div>
+
+
+                <div style="clear:both;margin-top:15px;"></div>
+                
+                    <div class="toc-item prev-left"><a href="../guide/storageConfiguration.html">&lt;&lt; <strong>3</strong><span>Configure Dedicated Job Storage</span></a></div>
+                
+                    <div class="toc-item next-right"><a href="../guide/durableEnqueue.html"><strong>5</strong><span>Enqueue After Commit</span> >></a></div>
+                
+                <div style="clear:both"></div>
+            </div>
+        </td>
+        <td id="col2">
+            <div class="local clearfix">
+                <div class="local-title">
+                    <a href="https://github.com/grails-guides/grails-jobrunr">
+                    <svg height="35" class="octicon octicon-mark-github" viewBox="0 0 16 16" version="1.1" width="35" aria-hidden="true"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a> &nbsp;&nbsp;Get the Code
+                </div>
+                <div class="menu">
+                    <div class="input-group">                        
+                        <button href="#" onclick="document.getElementById('github-url').value='git@github.com:grails-guides/grails-jobrunr.git'" class="codeButton">SSH</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-jobrunr.git'" class="codeButton">HTTPS</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-jobrunr'" class="codeButton">Subversion</button>
+                    </div>
+       
+                    <div class="input-group">                    
+                        <!-- Target -->
+                        <input id="github-url" aria-label="Git repository URL" value="git@github.com:grails-guides/grails-jobrunr.git" type="text" />
+
+                        <!-- Trigger -->
+                        <button class="clipbtn" type="button" data-clipboard-target="#github-url" aria-label="Copy Git repository URL">
+
+                            <img width="13" src="../img/clippy.svg" alt="Copy to clipboard">
+                        </button>       
+                        <script type="text/javascript">new Clipboard('.clipbtn');</script>
+
+                    </div>
+                    <div class="input-group">
+                      <a href="https://github.com/grails-guides/grails-jobrunr/archive/grails8.zip" class="downloadButton">Download ZIP</a>
+                    </div>
+                </div>
+            </div>
+        </td>
+    </tr>
+</table>
+
+<div id="footer">
+    
+    
+</div>
+
+<script type="text/javascript" src="../js/docs.js"></script>
+
+</body>
+</html>
