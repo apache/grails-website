@@ -113,15 +113,26 @@ implements <a href='../../../../../org.springframework.beans.factory.support.Bea
 
     <p> Registers the URL-mapping bean definitions the url-mappings plugin previously contributed through
  the <CODE>doWithSpring()</CODE> bean DSL. The <CODE>grailsUrlMappingsHolder</CODE> bean is a
- ProxyFactoryBean (in reload mode) whose produced type — UrlMappings, which
- extends <a href='../../../../../grails/web/mapping/UrlMappingsHolder.html' title='UrlMappingsHolder'>UrlMappingsHolder</a> — is only known from its
- <CODE>proxyInterfaces</CODE> property, and UrlMappingsHandlerMapping takes a constructor
- reference to it. Neither the property-driven factory-bean type nor the constructor reference can
- be expressed through the org.springframework.beans.factory.BeanRegistry API without hiding
- the produced type inside an instance supplier — which breaks by-type autowiring of
- <CODE>UrlMappingsHolder</CODE> (e.g. <CODE>DefaultLinkGenerator</CODE>). The definitions are therefore
- contributed here, mirroring the original DSL so Spring's factory-bean type prediction behaves
- identically.
+ ProxyFactoryBean (in reload mode), and UrlMappingsHandlerMapping takes a
+ constructor reference to it. Neither can be expressed through the
+ org.springframework.beans.factory.BeanRegistry API without hiding the produced type inside
+ an instance supplier — which breaks by-type autowiring of <CODE>UrlMappingsHolder</CODE> (e.g.
+ <CODE>DefaultLinkGenerator</CODE>, and <CODE>UrlMappingsErrorPageCustomizer</CODE>'s bare
+ <CODE>@Autowired UrlMappings</CODE>). The definitions are therefore contributed here.
+
+ <p>Each factory-bean definition declares what it produces through
+ FactoryBean#OBJECT_TYPE_ATTRIBUTE#OBJECT_TYPE_ATTRIBUTE. That is not decoration: a factory bean's produced type
+ must be answerable from the <em>definition</em>, because a property value cannot be. Asked for the
+ type without it, Spring builds a constructor-only instance of the proxy — no property values
+ applied, so no <CODE>targetSource</CODE> and no <CODE>proxyInterfaces</CODE> — whose
+ <CODE>getObjectType()</CODE> returns <CODE>null</CODE>. Spring then falls back to creating the factory bean
+ in full, which resolves the target source and the inner UrlMappingsHolderFactoryBean,
+ evaluates every mapping, and reaches the constraints machinery and its
+ <CODE>List&lt;MessageSource&gt;</CODE> injection. All of that would happen while bean definition registry
+ post-processors are still running, so any <CODE>@ConfigurationProperties</CODE> bean created along the
+ way is built before <CODE>ConfigurationPropertiesBindingPostProcessor</CODE> exists and is silently
+ left at its defaults — which is how Spring Boot's message source lost every base name except
+ <CODE>messages</CODE>, and with it every plugin and application-configured bundle.</p>
 
  <p>Runs as a PriorityOrdered post-processor with highest precedence so the definitions
  are registered before Spring Boot's configuration-class post-processor evaluates auto-configuration
