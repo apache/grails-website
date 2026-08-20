@@ -3597,6 +3597,368 @@ resolved unambiguously before can become ambiguous.</p>
 the previous set of beans.</p>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_45_gorm_api_resolution_moves_to_a_registry">45. GORM API Resolution Moves to a Registry</h4>
+<div class="paragraph">
+<p>GORM no longer allocates an API object for every (entity, connection) pair up front. Per-entity, per-qualifier
+state now lives in a registry (<code>org.grails.datastore.gorm.GormRegistry</code>), and APIs are built on first use by a
+pluggable factory. For applications this is invisible — <code>Book.list()</code>, dynamic finders, and
+<code>Book.withNewSession { }</code> behave as before. It does change some extension points that out-of-tree GORM
+implementations subclass.</p>
+</div>
+<div class="sect4">
+<h5 id="_gormenhancer">GormEnhancer</h5>
+<div class="paragraph">
+<p><code>org.grails.datastore.gorm.GormEnhancer&#8217;s public constructors, `enhance()</code>/<code>enhance(PersistentEntity)</code>,
+<code>dynamicEnhance</code>, and the <code>transactionManager</code> field are all unchanged in behaviour and signature (the
+<code>transactionManager</code> field is now <code>@Deprecated</code> and immutable after construction — read it, don&#8217;t assign it).</p>
+</div>
+<div class="paragraph">
+<p>The following members were removed:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 66.6667%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Removed</th>
+<th class="tableblock halign-left valign-top">Migration note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>finders</code> field / <code>getFinders()</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Use <code>createDynamicFinders(Datastore)</code>, or read the finders from the API object you are working with.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>removeConstraints()</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Moved to <code>GormRegistry.removeConstraints()</code>, called automatically from <code>GormRegistry.removeDatastore(Datastore)</code>
+as part of tearing a datastore down. There is nothing to call directly - it runs when the enhancer&#8217;s <code>close()</code>
+removes the datastore from the registry, same as before.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>addStaticMethods(PersistentEntity, boolean)</code> / <code>addInstanceMethods(PersistentEntity, boolean)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The <code>onlyExtendedMethods</code> parameter is gone; both methods now take only the entity. Installation mechanism
+also changed from per-method reflective registration to a single <code>methodMissing</code>/<code>propertyMissing</code> handler pair.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>findTenantId</code>, <code>apiQualifiers</code>, <code>findDatastoreByType</code>, <code>findSingleDatastore</code>,
+<code>findSingleTransactionManager</code>, <code>findTransactionManager(Class, String)</code>, <code>appliesToDatastore</code>,
+<code>getInstanceMethodApiProviders</code>, <code>registerStaticMethod</code>, <code>registerInstanceMethod</code>, <code>doesRealMethodExist</code>,
+<code>isRealMethod</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Internal helpers of the old per-method reflective registration mechanism, replaced wholesale by the registry
+and its <code>methodMissing</code>/<code>propertyMissing</code> handlers. If you overrode one of these to customise dispatch, override
+<code>registerApiFactories()</code> (below) or a <code>GormApiFactory</code> instead.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>A new <code>registerApiFactories()</code> hook is called once, before any entity is registered. Adapters that build
+specialised API objects should override it:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">MyGormEnhancer</span> <span class="directive">extends</span> GormEnhancer {
+
+    <span class="annotation">@Override</span>
+    <span class="directive">protected</span> <span class="type">void</span> registerApiFactories() {
+        GormRegistry.instance.registerApiFactory(MyDatastore, <span class="keyword">new</span> MyGormApiFactory())
+    }
+}</code></pre>
+</div>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+Earlier snapshots of this work registered API factories from <code>registerConstraints(Datastore)</code>.
+Move that code to <code>registerApiFactories()</code>; factory registration must not depend on the constraints lifecycle step.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_currenttenantholder_get">CurrentTenantHolder.get()</h5>
+<div class="paragraph">
+<p><code>grails.gorm.multitenancy.CurrentTenantHolder.get()</code> — the no-argument form — now throws <code>TenantException</code> when
+different datastores hold different tenants on the calling thread, rather than returning an arbitrary one of
+them. Pass the datastore you are operating on:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">CurrentTenantHolder.get(datastore)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>See <a href="#multiTenancy">Multi-Tenancy</a> for the full multi-tenancy API.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_tenants_withidclass_serializable_closure">Tenants.withId(Class, Serializable, Closure)</h5>
+<div class="paragraph">
+<p><code>grails.gorm.multitenancy.Tenants</code> had two distinct 3-argument <code>withId</code> overloads that both erased to
+<code>withId(Class, Serializable, Closure)</code> at the bytecode level:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">// removed - resolved a datastore by its own type</span>
+<span class="directive">static</span> &lt;T&gt; T withId(<span class="predefined-type">Class</span>&lt;? <span class="directive">extends</span> Datastore&gt; datastoreClass, <span class="predefined-type">Serializable</span> tenantId, Closure&lt;T&gt; callable)
+
+<span class="comment">// kept - resolves the datastore that maps a domain class</span>
+<span class="directive">static</span> &lt;T&gt; T withId(<span class="predefined-type">Class</span> domainClass, <span class="predefined-type">Serializable</span> tenantId, Closure&lt;T&gt; callable)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The datastore-class overload relied on <code>GormEnhancer.findDatastoreByType(Class)</code>, which was one of the internal
+per-method-dispatch helpers removed as part of the registry migration (see <a href="#_gormenhancer">GormEnhancer</a>
+above), so it could not be carried forward under its own name. Only the domain-class overload remains.</p>
+</div>
+<div class="paragraph">
+<p>Because both overloads share one erased signature, a call site that used to pass a datastore class -
+<code>Tenants.withId(SomeDatastore, tenantId) { &#8230;&#8203; }</code> - still compiles unchanged against the domain-class overload.
+It no longer resolves the datastore you named: <code>getDatastoreForDomain(SomeDatastore)</code> looks <code>SomeDatastore</code> up as
+if it were a <strong>domain class</strong>, finds no entity registered under that name, and falls through to the application&#8217;s
+<code>DEFAULT</code> datastore. On a single-datastore application this is indistinguishable from the old behaviour. On a
+multi-datastore application it silently binds the tenant against the wrong datastore - no exception, no log -
+which can surface much later as a cross-database read or write.</p>
+</div>
+<div class="paragraph">
+<p>If you have a call site that passes a <code>Datastore</code> subclass to this method, migrate it to look the datastore up
+explicitly and call the datastore-instance overload instead. <code>Tenants.datastoreLocator</code> still resolves a
+datastore by its type - only the <code>withId(Class, ..)</code> shortcut for it is gone:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">MultiTenantCapableDatastore datastore = Tenants.datastoreLocator.getDatastore(SomeDatastore) <span class="keyword">as</span> MultiTenantCapableDatastore
+Tenants.withId(datastore, tenantId) { ... }</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>or pass an actual domain class if that is what you meant:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">Tenants.withId(SomeDomainClass, tenantId) { ... }</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_46_startup_banner_shows_the_servlet_container_and_spring_security">46. Startup Banner Shows the Servlet Container and Spring Security</h4>
+<div class="paragraph">
+<p>The banner now reports the servlet container it is running on, and the version of Spring Security where the
+application has it, without being asked for either. Both were previously opt-in through
+<code>grails.banner.versions.include</code>.</p>
+</div>
+<div class="paragraph">
+<p>What made them opt-in was that a version which could not be determined was shown as <code>unknown</code>, so turning one
+on by default would have printed <code>Spring Security: unknown</code> for every application without it. A version shown
+by default that cannot be determined is now left out instead, which is what allows the two to be shown at all.
+A version the application asked for by name still reads <code>unknown</code> where it cannot be determined, since saying
+nothing about something that was asked for reads as the option having been ignored.</p>
+</div>
+<div class="paragraph">
+<p>The container is named as itself: an application on Tomcat shows <code>Tomcat</code>, one on Jetty shows <code>Jetty</code>. It is
+configured under the single key <code>container</code>, whichever container that turns out to be.</p>
+</div>
+<div class="paragraph">
+<p>To restore the previous banner, exclude them:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">banner</span>:
+        <span class="key">versions</span>:
+            <span class="key">exclude</span>:
+                - <span class="string"><span class="content">container</span></span>
+                - <span class="string"><span class="content">spring-security</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>An application that already asked for <code>spring-security</code> under <code>grails.banner.versions.include</code> keeps working
+and needs no change — the option is still recognised, and the version is shown either way. The same is true
+of <code>tomcat</code>, <code>jetty</code> and <code>undertow</code>, which remain available for an application that wants to be told about a
+particular container whether or not it is the one serving; naming one as well as taking the default shows it
+once, not twice.</p>
+</div>
+<div class="paragraph">
+<p>A version option that names none of the known keys is now reported as a warning after the banner is printed,
+rather than being dropped in silence.
+==== 47. Message Bundles Resolved by Spring Boot</p>
+</div>
+<div class="paragraph">
+<p>Grails no longer registers a <code>messageSource</code> bean. Spring Boot&#8217;s <code>MessageSourceAutoConfiguration</code>
+supplies a standard <code>ResourceBundleMessageSource</code>, and Grails contributes only the base-name list, which
+it records at build time rather than discovering by scanning the classpath at runtime.</p>
+</div>
+<div class="paragraph">
+<p>Most applications need no change. The rest of this section covers the cases that do.</p>
+</div>
+<div class="sect4">
+<h5 id="_spring_messages_is_now_the_configuration_surface"><code>spring.messages.*</code> is now the configuration surface</h5>
+<div class="paragraph">
+<p><code>spring.messages.*</code> was previously ignored, because Grails' own message source claimed the bean name and
+Boot&#8217;s auto-configuration backed off. It is now honoured in full — <code>encoding</code>, <code>cache-duration</code>,
+<code>fallback-to-system-locale</code>, <code>always-use-message-format</code>, <code>use-code-as-default-message</code> and
+<code>common-messages</code>.</p>
+</div>
+<div class="paragraph">
+<p>Two Grails settings give way to it:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 28.5714%;">
+<col style="width: 28.5714%;">
+<col style="width: 42.8572%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Setting</th>
+<th class="tableblock halign-left valign-top">Replacement</th>
+<th class="tableblock halign-left valign-top">Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails.i18n.cache.seconds</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.messages.cache-duration</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Deprecated, still honoured for now — see below</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails.i18n.filecache.seconds</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">None</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Ignored</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><code>grails.i18n.cache.seconds</code> is still honoured as a temporary upgrade aid: it is translated into
+<code>spring.messages.cache-duration</code> and logs a deprecation warning. As before, it applies only when reload
+is enabled, so an application that set it for development keeps the timing it had. Setting
+<code>spring.messages.cache-duration</code> explicitly always wins. Migrate before it is removed.</p>
+</div>
+<div class="paragraph">
+<p><code>grails.i18n.filecache.seconds</code> has no replacement and is ignored: it tuned the file-timestamp re-check
+of the message source Grails used to own, which Spring Boot&#8217;s has no equivalent for.</p>
+</div>
+<div class="paragraph">
+<p><code>grails.i18n.availableLocales.includePlugins</code> is replaced by <code>grails.i18n.include-plugin-bundles</code>, which
+now governs both message resolution and the locales offered by a language selector, so the two can no
+longer disagree.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_plugin_authors_base_names_must_be_namespaced">Plugin authors: base names must be namespaced</h5>
+<div class="paragraph">
+<p>A plugin&#8217;s message bundle base names must be its plugin name, or that name followed by a hyphen and a
+suffix:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code>grails-app/i18n/spring-security-core.properties            <i class="conum" data-value="1"></i><b>(1)</b>
+grails-app/i18n/spring-security-core_fr.properties
+grails-app/i18n/spring-security-core-validation.properties <i class="conum" data-value="2"></i><b>(2)</b></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>the plugin&#8217;s own name</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>further bundles inside its namespace</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The plugin build fails otherwise. A plugin shipping <code>messages.properties</code> used to contribute messages as
+a fallback behind the application&#8217;s own bundle; Spring resolves a base name to the first matching
+resource on the classpath, so such a bundle would now silently shadow, or be shadowed by, the
+application&#8217;s. Rename it into the plugin&#8217;s namespace.</p>
+</div>
+<div class="paragraph">
+<p>Applications are unaffected — there is only one application, so its base names cannot collide.</p>
+</div>
+<div class="paragraph">
+<p>A namespaced bundle still works under Grails 7, so a plugin does not need a separate source branch to
+support both. Grails 7 discovers a plugin&#8217;s bundles by scanning the plugin jar&#8217;s root for
+<code>*.properties</code> and matching locale suffixes; it never inspects the base name, so
+<code>spring-security-core.properties</code> and <code>spring-security-core_fr.properties</code> are found exactly as
+<code>messages.properties</code> was. The <code>spring-security-core</code> plugin has shipped this layout for years. Rename
+once, and the same source builds for both: Grails 7 finds the bundles by scanning, Grails 8 through the
+generated descriptor.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_every_bundle_needs_a_locale_independent_file">Every bundle needs a locale-independent file</h5>
+<div class="paragraph">
+<p>Spring Boot&#8217;s auto-configuration only activates when a configured base name has a bundle without a
+locale suffix, and it contributes the whole <code>messageSource</code> bean. An application shipping only
+<code>messages_de.properties</code> would therefore have had no message source at all, so the build now rejects it.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_ambiguous_base_names_must_be_declared">Ambiguous base names must be declared</h5>
+<div class="paragraph">
+<p>A base name ending in a valid locale identifier is ambiguous: <code>api_fr.properties</code> reads as base name
+<code>api</code> in French. Likewise <code>api_errors.properties</code> alongside <code>api.properties</code> reads as a mistyped locale
+variant of <code>api</code>. Both fail the build; declare the base name when the inference is wrong:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails {
+    i18n {
+        basenames = [<span class="string"><span class="delimiter">'</span><span class="content">api</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">api_errors</span><span class="delimiter">'</span></span>]
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_pluginawareresourcebundlemessagesource_removed"><code>PluginAwareResourceBundleMessageSource</code> removed</h5>
+<div class="paragraph">
+<p><code>org.grails.spring.context.support.PluginAwareResourceBundleMessageSource</code> and the Grails fork of
+<code>ReloadableResourceBundleMessageSource</code> beside it are removed. Code that injected <code>MessageSource</code> is
+unaffected. Code that cast the bean to either type, or called <code>getBundleCodes()</code>, must be updated —
+inject <code>MessageSource</code> and use its interface, or declare your own bean, which Boot&#8217;s auto-configuration
+backs off from.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_language_selectors_read_the_same_plugin_set_as_message_resolution">Language selectors read the same plugin set as message resolution</h5>
+<div class="paragraph">
+<p>The locales offered by <code>g:localeSelect available="true"</code> now come from the recorded bundles rather than a
+classpath scan, and they follow exactly the plugin set that message resolution uses. A plugin that was
+evicted, excluded, or failed to load no longer contributes a language entry, so a selector can no longer
+offer a translation whose messages will not resolve.</p>
+</div>
+<div class="paragraph">
+<p>An application that declares its own <code>AvailableLocaleResolver</code> bean must supply the effective descriptors
+instead of a <code>ClassLoader</code>; most applications simply rely on the one Grails registers.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_reloading_during_development">Reloading during development</h5>
+<div class="paragraph">
+<p>Editing a value in an existing bundle still reloads without a restart: Grails contributes a short
+<code>spring.messages.cache-duration</code> when reload is enabled, in place of the <code>grails.i18n.cache.seconds</code> it
+used to apply to its own message source.</p>
+</div>
+<div class="paragraph">
+<p>Adding or removing a base name now needs a restart, because Spring Boot reads the configured base names
+once when it builds the message source.</p>
+</div>
+</div>
+</div>
 </div>
 
 

@@ -608,6 +608,109 @@ session are shared, and the two object-mapping models stay separate. See the
 guide for details.</p>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_ahead_of_time_processing">Ahead-of-Time Processing</h4>
+<div class="paragraph">
+<p>A Grails application can now be processed by Spring&#8217;s ahead-of-time engine. Applying Spring Boot&#8217;s AOT plugin adds a
+<code>processAot</code> task, which generates the bean definitions as Java source at build time instead of deriving them from
+classpath scanning and annotations on every start:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">apply <span class="key">plugin</span>: <span class="string"><span class="delimiter">'</span><span class="content">org.springframework.boot.aot</span><span class="delimiter">'</span></span>
+
+tasks.named(<span class="string"><span class="delimiter">'</span><span class="content">processAot</span><span class="delimiter">'</span></span>) {
+    systemProperty <span class="string"><span class="delimiter">'</span><span class="content">grails.env</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">production</span><span class="delimiter">'</span></span>
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">java -Dspring.aot.enabled=true -jar build/libs/myapp.jar</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>AOT processing is also what a GraalVM native image requires: Spring Boot refuses to start an image without a
+build-time generated initializer. Reachability metadata for the application&#8217;s own artefacts and compiled pages is
+written from the build output, and <code>traceNativeMetadata</code> records what the framework reflects on along a request path.</p>
+</div>
+<div class="paragraph">
+<p>See the <a href="#deployment/deploymentAot">Ahead-of-Time Processing</a> section for what it changes at runtime and what it
+does not yet cover.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_ahead_of_time_caching">Ahead-of-Time Caching</h4>
+<div class="paragraph">
+<p>On JDK 25 or later, <code>grails.aotCache</code> trains a JDK AOT cache by running the packaged application once and recording
+the classes it loaded and linked and the methods it ran, so the next start reads that work rather than repeating it:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails {
+    aotCache {
+        enabled = <span class="predefined-constant">true</span>
+        paths = [<span class="string"><span class="delimiter">'</span><span class="content">/</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">/login</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">/book/index</span><span class="delimiter">'</span></span>]
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>See the <a href="#deployment/deploymentAotCache">Ahead-of-Time Caching</a> section, which includes measured figures and the
+conditions under which a JVM will decline a cache.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_banner_colour_container_version_and_start_mark">Banner Colour, Container Version and Start Mark</h4>
+<div class="paragraph">
+<p>The startup banner is coloured, reports the servlet container it is running on, and says how the application was
+started where that is worth saying — <code>NATIVE</code> for an image, <code>AOT CACHE</code> for a JVM given a cache to read, <code>AOT</code> for one
+running generated bean definitions. An ordinary start says nothing.</p>
+</div>
+<div class="paragraph">
+<p>Spring Security and the servlet container are also shown by default now. What allows that is a smaller change
+underneath: a version shown by default that cannot be determined is left out rather than shown as <code>unknown</code>, so
+an application without Spring Security says nothing about it instead of saying it does not know. One asked for
+by name still reads <code>unknown</code>, because saying nothing about what was asked for reads as the option having been
+ignored. See
+<a href="#conf/applicationClass/customizing">Customizing the Application Class</a> for the full set of banner options, and the
+<a href="upgrading.html#upgrading80x">upgrade guide</a> for how to restore the previous output.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_message_bundles_resolved_by_spring_boot">Message Bundles Resolved by Spring Boot</h4>
+<div class="paragraph">
+<p>Internationalization now runs on Spring Boot&#8217;s own <code>MessageSourceAutoConfiguration</code>. Grails' custom
+message source is gone, and with it the <code>classpath*:*.properties</code> scan it performed at start-up.</p>
+</div>
+<div class="paragraph">
+<p>The base names Spring Boot needs are recorded at build time, per application and per plugin, so the
+whole <code>spring.messages.*</code> surface works as it does in any Boot application:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">spring</span>:
+    <span class="key">messages</span>:
+        <span class="key">cache-duration</span>: <span class="string"><span class="content">5s</span></span>
+        <span class="key">use-code-as-default-message</span>: <span class="string"><span class="content">true</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Those properties were previously ignored, because Grails' own message source claimed the bean.</p>
+</div>
+<div class="paragraph">
+<p>Because discovery no longer scans, the message bundles an application and its plugins ship are known
+ahead of time. Grails registers the GraalVM resource hints for them — including plugin bundles and any
+base name an application configures itself, neither of which Spring Boot&#8217;s own registrar covers.</p>
+</div>
+<div class="paragraph">
+<p>Plugin message bundles must now be namespaced on the plugin name — <code>spring-security-core.properties</code>
+rather than <code>messages.properties</code> — so that two plugins cannot shadow one another. See
+<a href="#upgrading80x">[upgrading80x]</a> for the details.</p>
+</div>
+</div>
 </div>
 
 

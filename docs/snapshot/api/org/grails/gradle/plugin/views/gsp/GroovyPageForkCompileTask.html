@@ -102,13 +102,26 @@ if (location.href.indexOf('is-external=true') == -1) {
             <hr>
 
 <pre>@groovy.transform.CompileStatic
-@org.gradle.api.tasks.CacheableTask
+@org.gradle.work.DisableCachingByDefault(because: What a forked compiler produces is not described by this task's inputs)
 abstract class GroovyPageForkCompileTask
 extends <a href='../../../../../../org.gradle.api.tasks.compile.AbstractCompile.html'>AbstractCompile</a></pre>
 
     <p> Abstract Gradle task for compiling templates, using GroovyPageForkedCompiler
  This Task is a Forked Java Task that is configurable with fork options provided
- by ViewCompileOptions <DL><DT><B>Authors:</B></DT><DD>David Estes</DD></DL><DL><DT><B>Since:</B></DT><DD>4.0</DD></DL></p>
+ by ViewCompileOptions
+
+ <p>Not cacheable. A page is compiled by a forked Groovy, and what comes out depends on which
+ Groovy did it -- which this task's inputs do not describe, because <CODE>AbstractCompile</CODE> does
+ not track its own classpath: an application building a native image resolves Groovy 6, and one
+ training a cache resolves Groovy 5. Cached, the first build's pages were handed to the second,
+ which failed at the moment a page was first rendered, with
+ <CODE>BUG! your call tried to do a property set</CODE> -- long after the build said it had
+ succeeded.</p>
+
+ <p>Which Java did the compiling is described, by <a href='#getJavaLauncher()'>getJavaLauncher()</a>. Which Groovy is
+ not, and this stays uncacheable until it is.</p>
+
+ <p>Compiling them again costs seconds. Getting this wrong costs an afternoon.</p> <DL><DT><B>Authors:</B></DT><DD>David Estes</DD></DL><DL><DT><B>Since:</B></DT><DD>4.0</DD></DL></p>
 
           </li>
     </ul>
@@ -442,9 +455,8 @@ extends <a href='../../../../../../org.gradle.api.tasks.compile.AbstractCompile.
  builds -- which shows up as an <CODE>UnsupportedClassVersionError</CODE> at the moment a page is
  first rendered, long after the build called itself successful.</p>
 
- <p>Nested rather than internal because this task is cacheable: the Java that did the
- compiling is part of what the result is, and an entry produced by one must not be handed to
- a build asking for another.</p></p>
+ <p>Nested rather than internal because the Java that did the compiling is part of what the
+ result is: pages built by one are not left standing when the build asks for another.</p></p>
                             </li>
                         </ul>
                     

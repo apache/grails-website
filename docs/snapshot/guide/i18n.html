@@ -266,6 +266,87 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
 <div class="paragraph">
 <p>By default Grails looks in <code>messages.properties</code> for messages unless the user has specified a locale. You can create your own message bundle by simply creating a new properties file that ends with the locale you are interested in. For example <code>messages_en_GB.properties</code> for British English.</p>
 </div>
+<div class="sect3">
+<h4 id="_configuration">Configuration</h4>
+<div class="paragraph">
+<p>Message resolution is Spring Boot&#8217;s, so the standard <code>spring.messages.*</code> properties apply:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">spring</span>:
+    <span class="key">messages</span>:
+        <span class="key">encoding</span>: <span class="string"><span class="content">UTF-8</span></span>
+        <span class="key">cache-duration</span>: <span class="string"><span class="content">5s</span></span>
+        <span class="key">fallback-to-system-locale</span>: <span class="string"><span class="content">false</span></span>
+        <span class="key">use-code-as-default-message</span>: <span class="string"><span class="content">false</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Grails sets <code>fallback-to-system-locale</code> to <code>false</code> and carries <code>grails.views.gsp.encoding</code> over to
+<code>spring.messages.encoding</code>, but an application may override either.</p>
+</div>
+<div class="paragraph">
+<p>You do not normally need to set <code>spring.messages.basename</code>. Grails records the bundles an application
+and each of its plugins ship at build time and composes the list for you. Setting it yourself is still
+supported and is the way to reach a bundle outside <code>grails-app/i18n</code> — anything you declare is kept and
+takes precedence over the discovered base names.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_base_names">Base names</h4>
+<div class="paragraph">
+<p>Every bundle needs a locale-independent file. <code>messages_de.properties</code> without <code>messages.properties</code>
+means Spring Boot&#8217;s message-source auto-configuration never activates and the application has no
+message source at all, so the build rejects it.</p>
+</div>
+<div class="paragraph">
+<p>An application may use any base name, with one reservation: a base name ending in a valid locale
+identifier is ambiguous, because <code>api_fr.properties</code> reads as base name <code>api</code> in French. Declare the
+base name when you mean something else:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails {
+    i18n {
+        basenames = [<span class="string"><span class="delimiter">'</span><span class="content">api</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">api_errors</span><span class="delimiter">'</span></span>]
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_plugin_bundles">Plugin bundles</h4>
+<div class="paragraph">
+<p>A plugin&#8217;s base names must be its plugin name, or that name followed by a hyphen and a suffix — so the
+<code>spring-security-core</code> plugin may ship <code>spring-security-core.properties</code> and
+<code>spring-security-core-validation.properties</code>, but not <code>messages.properties</code>. Spring resolves a base name
+to the first matching resource on the classpath, so a shared base name would silently shadow another
+bundle rather than merge with it. The plugin build enforces this.</p>
+</div>
+<div class="paragraph">
+<p>Precedence runs application first, then plugins. Where several plugins define the same code, the
+reverse of Grails' plugin topological order wins, which is the behaviour applications had before Spring
+Boot owned the message source. An application&#8217;s own bundle always overrides every plugin&#8217;s, so
+redefining a plugin&#8217;s code in <code>messages.properties</code> is the supported way to change it.</p>
+</div>
+<div class="paragraph">
+<p>Set <code>grails.i18n.include-plugin-bundles</code> to <code>false</code> to leave plugin bundles out entirely.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_reloading_during_development">Reloading during development</h4>
+<div class="paragraph">
+<p>Editing a value in an existing bundle is picked up without a restart. Grails contributes a short
+<code>spring.messages.cache-duration</code> automatically when reload is enabled; without one Spring caches every
+bundle for the lifetime of the application. Set the property yourself to override the duration.</p>
+</div>
+<div class="paragraph">
+<p>Adding a locale file for a base name that already exists resolves without a restart too, though the
+language selector described in <a href="#changingLocales">[changingLocales]</a> only lists it once the build has regenerated its
+metadata. Adding or removing a base name needs a restart: Spring Boot reads the configured base names
+once, when it builds the message source.</p>
+</div>
+</div>
 
 <a name="13.2 Changing Locales"><!-- Legacy link --></a>
 <h2 id="changingLocales">17.2 Changing Locales</h2>
@@ -305,15 +386,14 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
 <p>Alternatively, iterate the published <code>availableLocales</code> list directly.</p>
 </div>
 <div class="paragraph">
-<p>By default every <code>&#42;.properties</code> bundle on the classpath is considered, so locales contributed by plugins &mdash; whose bundles are namespaced (for example <code>spring-security-core_fr.properties</code>) &mdash; are listed alongside your application&#8217;s own. Candidate suffixes are validated against the ISO language codes (and the ISO country codes when a country is present), so non-i18n properties files (such as <code>application.properties</code>) are ignored. To restrict discovery to your application&#8217;s own <code>messages_&#42;.properties</code> bundles, set <code>grails.i18n.availableLocales.includePlugins=false</code>:</p>
+<p>The list is drawn from the message bundles your application and its plugins actually ship, recorded at build time, so it offers only real translations. It follows exactly the same set of plugins that message resolution uses: a plugin that was evicted, excluded, or failed to load contributes neither messages nor a language entry, so the selector can never offer a language whose messages will not resolve. To list only your application&#8217;s own translations, set <code>grails.i18n.include-plugin-bundles=false</code>:</p>
 </div>
 <div class="listingblock">
 <div class="title">grails-app/conf/application.yml</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
     <span class="key">i18n</span>:
-        <span class="key">availableLocales</span>:
-            <span class="key">includePlugins</span>: <span class="string"><span class="content">false</span></span>   <span class="comment"># list only the application's own translations</span></code></pre>
+        <span class="key">include-plugin-bundles</span>: <span class="string"><span class="content">false</span></span>   <span class="comment"># list only the application's own translations</span></code></pre>
 </div>
 </div>
 <div class="paragraph">

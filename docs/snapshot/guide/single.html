@@ -306,7 +306,9 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
                             
                             <div class="toc-item" style="margin-left:20px"><a href="#basicCRUD"><strong>7.1.1</strong><span>Basic CRUD</span></a></div>
                             
-                            <div class="toc-item" style="margin-left:10px"><a href="#furtherReading"><strong>7.2</strong><span>Further Reading on GORM</span></a></div>
+                            <div class="toc-item" style="margin-left:10px"><a href="#multiTenancy"><strong>7.2</strong><span>Multi-Tenancy</span></a></div>
+                            
+                            <div class="toc-item" style="margin-left:10px"><a href="#furtherReading"><strong>7.3</strong><span>Further Reading on GORM</span></a></div>
                             
                             <div class="toc-item" style="margin-left:0px"><a href="#theWebLayer"><strong>8</strong><span>The Web Layer</span></a></div>
                             
@@ -788,6 +790,10 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
                             
                             <div class="toc-item" style="margin-left:10px"><a href="#deploymentTasks"><strong>25.3</strong><span>Deployment Configuration Tasks</span></a></div>
                             
+                            <div class="toc-item" style="margin-left:10px"><a href="#deploymentAot"><strong>25.4</strong><span>Ahead-of-Time Processing</span></a></div>
+                            
+                            <div class="toc-item" style="margin-left:10px"><a href="#deploymentAotCache"><strong>25.5</strong><span>Ahead-of-Time Caching</span></a></div>
+                            
                             <div class="toc-item" style="margin-left:0px"><a href="#contributing"><strong>26</strong><span>Contributing to Grails</span></a></div>
                             
                             <div style="clear:both" ></div>
@@ -1207,6 +1213,109 @@ be enabled (<code>grails.mongodb.transactional = true</code>). Spring Data repos
 session are shared, and the two object-mapping models stay separate. See the
 <a href="../grails-data/mongodb/manual/index.html#springDataInterop">Spring Data MongoDB Interoperability</a> section of the GORM for MongoDB
 guide for details.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_ahead_of_time_processing">Ahead-of-Time Processing</h4>
+<div class="paragraph">
+<p>A Grails application can now be processed by Spring&#8217;s ahead-of-time engine. Applying Spring Boot&#8217;s AOT plugin adds a
+<code>processAot</code> task, which generates the bean definitions as Java source at build time instead of deriving them from
+classpath scanning and annotations on every start:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">apply <span class="key">plugin</span>: <span class="string"><span class="delimiter">'</span><span class="content">org.springframework.boot.aot</span><span class="delimiter">'</span></span>
+
+tasks.named(<span class="string"><span class="delimiter">'</span><span class="content">processAot</span><span class="delimiter">'</span></span>) {
+    systemProperty <span class="string"><span class="delimiter">'</span><span class="content">grails.env</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">production</span><span class="delimiter">'</span></span>
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">java -Dspring.aot.enabled=true -jar build/libs/myapp.jar</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>AOT processing is also what a GraalVM native image requires: Spring Boot refuses to start an image without a
+build-time generated initializer. Reachability metadata for the application&#8217;s own artefacts and compiled pages is
+written from the build output, and <code>traceNativeMetadata</code> records what the framework reflects on along a request path.</p>
+</div>
+<div class="paragraph">
+<p>See the <a href="#deployment/deploymentAot">Ahead-of-Time Processing</a> section for what it changes at runtime and what it
+does not yet cover.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_ahead_of_time_caching">Ahead-of-Time Caching</h4>
+<div class="paragraph">
+<p>On JDK 25 or later, <code>grails.aotCache</code> trains a JDK AOT cache by running the packaged application once and recording
+the classes it loaded and linked and the methods it ran, so the next start reads that work rather than repeating it:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails {
+    aotCache {
+        enabled = <span class="predefined-constant">true</span>
+        paths = [<span class="string"><span class="delimiter">'</span><span class="content">/</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">/login</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">/book/index</span><span class="delimiter">'</span></span>]
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>See the <a href="#deployment/deploymentAotCache">Ahead-of-Time Caching</a> section, which includes measured figures and the
+conditions under which a JVM will decline a cache.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_banner_colour_container_version_and_start_mark">Banner Colour, Container Version and Start Mark</h4>
+<div class="paragraph">
+<p>The startup banner is coloured, reports the servlet container it is running on, and says how the application was
+started where that is worth saying — <code>NATIVE</code> for an image, <code>AOT CACHE</code> for a JVM given a cache to read, <code>AOT</code> for one
+running generated bean definitions. An ordinary start says nothing.</p>
+</div>
+<div class="paragraph">
+<p>Spring Security and the servlet container are also shown by default now. What allows that is a smaller change
+underneath: a version shown by default that cannot be determined is left out rather than shown as <code>unknown</code>, so
+an application without Spring Security says nothing about it instead of saying it does not know. One asked for
+by name still reads <code>unknown</code>, because saying nothing about what was asked for reads as the option having been
+ignored. See
+<a href="#conf/applicationClass/customizing">Customizing the Application Class</a> for the full set of banner options, and the
+<a href="upgrading.html#upgrading80x">upgrade guide</a> for how to restore the previous output.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_message_bundles_resolved_by_spring_boot">Message Bundles Resolved by Spring Boot</h4>
+<div class="paragraph">
+<p>Internationalization now runs on Spring Boot&#8217;s own <code>MessageSourceAutoConfiguration</code>. Grails' custom
+message source is gone, and with it the <code>classpath*:*.properties</code> scan it performed at start-up.</p>
+</div>
+<div class="paragraph">
+<p>The base names Spring Boot needs are recorded at build time, per application and per plugin, so the
+whole <code>spring.messages.*</code> surface works as it does in any Boot application:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">spring</span>:
+    <span class="key">messages</span>:
+        <span class="key">cache-duration</span>: <span class="string"><span class="content">5s</span></span>
+        <span class="key">use-code-as-default-message</span>: <span class="string"><span class="content">true</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Those properties were previously ignored, because Grails' own message source claimed the bean.</p>
+</div>
+<div class="paragraph">
+<p>Because discovery no longer scans, the message bundles an application and its plugins ship are known
+ahead of time. Grails registers the GraalVM resource hints for them — including plugin bundles and any
+base name an application configures itself, neither of which Spring Boot&#8217;s own registrar covers.</p>
+</div>
+<div class="paragraph">
+<p>Plugin message bundles must now be namespaced on the plugin name — <code>spring-security-core.properties</code>
+rather than <code>messages.properties</code> — so that two plugins cannot shadow one another. See
+<a href="#upgrading80x">[upgrading80x]</a> for the details.</p>
 </div>
 </div>
 </div>
@@ -5999,6 +6108,368 @@ resolved unambiguously before can become ambiguous.</p>
 <div class="paragraph">
 <p>Removing the packages from <code>grails.spring.bean.packages</code>, or the stray classes from those packages, restores
 the previous set of beans.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_45_gorm_api_resolution_moves_to_a_registry">45. GORM API Resolution Moves to a Registry</h4>
+<div class="paragraph">
+<p>GORM no longer allocates an API object for every (entity, connection) pair up front. Per-entity, per-qualifier
+state now lives in a registry (<code>org.grails.datastore.gorm.GormRegistry</code>), and APIs are built on first use by a
+pluggable factory. For applications this is invisible — <code>Book.list()</code>, dynamic finders, and
+<code>Book.withNewSession { }</code> behave as before. It does change some extension points that out-of-tree GORM
+implementations subclass.</p>
+</div>
+<div class="sect4">
+<h5 id="_gormenhancer">GormEnhancer</h5>
+<div class="paragraph">
+<p><code>org.grails.datastore.gorm.GormEnhancer&#8217;s public constructors, `enhance()</code>/<code>enhance(PersistentEntity)</code>,
+<code>dynamicEnhance</code>, and the <code>transactionManager</code> field are all unchanged in behaviour and signature (the
+<code>transactionManager</code> field is now <code>@Deprecated</code> and immutable after construction — read it, don&#8217;t assign it).</p>
+</div>
+<div class="paragraph">
+<p>The following members were removed:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 66.6667%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Removed</th>
+<th class="tableblock halign-left valign-top">Migration note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>finders</code> field / <code>getFinders()</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Use <code>createDynamicFinders(Datastore)</code>, or read the finders from the API object you are working with.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>removeConstraints()</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Moved to <code>GormRegistry.removeConstraints()</code>, called automatically from <code>GormRegistry.removeDatastore(Datastore)</code>
+as part of tearing a datastore down. There is nothing to call directly - it runs when the enhancer&#8217;s <code>close()</code>
+removes the datastore from the registry, same as before.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>addStaticMethods(PersistentEntity, boolean)</code> / <code>addInstanceMethods(PersistentEntity, boolean)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The <code>onlyExtendedMethods</code> parameter is gone; both methods now take only the entity. Installation mechanism
+also changed from per-method reflective registration to a single <code>methodMissing</code>/<code>propertyMissing</code> handler pair.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>findTenantId</code>, <code>apiQualifiers</code>, <code>findDatastoreByType</code>, <code>findSingleDatastore</code>,
+<code>findSingleTransactionManager</code>, <code>findTransactionManager(Class, String)</code>, <code>appliesToDatastore</code>,
+<code>getInstanceMethodApiProviders</code>, <code>registerStaticMethod</code>, <code>registerInstanceMethod</code>, <code>doesRealMethodExist</code>,
+<code>isRealMethod</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Internal helpers of the old per-method reflective registration mechanism, replaced wholesale by the registry
+and its <code>methodMissing</code>/<code>propertyMissing</code> handlers. If you overrode one of these to customise dispatch, override
+<code>registerApiFactories()</code> (below) or a <code>GormApiFactory</code> instead.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>A new <code>registerApiFactories()</code> hook is called once, before any entity is registered. Adapters that build
+specialised API objects should override it:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">MyGormEnhancer</span> <span class="directive">extends</span> GormEnhancer {
+
+    <span class="annotation">@Override</span>
+    <span class="directive">protected</span> <span class="type">void</span> registerApiFactories() {
+        GormRegistry.instance.registerApiFactory(MyDatastore, <span class="keyword">new</span> MyGormApiFactory())
+    }
+}</code></pre>
+</div>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+Earlier snapshots of this work registered API factories from <code>registerConstraints(Datastore)</code>.
+Move that code to <code>registerApiFactories()</code>; factory registration must not depend on the constraints lifecycle step.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_currenttenantholder_get">CurrentTenantHolder.get()</h5>
+<div class="paragraph">
+<p><code>grails.gorm.multitenancy.CurrentTenantHolder.get()</code> — the no-argument form — now throws <code>TenantException</code> when
+different datastores hold different tenants on the calling thread, rather than returning an arbitrary one of
+them. Pass the datastore you are operating on:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">CurrentTenantHolder.get(datastore)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>See <a href="#multiTenancy">Multi-Tenancy</a> for the full multi-tenancy API.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_tenants_withidclass_serializable_closure">Tenants.withId(Class, Serializable, Closure)</h5>
+<div class="paragraph">
+<p><code>grails.gorm.multitenancy.Tenants</code> had two distinct 3-argument <code>withId</code> overloads that both erased to
+<code>withId(Class, Serializable, Closure)</code> at the bytecode level:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">// removed - resolved a datastore by its own type</span>
+<span class="directive">static</span> &lt;T&gt; T withId(<span class="predefined-type">Class</span>&lt;? <span class="directive">extends</span> Datastore&gt; datastoreClass, <span class="predefined-type">Serializable</span> tenantId, Closure&lt;T&gt; callable)
+
+<span class="comment">// kept - resolves the datastore that maps a domain class</span>
+<span class="directive">static</span> &lt;T&gt; T withId(<span class="predefined-type">Class</span> domainClass, <span class="predefined-type">Serializable</span> tenantId, Closure&lt;T&gt; callable)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The datastore-class overload relied on <code>GormEnhancer.findDatastoreByType(Class)</code>, which was one of the internal
+per-method-dispatch helpers removed as part of the registry migration (see <a href="#_gormenhancer">GormEnhancer</a>
+above), so it could not be carried forward under its own name. Only the domain-class overload remains.</p>
+</div>
+<div class="paragraph">
+<p>Because both overloads share one erased signature, a call site that used to pass a datastore class -
+<code>Tenants.withId(SomeDatastore, tenantId) { &#8230;&#8203; }</code> - still compiles unchanged against the domain-class overload.
+It no longer resolves the datastore you named: <code>getDatastoreForDomain(SomeDatastore)</code> looks <code>SomeDatastore</code> up as
+if it were a <strong>domain class</strong>, finds no entity registered under that name, and falls through to the application&#8217;s
+<code>DEFAULT</code> datastore. On a single-datastore application this is indistinguishable from the old behaviour. On a
+multi-datastore application it silently binds the tenant against the wrong datastore - no exception, no log -
+which can surface much later as a cross-database read or write.</p>
+</div>
+<div class="paragraph">
+<p>If you have a call site that passes a <code>Datastore</code> subclass to this method, migrate it to look the datastore up
+explicitly and call the datastore-instance overload instead. <code>Tenants.datastoreLocator</code> still resolves a
+datastore by its type - only the <code>withId(Class, ..)</code> shortcut for it is gone:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">MultiTenantCapableDatastore datastore = Tenants.datastoreLocator.getDatastore(SomeDatastore) <span class="keyword">as</span> MultiTenantCapableDatastore
+Tenants.withId(datastore, tenantId) { ... }</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>or pass an actual domain class if that is what you meant:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">Tenants.withId(SomeDomainClass, tenantId) { ... }</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_46_startup_banner_shows_the_servlet_container_and_spring_security">46. Startup Banner Shows the Servlet Container and Spring Security</h4>
+<div class="paragraph">
+<p>The banner now reports the servlet container it is running on, and the version of Spring Security where the
+application has it, without being asked for either. Both were previously opt-in through
+<code>grails.banner.versions.include</code>.</p>
+</div>
+<div class="paragraph">
+<p>What made them opt-in was that a version which could not be determined was shown as <code>unknown</code>, so turning one
+on by default would have printed <code>Spring Security: unknown</code> for every application without it. A version shown
+by default that cannot be determined is now left out instead, which is what allows the two to be shown at all.
+A version the application asked for by name still reads <code>unknown</code> where it cannot be determined, since saying
+nothing about something that was asked for reads as the option having been ignored.</p>
+</div>
+<div class="paragraph">
+<p>The container is named as itself: an application on Tomcat shows <code>Tomcat</code>, one on Jetty shows <code>Jetty</code>. It is
+configured under the single key <code>container</code>, whichever container that turns out to be.</p>
+</div>
+<div class="paragraph">
+<p>To restore the previous banner, exclude them:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">banner</span>:
+        <span class="key">versions</span>:
+            <span class="key">exclude</span>:
+                - <span class="string"><span class="content">container</span></span>
+                - <span class="string"><span class="content">spring-security</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>An application that already asked for <code>spring-security</code> under <code>grails.banner.versions.include</code> keeps working
+and needs no change — the option is still recognised, and the version is shown either way. The same is true
+of <code>tomcat</code>, <code>jetty</code> and <code>undertow</code>, which remain available for an application that wants to be told about a
+particular container whether or not it is the one serving; naming one as well as taking the default shows it
+once, not twice.</p>
+</div>
+<div class="paragraph">
+<p>A version option that names none of the known keys is now reported as a warning after the banner is printed,
+rather than being dropped in silence.
+==== 47. Message Bundles Resolved by Spring Boot</p>
+</div>
+<div class="paragraph">
+<p>Grails no longer registers a <code>messageSource</code> bean. Spring Boot&#8217;s <code>MessageSourceAutoConfiguration</code>
+supplies a standard <code>ResourceBundleMessageSource</code>, and Grails contributes only the base-name list, which
+it records at build time rather than discovering by scanning the classpath at runtime.</p>
+</div>
+<div class="paragraph">
+<p>Most applications need no change. The rest of this section covers the cases that do.</p>
+</div>
+<div class="sect4">
+<h5 id="_spring_messages_is_now_the_configuration_surface"><code>spring.messages.*</code> is now the configuration surface</h5>
+<div class="paragraph">
+<p><code>spring.messages.*</code> was previously ignored, because Grails' own message source claimed the bean name and
+Boot&#8217;s auto-configuration backed off. It is now honoured in full — <code>encoding</code>, <code>cache-duration</code>,
+<code>fallback-to-system-locale</code>, <code>always-use-message-format</code>, <code>use-code-as-default-message</code> and
+<code>common-messages</code>.</p>
+</div>
+<div class="paragraph">
+<p>Two Grails settings give way to it:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 28.5714%;">
+<col style="width: 28.5714%;">
+<col style="width: 42.8572%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Setting</th>
+<th class="tableblock halign-left valign-top">Replacement</th>
+<th class="tableblock halign-left valign-top">Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails.i18n.cache.seconds</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.messages.cache-duration</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Deprecated, still honoured for now — see below</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails.i18n.filecache.seconds</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">None</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Ignored</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><code>grails.i18n.cache.seconds</code> is still honoured as a temporary upgrade aid: it is translated into
+<code>spring.messages.cache-duration</code> and logs a deprecation warning. As before, it applies only when reload
+is enabled, so an application that set it for development keeps the timing it had. Setting
+<code>spring.messages.cache-duration</code> explicitly always wins. Migrate before it is removed.</p>
+</div>
+<div class="paragraph">
+<p><code>grails.i18n.filecache.seconds</code> has no replacement and is ignored: it tuned the file-timestamp re-check
+of the message source Grails used to own, which Spring Boot&#8217;s has no equivalent for.</p>
+</div>
+<div class="paragraph">
+<p><code>grails.i18n.availableLocales.includePlugins</code> is replaced by <code>grails.i18n.include-plugin-bundles</code>, which
+now governs both message resolution and the locales offered by a language selector, so the two can no
+longer disagree.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_plugin_authors_base_names_must_be_namespaced">Plugin authors: base names must be namespaced</h5>
+<div class="paragraph">
+<p>A plugin&#8217;s message bundle base names must be its plugin name, or that name followed by a hyphen and a
+suffix:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code>grails-app/i18n/spring-security-core.properties            <i class="conum" data-value="1"></i><b>(1)</b>
+grails-app/i18n/spring-security-core_fr.properties
+grails-app/i18n/spring-security-core-validation.properties <i class="conum" data-value="2"></i><b>(2)</b></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>the plugin&#8217;s own name</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>further bundles inside its namespace</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The plugin build fails otherwise. A plugin shipping <code>messages.properties</code> used to contribute messages as
+a fallback behind the application&#8217;s own bundle; Spring resolves a base name to the first matching
+resource on the classpath, so such a bundle would now silently shadow, or be shadowed by, the
+application&#8217;s. Rename it into the plugin&#8217;s namespace.</p>
+</div>
+<div class="paragraph">
+<p>Applications are unaffected — there is only one application, so its base names cannot collide.</p>
+</div>
+<div class="paragraph">
+<p>A namespaced bundle still works under Grails 7, so a plugin does not need a separate source branch to
+support both. Grails 7 discovers a plugin&#8217;s bundles by scanning the plugin jar&#8217;s root for
+<code>*.properties</code> and matching locale suffixes; it never inspects the base name, so
+<code>spring-security-core.properties</code> and <code>spring-security-core_fr.properties</code> are found exactly as
+<code>messages.properties</code> was. The <code>spring-security-core</code> plugin has shipped this layout for years. Rename
+once, and the same source builds for both: Grails 7 finds the bundles by scanning, Grails 8 through the
+generated descriptor.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_every_bundle_needs_a_locale_independent_file">Every bundle needs a locale-independent file</h5>
+<div class="paragraph">
+<p>Spring Boot&#8217;s auto-configuration only activates when a configured base name has a bundle without a
+locale suffix, and it contributes the whole <code>messageSource</code> bean. An application shipping only
+<code>messages_de.properties</code> would therefore have had no message source at all, so the build now rejects it.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_ambiguous_base_names_must_be_declared">Ambiguous base names must be declared</h5>
+<div class="paragraph">
+<p>A base name ending in a valid locale identifier is ambiguous: <code>api_fr.properties</code> reads as base name
+<code>api</code> in French. Likewise <code>api_errors.properties</code> alongside <code>api.properties</code> reads as a mistyped locale
+variant of <code>api</code>. Both fail the build; declare the base name when the inference is wrong:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails {
+    i18n {
+        basenames = [<span class="string"><span class="delimiter">'</span><span class="content">api</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">api_errors</span><span class="delimiter">'</span></span>]
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_pluginawareresourcebundlemessagesource_removed"><code>PluginAwareResourceBundleMessageSource</code> removed</h5>
+<div class="paragraph">
+<p><code>org.grails.spring.context.support.PluginAwareResourceBundleMessageSource</code> and the Grails fork of
+<code>ReloadableResourceBundleMessageSource</code> beside it are removed. Code that injected <code>MessageSource</code> is
+unaffected. Code that cast the bean to either type, or called <code>getBundleCodes()</code>, must be updated —
+inject <code>MessageSource</code> and use its interface, or declare your own bean, which Boot&#8217;s auto-configuration
+backs off from.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_language_selectors_read_the_same_plugin_set_as_message_resolution">Language selectors read the same plugin set as message resolution</h5>
+<div class="paragraph">
+<p>The locales offered by <code>g:localeSelect available="true"</code> now come from the recorded bundles rather than a
+classpath scan, and they follow exactly the plugin set that message resolution uses. A plugin that was
+evicted, excluded, or failed to load no longer contributes a language entry, so a selector can no longer
+offer a translation whose messages will not resolve.</p>
+</div>
+<div class="paragraph">
+<p>An application that declares its own <code>AvailableLocaleResolver</code> bean must supply the effective descriptors
+instead of a <code>ClassLoader</code>; most applications simply rely on the one Grails registers.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_reloading_during_development">Reloading during development</h5>
+<div class="paragraph">
+<p>Editing a value in an existing bundle still reloads without a restart: Grails contributes a short
+<code>spring.messages.cache-duration</code> when reload is enabled, in place of the <code>grails.i18n.cache.seconds</code> it
+used to apply to its own message source.</p>
+</div>
+<div class="paragraph">
+<p>Adding or removing a base name now needs a restart, because Spring Boot reads the configured base names
+once when it builds the message source.</p>
+</div>
 </div>
 </div>
 </div>
@@ -11653,19 +12124,40 @@ These default to <code>true</code> in Grails to preserve compatibility, which di
     <span class="key">art</span>:
       <span class="key">display</span>: <span class="string"><span class="content">true</span></span> <span class="comment"># Whether to display the banner art (default: true).</span>
       <span class="key">file</span>: <span class="string"><span class="content">'banner.txt'</span></span> <span class="comment"># Path to a custom banner file on the classpath (default: null).</span>
+      <span class="comment"># The colour to show the art in, where the terminal colours output at all (default: 214).</span>
+      <span class="comment"># A number selects one of the 256 colours a terminal offers; a name selects one of the</span>
+      <span class="comment"># eight it has always had; 'none' leaves the art uncoloured. A value that is neither</span>
+      <span class="comment"># falls back to the default. Named colours are:</span>
+      <span class="comment">#   black, red, green, yellow, blue, magenta, cyan, white</span>
+      <span class="comment">#   bright_black, bright_red, bright_green, bright_yellow,</span>
+      <span class="comment">#   bright_blue, bright_magenta, bright_cyan, bright_white</span>
+      <span class="key">color</span>: <span class="string"><span class="content">214</span></span>
+    <span class="key">mark</span>:
+      <span class="comment"># Says how the application was started, centred under the art and above the versions:</span>
+      <span class="comment"># NATIVE for a GraalVM image, AOT CACHE for a JVM given a cache to read with</span>
+      <span class="comment"># -XX:AOTCache, AOT for one running bean definitions that were generated ahead of time.</span>
+      <span class="comment"># An ordinary start says nothing at all.</span>
+      <span class="key">display</span>: <span class="string"><span class="content">true</span></span> <span class="comment"># (default: true)</span>
+      <span class="comment"># Its own colour, brighter than the art, so the mark is not read as the last line of the</span>
+      <span class="comment"># drawing above it. Same values as grails.banner.art.color (default: 226, bright yellow).</span>
+      <span class="key">color</span>: <span class="string"><span class="content">226</span></span>
+      <span class="key">text</span>: <span class="string"><span class="content">''</span></span> <span class="comment"># Say this instead of what was detected; empty shows nothing.</span>
     <span class="key">versions</span>:
       <span class="key">display</span>: <span class="string"><span class="content">true</span></span> <span class="comment"># Whether to display version information (default: true).</span>
       <span class="key">include</span>:
-        <span class="comment"># Include optional versions (default: []).</span>
-        <span class="comment"># These will trigger class loading to determine the version</span>
-        <span class="comment"># and show 'unknown' if the class is not found.</span>
+        <span class="comment"># Include an optional version (default: []). A library that is not on the classpath, or</span>
+        <span class="comment"># that records no version, is left out rather than shown as unknown -- so including one</span>
+        <span class="comment"># costs nothing where it does not apply.</span>
+        <span class="comment"># The container being served on is already shown by default, under 'container'. These name</span>
+        <span class="comment"># a particular one instead, for an application that wants to be told about it whether or</span>
+        <span class="comment"># not it is the one serving.</span>
         <span class="comment"># Valid options are:</span>
-        - <span class="string"><span class="content">spring-security</span></span>
         - <span class="string"><span class="content">tomcat</span></span>
         - <span class="string"><span class="content">jetty</span></span>
         - <span class="string"><span class="content">undertow</span></span>
       <span class="key">exclude</span>:
-        <span class="comment"># Exclude any of the versions included by default (default: []).</span>
+        <span class="comment"># Exclude any of the versions shown by default (default: []).</span>
+        <span class="comment"># Use 'container' to leave out the servlet container, whichever one it is.</span>
         <span class="comment"># Valid options are:</span>
         - <span class="string"><span class="content">app</span></span>
         - <span class="string"><span class="content">grails</span></span>
@@ -11673,6 +12165,8 @@ These default to <code>true</code> in Grails to preserve compatibility, which di
         - <span class="string"><span class="content">jvm</span></span>
         - <span class="string"><span class="content">spring-boot</span></span>
         - <span class="string"><span class="content">spring</span></span>
+        - <span class="string"><span class="content">spring-security</span></span>
+        - <span class="string"><span class="content">container</span></span>
       <span class="key">order</span>:
         <span class="comment"># Optional ordering in which to display the versions in the banner.</span>
         <span class="comment"># You can specify any number of the options listed below</span>
@@ -11685,6 +12179,7 @@ These default to <code>true</code> in Grails to preserve compatibility, which di
         - <span class="string"><span class="content">spring-boot</span></span>
         - <span class="string"><span class="content">spring</span></span>
         - <span class="string"><span class="content">spring-security</span></span>
+        - <span class="string"><span class="content">container</span></span>
         - <span class="string"><span class="content">tomcat</span></span>
         - <span class="string"><span class="content">jetty</span></span>
         - <span class="string"><span class="content">undertow</span></span></code></pre>
@@ -16842,6 +17337,59 @@ p.delete()</code></pre>
 <div class="paragraph">
 <p>Using <code>flush: true</code> ensures the delete is executed immediately, so any errors are raised at that point.</p>
 </div>
+<div class="sect3">
+<h4 id="_deleting_every_instance">Deleting Every Instance</h4>
+<div class="paragraph">
+<p><code>deleteAll()</code> deletes every persisted instance of a domain class and returns the number of rows removed:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="predefined-type">Number</span> removed = Person.deleteAll()</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>An argument map may be supplied. It controls <strong>how</strong> the delete is executed — it does not narrow <strong>what</strong> is
+deleted. The supported argument is <code>flush</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">Person.deleteAll(<span class="key">flush</span>: <span class="predefined-constant">true</span>)</code></pre>
+</div>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<code>deleteAll()</code> and <code>deleteAll(Map)</code> remove every row for the domain class. There is no argument that
+turns them into a partial delete.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>To delete a subset, build a query and delete through it:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">Person.where { age &lt; <span class="integer">18</span> }.deleteAll()</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The other <code>deleteAll</code> overloads delete only the instances you hand them:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> (fred, bob) = [Person.get(<span class="integer">1</span>), Person.get(<span class="integer">2</span>)]
+
+Person.deleteAll(fred, bob)              <span class="comment">// varargs</span>
+Person.deleteAll([fred, bob])            <span class="comment">// any Iterable</span>
+Person.deleteAll([<span class="key">flush</span>: <span class="predefined-constant">true</span>], fred, bob)</code></pre>
+</div>
+</div>
+</div>
 </div>
 <div class="sect2">
 <h3 id="_querying">Querying</h3>
@@ -17010,7 +17558,168 @@ Note: <code>DetachedCriteria.get()</code> returns a single result from the crite
 </div>
 
 
-<h2 id="furtherReading">7.2 Further Reading on GORM</h2>
+<h2 id="multiTenancy">7.2 Multi-Tenancy</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/GORM/multiTenancy.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>A multi-tenant application serves several tenants from one deployment. GORM resolves the tenant for each
+operation from the tenant bound to the current thread, so the entry points below are how application code
+says "run this work as tenant X".</p>
+</div>
+<div class="sect2">
+<h3 id="_running_work_as_a_tenant">Running Work As a Tenant</h3>
+<div class="paragraph">
+<p><code>grails.gorm.multitenancy.Tenants</code> is the entry point.</p>
+</div>
+<div class="sect3">
+<h4 id="_withid">withId</h4>
+<div class="paragraph">
+<p><code>Tenants.withId(tenantId) { &#8230;&#8203; }</code> runs the closure as the given tenant <strong>and manages the session for it</strong>: a
+session is opened for the scope of the call and closed on exit. In <code>DATABASE</code> mode that is also what selects
+the tenant&#8217;s connection, so this is the method to reach for in almost all application code.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.gorm.multitenancy.Tenants</span>
+
+Tenants.withId(<span class="string"><span class="delimiter">'</span><span class="content">acme</span><span class="delimiter">'</span></span>) {
+    <span class="keyword">new</span> Person(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">Fred</span><span class="delimiter">'</span></span>).save()
+    Person.count()
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The closure may take up to two parameters — the tenant id and the session:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">Tenants.withId(<span class="string"><span class="delimiter">'</span><span class="content">acme</span><span class="delimiter">'</span></span>) { <span class="predefined-type">String</span> tenantId -&gt; Person.count() }
+Tenants.withId(<span class="string"><span class="delimiter">'</span><span class="content">acme</span><span class="delimiter">'</span></span>) { <span class="predefined-type">String</span> tenantId, session -&gt; Person.count() }</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>An overload selects which datastore the tenant applies to by the domain class that maps to it, useful when an
+application has more than one datastore:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">Tenants.withId(Person, <span class="string"><span class="delimiter">'</span><span class="content">acme</span><span class="delimiter">'</span></span>) { Person.count() }</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_withtenant">withTenant</h4>
+<div class="paragraph">
+<p><code>Tenants.withTenant(tenantId) { &#8230;&#8203; }</code> binds the tenant to the current thread and nothing more. It opens no
+session and manages no connection — the closure runs in whatever session the caller has already established,
+and the caller remains responsible for opening and closing it.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">Person.withNewSession {
+    Tenants.withTenant(<span class="string"><span class="delimiter">'</span><span class="content">acme</span><span class="delimiter">'</span></span>) {
+        Person.count()
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Reach for <code>withTenant</code> when a session already exists and you only need to change which tenant the enclosed
+work resolves to; reach for <code>withId</code> when the work needs a session of its own. As with <code>withId</code>, a
+<code>withTenant(Class, tenantId, closure)</code> overload picks the datastore by domain class.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_other_entry_points">Other Entry Points</h4>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Method</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Tenants.currentId()</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The tenant id currently in effect, resolved from the bound tenant or, failing that, the configured tenant resolver. Throws if none can be found.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Tenants.withCurrent { &#8230;&#8203; }</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Runs the closure under the tenant <code>currentId()</code> resolves to.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Tenants.withoutId { &#8230;&#8203; }</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Runs the closure with no tenant. In <code>DATABASE</code> mode this targets the default data source; in the shared-connection modes it drops the tenant filter from queries. Use with care — it sees every tenant&#8217;s data.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Tenants.eachTenant { &#8230;&#8203; }</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Runs the closure once per tenant.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_reading_the_bound_tenant">Reading the Bound Tenant</h3>
+<div class="paragraph">
+<p><code>grails.gorm.multitenancy.CurrentTenantHolder</code> holds the tenant bound to the current thread. A thread can
+hold a different tenant for each datastore in play, so lookups are scoped by datastore:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.gorm.multitenancy.CurrentTenantHolder</span>
+
+<span class="predefined-type">Serializable</span> tenantId = CurrentTenantHolder.get(datastore)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>get()</code> without a datastore returns the bound tenant when the answer is unambiguous, <code>null</code> when no tenant is
+bound, and throws <code>TenantException</code> when different datastores hold different tenants — returning an arbitrary
+one of them is how cross-tenant reads and writes happen. Prefer <code>get(Datastore)</code>.</p>
+</div>
+<div class="paragraph">
+<p>The remaining methods bind and unbind:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">CurrentTenantHolder.set(datastore, <span class="string"><span class="delimiter">'</span><span class="content">acme</span><span class="delimiter">'</span></span>)
+CurrentTenantHolder.remove(datastore)
+
+CurrentTenantHolder.withTenant(datastore, <span class="string"><span class="delimiter">'</span><span class="content">acme</span><span class="delimiter">'</span></span>) { <span class="comment">/* bound for this closure only */</span> }
+CurrentTenantHolder.withoutTenant(datastore) { <span class="comment">/* no tenant for this closure only */</span> }</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Bindings may also be made against a datastore <strong>type</strong> rather than an instance; a binding for a specific
+instance wins over one for its type.</p>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+Prefer <code>Tenants</code> in application code. <code>CurrentTenantHolder</code> is the lower-level thread binding that
+<code>Tenants</code> is built on, and is useful mainly when integrating with code that manages sessions itself.
+</td>
+</tr>
+</table>
+</div>
+</div>
+
+
+<h2 id="furtherReading">7.3 Further Reading on GORM</h2>
 
 <div class='contribute-btn'>
     <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/GORM/furtherReading.adoc"'>
@@ -37276,6 +37985,87 @@ You can find the full list of available CodeNarc rules at <a href="https://coden
 <div class="paragraph">
 <p>By default Grails looks in <code>messages.properties</code> for messages unless the user has specified a locale. You can create your own message bundle by simply creating a new properties file that ends with the locale you are interested in. For example <code>messages_en_GB.properties</code> for British English.</p>
 </div>
+<div class="sect3">
+<h4 id="_configuration">Configuration</h4>
+<div class="paragraph">
+<p>Message resolution is Spring Boot&#8217;s, so the standard <code>spring.messages.*</code> properties apply:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">spring</span>:
+    <span class="key">messages</span>:
+        <span class="key">encoding</span>: <span class="string"><span class="content">UTF-8</span></span>
+        <span class="key">cache-duration</span>: <span class="string"><span class="content">5s</span></span>
+        <span class="key">fallback-to-system-locale</span>: <span class="string"><span class="content">false</span></span>
+        <span class="key">use-code-as-default-message</span>: <span class="string"><span class="content">false</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Grails sets <code>fallback-to-system-locale</code> to <code>false</code> and carries <code>grails.views.gsp.encoding</code> over to
+<code>spring.messages.encoding</code>, but an application may override either.</p>
+</div>
+<div class="paragraph">
+<p>You do not normally need to set <code>spring.messages.basename</code>. Grails records the bundles an application
+and each of its plugins ship at build time and composes the list for you. Setting it yourself is still
+supported and is the way to reach a bundle outside <code>grails-app/i18n</code> — anything you declare is kept and
+takes precedence over the discovered base names.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_base_names">Base names</h4>
+<div class="paragraph">
+<p>Every bundle needs a locale-independent file. <code>messages_de.properties</code> without <code>messages.properties</code>
+means Spring Boot&#8217;s message-source auto-configuration never activates and the application has no
+message source at all, so the build rejects it.</p>
+</div>
+<div class="paragraph">
+<p>An application may use any base name, with one reservation: a base name ending in a valid locale
+identifier is ambiguous, because <code>api_fr.properties</code> reads as base name <code>api</code> in French. Declare the
+base name when you mean something else:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails {
+    i18n {
+        basenames = [<span class="string"><span class="delimiter">'</span><span class="content">api</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">api_errors</span><span class="delimiter">'</span></span>]
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_plugin_bundles">Plugin bundles</h4>
+<div class="paragraph">
+<p>A plugin&#8217;s base names must be its plugin name, or that name followed by a hyphen and a suffix — so the
+<code>spring-security-core</code> plugin may ship <code>spring-security-core.properties</code> and
+<code>spring-security-core-validation.properties</code>, but not <code>messages.properties</code>. Spring resolves a base name
+to the first matching resource on the classpath, so a shared base name would silently shadow another
+bundle rather than merge with it. The plugin build enforces this.</p>
+</div>
+<div class="paragraph">
+<p>Precedence runs application first, then plugins. Where several plugins define the same code, the
+reverse of Grails' plugin topological order wins, which is the behaviour applications had before Spring
+Boot owned the message source. An application&#8217;s own bundle always overrides every plugin&#8217;s, so
+redefining a plugin&#8217;s code in <code>messages.properties</code> is the supported way to change it.</p>
+</div>
+<div class="paragraph">
+<p>Set <code>grails.i18n.include-plugin-bundles</code> to <code>false</code> to leave plugin bundles out entirely.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_reloading_during_development">Reloading during development</h4>
+<div class="paragraph">
+<p>Editing a value in an existing bundle is picked up without a restart. Grails contributes a short
+<code>spring.messages.cache-duration</code> automatically when reload is enabled; without one Spring caches every
+bundle for the lifetime of the application. Set the property yourself to override the duration.</p>
+</div>
+<div class="paragraph">
+<p>Adding a locale file for a base name that already exists resolves without a restart too, though the
+language selector described in <a href="#changingLocales">[changingLocales]</a> only lists it once the build has regenerated its
+metadata. Adding or removing a base name needs a restart: Spring Boot reads the configured base names
+once, when it builds the message source.</p>
+</div>
+</div>
 
 <a name="13.2 Changing Locales"><!-- Legacy link --></a>
 <h2 id="changingLocales">17.2 Changing Locales</h2>
@@ -37315,15 +38105,14 @@ You can find the full list of available CodeNarc rules at <a href="https://coden
 <p>Alternatively, iterate the published <code>availableLocales</code> list directly.</p>
 </div>
 <div class="paragraph">
-<p>By default every <code>&#42;.properties</code> bundle on the classpath is considered, so locales contributed by plugins &mdash; whose bundles are namespaced (for example <code>spring-security-core_fr.properties</code>) &mdash; are listed alongside your application&#8217;s own. Candidate suffixes are validated against the ISO language codes (and the ISO country codes when a country is present), so non-i18n properties files (such as <code>application.properties</code>) are ignored. To restrict discovery to your application&#8217;s own <code>messages_&#42;.properties</code> bundles, set <code>grails.i18n.availableLocales.includePlugins=false</code>:</p>
+<p>The list is drawn from the message bundles your application and its plugins actually ship, recorded at build time, so it offers only real translations. It follows exactly the same set of plugins that message resolution uses: a plugin that was evicted, excluded, or failed to load contributes neither messages nor a language entry, so the selector can never offer a language whose messages will not resolve. To list only your application&#8217;s own translations, set <code>grails.i18n.include-plugin-bundles=false</code>:</p>
 </div>
 <div class="listingblock">
 <div class="title">grails-app/conf/application.yml</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
     <span class="key">i18n</span>:
-        <span class="key">availableLocales</span>:
-            <span class="key">includePlugins</span>: <span class="string"><span class="content">false</span></span>   <span class="comment"># list only the application's own translations</span></code></pre>
+        <span class="key">include-plugin-bundles</span>: <span class="string"><span class="content">false</span></span>   <span class="comment"># list only the application's own translations</span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -52353,7 +53142,7 @@ grails.plugin.springsecurity.ui.forgotPassword.emailSubject = <span class="strin
 <div class="sect3">
 <h4 id="_i18n">I18N</h4>
 <div class="paragraph">
-<p>All of the plugin&#8217;s displayed strings are localized and stored in the plugin&#8217;s <code>grails-app/i18n/messages.spring-security-ui.properties</code> file. You can override any of these values by putting an override in your application&#8217;s <code>grails-app/i18n/messages.properties</code> file.</p>
+<p>All of the plugin&#8217;s displayed strings are localized and stored in the plugin&#8217;s <code>grails-app/i18n/spring-security-ui.properties</code> file. You can override any of these values by putting an override in your application&#8217;s <code>grails-app/i18n/messages.properties</code> file, which takes precedence over every plugin&#8217;s bundles.</p>
 </div>
 </div>
 <div class="sect3">
@@ -58575,6 +59364,476 @@ Configuration of both an HTTP and HTTPS connector via application properties is 
 <p><a href="https://docs.spring.io/spring-boot/docs/current/reference/html/common-application-properties.html">Spring Boot: Common Application Properties</a></p>
 </li>
 </ul>
+</div>
+</div>
+
+
+<h2 id="deploymentAot">25.4 Ahead-of-Time Processing</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/deployment/deploymentAot.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Spring&#8217;s ahead-of-time (AOT) processing moves bean wiring from startup to build time. Instead of scanning the classpath, reading annotations and evaluating conditions on every boot, the build generates Java source that registers the bean definitions directly, and the application runs that.</p>
+</div>
+<div class="paragraph">
+<p>Two things follow from it: startup does less work, and the application becomes eligible for a GraalVM native image, which cannot perform the classpath scanning and reflection that normal startup relies on.</p>
+</div>
+<div class="paragraph">
+<p>AOT is opt-in.</p>
+</div>
+<div class="sect2">
+<h3 id="_enabling_aot">Enabling AOT</h3>
+<div class="paragraph">
+<p>Apply the Spring Boot AOT plugin alongside the Grails plugins:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">apply <span class="key">plugin</span>: <span class="string"><span class="delimiter">'</span><span class="content">org.springframework.boot.aot</span><span class="delimiter">'</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This adds a <code>processAot</code> task, which <code>bootJar</code> then runs as part of the build. Nothing about a normal <code>bootRun</code> or <code>bootJar</code> changes until the application is started with AOT enabled:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">java -Dspring.aot.enabled=true -jar build/libs/myapp.jar</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>An application started this way logs <code>Starting AOT-processed Application</code> rather than <code>Starting Application</code>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_the_environment_the_definitions_are_generated_for">The environment the definitions are generated for</h3>
+<div class="paragraph">
+<p><code>processAot</code> builds the bean definitions the packaged application will use, so it runs in the environment those definitions are meant for. The Grails Gradle plugin sets <code>grails.env</code> to <code>production</code> on the task; nothing needs to be configured for it.</p>
+</div>
+<div class="paragraph">
+<p>It matters because an application declares different beans in different environments. Under development the URL mappings holder is a proxy whose type cannot be determined without creating it, and generation fails naming a bean unrelated to anything in the application:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code>Field urlMappings in org.grails.web.mapping.servlet.UrlMappingsErrorPageCustomizer
+required a bean of type 'grails.web.mapping.UrlMappings' that could not be found.</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Reload-mode beans have no meaning in a packaged artifact, so generating in production is correct as well as necessary. To generate for a different environment, set the property on the task yourself:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">tasks.named(<span class="string"><span class="delimiter">'</span><span class="content">processAot</span><span class="delimiter">'</span></span>) {
+    systemProperty <span class="string"><span class="delimiter">'</span><span class="content">grails.env</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">staging</span><span class="delimiter">'</span></span>
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_what_aot_changes_at_runtime">What AOT changes at runtime</h3>
+<div class="paragraph">
+<p>An AOT-processed application registers the same beans as a normal one. The difference is the annotation-processing infrastructure it no longer needs, since the work those components do has already been done:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>internalConfigurationAnnotationProcessor</code></p>
+</li>
+<li>
+<p><code>internalAutowiredAnnotationProcessor</code></p>
+</li>
+<li>
+<p><code>internalCommonAnnotationProcessor</code></p>
+</li>
+<li>
+<p>Spring Boot&#8217;s shared metadata reader factory</p>
+</li>
+<li>
+<p>Grails' own configuration class post-processor</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Application beans, plugin beans and auto-configuration beans are all present as usual.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_limitations">Limitations</h3>
+<div class="paragraph">
+<p>Beans contributed from a plugin&#8217;s <code>beanRegistrar()</code> are not generated. Spring marks them as registrar-owned and skips them, and they are registered again at runtime when Grails applies the plugin registrars. They behave correctly, but the plugin scan that produces them still runs on every start, so they do not benefit from generation.</p>
+</div>
+<div class="paragraph">
+<p>Writing bean definitions that hold live objects will fail generation. A definition is a recipe rather than an instance, and there is no general way to generate code that reconstructs an arbitrary object, so a constructor argument or property value holding one cannot be processed:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code>UnsupportedTypeValueCodeGenerationException:
+    Code generation does not support com.example.SomeService</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Reference another bean by name instead, or express the collaborator as a nested bean definition, and the generator can emit both.</p>
+</div>
+<div class="paragraph">
+<p>Abstract bean definitions — templates that exist only to be inherited through <code>bean.parent</code> — are excluded from generation, because Spring has no representation for them in generated code. Definitions that inherit from one are unaffected: they are generated from their merged definition, with the inherited values already folded in.</p>
+</div>
+<div class="paragraph">
+<p>AOT processing on its own does not make an application ready for a native image. A native image additionally requires reachability metadata covering the resources and reflection an application performs at runtime.</p>
+</div>
+<div class="sect3">
+<h4 id="_recording_reflection_for_a_native_image">Recording reflection for a native image</h4>
+<div class="paragraph">
+<p>Some of that metadata is written for you. The build reads its own output — the compiled artefacts, and the manifest naming each compiled page — and registers them, so a controller, a domain class or a GSP survives into an image without anything having to run.</p>
+</div>
+<div class="paragraph">
+<p>What that cannot describe is the framework reflecting on its own behalf while a request is served: a controller method reached through Groovy&#8217;s dispatch, a conversion asked for while a form is bound. Those are not the application&#8217;s classes, so nothing in the build output names them. An image built without them starts, serves its home page, and fails on the first request that takes such a path — with <code>MissingReflectionRegistrationError</code>, naming a method nobody wrote.</p>
+</div>
+<div class="paragraph">
+<p><code>traceNativeMetadata</code> runs the application under GraalVM&#8217;s tracing agent and records what it actually did:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails {
+    nativeMetadata {
+        paths = [<span class="string"><span class="delimiter">'</span><span class="content">/</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">/login</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">/book</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">/book/create</span><span class="delimiter">'</span></span>]
+        forms = [<span class="string"><span class="delimiter">'</span><span class="content">/book/create</span><span class="delimiter">'</span></span>]
+    }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">./gradlew traceNativeMetadata</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The result is merged into <code>src/native/resources/META-INF/native-image</code>, alongside the source rather than under <code>build</code>, because which paths an image was built to cover is worth reviewing and worth committing.</p>
+</div>
+<div class="paragraph">
+<p><code>paths</code> are asked for. <code>forms</code> are asked for <strong>and submitted</strong>: the page is read, the fields the form declares are filled in, and they are posted to the action the form names. Submitting matters separately from rendering, because binding a form is a different half of the framework from rendering one — and it is the half that converts. A checkbox arrives as a string and lands on a boolean property, so a form submitted without one never asks the conversion service anything, and the image is built without the answer.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_pages_behind_a_login">Pages behind a login</h4>
+<div class="paragraph">
+<p>Forms are submitted before paths are asked for, whichever order they appear in the configuration, and the session a form establishes is carried through the rest of the trace. That is what makes a protected page traceable: list its login form, and the pages named in <code>paths</code> are reached as a signed-in user.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails {
+    nativeMetadata {
+        forms = [<span class="string"><span class="delimiter">'</span><span class="content">/login?username=admin&amp;password=secret</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">/book/create</span><span class="delimiter">'</span></span>]
+        paths = [<span class="string"><span class="delimiter">'</span><span class="content">/</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">/book</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">/book/show/1</span><span class="delimiter">'</span></span>]
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A form may be told what to put in it with a query string, as <code>/login</code> is above. Only fields the form actually declares are set from it; a value naming a field that is not there is reported rather than posted, because it was meant for a form that has since changed.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_choosing_which_form">Choosing which form</h4>
+<div class="paragraph">
+<p>A page often carries more than one form — a layout&#8217;s search box or sign-out button ahead of the page&#8217;s own. The form declaring the most fields is the one submitted, and the trace output says which it was:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code>POST /book/save -&gt; 200  (4 fields, from /book/create form 2 of 2, the one with the most fields)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Where the wanted form is not the fullest, name it by its <code>id</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">forms = [<span class="string"><span class="delimiter">'</span><span class="content">/book/create#bookForm</span><span class="delimiter">'</span></span>]</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_when_the_trace_fails">When the trace fails</h4>
+<div class="paragraph">
+<p>The task fails if what was recorded is not what was asked for: a request that answers with an error or a not-found, a page listed under <code>forms</code> that carries no form, a named form that is not on the page, or a form page that answered from somewhere else.</p>
+</div>
+<div class="paragraph">
+<p>That last one is the case worth knowing about. A form page reached without whatever makes it reachable answers from the login form instead, and every check after that passes — the page it landed on has a form, its fields are filled in, it posts, and it answers successfully. What would be reported is the login form submitted a second time under the name of the page that was wanted, while the binding the page was listed for went unexercised. So a form that answers from anywhere other than where it was asked for fails the trace, and the message names where it landed.</p>
+</div>
+<div class="paragraph">
+<p>Redirects are followed, so an application that sends <code>/</code> to its real home page records that page. A request that ends up somewhere other than where it was asked for is reported as a warning naming where it landed — usually the sign that a page needs its login form listed under <code>forms</code>.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The agent ships with GraalVM rather than with a JDK, and it must trace the archive the image will be built from — which is compiled for GraalVM&#8217;s Java. The task uses the project toolchain, which for a project that builds an image is already a GraalVM; <code>grails.nativeMetadata.javaExecutable</code> points it elsewhere.
+</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+The agent records only what ran. A path that is not listed is not covered, and it will be missing in the way that only appears when somebody uses that page. Treat the list as the coverage it is, and extend it as the application grows.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+
+
+<h2 id="deploymentAotCache">25.5 Ahead-of-Time Caching</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/deployment/deploymentAotCache.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Spring&#8217;s AOT processing removes the work of <strong>deciding</strong> what the beans are. What remains is the work the JVM does regardless: loading and linking classes, and interpreting methods until they are compiled. An AOT cache removes most of that as well.</p>
+</div>
+<div class="paragraph">
+<p>The JDK can record a run of an application — the classes it loaded and linked, and the profiles of the methods it executed — into a cache file, and read that file on the next start instead of doing the work again. The cache is a JDK feature rather than a framework one, so it applies to the whole application: the framework, Spring, Hibernate, and the application&#8217;s own classes alike.</p>
+</div>
+<div class="paragraph">
+<p>It requires JDK 25 or later.</p>
+</div>
+<div class="paragraph">
+<p>Training is POSIX-only. The cache is written as the training JVM exits normally, so the run has to be asked to stop rather than killed — and a child process on Windows can only be killed. <code>trainAotCache</code> says so and stops rather than training a run it could not end. Reading a cache has no such restriction; only producing one does.</p>
+</div>
+<div class="sect2">
+<h3 id="_enabling_the_cache">Enabling the cache</h3>
+<div class="paragraph">
+<p>The cache is produced by running the application, so it is off unless asked for. Say which pages matter:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails {
+    aotCache {
+        enabled = <span class="predefined-constant">true</span>
+        paths = [<span class="string"><span class="delimiter">'</span><span class="content">/</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">/login</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">/book/index</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">/book/show/1</span><span class="delimiter">'</span></span>]
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>That adds two tasks. <code>extractAotCacheApplication</code> unpacks the executable jar into <code>build/aot-cache/application</code>, and <code>trainAotCache</code> runs what it unpacked, asks for each path, stops it, and leaves the cache beside the extracted application:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">./gradlew trainAotCache</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code>Trained myapp.aot (167 MB) over 4 paths</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The application is unpacked first because a cache is read against the layout it was trained on. An executable jar loads its dependencies through a nested-jar classloader; the extracted form loads them as ordinary jars on the classpath, and only the second is a layout a cache can be reused against.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_running_with_the_cache">Running with the cache</h3>
+<div class="paragraph">
+<p><code>build/aot-cache</code> is what is deployed: the extracted application, and beside it the cache and what it was trained from.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code>build/aot-cache/
+├── application/          <i class="conum" data-value="1"></i><b>(1)</b>
+├── myapp.aot             <i class="conum" data-value="2"></i><b>(2)</b>
+└── aot-cache.properties  <i class="conum" data-value="3"></i><b>(3)</b></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>the extracted application, which is the layout the cache was trained against</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>the cache</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>what the cache was trained from</td>
+</tr>
+</table>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">java -XX:AOTCache=build/aot-cache/myapp.aot -Dspring.aot.enabled=true -Dgrails.env=production \
+    -jar build/aot-cache/application/myapp.jar</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>It does not matter which directory it is started from. Moving the whole of <code>aot-cache</code> elsewhere is fine too — a container image that unpacks it under <code>/opt</code> is the usual case — as long as the cache and <code>application/</code> move together and keep their timestamps, which the cache checks the archive against. Copying only the jar out of <code>application/</code> does not work, and not because of the cache: the extracted layout reaches its dependencies through <code>lib/</code> beside it.</p>
+</div>
+<div class="paragraph">
+<p>A JVM given a cache it cannot use does not fail. It reports why, ignores the cache, and starts as it would have anyway — so an invalid cache costs the startup time it was meant to save, silently, and without any other symptom.</p>
+</div>
+<div class="paragraph">
+<p>Adding <code>-XX:AOTMode=on</code> turns that into a failure to start, which is worth doing wherever the cache is the reason the deployment meets its startup time. A cache that has been invalidated then stops the process rather than quietly making it slower:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code>[0.003s][warning][aot] Unable to use AOT cache.
+[0.003s][error  ][aot] Loading static archive failed.</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_what_the_training_run_should_do">What the training run should do</h3>
+<div class="paragraph">
+<p>A cache makes the next start fast at whatever the training run did. Training a run that only refreshes the context records the framework starting, and that alone is most of what the startup time is — so most of the benefit is there before any path is named.</p>
+</div>
+<div class="paragraph">
+<p>Asking for paths adds a little to that and a good deal more to the first request. Each path asked for during training profiles the code that answers it — URL mapping, the controller, GSP rendering, the data access behind it — so the first real request finds that work done rather than doing it itself.</p>
+</div>
+<div class="paragraph">
+<p>So <code>paths</code> is worth setting for the pages that matter on a cold start: the ones a load balancer hits first, and the ones a user sees first. An application whose startup time is all that matters can leave it empty and still get most of the benefit.</p>
+</div>
+<div class="paragraph">
+<p>A path that answers with an error still profiles the code that produced the error, which is code the application runs too, so nothing here fails the build. The run is a recording, not a test.</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+The training run is a real run of the application. It executes bootstrap code, connects to whatever the configuration points at, and writes whatever that code writes. Point it at a build-time or throwaway database, never at production.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>It follows that the application has to be able to start in the environment it is trained in, which is production by default — the environment the cache is for. A datasource that only exists in development is not there during training, and the run fails with whatever the application says when it cannot reach its database:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code>The training run ended before it started serving.
+What it printed is in build/tmp/trainAotCache/training.log</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The build fails rather than carrying on, because a cache that was never written is indistinguishable at deployment time from one that was.</p>
+</div>
+<div class="paragraph">
+<p>Where the defaults are not right, the rest of the run is configurable:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails {
+    aotCache {
+        enabled = <span class="predefined-constant">true</span>
+        paths = [<span class="string"><span class="delimiter">'</span><span class="content">/</span><span class="delimiter">'</span></span>]
+        jvmArguments = [<span class="string"><span class="delimiter">'</span><span class="content">-Dspring.aot.enabled=true</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">-Dgrails.env=production</span><span class="delimiter">'</span></span>]
+        port = <span class="integer">18080</span>
+        startTimeoutSeconds = <span class="integer">120</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>jvmArguments</code> is given to the training run <strong>and</strong> has to be given to every run that reads the cache. A cache records what it saw; a run configured differently from the training run is a different application as far as the cache is concerned, and its cache will be declined.</p>
+</div>
+<div class="paragraph">
+<p>Because those arguments have to be reproduced at deployment time, they are recorded in <code>aot-cache.properties</code>, which ships beside the cache. Keep credentials out of them and pass them to the training run another way.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_knowing_whether_a_cache_still_applies">Knowing whether a cache still applies</h3>
+<div class="paragraph">
+<p>A cache is read only by the JDK build that wrote it, against the archive it was trained on, with the arguments it was trained with. Any of those changing invalidates it, and the only symptom is that startup is no longer fast.</p>
+</div>
+<div class="paragraph">
+<p>Training runs on the project&#8217;s Java toolchain where it declares one, so the JDK recorded here is the one the application is compiled for rather than whichever one happened to run Gradle.</p>
+</div>
+<div class="paragraph">
+<p>So the training run writes <code>aot-cache.properties</code> beside the cache, recording what it was made from:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code>cache.file=myapp.aot
+cache.bytes=175019584
+application.archive=myapp-0.1.jar
+application.sha256=6f1b...
+training.arguments=-Dspring.aot.enabled=true -Dgrails.env=production
+training.paths=/ /login /book/index /book/show/1
+java.runtime.version=26.0.2+13
+java.vendor=BellSoft
+os.name=Mac OS X
+os.arch=aarch64</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A deployment can compare those values against the JVM it is about to start and the jar it is about to run, and decide whether it has a cache that applies or one that will be quietly ignored. Because the cache is tied to an exact JDK build, a CI pipeline that produces the cache must publish it alongside the JDK it was produced with, and a base image upgrade invalidates every cache built against the previous one.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_what_it_is_worth">What it is worth</h3>
+<div class="paragraph">
+<p>Measured on a Grails application with GORM for Hibernate, security and asset pipeline, best of three starts on the same machine and JDK:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 16.6666%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Start</th>
+<th class="tableblock halign-left valign-top">Startup</th>
+<th class="tableblock halign-left valign-top">First hit of four cold paths</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Ordinary</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2.594s</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spring AOT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2.284s</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spring AOT with a cache trained on refresh only</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1.015s</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.495s</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spring AOT with a cache trained over those paths</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.933s</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.332s</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The shape of that is the point. Spring&#8217;s AOT processing on its own moves less than might be expected, because deciding what the beans are was never most of the cost — loading and linking the classes was, and that is what the cache removes, cutting startup by more than half. Naming the paths takes a further tenth off startup and a third off the first requests.</p>
+</div>
+<div class="paragraph">
+<p>An AOT cache and a native image solve the same problem differently and are not combined: a native image has no cache to read because it has already done all of this at build time. The cache is what an application gets when it stays on the JVM — including applications a native image cannot yet build, which is most of those using Hibernate.</p>
 </div>
 </div>
 
