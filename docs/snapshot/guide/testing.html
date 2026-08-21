@@ -239,6 +239,9 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
                     <div class="toc-item" style="margin-left:0px"><a href="#testPhases"><strong>15.6</strong><span>Custom Test Phases</span></a>
                     </div>
                     
+                    <div class="toc-item" style="margin-left:0px"><a href="#testingMongodb"><strong>15.7</strong><span>Testing GORM for MongoDB</span></a>
+                    </div>
+                    
                 </div>
                 
 
@@ -3510,6 +3513,102 @@ dependencies {
 </div>
 <div class="paragraph">
 <p>With this setup, <code>./gradlew check</code> will execute the <code>test</code>, <code>integrationTest</code>, and <code>functionalTest</code> tasks in order, and the merged test report will include results from all phases.</p>
+</div>
+</div>
+
+
+<h2 id="testingMongodb">15.7 Testing GORM for MongoDB</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/testing/testingMongodb.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>The <code>grails-testing-support-mongodb</code> library provides Testcontainers-based MongoDB support for both unit and integration tests.</p>
+</div>
+<div class="paragraph">
+<p>When creating an application with <a href="https://start.grails.org">Grails Forge</a>, select the <code>mongodb-testing-support</code> feature together with <code>gorm-mongodb</code> or <code>mongo-sync</code> to include this dependency automatically.</p>
+</div>
+<div class="sect1">
+<h2 id="_installation">Installation</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Add the following dependency to your <code>build.gradle</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">testImplementation "org.apache.grails.testing:grails-testing-support-mongodb"</code></pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Docker must be available for Testcontainers to start a MongoDB container.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_unit_testing">Unit Testing</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Extend <code>org.apache.grails.testing.mongo.AutoStartedMongoSpec</code> in unit tests. A MongoDB Testcontainers instance is started automatically and injected into the specification.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">org.apache.grails.testing.mongo.AutoStartedMongoSpec</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.mapping.mongo.MongoDatastore</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Shared</span>
+
+<span class="type">class</span> <span class="class">BookSpec</span> <span class="directive">extends</span> AutoStartedMongoSpec {
+
+    <span class="annotation">@Shared</span>
+    MongoDatastore mongoDatastore
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">test mongo connection</span><span class="delimiter">&quot;</span></span>() {
+        <span class="key">expect</span>:
+        mongoHost
+        mongoPort
+        dbContainer.running
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If a shared <code>MongoDatastore</code> field is declared and <code>shouldInitializeDatastore()</code> returns <code>true</code> (the default), the datastore is bootstrapped against domain classes in the packages returned by <code>getMongoPackages()</code> (defaults to the package of the specification).</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_integration_testing">Integration Testing</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>For integration tests, Spock global extensions start a single MongoDB container for the test run when MongoDB is not already listening on port <code>27017</code>. Connection details are exposed via system properties such as <code>grails.mongodb.url</code>, <code>grails.mongodb.host</code>, and <code>grails.mongodb.port</code>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_mongodb_container_version">MongoDB Container Version</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The MongoDB image version defaults to <code>7.0.19</code>. Override it with the <code>mongodbContainerVersion</code> system property:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">tasks.withType(Test).configureEach {
+    systemProperty <span class="string"><span class="delimiter">&quot;</span><span class="content">mongodbContainerVersion</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">7.0.25</span><span class="delimiter">&quot;</span></span>
+}</code></pre>
+</div>
+</div>
 </div>
 </div>
 
