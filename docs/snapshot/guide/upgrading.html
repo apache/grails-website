@@ -3999,6 +3999,47 @@ from the CAS plugin, so enabling <code>cas.useSingleSignout</code> now has the d
 <p>The Spring Security CAS configuration reference in this guide documents the setting in full.</p>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_49_gsps_record_a_source_checksum_instead_of_a_modification_time">49. GSPs Record a Source Checksum Instead of a Modification Time</h4>
+<div class="paragraph">
+<p>A GSP used to carry the modification time of its <code>.gsp</code> source, precompiled pages baking it into the
+generated class as a <code>LAST_MODIFIED</code> constant. Git stores no modification times, so every fresh clone or CI
+checkout gave each source a new one, and the generated classes differed on every checkout even when the
+sources were byte-for-byte identical. Because <code>LAST_MODIFIED</code> was a compile-time constant it was part of the
+class&#8217;s ABI, so the difference survived even Gradle&#8217;s compile-classpath normalization and every task
+downstream of a jar containing precompiled GSPs missed the build cache.</p>
+</div>
+<div class="paragraph">
+<p>Grails 8 records a <code>SOURCE_CHECKSUM</code> of the page source instead, for pages compiled at build time and at
+runtime alike. Identical sources now compile to identical bytes on every machine.</p>
+</div>
+<div class="paragraph">
+<p>Runtime reloading, described in
+<a href="#makingChangesToADeployedApplication">Making Changes to a Deployed Application</a>, is unaffected: a page is
+reloaded when its source no longer matches the recorded checksum. Detection is more accurate than it was.
+An edit is caught whenever the source&#8217;s modification time or length moves, which any ordinary save does;
+previously a save landing within the old granularity window went unnoticed until a later edit moved it
+clear. In the other direction, a page whose modification time moves without its content changing is no
+longer recompiled, so touching a file — or a build step copying views into place — no longer reloads pages
+that did not actually change. If you were using <code>touch</code> to force a page to recompile, edit the page instead.</p>
+</div>
+<div class="paragraph">
+<p><strong>Removed API.</strong> <code>GroovyPageMetaInfo.getLastModified()</code>, <code>setLastModified(long)</code> and
+<code>applyLastModifiedFromResource(Resource)</code> are gone, as are <code>GroovyPageParser.getLastModified()</code> and
+<code>setLastModified(long)</code>. Use <code>GroovyPageMetaInfo.getSourceChecksum()</code> to identify the source a page was
+compiled from. Generated page classes no longer declare a <code>LAST_MODIFIED</code> constant.</p>
+</div>
+<div class="paragraph">
+<p><strong>Removed setting.</strong> <code>grails.gsp.reload.granularity</code> is gone. It existed to absorb rounding differences
+between modification times, which comparing content does not need; setting it now has no effect.
+<code>grails.gsp.reload.interval</code> is unchanged.</p>
+</div>
+<div class="paragraph">
+<p>A GSP precompiled by Grails 7 and shipped inside a binary plugin carries no checksum. Such a page is served
+normally; it is simply never reload-checked, which was already the case for views resolved out of a plugin
+jar.</p>
+</div>
+</div>
 </div>
 
 
