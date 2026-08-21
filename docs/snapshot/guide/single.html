@@ -6472,6 +6472,46 @@ once when it builds the message source.</p>
 </div>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_48_cas_single_sign_out_is_opt_in">48. CAS Single Sign-Out Is Opt-In</h4>
+<div class="paragraph">
+<p><code>grails.plugin.springsecurity.cas.useSingleSignout</code> now defaults to <code>false</code>. It previously defaulted
+to <code>true</code>, so every CAS application registered the CAS client&#8217;s <code>SingleSignOutFilter</code> whether or not
+it wanted single sign-out.</p>
+</div>
+<div class="paragraph">
+<p>The default changed because enabling single sign-out is a security trade-off rather than a free
+feature. CAS maps the service ticket to the HTTP session id, so single sign-out cannot work while
+session fixation prevention is replacing the session when the user authenticates. Enabling
+<code>cas.useSingleSignout</code> disables session fixation prevention, and an application should make that
+choice deliberately.</p>
+</div>
+<div class="paragraph">
+<p>If your application relies on CAS single sign-out, enable it explicitly:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/application.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.cas.useSingleSignout = <span class="predefined-constant">true</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The plugin logs a warning at startup when it is enabled, noting that session fixation prevention has
+been disabled.</p>
+</div>
+<div class="paragraph">
+<p><strong>Single sign-out did not actually work before Grails 8</strong>, so an application upgrading from an
+earlier version is unlikely to lose working behaviour. The plugin set
+<code>useSessionFixationPrevention = false</code> from <code>doWithSpring</code>, but it declares <code>loadAfter =
+['springSecurityCore']</code>, so the core plugin had already defined <code>sessionAuthenticationStrategy</code> from
+the original value. The filter was registered, the session was still replaced on login, and CAS
+logout requests silently matched nothing. Grails 8 also redefines <code>sessionAuthenticationStrategy</code>
+from the CAS plugin, so enabling <code>cas.useSingleSignout</code> now has the documented effect.</p>
+</div>
+<div class="paragraph">
+<p>The Spring Security CAS configuration reference in this guide documents the setting in full.</p>
+</div>
+</div>
 </div>
 
 
@@ -39204,7 +39244,7 @@ Repeat last search
 <p>The Spring Security plugins are built on the <a href="https://spring.io/projects/spring-security">Spring Security</a> project which provides a flexible, extensible framework for building all sorts of authentication and authorization schemes. The plugins are modular so you can install just the functionality that you need for your application. The Spring Security plugins are the official security plugins for Grails and are actively maintained and supported.</p>
 </div>
 <div class="paragraph">
-<p>The <strong>Core</strong> plugin supports form-based authentication, encrypted/salted passwords, HTTP Basic authentication, etc. and secondary dependent plugins provide alternate functionality such as ACL support, single sign-on with Jasig CAS, LDAP authentication, OAuth2 client support, REST token authentication, and a plugin providing user interface extensions and security workflows.</p>
+<p>The <strong>Core</strong> plugin supports form-based authentication, encrypted/salted passwords, HTTP Basic authentication, etc. and secondary dependent plugins provide alternate functionality such as ACL support, single sign-on with Apereo CAS, LDAP authentication, OAuth2 client support, REST token authentication, and a plugin providing user interface extensions and security workflows.</p>
 </div>
 <div class="paragraph">
 <p>The reference documentation for each plugin is included in the following sections:</p>
@@ -39218,7 +39258,7 @@ Repeat last search
 <p><a href="#springSecurityAcl">ACL Plugin</a> &#8212; domain-instance-level access control lists.</p>
 </li>
 <li>
-<p><a href="#springSecurityCas">CAS Plugin</a> &#8212; single sign-on with Apereo (Jasig) CAS.</p>
+<p><a href="#springSecurityCas">CAS Plugin</a> &#8212; single sign-on with Apereo CAS.</p>
 </li>
 <li>
 <p><a href="#springSecurityLdap">LDAP Plugin</a> &#8212; authentication against an LDAP server.</p>
@@ -48053,7 +48093,7 @@ the body content
 <div class="sect2">
 <h3 id="cas-introduction">Introduction to the Spring Security CAS Plugin</h3>
 <div class="paragraph">
-<p>The CAS plugin adds <a href="https://www.jasig.org/cas">CAS</a> single sign-on support to a Grails application that uses Spring Security. It depends on the <a href="springSecurityCore.html#springSecurityCore">Spring Security Core plugin</a>.</p>
+<p>The CAS plugin adds <a href="https://apereo.github.io/cas">CAS</a> single sign-on support to a Grails application that uses Spring Security. It depends on the <a href="springSecurityCore.html#springSecurityCore">Spring Security Core plugin</a>.</p>
 </div>
 <div class="paragraph">
 <p>Once you have configured a CAS server and have configured your Grails application(s) as clients, you can authenticate to any application that is a client of the CAS server and be automatically authenticated to all other clients.</p>
@@ -48076,7 +48116,7 @@ the body content
 </table>
 </div>
 <div class="paragraph">
-<p><a href="https://www.jasig.org/cas">CAS</a> is a popular single sign-on implementation. It&#8217;s open source and has an Apache-like license, and is easy to get started with but is also highly configurable. In addition it has clients written in Java, .Net, PHP, Perl, and other languages.</p>
+<p><a href="https://apereo.github.io/cas">CAS</a> is a popular single sign-on implementation. It&#8217;s open source and has an Apache-like license, and is easy to get started with but is also highly configurable. In addition it has clients written in Java, .Net, PHP, Perl, and other languages.</p>
 </div>
 <div class="sect3">
 <h4 id="_installation">Installation</h4>
@@ -48113,7 +48153,22 @@ the body content
 <div class="sect3">
 <h4 id="_single_signout">Single Signout</h4>
 <div class="paragraph">
-<p>Single signout is enabled by default and enables signing out for all CAS-managed applications with one logout. This works best in the plugin when combined with the <code>afterLogoutUrl</code> parameter, for example:</p>
+<p>Single signout enables signing out of all CAS-managed applications with one logout. It is opt-in, because enabling it disables session fixation prevention - CAS maps the service ticket to the HTTP session id, so a logout request cannot be matched to a session that was replaced when the user authenticated:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="java">grails:
+   plugin:
+      springsecurity:
+         cas:
+            useSingleSignout: <span class="predefined-constant">true</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The plugin prints and logs a warning at startup when it is enabled, so the trade-off is visible.</p>
+</div>
+<div class="paragraph">
+<p>It works best when combined with the <code>afterLogoutUrl</code> parameter, for example:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -48128,7 +48183,8 @@ the body content
 <p>With this configuration, when a user logs out locally by navigating to <code>/logout/</code> they&#8217;ll then be redirected to the CAS server&#8217;s logout URL. This request includes a local URL to redirect back afterwards. When the whole process is finished they&#8217;ll be logged out locally and at the CAS server, so subsequent secure URLs at the local server or other CAS-managed servers will require a new login.</p>
 </div>
 <div class="paragraph">
-<p>If you don&#8217;t want the single signout filter registered, you can disable the feature:</p>
+<p>To go back to the default and leave the single signout filter unregistered, keeping session fixation
+prevention in place, set it to <code>false</code> or remove the setting:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -48235,21 +48291,52 @@ the body content
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">cas.proxyCallbackUrl</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code>, should be set</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">proxy callback url, e.g. 'http://localhost:8080/secure/receptor'</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">proxy callback url, e.g. 'http://localhost:8080/secure/receptor'. Only needed for proxy tickets, and only meaningful together with <code>cas.proxyReceptorUrl</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">cas.proxyReceptorUrl</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code>, should be set</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">proxy receptor url, e.g. '/secure/receptor'</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">proxy receptor url, e.g. '/secure/receptor'. Only needed for proxy tickets, and only meaningful together with <code>cas.proxyCallbackUrl</code>. When unset, no request is treated as a proxy receptor request</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">cas.useSingleSignout</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">if <code>true</code> a <code>org.jasig.cas.client.session. SingleSignOutFilter</code> is registered</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>false</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">if <code>true</code> a <code>org.apereo.cas.client.session. SingleSignOutFilter</code> is registered, and session fixation prevention is disabled (see below)</p></td>
 </tr>
 </tbody>
 </table>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Single sign-out and session fixation prevention cannot both be active. CAS maps the service ticket
+to the HTTP session id, so if the session is replaced when the user authenticates, the session CAS
+later asks the application to invalidate no longer exists and the logout request has no effect.</p>
+</div>
+<div class="paragraph">
+<p><code>cas.useSingleSignout</code> is therefore opt-in. Enabling it makes the plugin set
+<code>grails.plugin.springsecurity.useSessionFixationPrevention</code> to <code>false</code> and define
+<code>sessionAuthenticationStrategy</code> accordingly, overriding whatever the core plugin configured, and log
+a warning at startup so the trade-off is visible:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/application.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.cas.useSingleSignout = <span class="predefined-constant">true</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Leave it off to keep session fixation prevention and handle logout in the application instead.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
 </div>
 <div class="sect1">
 <h2 id="_api_reference">API Reference</h2>

@@ -3959,6 +3959,46 @@ once when it builds the message source.</p>
 </div>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_48_cas_single_sign_out_is_opt_in">48. CAS Single Sign-Out Is Opt-In</h4>
+<div class="paragraph">
+<p><code>grails.plugin.springsecurity.cas.useSingleSignout</code> now defaults to <code>false</code>. It previously defaulted
+to <code>true</code>, so every CAS application registered the CAS client&#8217;s <code>SingleSignOutFilter</code> whether or not
+it wanted single sign-out.</p>
+</div>
+<div class="paragraph">
+<p>The default changed because enabling single sign-out is a security trade-off rather than a free
+feature. CAS maps the service ticket to the HTTP session id, so single sign-out cannot work while
+session fixation prevention is replacing the session when the user authenticates. Enabling
+<code>cas.useSingleSignout</code> disables session fixation prevention, and an application should make that
+choice deliberately.</p>
+</div>
+<div class="paragraph">
+<p>If your application relies on CAS single sign-out, enable it explicitly:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/application.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.cas.useSingleSignout = <span class="predefined-constant">true</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The plugin logs a warning at startup when it is enabled, noting that session fixation prevention has
+been disabled.</p>
+</div>
+<div class="paragraph">
+<p><strong>Single sign-out did not actually work before Grails 8</strong>, so an application upgrading from an
+earlier version is unlikely to lose working behaviour. The plugin set
+<code>useSessionFixationPrevention = false</code> from <code>doWithSpring</code>, but it declares <code>loadAfter =
+['springSecurityCore']</code>, so the core plugin had already defined <code>sessionAuthenticationStrategy</code> from
+the original value. The filter was registered, the session was still replaced on login, and CAS
+logout requests silently matched nothing. Grails 8 also redefines <code>sessionAuthenticationStrategy</code>
+from the CAS plugin, so enabling <code>cas.useSingleSignout</code> now has the documented effect.</p>
+</div>
+<div class="paragraph">
+<p>The Spring Security CAS configuration reference in this guide documents the setting in full.</p>
+</div>
+</div>
 </div>
 
 
