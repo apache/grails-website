@@ -126,25 +126,28 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
                         <div class="toc-item" style="margin-left:0"><a href="../guide/mail.html"><strong>19</strong><span>Mail</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/redis.html"><strong>20</strong><span>Redis</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/backgroundJobs.html"><strong>20</strong><span>Background Jobs</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/plugins.html"><strong>21</strong><span>Plugins</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/redis.html"><strong>21</strong><span>Redis</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/spring.html"><strong>22</strong><span>Grails and Spring</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/plugins.html"><strong>22</strong><span>Plugins</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/scaffolding.html"><strong>23</strong><span>Scaffolding</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/spring.html"><strong>23</strong><span>Grails and Spring</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/cache.html"><strong>24</strong><span>Grails Cache</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/scaffolding.html"><strong>24</strong><span>Scaffolding</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/deployment.html"><strong>25</strong><span>Deployment</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/cache.html"><strong>25</strong><span>Grails Cache</span></a>
                         </div>
                         
-                        <div class="toc-item" style="margin-left:0"><a href="../guide/contributing.html"><strong>26</strong><span>Contributing to Grails</span></a>
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/deployment.html"><strong>26</strong><span>Deployment</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/contributing.html"><strong>27</strong><span>Contributing to Grails</span></a>
                         </div>
                         
                     </div>
@@ -4236,6 +4239,96 @@ unqualified call from a controller to a method-declared tag changes.</p>
 </div>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_51_quartz_job_scheduling_behavior_changes">51. Quartz Job Scheduling Behavior Changes</h4>
+<div class="paragraph">
+<p>Three behaviors of the Quartz plugin changed in this release. All three concern what happens when
+something about a schedule is wrong; none of them require a change to a job class.</p>
+</div>
+<div class="sect4">
+<h5 id="_51_1_a_trigger_that_can_never_fire_no_longer_stops_startup">51.1 A trigger that can never fire no longer stops startup</h5>
+<div class="paragraph">
+<p>A job whose trigger has no possible fire time — a cron expression whose last occurrence is in the past,
+or an end time that has already passed — used to make the application fail to start, because the
+scheduler rejects such a trigger:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>org.quartz.SchedulerException: Based on configured schedule, the given trigger will never fire.</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The plugin now reports the trigger as an error in the log and leaves it unscheduled, so the rest of the
+application&#8217;s jobs and triggers are scheduled and the application starts. The job itself is still
+registered, so it can be triggered and rescheduled at runtime.</p>
+</div>
+<div class="paragraph">
+<p>To go back to a failing startup, set <code>quartz.failOnNeverFiringTriggers</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">quartz</span>:
+    <span class="key">failOnNeverFiringTriggers</span>: <span class="string"><span class="content">true</span></span></code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_51_2_an_application_only_removes_the_jobs_it_registered_itself">51.2 An application only removes the jobs it registered itself</h5>
+<div class="paragraph">
+<p>When an application starts, the plugin removes the jobs in the job store which are no longer enabled job
+artefacts of the application. It used to consider <strong>every</strong> job in the store, which with a persistent job
+store deleted the jobs and triggers of anything else using it — another application, or code that
+schedules through the Quartz API.</p>
+</div>
+<div class="paragraph">
+<p>Every job the plugin registers now carries the name of the application that registered it, taken from
+<code>info.app.name</code> or from the application metadata when that is unset, and only jobs carrying that name are
+removed. Two consequences for an application with <code>quartz.jdbcStore</code> enabled:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Two applications sharing a job store must not share an application name.</strong> Instances of one
+application do share it — that is what makes a clustered deployment clean up after itself — but two
+different applications on the same Quartz tables each need their own <code>info.app.name</code>. An application which
+does not name itself registers its jobs under the default name, which every unnamed application shares;
+with <code>quartz.jdbcStore</code> enabled the plugin warns about that at startup.</p>
+</li>
+<li>
+<p><strong>A job written to the store by Grails 7 or earlier carries no application name</strong>, so it is never
+removed automatically. A job class you deleted while running an older version leaves a row behind; remove
+it with <code>jobManagerService.removeJob(group, name)</code> or from the Quartz tables.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_51_3_scheduling_methods_report_what_is_wrong_instead_of_failing_with_a_null_pointer">51.3 Scheduling methods report what is wrong instead of failing with a null pointer</h5>
+<div class="paragraph">
+<p>The static scheduling methods every job class gets — <code>schedule</code>, <code>reschedule</code>, <code>unschedule</code>,
+<code>triggerNow</code>, <code>removeJob</code> — used to fail with a <code>NullPointerException</code> when called with a null argument,
+or on a job the scheduler does not know about. They now raise:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>an <code>IllegalArgumentException</code> naming the argument that is null. Note that a null argument resolves to
+<code>schedule(Trigger)</code> whichever method the caller meant, because the runtime type of <code>null</code> carries no
+information, so the message points at the other arguments too.</p>
+</li>
+<li>
+<p>an <code>IllegalStateException</code> when the job is not registered with a scheduler — the plugin is disabled, the
+job is disabled with <code>jobEnabled = false</code>, or the class is not a job artefact of the application.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>An application that caught <code>NullPointerException</code> around these calls has to catch those instead. See
+<a href="#quartzDynamicScheduling">Dynamic Job Scheduling</a>.</p>
+</div>
+</div>
+</div>
 </div>
 
 
@@ -7468,6 +7561,173 @@ With the unified Grails BOM, versions are managed automatically when using a Gra
 </div>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_15_grails_micronaut_bom_required_when_using_micronaut">15. grails-micronaut-bom Required when using Micronaut</h4>
+<div class="paragraph">
+<p>Grails 7 introduces a dedicated <code>grails-micronaut-bom</code> for projects that integrate with Micronaut.
+The Micronaut platform declares its own managed versions for libraries such as <code>javaparser-core</code> that conflict with the versions managed by <code>grails-bom</code>.
+Without an enforced BOM, Gradle&#8217;s default conflict resolution (highest version wins) allows the Micronaut platform to silently override <code>grails-bom</code> versions, leading to binary incompatibilities at runtime.</p>
+</div>
+<div class="paragraph">
+<p>The <code>grails-micronaut-bom</code> layers Micronaut-specific overrides on top of <code>grails-bom</code>. When applied as <code>enforcedPlatform</code>, all of its constraints become strictly versioned and cannot be overridden by any transitive dependency.</p>
+</div>
+<div class="paragraph">
+<p>Regular Grails projects (without Micronaut) should continue to use <code>platform("org.apache.grails:grails-bom:$grailsVersion")</code> and will receive the Spring-managed dependency versions. Applying <code>enforcedPlatform</code> to those projects is unnecessary and would force grails-bom versions over Spring&#8217;s managed defaults.</p>
+</div>
+<div class="paragraph">
+<p>The Grails Gradle Plugin will error at configuration time if <code>grails-micronaut</code> is detected and <code>grails-micronaut-bom</code> is not applied as <code>enforcedPlatform</code>.</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
+    <span class="comment">// enforcedPlatform on grails-micronaut-bom is required when using grails-micronaut</span>
+    implementation enforcedPlatform(<span class="string"><span class="delimiter">&quot;</span><span class="content">org.apache.grails:grails-micronaut-bom:</span><span class="inline"><span class="inline-delimiter">$</span>grailsVersion</span><span class="delimiter">&quot;</span></span>)
+
+    implementation <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-micronaut</span><span class="delimiter">'</span></span>
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The Micronaut auto-setup (which performs the validation along with other Micronaut-specific configuration) defaults to on. It can be disabled via the <code>grails</code> extension when a project deliberately deviates from the recommended setup:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails {
+    micronautAutoSetup = <span class="predefined-constant">false</span> <span class="comment">// not recommended</span>
+}</code></pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Applications generated by the Grails Forge automatically use <code>enforcedPlatform</code> on <code>grails-micronaut-bom</code> when the Micronaut feature is selected.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_16_upgrading_the_quartz_plugin">16. Upgrading the Quartz Plugin</h4>
+<div class="paragraph">
+<p>As of Grails 7, the Quartz plugin is part of Grails core and is documented in the <a href="backgroundJobs.html#backgroundJobsAdvanced">Background Jobs &gt; Advanced Scheduling</a> section of this guide.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Documentation for earlier, independently-versioned plugin releases remains available at the <a href="https://apache.github.io/grails-quartz/">legacy Quartz plugin documentation site</a>.
+</td>
+</tr>
+</table>
+</div>
+<div class="sect4">
+<h5 id="_16_1_coordinate_changes">16.1 Coordinate Changes</h5>
+<div class="paragraph">
+<p>The plugin artifact has moved to the <code>org.apache.grails</code> group and has been renamed from <code>quartz</code> to <code>grails-quartz</code>, matching the naming convention used by the other Grails plugins.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Grails 6 Coordinate</th>
+<th class="tableblock halign-left valign-top">Grails 7 Coordinate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.plugins:quartz</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.apache.grails:grails-quartz</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The coordinate rename script described in the <strong>Coordinate Changes</strong> section above also updates this artifact automatically.</p>
+</div>
+<div class="paragraph">
+<p>The version is now managed by the Grails BOM, so it should be removed from the dependency declaration:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
+    <span class="comment">// Grails 6</span>
+    <span class="comment">// implementation 'org.grails.plugins:quartz:2.0.13'</span>
+
+    <span class="comment">// Grails 7</span>
+    implementation <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-quartz</span><span class="delimiter">'</span></span>
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_16_2_spring_context_support">16.2 spring-context-support</h5>
+<div class="paragraph">
+<p>The plugin builds its scheduler from <code>SchedulerFactoryBean</code> and its job factory from <code>AdaptableJobFactory</code>, both of which live in <code>org.springframework:spring-context-support</code>. Plugin version 4.0.x did not declare that dependency, and it is not reliably inherited from the rest of the stack, so an application failed at startup with:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code>java.lang.NoClassDefFoundError: org/springframework/scheduling/quartz/AdaptableJobFactory</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>until <code>spring-context-support</code> was added by hand. This affected any application using the standalone plugin releases, including one generated with the <code>grails-quartz</code> feature.</p>
+</div>
+<div class="paragraph">
+<p>The dependency is now declared by the plugin and comes in transitively. If you added it explicitly as a workaround, it can be removed:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
+    implementation <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-quartz</span><span class="delimiter">'</span></span>
+
+    <span class="comment">// no longer required -- provided transitively by grails-quartz</span>
+    <span class="comment">// implementation 'org.springframework:spring-context-support'</span>
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_16_3_job_class_properties">16.3 Job Class Properties</h5>
+<div class="paragraph">
+<p>Job configuration properties such as <code>concurrent</code>, <code>sessionRequired</code>, <code>description</code>, and <code>group</code> must be declared as <code>static</code> rather than <code>def</code>. This changed in plugin version 2.0.13, so applications coming from an older release need to update their job classes:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">MyJob</span> {
+
+    <span class="comment">// Grails 6 and earlier</span>
+    <span class="comment">// def concurrent = false</span>
+
+    <span class="directive">static</span> concurrent = <span class="predefined-constant">false</span>
+
+    <span class="directive">static</span> triggers = {
+        simple <span class="key">repeatInterval</span>: <span class="integer">5000L</span>
+    }
+
+    <span class="type">void</span> execute() {
+        <span class="comment">// ...</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>See the <a href="backgroundJobs.html#quartzJobProperties">Job Properties</a> section for the full set of supported properties and their defaults.</p>
+</div>
+</div>
+</div>
 </div>
 
 
@@ -9414,6 +9674,23 @@ environments {
                             </div>
                             
                             <div class="menu-item"><a href="../ref/Tags%20-%20GSP/while.html">while</a>
+                            </div>
+                            
+                            </div>
+                    </div>
+                    
+                    <div class="menu-block"><h1 class="menu-title" onclick="toggleRef(this.parentNode.childNodes[1])">Triggers</h1><div class="menu-sub">
+                        
+                            <div class="menu-item"><a href="../ref/Triggers/Usage.html">Usage</a></div>
+                            
+                            
+                            <div class="menu-item"><a href="../ref/Triggers/cron.html">cron</a>
+                            </div>
+                            
+                            <div class="menu-item"><a href="../ref/Triggers/custom.html">custom</a>
+                            </div>
+                            
+                            <div class="menu-item"><a href="../ref/Triggers/simple.html">simple</a>
                             </div>
                             
                             </div>
