@@ -712,6 +712,55 @@ rather than <code>messages.properties</code> — so that two plugins cannot shad
 </div>
 </div>
 </div>
+<div class="sect2">
+<h3 id="_compiled_tag_resolution">Compiled Tag Resolution</h3>
+<div class="paragraph">
+<p>Tag libraries are now described when they are compiled, and that description resolves tag calls in
+pages, tag libraries and controllers compiled afterwards. In a tag library or a controller, a call
+whose namespace and tag are known is compiled into a direct invocation rather than being dispatched
+through the metaclass, and no tag methods are installed onto tag library, page or dispatcher
+metaclasses to make dispatch work:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">BookController</span> {
+    <span class="keyword">def</span> <span class="function">index</span>() {
+        <span class="predefined-type">String</span> markup = g.link(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>)   <span class="comment">// compiled into a direct invocation</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The same applies to a call written without a namespace, to calls written inside a closure such as a
+tag body, and to a tag expression in a GSP declaring <code>compileStatic</code>. The tag itself is still selected
+by name when the call runs, so a tag library that overrides another, one registered while the
+application is running, and the order tag libraries are registered in all behave exactly as before. A
+namespace no compiled tag library declares, and a name something else in scope answers to, are left to
+dispatch as they did.</p>
+</div>
+<div class="paragraph">
+<p>A tag that no compiled tag library declares is left to resolve at runtime with nothing reported, since
+a namespace can legitimately hold tag libraries carrying no description. An application whose tag
+libraries are all described can ask for an error instead:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails {
+    compileStatic {
+        strictTags = <span class="predefined-constant">true</span>
+        dynamicTagNamespaces = [<span class="string"><span class="delimiter">'</span><span class="content">legacy</span><span class="delimiter">'</span></span>]   <span class="comment">// registered while the application runs</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Defining a tag as a <code>Closure</code> field remains supported but is deprecated and now warns at compile time:
+a closure carries no signature, so nothing about a call to such a tag can be checked. Define tags as
+methods taking <code>Map attrs</code> and, where a body is needed, <code>Closure body</code>. See
+<a href="theWebLayer.html#compiledTags">Compiled Tag Resolution</a>.</p>
+</div>
+</div>
 
 
 <h2 id="dependencyUpgrades">1.1.1 Updated Dependencies</h2>
