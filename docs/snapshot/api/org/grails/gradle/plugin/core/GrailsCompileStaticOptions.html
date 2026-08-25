@@ -163,8 +163,7 @@ implements java.io.Serializable</pre>
                         
                         <tr class="altColor">
                             <td class="colFirst"><code><strong>Property&lt;java.lang.Boolean&gt;</strong></code>&nbsp;</td>
-                            <td class="colLast"><code><a href="#all">all</a></code><br>Whether every controller, service and tag library should be compiled with <CODE>@GrailsCompileStatic</CODE>.
- </td>
+                            <td class="colLast"><code><a href="#all">all</a></code><br>What every artefact type falls back to where it says nothing of its own. </td>
                         </tr>
                         
                         <tr class="rowColor">
@@ -181,8 +180,21 @@ implements java.io.Serializable</pre>
                         
                         <tr class="rowColor">
                             <td class="colFirst"><code><strong>Property&lt;java.lang.Boolean&gt;</strong></code>&nbsp;</td>
+                            <td class="colLast"><code><a href="#gsp">gsp</a></code><br>Whether every GSP page under <CODE>grails-app/views</CODE> should be compiled statically, by stating
+ the <CODE>grails.views.gsp.compileStatic</CODE> configuration setting for both the build and the
+ running application. </td>
+                        </tr>
+                        
+                        <tr class="altColor">
+                            <td class="colFirst"><code><strong>Property&lt;java.lang.Boolean&gt;</strong></code>&nbsp;</td>
                             <td class="colLast"><code><a href="#services">services</a></code><br>Whether every service under <CODE>grails-app/services</CODE> should be compiled with
  <CODE>@GrailsCompileStatic</CODE>. </td>
+                        </tr>
+                        
+                        <tr class="rowColor">
+                            <td class="colFirst"><code><strong>Property&lt;java.lang.Boolean&gt;</strong></code>&nbsp;</td>
+                            <td class="colLast"><code><a href="#strictGsp">strictGsp</a></code><br>Whether every page is held to the names it declares, rather than only the pages that declare a
+ model. </td>
                         </tr>
                         
                         <tr class="altColor">
@@ -281,9 +293,20 @@ implements java.io.Serializable</pre>
                         <ul class="blockListLast">
                             <li class="blockList">
                                 <h4>final&nbsp;Property&lt;java.lang.Boolean&gt; <strong>all</strong></h4>
-                                <p> Whether every controller, service and tag library should be compiled with <CODE>@GrailsCompileStatic</CODE>.
- A shortcut equivalent to enabling <a href='#getControllers()'>controllers</a>, <a href='#getServices()'>services</a>
- and <a href='#getTagLibs()'>tagLibs</a> together. Disabled by default.</p>
+                                <p> What every artefact type falls back to where it says nothing of its own. A shortcut for enabling
+ <a href='#getControllers()'>controllers</a>, <a href='#getServices()'>services</a> and <a href='#getTagLibs()'> tagLibs</a> together. Disabled by default.
+
+ <p>An artefact type that states a value keeps it, so a single type can be held back from the
+ shortcut:</p>
+
+ <pre>
+ grails {
+     compileStatic {
+         all = true
+         services = false   // every artefact type but services
+     }
+ }
+ </pre></p>
                             </li>
                         </ul>
                     
@@ -292,7 +315,7 @@ implements java.io.Serializable</pre>
                             <li class="blockList">
                                 <h4>final&nbsp;Property&lt;java.lang.Boolean&gt; <strong>controllers</strong></h4>
                                 <p> Whether every controller under <CODE>grails-app/controllers</CODE> should be compiled with
- <CODE>@GrailsCompileStatic</CODE>. Disabled by default.</p>
+ <CODE>@GrailsCompileStatic</CODE>. Follows <a href='#getAll()'>all</a> where it is not set.</p>
                             </li>
                         </ul>
                     
@@ -306,12 +329,41 @@ implements java.io.Serializable</pre>
                             </li>
                         </ul>
                     
+                        <a name="gsp"><!-- --></a>
+                        <ul class="blockListLast">
+                            <li class="blockList">
+                                <h4>final&nbsp;Property&lt;java.lang.Boolean&gt; <strong>gsp</strong></h4>
+                                <p> Whether every GSP page under <CODE>grails-app/views</CODE> should be compiled statically, by stating
+ the <CODE>grails.views.gsp.compileStatic</CODE> configuration setting for both the build and the
+ running application. Disabled by default.
+
+ <p>Deliberately not covered by <a href='#getAll()'>all</a>. The artefact opt-ins fail on code that is
+ doubtful anyway; this one fails on a page that reads a model variable it has not declared, which
+ describes most pages in an application that has never declared one. Enabling it is a migration,
+ not a switch, so it is never turned on as a side effect of asking for everything.</p></p>
+                            </li>
+                        </ul>
+                    
                         <a name="services"><!-- --></a>
                         <ul class="blockListLast">
                             <li class="blockList">
                                 <h4>final&nbsp;Property&lt;java.lang.Boolean&gt; <strong>services</strong></h4>
                                 <p> Whether every service under <CODE>grails-app/services</CODE> should be compiled with
- <CODE>@GrailsCompileStatic</CODE>. Disabled by default.</p>
+ <CODE>@GrailsCompileStatic</CODE>. Follows <a href='#getAll()'>all</a> where it is not set.</p>
+                            </li>
+                        </ul>
+                    
+                        <a name="strictGsp"><!-- --></a>
+                        <ul class="blockListLast">
+                            <li class="blockList">
+                                <h4>final&nbsp;Property&lt;java.lang.Boolean&gt; <strong>strictGsp</strong></h4>
+                                <p> Whether every page is held to the names it declares, rather than only the pages that declare a
+ model. Disabled by default.
+
+ <p>A page that declares a model is held to it either way: declaring one states what the page is
+ rendered with, so a name outside it is a mistake. This asks for the same of a page that declares
+ nothing, which otherwise reads what it is rendered with the way a dynamically compiled page
+ does. Meaningless unless <a href='#getGsp()'>gsp</a> is enabled.</p></p>
                             </li>
                         </ul>
                     
@@ -350,7 +402,7 @@ implements java.io.Serializable</pre>
                             <li class="blockList">
                                 <h4>final&nbsp;Property&lt;java.lang.Boolean&gt; <strong>tagLibs</strong></h4>
                                 <p> Whether every tag library under <CODE>grails-app/taglib</CODE> should be compiled with
- <CODE>@GrailsCompileStatic</CODE>. Disabled by default.</p>
+ <CODE>@GrailsCompileStatic</CODE>. Follows <a href='#getAll()'>all</a> where it is not set.</p>
                             </li>
                         </ul>
                     

@@ -601,12 +601,66 @@ this; the <code>in-memory</code> backend reports an error rather than discarding
 <td class="tableblock halign-left valign-top"><p class="tableblock">The MongoDB version for backends that can choose one, such as <code>V8_0</code> for flapdoodle.</p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>embedded.mongodb.replica-set</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The name of the replica set to run as, such as <code>rs0</code>. Unset, the server is standalone
+unless <code>grails.mongodb.transactional</code> is <code>true</code>, which asks for one implicitly.</p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>embedded.mongodb.property-names</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Comma separated properties that may name an embedded server. Defaults to
 <code>grails.mongodb.url</code>.</p></td>
 </tr>
 </tbody>
 </table>
+</div>
+<div class="sect3">
+<h4 id="_transactions">Transactions</h4>
+<div class="paragraph">
+<p>A multi-document transaction, a change stream and a causally consistent read are all refused
+by a standalone MongoDB server: every one of them needs a replica set. An application that
+asks GORM for transactions is therefore given one - a set of a single node, which is what a
+single machine has to offer, and enough for all three:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-yaml" data-lang="yaml">grails:
+    mongodb:
+        url: mongodb://embedded/bookstore
+        transactional: true</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The server runs as the replica set <code>rs0</code> and is handed to the application only once it has
+elected itself primary, so the first query does not race the election. Name the set with
+<code>embedded.mongodb.replica-set</code> to call it something else, or to run one without asking GORM
+for transactions:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-yaml" data-lang="yaml">embedded:
+    mongodb:
+        replica-set: rs0</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Only the flapdoodle backend can do this, because only a real <code>mongod</code> has replication. The
+<code>in-memory</code> backend reimplements the wire protocol and refuses transactions whatever it is
+configured with.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+A replica set is initiated by a command a driver sends rather than by a setting, so
+<code>org.mongodb:mongodb-driver-sync</code> has to be on the classpath. Any application talking to
+MongoDB already has it; a standalone embedded server does not need it.
+</td>
+</tr>
+</table>
+</div>
 </div>
 <div class="sect3">
 <h4 id="_production">Production</h4>
@@ -637,7 +691,14 @@ environment&#8217;s url and use flapdoodle with a directory, so the data survive
 <p>A server started by this module runs until the JVM exits, so a Spring Boot DevTools
 restart reuses it instead of starting another. Only a server this module started is
 reused: if anything else is already holding the port, startup fails with an error naming
-the port rather than connecting to an unrelated service. To use a MongoDB started by hand,
+the port rather than connecting to an unrelated service.</p>
+</div>
+<div class="paragraph">
+<p>A restart that carries a different setting - a database directory, a version, a replica set,
+or transactions being switched on - is given a server that matches it, which means the
+previous one is replaced and anything it held in memory goes with it. Data in a
+<code>database-dir</code> outlives the replacement, except across a change of <code>version</code>: MongoDB
+refuses to start against a directory written by a different release. To use a MongoDB started by hand,
 name its host in <code>grails.mongodb.url</code> as usual.</p>
 </div>
 </div>
