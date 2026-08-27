@@ -530,7 +530,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <div id="header">
 <h1>GORM for MongoDB</h1>
 <div class="details">
-<span id="revnumber">version 7.2.3</span>
+<span id="revnumber">version 7.1.6</span>
 </div>
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
@@ -965,7 +965,7 @@ abstract class BookService {
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
-    compile 'org.grails.plugins:mongodb:7.2.3'
+    compile 'org.grails.plugins:mongodb:7.1.6'
 }</code></pre>
 </div>
 </div>
@@ -1200,9 +1200,6 @@ abstract class BookService {
 <div class="paragraph">
 <p>The <code>*</code> method is used to indicate that the setting applies to all properties.</p>
 </div>
-<div class="paragraph">
-<p>You can also set a global default for the storage type of <code>String id</code> fields via <code>grails.mongodb.stringIds.defaultStoredAs</code> (values <code>string</code> or <code>objectid</code>). See <a href="#idGeneration">Identity Generation</a> for details.</p>
-</div>
 </div>
 </div>
 <div class="sect2">
@@ -1212,7 +1209,7 @@ abstract class BookService {
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">compile("org.apache.grails:grails-data-mongodb-spring-boot:7.2.3")</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">compile("org.apache.grails:grails-data-mongodb-spring-boot:7.1.6")</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1269,7 +1266,7 @@ If your GORM entities are in a different package specify the package name as the
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.grails:grails-datastore-gorm-mongodb:7.2.3"</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.grails:grails-datastore-gorm-mongodb:7.1.6"</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1507,94 +1504,6 @@ p.id = <span class="string"><span class="delimiter">&quot;</span><span class="co
 p.insert()
 <span class="comment">// to update</span>
 p.save()</code></pre>
-</div>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_decoupling_the_declared_type_from_the_storage_type">Decoupling the Declared Type from the Storage Type</h4>
-<div class="paragraph">
-<p>When a domain declares <code>String id</code>, GORM by default writes <code>_id</code> as a BSON <code>String</code>. This is convenient in application code — HTTP controllers return clean JSON, URLs embed ids directly, and you never need <code>new ObjectId(...)</code> at call sites — but it gives up the native <code>ObjectId</code> benefits at the storage layer (12-byte index entries vs. 24-byte hex strings, embedded creation timestamp, etc.).</p>
-</div>
-<div class="paragraph">
-<p>You can get both using the <code>storedAs</code> mapping option. The domain sees a <code>String id</code> (hex form), but <code>_id</code> on disk is a BSON <code>ObjectId</code>:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">org.bson.types.ObjectId</span>
-
-<span class="type">class</span> <span class="class">Person</span> {
-    <span class="predefined-type">String</span> id
-
-    <span class="directive">static</span> mapping = {
-        id <span class="key">storedAs</span>: ObjectId
-    }
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>With <code>storedAs: ObjectId</code>:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><code>_id</code> is written as BSON <code>ObjectId</code> (native index size, sort order, creation timestamp)</p>
-</li>
-<li>
-<p><code>person.id</code> in application code is the 24-char hex string (clean JSON, no conversion at boundaries)</p>
-</li>
-<li>
-<p><code>Person.get(hexString)</code>, <code>findAllByIdInList([hexA, hexB])</code>, updates, and deletes all coerce the declared-type value to the storage type automatically</p>
-</li>
-<li>
-<p>Existing documents that already have BSON <code>ObjectId</code> <code>_id</code> values continue to load without a data migration</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>This is especially useful when migrating a legacy <code>ObjectId id</code> domain to <code>String id</code> for ergonomic reasons, because neither a data migration nor any change in application call sites is required.</p>
-</div>
-<div class="sect4">
-<h5 id="_global_default">Global Default</h5>
-<div class="paragraph">
-<p>You can opt in globally with an <code>application.yml</code> setting, which applies to every domain declaring <code>String id</code> that does not specify its own <code>storedAs</code>:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
-  <span class="key">mongodb</span>:
-    <span class="key">stringIds</span>:
-      <span class="key">defaultStoredAs</span>: <span class="string"><span class="content">objectid</span></span></code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Valid values are <code>string</code> (current default, BSON String) and <code>objectid</code> (BSON ObjectId). Unrecognized values fall back to the default with a warning logged at startup.</p>
-</div>
-<div class="paragraph">
-<p>Per-domain <code>storedAs</code> always wins over the global default. Domains using a natural string key (slug, email, UUID) should opt out explicitly:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">UserProfile</span> {
-    <span class="predefined-type">String</span> id   <span class="comment">// e.g. &quot;jsmith@example.com&quot;</span>
-
-    <span class="directive">static</span> mapping = {
-        id <span class="key">generator</span>: <span class="string"><span class="delimiter">'</span><span class="content">assigned</span><span class="delimiter">'</span></span>, <span class="key">storedAs</span>: <span class="predefined-type">String</span>
-    }
-}</code></pre>
-</div>
-</div>
-</div>
-<div class="sect4">
-<h5 id="_caveats">Caveats</h5>
-<div class="ulist">
-<ul>
-<li>
-<p><code>storedAs</code> is currently honored only for converting between <code>String</code> and <code>ObjectId</code>. Other combinations are accepted but behave as if <code>storedAs</code> were unset.</p>
-</li>
-<li>
-<p>Combining <code>generator: 'assigned'</code> with <code>storedAs: ObjectId</code> requires that the assigned value be a valid 24-char ObjectId hex string. Invalid values fall back to writing BSON <code>String</code> on the assumption that the domain is using a natural key despite the <code>storedAs</code> setting — consider declaring <code>storedAs: String</code> (or omitting it) in that case.</p>
-</li>
-</ul>
 </div>
 </div>
 </div>
@@ -3854,7 +3763,7 @@ Hotel.findByLocationWithinCircle( Circle.valueOf( [[<span class="integer">40</sp
 </div>
 <div id="footer">
 <div id="footer-text">
-Version 7.2.3<br>
+Version 7.1.6<br>
 </div>
 </div>
 </body>
