@@ -2196,6 +2196,67 @@ GORM&#8217;s <code>createCriteria()</code> and <code>withCriteria()</code> DSL a
 <p><strong><code>javax.persistence</code> → <code>jakarta.persistence</code></strong>: This migration was already required for Grails 7; Grails 8 continues to require <code>jakarta.*</code>.</p>
 </div>
 </div>
+<div class="sect4">
+<h5 id="_join_table_foreign_key_column_names">26.9 Join-Table Foreign-Key Column Names</h5>
+<div class="paragraph">
+<p>This change affects only a <strong>unidirectional</strong> <code>hasMany</code> — a collection with no <code>belongsTo</code> and no reciprocal <code>hasMany</code> on the other side. A <strong>bidirectional</strong> many-to-many association (both sides declare <code>hasMany</code>, or one side uses <code>belongsTo</code>) is <strong>not</strong> affected: both of its join-table foreign-key columns are still derived from the class names, identical to Grails 7.</p>
+</div>
+<div class="paragraph">
+<p>In Grails 7 (Hibernate 5), the default foreign-key column that referenced the associated entity in a unidirectional <code>hasMany</code> join table was derived from the simple name of that entity&#8217;s domain class, after applying the column naming strategy.
+For example, the domain class <code>Book</code> produced the foreign-key column <code>book_id</code>, even when its physical table was mapped to a different name.</p>
+</div>
+<div class="paragraph">
+<p>In Grails 8 (Hibernate 7), that foreign-key column is instead derived from the physical table name of the associated domain class.
+The physical name includes an explicit <code>table</code> mapping and any transformation made by a custom physical naming strategy.
+For example, given the following mapping:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">Book</span> {
+    <span class="directive">static</span> mapping = {
+        table <span class="string"><span class="delimiter">'</span><span class="content">catalog_book</span><span class="delimiter">'</span></span>
+    }
+}
+
+<span class="type">class</span> <span class="class">Shelf</span> {
+    <span class="predefined-type">String</span> label
+
+    <span class="directive">static</span> hasMany = [<span class="key">books</span>: <span class="predefined-type">Book</span>] <span class="comment">// unidirectional: no belongsTo, no reciprocal hasMany</span>
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Grails 7 used <code>book_id</code> by default in the <code>shelf_books</code> join table, whereas Grails 8 uses <code>catalog_book_id</code>. The other column in that same join table (<code>shelf_id</code>, derived from the owning <code>Shelf</code> class) is unchanged.
+This is a breaking schema change for an existing database if its join table still uses the Grails 7 column name.</p>
+</div>
+<div class="paragraph">
+<p>To keep the existing schema unchanged, configure the join table and its foreign-key column explicitly in the <code>static mapping</code> block:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">Shelf</span> {
+    <span class="predefined-type">String</span> label
+
+    <span class="directive">static</span> hasMany = [<span class="key">books</span>: <span class="predefined-type">Book</span>]
+
+    <span class="directive">static</span> mapping = {
+        books <span class="key">joinTable</span>: [
+            <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">shelf_books</span><span class="delimiter">'</span></span>,
+            <span class="key">key</span>: <span class="string"><span class="delimiter">'</span><span class="content">shelf_id</span><span class="delimiter">'</span></span>,
+            <span class="key">column</span>: <span class="string"><span class="delimiter">'</span><span class="content">book_id</span><span class="delimiter">'</span></span>
+        ]
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Replace <code>shelf_books</code>, <code>shelf_id</code>, and <code>book_id</code> with the table and column names already used by your database.
+Declaring all three names prevents the naming strategy from changing the mapping during the upgrade.</p>
+</div>
+<div class="paragraph">
+<p>Separately, the element column of a <strong>basic (non-enum) collection</strong> (e.g. <code>static hasMany = [items: String]</code>) is now resolved through the naming strategy&#8217;s <strong>column</strong> naming rules instead of its <strong>table</strong> naming rules for the property-name prefix, producing a <code>&lt;property&gt;_&lt;element-type identifier&gt;</code> column name. An enum collection is unaffected: its element column has no property-name prefix and already used the column naming rules before this change. Most naming strategies apply the same transformation to both, so this only matters if your custom <code>PhysicalNamingStrategy</code> implements <code>toPhysicalColumnName</code> and <code>toPhysicalTableName</code> differently.</p>
+</div>
+</div>
 </div>
 <div class="sect3">
 <h4 id="_27_gorm_properties_are_nullable_by_default">27. GORM Properties Are Nullable by Default</h4>
