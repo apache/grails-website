@@ -2,7 +2,7 @@
                       "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
 <head>
-    <title>23 Grails and Spring 7.1.6</title>
+    <title>23 Grails and Spring 8.0.0-M6</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
     <link rel="stylesheet" href="../css/pdf.css" type="text/css" media="print" title="PDF" charset="utf-8"/>
@@ -181,7 +181,7 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
                 <div class="project">
                     <h1>23 Grails and Spring</h1>
 
-                    <p><strong>Version:</strong> 7.1.6</p>
+                    <p><strong>Version:</strong> 8.0.0-M6</p>
                 </div>
 
                 
@@ -214,7 +214,7 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
 <h1 id="spring">23 Grails and Spring</h1>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/7.1.x/grails-doc/src/en/guide/spring.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/spring.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -228,7 +228,7 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
 <h2 id="springdslAdditional">23.1 Configuring Additional Beans</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/7.1.x/grails-doc/src/en/guide/spring/springdslAdditional.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/spring/springdslAdditional.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -344,7 +344,7 @@ If you define a bean in <code>resources.groovy</code> with the same name as one 
 <p>Beans can also be configured using a <code>grails-app/conf/spring/resources.xml</code>. In earlier versions of Grails this file was automatically generated for you by the <code>run-app</code> script, but the DSL in <code>resources.groovy</code> is the preferred approach now so it isn&#8217;t automatically generated now. But it is still supported - you just need to create it yourself.</p>
 </div>
 <div class="paragraph">
-<p>This file is typical Spring XML file and the Spring documentation has an <a href="https://docs.spring.io/spring-framework/reference/6.2.19/core/beans/introduction.html">excellent reference</a> on how to configure Spring beans.</p>
+<p>This file is typical Spring XML file and the Spring documentation has an <a href="https://docs.spring.io/spring-framework/reference/7.0.9/core/beans/introduction.html">excellent reference</a> on how to configure Spring beans.</p>
 </div>
 <div class="paragraph">
 <p>The <code>myBean</code> bean that we configured using the DSL would be configured with this syntax in the XML file:</p>
@@ -445,12 +445,55 @@ If you define a bean in <code>resources.groovy</code> with the same name as one 
 <p>For a full reference of the available beans see the plugin reference in the reference guide.</p>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_defining_beans_at_compile_time_with_grailsbeans">Defining Beans at Compile Time with @GrailsBeans</h4>
+<div class="paragraph">
+<p><code>resources.groovy</code> and <code>doWithSpring</code> wire their beans at runtime, every time the application starts. The <a href="../api/grails/compiler/beans/GrailsBeans.html">GrailsBeans</a> annotation is a compile-time alternative: a similar closure style of bean definition, compiled at build time into real <code>@Bean</code> factory methods — no closures, and nothing DSL-specific, survive into the bytecode.</p>
+</div>
+<div class="paragraph">
+<p><code>@GrailsBeans</code> is not plugin-specific. It works on any class Spring Boot processes as a configuration source — including the application&#8217;s own <code>Application</code> class, since Spring Boot reads <code>@Bean</code> methods directly off the class it is launched with. Declare a <code>beans</code> closure whose statements construct and return each bean:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.boot.GrailsApp</span>
+<span class="keyword">import</span> <span class="include">grails.boot.config.GrailsAutoConfiguration</span>
+<span class="keyword">import</span> <span class="include">my.company.MyBeanImpl</span>
+
+<span class="type">class</span> <span class="class">Application</span> <span class="directive">extends</span> GrailsAutoConfiguration {
+
+    <span class="directive">static</span> <span class="type">void</span> main(<span class="predefined-type">String</span><span class="type">[]</span> args) {
+        GrailsApp.run(Application, args)
+    }
+
+    <span class="keyword">def</span> beans = {
+        bean(MyService)
+
+        bean(<span class="string"><span class="delimiter">'</span><span class="content">myBean</span><span class="delimiter">'</span></span>, MyBeanImpl) {
+            <span class="keyword">new</span> MyBeanImpl(<span class="key">someProperty</span>: <span class="integer">42</span>, <span class="key">otherProperty</span>: <span class="string"><span class="delimiter">'</span><span class="content">blue</span><span class="delimiter">'</span></span>)
+        }
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Both the name and the body are optional. <code>bean(MyService)</code> declares a bean named <code>myService</code> — the type&#8217;s decapitalized simple name — that is simply <code>new MyService()</code>; give it a name only when the type does not produce the one you want, and a body only when there is something to say beyond constructing it.</p>
+</div>
+<div class="paragraph">
+<p>No annotation is required on the <code>Application</code> class, or on a <code>*GrailsPlugin.groovy</code> plugin descriptor: a <code>beans</code> property on either is compiled automatically, in the same way <code>doWithSpring</code> and <code>watchedResources</code> are conventions rather than annotated members. <code>@GrailsBeans</code> is only needed on a class that is neither — a standalone <code>@AutoConfiguration</code> class, which must also be listed in <code>META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports</code> like any other hand-written auto-configuration. Declaring the annotation explicitly on a plugin or application class is harmless, and a class with no <code>beans</code> property is left entirely alone.</p>
+</div>
+<div class="paragraph">
+<p>No further registration is needed on the <code>Application</code> class — Spring Boot already processes it. Beans declared here are also ordinary user beans as far as Spring Boot is concerned, so any auto-configuration guarded by <code>@ConditionalOnMissingBean</code> backs off in their favour, exactly as it would for a bean defined in <code>resources.groovy</code>. A standalone class annotated with both <code>@GrailsBeans</code> and <code>@AutoConfiguration</code> must instead be listed in <code>META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports</code>, like any other hand-written auto-configuration.</p>
+</div>
+<div class="paragraph">
+<p>The DSL&#8217;s full surface — the <code>bean(&#8230;&#8203;)</code> qualifiers such as <code>.conditionalOnMissingBean(&#8230;&#8203;)</code>, <code>.primary()</code> and <code>.annotate(&#8230;&#8203;)</code>, plus <code>field(&#8230;&#8203;)</code> and <code>method(&#8230;&#8203;)</code> for state and logic shared across bean methods — is documented in the <a href="plugins.html#hookingIntoRuntimeConfiguration">plugin development chapter</a>, together with applying <code>@GrailsBeans</code> directly to a plugin descriptor.</p>
+</div>
+</div>
 
 <a name="16.3 Runtime Spring with the Beans DSL"><!-- Legacy link --></a>
 <h2 id="springdsl">23.2 Runtime Spring with the Beans DSL</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/7.1.x/grails-doc/src/en/guide/spring/springdsl.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/spring/springdsl.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -647,7 +690,7 @@ bb.loadBeans(<span class="string"><span class="delimiter">&quot;</span><span cla
 <h2 id="theBeanBuilderDSLExplained">23.3 The BeanBuilder DSL Explained</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/7.1.x/grails-doc/src/en/guide/spring/theBeanBuilderDSLExplained.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/spring/theBeanBuilderDSLExplained.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -681,7 +724,7 @@ bb.loadBeans(<span class="string"><span class="delimiter">&quot;</span><span cla
 <div class="sect3">
 <h4 id="_configuring_the_beandefinition_using_factory_methods">Configuring the BeanDefinition (Using factory methods)</h4>
 <div class="paragraph">
-<p>The first argument to the closure is a reference to the bean configuration instance, which you can use to configure factory methods and invoke any method on the <a href="https://docs.spring.io/spring-framework/docs/6.2.19/javadoc-api/org/springframework/beans/factory/support/AbstractBeanDefinition.html">AbstractBeanDefinition</a> class:</p>
+<p>The first argument to the closure is a reference to the bean configuration instance, which you can use to configure factory methods and invoke any method on the <a href="https://docs.spring.io/spring-framework/docs/7.0.9/javadoc-api/org/springframework/beans/factory/support/AbstractBeanDefinition.html">AbstractBeanDefinition</a> class:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -1042,17 +1085,17 @@ aop {
 <h2 id="propertyPlaceholderConfiguration">23.4 Property Placeholder Configuration</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/7.1.x/grails-doc/src/en/guide/spring/propertyPlaceholderConfiguration.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/spring/propertyPlaceholderConfiguration.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
 
 
 <div class="paragraph">
-<p>Grails supports the notion of property placeholder configuration through an extended version of Spring&#8217;s <a href="https://docs.spring.io/spring-framework/docs/6.2.19/javadoc-api/org/springframework/beans/factory/config/PropertyPlaceholderConfigurer.html">PropertyPlaceholderConfigurer</a>.</p>
+<p>Grails supports the notion of property placeholder configuration through an extended version of Spring&#8217;s <a href="https://docs.spring.io/spring-framework/docs/7.0.9/javadoc-api/org/springframework/beans/factory/config/PropertyPlaceholderConfigurer.html">PropertyPlaceholderConfigurer</a>.</p>
 </div>
 <div class="paragraph">
-<p>Settings defined in either <a href="https://docs.groovy-lang.org/4.0.33/html/gapi/groovy/util/ConfigSlurper.html">ConfigSlurper</a> scripts or Java properties files can be used as placeholder values for Spring configuration in <code>grails-app/conf/spring/resources.xml</code> and <code>grails-app/conf/spring/resources.groovy</code>. For example given the following entries in <code>grails-app/conf/application.groovy</code> (or an externalized config):</p>
+<p>Settings defined in either <a href="https://docs.groovy-lang.org/5.1.0/html/gapi/groovy/util/ConfigSlurper.html">ConfigSlurper</a> scripts or Java properties files can be used as placeholder values for Spring configuration in <code>grails-app/conf/spring/resources.xml</code> and <code>grails-app/conf/spring/resources.groovy</code>. For example given the following entries in <code>grails-app/conf/application.groovy</code> (or an externalized config):</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -1119,7 +1162,7 @@ database.dbname=<span class="string"><span class="delimiter">&quot;</span><span 
 <h2 id="propertyOverrideConfiguration">23.5 Property Override Configuration</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/7.1.x/grails-doc/src/en/guide/spring/propertyOverrideConfiguration.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/spring/propertyOverrideConfiguration.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -1161,14 +1204,14 @@ database.dbname=<span class="string"><span class="delimiter">&quot;</span><span 
 <h2 id="actuators">23.6 Spring Boot Actuators</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/7.1.x/grails-doc/src/en/guide/spring/actuators.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/spring/actuators.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
 
 
 <div class="paragraph">
-<p><a href="https://docs.spring.io/spring-boot/3.5.16/reference/actuator/endpoints.html">Spring Boot Actuator endpoints</a> allow you to monitor and interact with your application. Spring Boot includes a number of built-in endpoints. For example the <code>health</code> endpoint provides basic application health information.</p>
+<p><a href="https://docs.spring.io/spring-boot/4.1.1/reference/actuator/endpoints.html">Spring Boot Actuator endpoints</a> allow you to monitor and interact with your application. Spring Boot includes a number of built-in endpoints. For example the <code>health</code> endpoint provides basic application health information.</p>
 </div>
 <div class="paragraph">
 <p>These endpoints are disabled by default since Grails 3.1.8.</p>
@@ -2151,7 +2194,10 @@ database.dbname=<span class="string"><span class="delimiter">&quot;</span><span 
                             <div class="menu-item"><a href="../ref/Versions/Grails%20BOM%20Hibernate5.html">Grails BOM Hibernate5</a>
                             </div>
                             
-                            <div class="menu-item"><a href="../ref/Versions/Grails%20BOM%20Micronaut.html">Grails BOM Micronaut</a>
+                            <div class="menu-item"><a href="../ref/Versions/Grails%20BOM%20Hibernate7.html">Grails BOM Hibernate7</a>
+                            </div>
+                            
+                            <div class="menu-item"><a href="../ref/Versions/Grails%20BOM%20Neo4j.html">Grails BOM Neo4j</a>
                             </div>
                             
                             <div class="menu-item"><a href="../ref/Versions/Grails%20BOM.html">Grails BOM</a>
