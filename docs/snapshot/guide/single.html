@@ -1175,6 +1175,51 @@ Use <code>namespace=""</code> in GSP markup, or <code>namespace: null</code> in 
 </div>
 </div>
 <div class="sect3">
+<h4 id="_gorm_domain_classes_can_take_their_identity_type_from_the_datastore">GORM Domain Classes Can Take Their Identity Type from the Datastore</h4>
+<div class="paragraph">
+<p>A domain class that declares no <code>id</code> has always been given a <code>Long</code> one. That is right for Hibernate and
+wrong for MongoDB, where a <code>String id</code> holding a generated <code>ObjectId</code> needs no sequence collection and
+shards cleanly — but declaring <code>String id</code> ties the source to MongoDB. The nested <code>gorm</code> block of the
+<code>grails</code> build configuration lets each domain class take the identity type of the GORM implementation it
+is mapped with instead:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails {
+    gorm {
+        defaultIdType = <span class="string"><span class="delimiter">'</span><span class="content">native</span><span class="delimiter">'</span></span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A domain class mapped with MongoDB is then given a <code>String id</code> while one mapped with Hibernate keeps
+<code>Long</code>, so the same source works against either. The type is resolved when the domain class is compiled,
+from its <code>mapWith</code> property and the GORM implementations on the compilation classpath, so an application
+using more than one gets the right type for each domain class from the single setting. A domain class
+that declares an <code>id</code> keeps the type it declares.</p>
+</div>
+<div class="paragraph">
+<p>For a domain class shipped precompiled in a plugin, declare <code>Serializable id</code> in the plugin. The same
+build setting is packaged as <code>grails.gorm.defaultIdType</code> and selects the effective persistent type at
+runtime; no duplicate application configuration is required. Normal external configuration can still
+override that property.</p>
+</div>
+<div class="paragraph">
+<p>MongoDB maps that portable declaration to <code>String</code> for <code>native</code> and to <code>Long</code> for <code>long</code>; Hibernate
+maps it to its native <code>Long</code> identity either way. The resolved type is cached in GORM&#8217;s mapping metadata,
+so this adds no per-operation type lookup. Concrete identity declarations remain authoritative.</p>
+</div>
+<div class="paragraph">
+<p>The default is <code>defaultIdType = 'long'</code>, which is the behaviour of every earlier release. Turning it on
+changes the type of a field that already holds data, so it is a choice to make when an application is
+written rather than one to switch on over an existing database. See the
+<a href="../grails-data/mongodb/manual/index.html#idGeneration">Identity Generation</a> section of the GORM for MongoDB guide for
+details.</p>
+</div>
+</div>
+<div class="sect3">
 <h4 id="_test_http_client_form_requests">Test HTTP Client Form Requests</h4>
 <div class="paragraph">
 <p>Integration tests that implement <code>HttpClientSupport</code> can now use <code>httpPostForm(&#8230;&#8203;)</code> to send <code>application/x-www-form-urlencoded</code>

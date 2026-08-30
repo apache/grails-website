@@ -486,6 +486,87 @@ class Person {
 <p>BSON <code>ObjectId</code> instances are generated in a similar fashion to <code>UUIDs</code>.</p>
 </div>
 <div class="sect3">
+<h4 id="_native_identity_types">Native Identity Types</h4>
+<div class="paragraph">
+<p>Declaring <code>String id</code> on every domain class ties that source to MongoDB: the same class compiled against
+Hibernate would need <code>Long id</code> instead. Where domain classes are shared, or an application is written to
+run against either store, the build can ask for the identity type of whichever GORM implementation each
+domain class is mapped with:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">grails {
+    gorm {
+        defaultIdType = 'native'
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A domain class mapped with MongoDB is then given a <code>String id</code> — holding the hexadecimal form of a
+generated <code>ObjectId</code>, exactly as if it had been declared — while one mapped with Hibernate keeps <code>Long</code>.
+Nothing in the domain class itself names a store.</p>
+</div>
+<div class="paragraph">
+<p>The default is <code>defaultIdType = 'long'</code>, which gives every domain class a <code>Long</code> id as earlier releases
+did. The type is resolved when the domain class is compiled, from its <code>mapWith</code> property and the GORM
+implementations on the compilation classpath, so an application using more than one implementation gets
+the right type for each domain class from the single setting. A domain class that declares an <code>id</code> of its
+own keeps the type it declares either way.</p>
+</div>
+<div class="paragraph">
+<p>Precompiled plugin domain classes cannot have their bytecode changed by the consuming application&#8217;s
+compiler. A plugin that wants to leave this choice to its consumer can declare a portable identity:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Book {
+    Serializable id
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The consuming application uses the same build setting above for both cases. The Grails Gradle plugin
+packages its value as <code>grails.gorm.defaultIdType</code>, which is used at runtime for precompiled plugin
+domains. No duplicate application configuration is required, although normal external configuration
+can override the packaged value.</p>
+</div>
+<div class="paragraph">
+<p>MongoDB resolves the portable identity to <code>String</code> for <code>native</code> and <code>Long</code> for <code>long</code>. The result is
+stored in the entity mapping metadata, so normal persistence operations do not perform repeated type
+resolution. An explicitly declared concrete identity type still wins.</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+This changes the type of a field that already holds data. An existing MongoDB application whose
+domain classes rely on the default has sequence-generated <code>Long</code> <code>_id</code> values stored, and turning this on
+makes new documents use <code>ObjectId</code> hex strings instead. Choose it when an application is written, or
+migrate what has already been stored.
+</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The setting reaches the compiler through the Grails Gradle plugin, so it applies to Gradle builds.
+Compiling the same sources with an IDE configured to bypass Gradle produces <code>Long</code> ids.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect3">
 <h4 id="_assigned_identifiers">Assigned Identifiers</h4>
 <div class="paragraph">
 <p>Note that if you manually assign an identifier, then you will need to use the <code>insert</code> method instead of the <code>save</code> method, otherwise GORM can&#8217;t work out whether you are trying to achieve an insert or an update. Example:</p>
