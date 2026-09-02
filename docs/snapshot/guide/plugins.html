@@ -1578,7 +1578,16 @@ bean(<span class="string"><span class="delimiter">'</span><span class="content">
 </div>
 </div>
 <div class="paragraph">
-<p>Because the result is an ordinary <code>AutoConfiguration</code> class, it must be registered the same way any Spring Boot auto-configuration is: listed in <code>META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports</code>. Modules built as part of this project can apply the <code>org.apache.grails.buildsrc.autoconfiguration-imports</code> Gradle convention plugin to generate that file automatically, by scanning the module&#8217;s own compiled classes for <code>@AutoConfiguration</code> at build time. Projects outside this build register the class the same way any hand-written <code>AutoConfiguration</code> is registered — by listing it in that file directly.</p>
+<p>Because the result is an ordinary <code>AutoConfiguration</code> class, it must be registered the same way any Spring Boot auto-configuration is: listed in <code>META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports</code>. <strong>The compiler writes that entry for you.</strong> The class is generated rather than written, so its name is one only the compiler knows — leaving the registration to be typed by hand made a plugin whose beans are silently never registered the ordinary consequence of not knowing the class exists.</p>
+</div>
+<div class="paragraph">
+<p>A module that keeps the imports file by hand at <code>src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports</code> keeps it, and nothing is generated beside it: two copies of the same resource cannot both go into the jar, and folding the hand-authored entries into a copy under the build directory would lose them as soon as anyone deleted the file they were written in. Such a module is warned at compile time when the generated class is missing from its file. Deleting that file is what opts in, and is safe once it lists nothing that is not generated — a module may still need it for entries no compilation can discover, such as a class from another jar, one annotated with a composed annotation, or one carrying no annotation at all, the imports file being the registration and <code>@AutoConfiguration</code> only supplying ordering.</p>
+</div>
+<div class="paragraph">
+<p>That conventional path is the only one the compiler can look in, since a source set&#8217;s resource directories are a build-tool notion rather than something the compiler is told — the same reason <code>META-INF/grails.factories</code> is read from a fixed location. A module that relocates its resource directories keeps a file this cannot see, and gets a second copy generated that the build reports as two resources at one path.</p>
+</div>
+<div class="paragraph">
+<p>A standalone <code>@GrailsBeans</code> class — one that is neither a plugin descriptor nor an <code>Application</code> — is a source file you can see, so it is registered by hand like any other auto-configuration.</p>
 </div>
 <div class="admonitionblock note">
 <table>

@@ -115,6 +115,23 @@ implements java.util.Map, java.lang.Cloneable</pre>
 
  Type converting maps have no inherent ordering. Two maps with identical entries
  but arranged in a different order internally are considered equal.
+
+ <h2>Subclasses must not declare JavaBean accessors</h2>
+
+ A subclass must not declare a no-argument <CODE>getX()</CODE> or <CODE>isX()</CODE> method, because this
+ class implements java.util.Map and Groovy resolves a JavaBean accessor ahead of the map entry of
+ the same name. Such an accessor makes the entry <CODE>x</CODE> unreadable through
+ <CODE>map.x</CODE> and <CODE>map['x']</CODE>, and makes assignment to it fail with
+ <CODE>ReadOnlyPropertyException</CODE>. It applies to statically compiled callers too: the static
+ compiler binds to the declared accessor and never reaches <CODE>getProperty</CODE>/<CODE>setProperty</CODE>,
+ so the collision cannot be worked around at runtime.
+
+ Expose such a value under a name that is not a JavaBean accessor - for example
+ <CODE>GrailsParameterMap.request()</CODE> - or under a method that takes an argument.
+
+ A setter is a weaker case and is allowed: it leaves reads addressing the map, but assignment to
+ that one name invokes the setter instead of storing an entry, so such an entry must be written
+ with java.util.Map#put. <CODE>GroovyPageAttributes.setGspTagSyntaxCall(boolean)</CODE> is the only one.
   <DL><DT><B>Authors:</B></DT><DD>Graeme Rocher</DD><DD>Lari Hotari</DD></DL><DL><DT><B>Since:</B></DT><DD>1.2</DD></DL></p>
 
           </li>

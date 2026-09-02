@@ -2362,6 +2362,64 @@ Code that walks a configuration source with <code>[]</code> and expects a missin
 <p>Grails applies this guard internally when resolving Spring profile activation keys; you only need it in application code that navigates a raw <code>ConfigObject</code> by subscript.</p>
 </div>
 </div>
+<div class="sect4">
+<h5 id="_28_3_a_getter_on_a_map_no_longer_hides_behind_a_map_entry">28.3 A getter on a map no longer hides behind a map entry</h5>
+<div class="paragraph">
+<p>In Groovy 4, reading or writing a property on a class that implements <code>Map</code> always addressed a map entry.
+In Groovy 5 a public JavaBean accessor declared on such a class is resolved first, so an entry whose name matches an accessor becomes unreadable, and assigning to it throws <code>groovy.lang.ReadOnlyPropertyException</code>.
+This affected <code>params</code>, where <code>getRequest()</code> and <code>getIdentifier()</code> made request parameters named <code>request</code> and <code>identifier</code> unreachable.</p>
+</div>
+<div class="paragraph">
+<p>Grails 8 removes those accessors, so <code>params</code> behaves as it did in Grails 7 - every parameter name is an ordinary map entry, in dotted and subscript form, and under static compilation:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">params.identifier = <span class="string"><span class="delimiter">'</span><span class="content">id1</span><span class="delimiter">'</span></span>       <span class="comment">// the request parameter, not a property</span>
+params[<span class="string"><span class="delimiter">'</span><span class="content">request</span><span class="delimiter">'</span></span>] = <span class="string"><span class="delimiter">'</span><span class="content">req1</span><span class="delimiter">'</span></span>      <span class="comment">// the request parameter, not the HttpServletRequest</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Two methods changed as a result:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Grails 7</th>
+<th class="tableblock halign-left valign-top">Grails 8</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>params.getRequest()</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>params.request()</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>params.getIdentifier()</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>params.id</code>&#8201;&#8212;&#8201;it only ever read the <code>id</code> parameter</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The same change applies to the <code>attrs</code> map passed to a GSP tag, whose internal implementation renames <code>isGspTagSyntaxCall()</code> to <code>gspTagSyntaxCall()</code>.
+Its setter is retained, so assigning <code>attrs.gspTagSyntaxCall</code> still invokes that setter rather than storing an attribute - as in Grails 7. Store an attribute of that name with <code>attrs.put('gspTagSyntaxCall', value)</code>.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+When adding a class that extends <code>grails.util.TypeConvertingMap</code>, do not declare a no-argument <code>getX()</code> or <code>isX()</code> method on it, or the entry <code>x</code> becomes unreachable for the same reason. Statically compiled callers bind directly to the accessor, so the collision cannot be corrected at runtime.
+</td>
+</tr>
+</table>
+</div>
+</div>
 </div>
 <div class="sect3">
 <h4 id="_29_mime_types_are_now_framework_defaults">29. MIME Types Are Now Framework Defaults</h4>
@@ -4434,6 +4492,34 @@ job is disabled with <code>jobEnabled = false</code>, or the class is not a job 
 <div class="paragraph">
 <p>An application that caught <code>NullPointerException</code> around these calls has to catch those instead. See
 <a href="#quartzDynamicScheduling">Dynamic Job Scheduling</a>.</p>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_52_coordinate_changes">52. Coordinate Changes</h4>
+<div class="paragraph">
+<p><code>grails-datamapping-async</code> provides the asynchronous programming model for Grails Data — the
+<code>AsyncEntity</code> trait and the <code>async</code> namespace — and is meant to be depended on directly by
+applications and libraries. Groups nested below <code>org.apache.grails</code> are reserved for implementation
+details of Grails, so the artifact moved from the <code>org.apache.grails.data</code> group to
+<code>org.apache.grails</code>. The artifact id is unchanged:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">implementation <span class="string"><span class="delimiter">&quot;</span><span class="content">org.apache.grails:grails-datamapping-async</span><span class="delimiter">&quot;</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The <a href="https://github.com/apache/grails-core/blob/8.0.x/RENAME.md">RENAME.md</a> reference table in the
+grails-core repository maps previous coordinate names to new names. The <code>rename_gradle_artifacts.sh</code>
+script in the <a href="https://github.com/apache/grails-core/tree/8.0.x/etc/bin">etc/bin</a> directory of the
+grails-core repository rewrites both the Grails 6 (<code>org.grails:grails-datastore-gorm-async</code>) and the
+Grails 7 (<code>org.apache.grails.data:grails-datamapping-async</code>) coordinates in a project&#8217;s Gradle files:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="console">./rename_gradle_artifacts.sh -l my/project/location</code></pre>
 </div>
 </div>
 </div>
