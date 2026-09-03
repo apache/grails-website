@@ -18,9 +18,6 @@ It contains:
 - The Apache Grails Website
 - Current documentation
 - Legacy (pre-asf) documentation
-
-It will also eventually contain the following, once they are migrated from the historical gh-pages grails.org subdomains:
-
 - Grails Guides
 - Grails Forge
 
