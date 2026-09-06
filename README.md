@@ -47,11 +47,18 @@ understand how it is organised:
 
 ```text
 grails-website/
-├── docs-legacy-*/                     # Histoical Grails documentation prior to the move to ASF
+├── docs-legacy-*/                     # Historical Grails documentation prior to the move to ASF
 ├── docs/                              # Grails documentation including groovydocs - published from https://github.com/apache/grails-core/tree/HEAD/grails-doc
 ├── AddMatomoAnalytics.groovy          # Adds missing Apache Analytics Tracking run as `groovy AddMatomoAnalytics.groovy`
-├── .asf.yml            # Apache site publishing configuration
-└── README.md           # Project documentation
+├── .asf.yml                           # Apache site publishing configuration
+└── README.md                          # Project documentation
 ```
 
 The remaining directories are all generated and published from https://github.com/apache/grails-static-website
+
+---
+
+## Contributing
+
+Contributions to the Apache Grails website are welcome! Please check out the [Contributing Guide](CONTRIBUTING.md) and browse the [open issues](https://github.com/apache/grails-website/issues) to get started.
+
