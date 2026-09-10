@@ -2670,7 +2670,7 @@ This technique for rendering JSON may be ok for very simple responses, but in ge
 <p>The previous section on XML and JSON responses covered simplistic examples of rendering XML and JSON responses. Whilst the XML builder used by Grails is the standard <a href="https://groovy-lang.org/processing-xml.html#_xmlparser_and_xmlslurper">XmlSlurper</a> found in Groovy.</p>
 </div>
 <div class="paragraph">
-<p>For JSON, since Grails 3.1, Grails uses Groovy&#8217;s <a href="https://docs.groovy-lang.org/5.1.0/html/documentation/core-domain-specific-languages.html#_streamingjsonbuilder">StreamingJsonBuilder</a> by default and you can refer to the <a href="https://docs.groovy-lang.org/5.1.0/html/documentation/core-domain-specific-languages.html#_streamingjsonbuilder">Groovy documentation</a> and <a href="https://docs.groovy-lang.org/5.1.0/html/gapi/groovy/json/StreamingJsonBuilder.html">StreamingJsonBuilder</a> API documentation on how to use it.</p>
+<p>For JSON, since Grails 3.1, Grails uses Groovy&#8217;s <a href="https://docs.groovy-lang.org/5.1.2/html/documentation/core-domain-specific-languages.html#_streamingjsonbuilder">StreamingJsonBuilder</a> by default and you can refer to the <a href="https://docs.groovy-lang.org/5.1.2/html/documentation/core-domain-specific-languages.html#_streamingjsonbuilder">Groovy documentation</a> and <a href="https://docs.groovy-lang.org/5.1.2/html/gapi/groovy/json/StreamingJsonBuilder.html">StreamingJsonBuilder</a> API documentation on how to use it.</p>
 </div>
 
 
@@ -2698,7 +2698,7 @@ This technique for rendering JSON may be ok for very simple responses, but in ge
 <div class="sect3">
 <h4 id="_programmatic_file_uploads">Programmatic File Uploads</h4>
 <div class="paragraph">
-<p>Grails supports file uploads using Spring&#8217;s <a href="https://docs.spring.io/spring-framework/docs/7.0.9/javadoc-api/org/springframework/web/multipart/MultipartHttpServletRequest.html">MultipartHttpServletRequest</a> interface. The first step for file uploading is to create a multipart form like this:</p>
+<p>Grails supports file uploads on top of Spring&#8217;s multipart handling, exposing the uploaded parts as <a href="https://docs.spring.io/spring-framework/docs/7.0.9/javadoc-api/org/springframework/web/multipart/MultipartFile.html">MultipartFile</a> instances. The first step for file uploading is to create a multipart form like this:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -2801,6 +2801,36 @@ This technique for rendering JSON may be ok for very simple responses, but in ge
 </div>
 <div class="paragraph">
 <p><code>maxRequestSize</code> =  The maximum size allowed for multipart/form-data requests.</p>
+</div>
+<div class="paragraph">
+<p>The exception is raised during dispatch, so it reaches <code>HandlerExceptionResolver</code> beans rather than
+escaping to the servlet container. The response status is <code>413</code> and the body is rendered through the
+application&#8217;s error dispatch rather than by the servlet container&#8217;s own error page. To render it
+yourself, add a response code mapping to <code>UrlMappings</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="string"><span class="delimiter">&quot;</span><span class="content">413</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">errors</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">tooLarge</span><span class="delimiter">'</span></span>)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The mapped action runs on the container&#8217;s error dispatch, so <code>params</code> is empty and <code>request.getFile(..)</code>
+is unavailable — the container never parsed the request. The action&#8217;s job is to render the response.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+On Undertow the limit is applied while the request entity is read, so the request is refused at
+the HTTP layer and no application code runs: the response is a bare <code>413</code> with an empty body, and a
+<code>"413"</code> mapping is not consulted. Tomcat and Jetty dispatch the failure to the application as described
+above.
+</td>
+</tr>
+</table>
 </div>
 <div class="paragraph">
 <p>You should keep in mind <a href="https://www.owasp.org/index.php/Unrestricted_File_Upload">OWASP recommendations - Unrestricted File Upload</a></p>
@@ -7124,7 +7154,7 @@ If you supply templates in a plugin you should consider declaring a <code>&lt;%@
 
 
 <div class="paragraph">
-<p>JSON views are written in Groovy, end with the file extension <code>gson</code> and reside in the <code>grails-app/views</code> directory.  They allow rendering of JSON responses using Groovy&#8217;s <a href="https://docs.groovy-lang.org/5.1.0/html/gapi/groovy/json/StreamingJsonBuilder.html">StreamingJsonBuilder</a> by providing a DSL for producing output in the JSON format. A hello world example can be seen below:</p>
+<p>JSON views are written in Groovy, end with the file extension <code>gson</code> and reside in the <code>grails-app/views</code> directory.  They allow rendering of JSON responses using Groovy&#8217;s <a href="https://docs.groovy-lang.org/5.1.2/html/gapi/groovy/json/StreamingJsonBuilder.html">StreamingJsonBuilder</a> by providing a DSL for producing output in the JSON format. A hello world example can be seen below:</p>
 </div>
 <div class="listingblock">
 <div class="title"><code>grails-app/views/hello.gson</code></div>
@@ -7143,7 +7173,7 @@ If you supply templates in a plugin you should consider declaring a <code>&lt;%@
 </div>
 </div>
 <div class="paragraph">
-<p>The <code>json</code> variable is an instance of <a href="https://docs.groovy-lang.org/5.1.0/html/gapi/groovy/json/StreamingJsonBuilder.html">StreamingJsonBuilder</a>. See the <a href="https://docs.groovy-lang.org/5.1.0/html/documentation/core-domain-specific-languages.html#_streamingjsonbuilder">documentation</a> in the Groovy user guide for more information on <code>StreamingJsonBuilder</code>.</p>
+<p>The <code>json</code> variable is an instance of <a href="https://docs.groovy-lang.org/5.1.2/html/gapi/groovy/json/StreamingJsonBuilder.html">StreamingJsonBuilder</a>. See the <a href="https://docs.groovy-lang.org/5.1.2/html/documentation/core-domain-specific-languages.html#_streamingjsonbuilder">documentation</a> in the Groovy user guide for more information on <code>StreamingJsonBuilder</code>.</p>
 </div>
 <div class="paragraph">
 <p>More example usages:</p>
@@ -9108,7 +9138,7 @@ json jsonapi.render(book, [<span class="key">expand</span>: <span class="string"
 <p>The JSON Views plugin registers a bean called <code>jsonTemplateEngine</code> of type <a href="../api/grails/plugin/json/view/JsonViewTemplateEngine.html">JsonViewTemplateEngine</a>.</p>
 </div>
 <div class="paragraph">
-<p>This class is a regular Groovy <a href="https://docs.groovy-lang.org/5.1.0/html/documentation/template-engines.html">TemplateEngine</a>, and you can use the engine to render JSON views outside the scope of an HTTP request.</p>
+<p>This class is a regular Groovy <a href="https://docs.groovy-lang.org/5.1.2/html/documentation/template-engines.html">TemplateEngine</a>, and you can use the engine to render JSON views outside the scope of an HTTP request.</p>
 </div>
 <div class="paragraph">
 <p>For example:</p>
@@ -9616,7 +9646,7 @@ The trait cannot be defined in the same project as you are compilation as it nee
 
 
 <div class="paragraph">
-<p>It is possible to register custom converters to change how a given class is rendered with json views. To do so, create a class that implements <a href="https://docs.groovy-lang.org/5.1.0/html/gapi/groovy.json.JsonGenerator.Converter.html">Converter</a>. Then you must register the class in <code>src/main/resources/META-INF/services/groovy.json.JsonGenerator$Converter</code>.</p>
+<p>It is possible to register custom converters to change how a given class is rendered with json views. To do so, create a class that implements <a href="https://docs.groovy-lang.org/5.1.2/html/gapi/groovy.json.JsonGenerator.Converter.html">Converter</a>. Then you must register the class in <code>src/main/resources/META-INF/services/groovy.json.JsonGenerator$Converter</code>.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -9757,7 +9787,7 @@ If you using the <code>log</code> variable then you will need to enabling loggin
 <p>Markup Views are written in Groovy, end with the file extension <code>gml</code> and reside in the <code>grails-app/views</code> directory.</p>
 </div>
 <div class="paragraph">
-<p>The Markup Views plugin uses Groovy&#8217;s <a href="https://docs.groovy-lang.org/5.1.0/html/documentation/template-engines.html#_the_markuptemplateengine">MarkupTemplateEngine</a> and you can mostly use the <a href="https://docs.groovy-lang.org/5.1.0/html/documentation/template-engines.html#_the_markuptemplateengine">Groovy user guide</a> as a reference for the syntax.</p>
+<p>The Markup Views plugin uses Groovy&#8217;s <a href="https://docs.groovy-lang.org/5.1.2/html/documentation/template-engines.html#_the_markuptemplateengine">MarkupTemplateEngine</a> and you can mostly use the <a href="https://docs.groovy-lang.org/5.1.2/html/documentation/template-engines.html#_the_markuptemplateengine">Groovy user guide</a> as a reference for the syntax.</p>
 </div>
 <div class="paragraph">
 <p>Example Markup View:</p>
@@ -9785,7 +9815,7 @@ cars {
 </div>
 </div>
 <div class="paragraph">
-<p>For further examples see Groovy&#8217;s <a href="https://docs.groovy-lang.org/5.1.0/html/documentation/template-engines.html#_the_markuptemplateengine">MarkupTemplateEngine</a> documentation.</p>
+<p>For further examples see Groovy&#8217;s <a href="https://docs.groovy-lang.org/5.1.2/html/documentation/template-engines.html#_the_markuptemplateengine">MarkupTemplateEngine</a> documentation.</p>
 </div>
 <div class="paragraph">
 <p>All Markup views subclass the <a href="../api/grails/plugin/markup/view/MarkupViewTemplate.html">MarkupViewTemplate</a> class by default.</p>
@@ -9896,7 +9926,7 @@ apply <span class="key">plugin</span>: <span class="string"><span class="delimit
 
 
 <div class="paragraph">
-<p>Markup views configuration can be altered with <code>grails-app/conf/application.yml</code>. Any of the properties within the <a href="../api/grails/plugin/markup/view/MarkupViewConfiguration.html">MarkupViewConfiguration</a> class and Groovy&#8217;s <a href="https://docs.groovy-lang.org/5.1.0/html/gapi/groovy/text/markup/TemplateConfiguration.html">TemplateConfiguration</a> class can be set.</p>
+<p>Markup views configuration can be altered with <code>grails-app/conf/application.yml</code>. Any of the properties within the <a href="../api/grails/plugin/markup/view/MarkupViewConfiguration.html">MarkupViewConfiguration</a> class and Groovy&#8217;s <a href="https://docs.groovy-lang.org/5.1.2/html/gapi/groovy/text/markup/TemplateConfiguration.html">TemplateConfiguration</a> class can be set.</p>
 </div>
 <div class="paragraph">
 <p>For example:</p>
@@ -10703,6 +10733,9 @@ them it is necessary to add the parameter <code>keepParamsWhenRedirect: true</co
 </div>
 <div class="paragraph">
 <p>Here the name of the controller, action and id are implicitly obtained from the variables <code>controller</code>, <code>action</code> and <code>id</code> embedded within the URL.</p>
+</div>
+<div class="paragraph">
+<p>These names come from the URL and from nowhere else. A request parameter named <code>controller</code>, <code>action</code> or <code>namespace</code> does not stand in for a token the URL leaves out: given the mapping above, <code>/product?action=delete</code> routes to <code>ProductController&#8217;s default action, not to `delete</code>. The parameter is still bound, and is still readable as <code>params.action</code>; it just has no say in which action runs. To route on a request parameter, ask for it explicitly with a closure, as shown at the end of this section.</p>
 </div>
 <div class="sect4">
 <h5 id="_wildcard_artefact_validation">Wildcard Artefact Validation</h5>
@@ -11869,9 +11902,32 @@ Specifying at least one mapping will disable the creation of the global mapping 
 <p><code>method</code> - The HTTP method</p>
 </li>
 <li>
-<p><code>uri</code> - The URI of the request. If this argument is used then all other arguments will be ignored and only this will be used.</p>
+<p><code>uri</code> - The path of the request within the application. If this argument is used then all other arguments will be ignored and only this will be used.</p>
 </li>
 </ul>
+</div>
+<div class="paragraph">
+<p>The <code>uri</code> argument is matched against the same path that URL mappings use to select the controller: percent-encoded characters are decoded, matrix parameters (<code>;name=value</code>) are removed, and the context path is not included. When an application is deployed under the context path <code>/app</code>, a request for <code>/app/%61dmin;x=1/users</code> is matched as <code>/admin/users</code>, so the following interceptor applies to it:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">AdminInterceptor</span> {
+  AdminInterceptor() {
+    match(<span class="key">uri</span>: <span class="string"><span class="delimiter">'</span><span class="content">/admin/**</span><span class="delimiter">'</span></span>)
+    .excludes(<span class="key">uri</span>: <span class="string"><span class="delimiter">'</span><span class="content">/admin/health</span><span class="delimiter">'</span></span>)
+  }
+
+  <span class="type">boolean</span> before() {
+    ...
+  }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This is the canonical form defined by RFC 3986 and the Jakarta Servlet specification: path parameters are removed from each segment before percent-decoding, so an encoded semicolon (<code>%3B</code>) is a literal character rather than a parameter delimiter, and the path is decoded exactly once.</p>
+</div>
+<div class="paragraph">
+<p>A pattern that starts with the context path, such as <code>match(uri: '/app/admin/**')</code>, is also accepted for backwards compatibility. Requests dispatched through <code>&lt;g:include&gt;</code> are matched against the included path, which is the path the include is dispatched to.</p>
 </div>
 
 

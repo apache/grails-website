@@ -4210,7 +4210,170 @@ jar.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_50_tag_libraries_are_described_when_compiled">50. Tag Libraries Are Described When Compiled</h4>
+<h4 id="_50_the_hidden_http_method_filter_is_disabled_by_default">50. The Hidden HTTP Method Filter Is Disabled by Default</h4>
+<div class="paragraph">
+<p>Grails has always registered a servlet filter that rewrites a <code>POST</code> into a <code>PUT</code>, <code>PATCH</code> or <code>DELETE</code> when the
+request carries a <code>_method</code> parameter or an <code>X-HTTP-Method-Override</code> header. It runs ahead of the dispatcher&#8201;&#8212;&#8201;and ahead of the Spring Security filter chain. <strong>As of Grails 8 it is no longer registered by default.</strong></p>
+</div>
+<div class="paragraph">
+<p>Browser forms keep working. The <code>_method</code> parameter is still honoured; it is resolved inside the dispatcher
+instead, after multipart handling and after the filter chain. <code>&lt;g:form method="DELETE"&gt;</code>, the scaffolded views
+and existing GSP templates need no changes.</p>
+</div>
+<div class="sect4">
+<h5 id="_50_1_why_the_default_changed">50.1 Why the default changed</h5>
+<div class="paragraph">
+<p>The filter reads a request parameter before the dispatcher runs. Because a <code>MultipartConfigElement</code> is attached
+to the dispatcher servlet registration, the servlet container resolves it at filter time, so reading <code>_method</code>
+on a <code>multipart/form-data</code> POST forces the container to parse the entire body&#8201;&#8212;&#8201;writing its temporary files&#8201;&#8212;&#8201;<strong>before the request has been routed or authenticated</strong>. An unauthenticated request can therefore cause uploads
+to be written to disk.</p>
+</div>
+<div class="paragraph">
+<p>Spring Boot disabled its equivalent filter by default in 2.2 for the same reason: it "causes early consumption
+of a request body if the body may contain parameters".</p>
+</div>
+<div class="paragraph">
+<p>The filter is also wider than Spring&#8217;s. Spring&#8217;s <code>HiddenHttpMethodFilter</code> reads only the <code>_method</code> parameter and
+honours only <code>PUT</code>, <code>PATCH</code> and <code>DELETE</code>. The Grails filter additionally trusts the <code>X-HTTP-Method-Override</code>
+header&#8201;&#8212;&#8201;which any client can set&#8201;&#8212;&#8201;and applies <strong>any</strong> method name it is given, including <code>GET</code>. The
+in-dispatcher resolution that replaces it accepts the parameter only, and only those three methods.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_50_2_what_changes_for_an_application">50.2 What changes for an application</h5>
+<div class="ulist">
+<ul>
+<li>
+<p><strong><code>POST</code> to a member URL now reaches <code>update</code>.</strong> A <code>resources</code> mapping generates <code>POST /books/$id</code> alongside
+<code>PUT /books/$id</code>. <code>RestfulController</code> has permitted <code>POST</code> for <code>update</code> since Grails 3 (issue #9926, raised
+because AngularJS <code>$resource</code> and the clients modelled on it POST to save an existing object) but no mapping
+was ever generated for it. That is now fixed, and it is what lets a client submit without a <code>_method</code> parameter.</p>
+<div class="paragraph">
+<p>This is a route that did not exist before, so a <code>POST</code> an application previously rejected at the member URL now
+reaches <code>update</code>. An authorization rule written to permit <code>POST</code> to the collection&#8201;&#8212;&#8201;<code>POST /books</code> to create&#8201;&#8212;&#8201;will permit <code>POST /books/1</code> too wherever it is expressed as a prefix. <strong>Review any rule that grants <code>POST</code> on a
+<code>resources</code> path before upgrading</strong>, or keep the route out entirely by enabling the filter as described below.</p>
+</div>
+</li>
+<li>
+<p><strong><code>&lt;g:form&gt;</code> is unchanged.</strong> A form asking for <code>PUT</code>, <code>PATCH</code> or <code>DELETE</code> still submits a <code>POST</code> carrying a
+<code>_method</code> field, and the dispatcher resolves it. The route above is a fallback for a request that arrives
+without the parameter — an AngularJS-style client, or a hand-written form — rather than a replacement for it:
+it reaches <code>update</code> alone, so it answers for neither a <code>PATCH</code> nor a <code>DELETE</code> form, it is not generated for a
+singular <code>resource</code> mapping, and it says nothing about a URL an application has mapped to <code>PUT</code> itself.</p>
+</li>
+<li>
+<p><strong>Servlet filters see the real request method.</strong> This is the one consequence that fails silently. A <code>POST</code>
+carrying <code>_method=DELETE</code> now reaches Spring Security and every servlet filter as a <code>POST</code>, because the rewrite
+happens inside the dispatcher. A security rule matching <code>DELETE /books/<strong></code> </strong>will no longer fire for a browser
+form submit<strong>, and since the URL is unchanged, <code>update</code> and <code>delete</code> cannot be told apart by path either.
+</strong>Review any authorization rule keyed on the HTTP method before upgrading.**</p>
+</li>
+<li>
+<p><strong><code>X-HTTP-Method-Override</code> is no longer honoured</strong>, and a <code>_method</code> value other than <code>PUT</code>, <code>PATCH</code> or
+<code>DELETE</code> is ignored rather than applied. This one fails silently for a non-browser client: a proxy or SDK
+that rewrites <code>DELETE</code> into <code>POST</code> plus the header now has its <code>POST /books/1</code> answered by <code>update</code> with a
+<code>200</code>, while the caller believes it issued a <code>DELETE</code>. <strong>Enable the filter for an application any such client
+talks to</strong>, which restores both the header and the unrestricted method names.</p>
+</li>
+<li>
+<p><strong>A filter registered by the application does not by itself select filter mode.</strong> The mode is read from
+<code>grails.web.hiddenmethod.filter.enabled</code> and <code>spring.mvc.hiddenmethod.filter.enabled</code> only. An application
+that registers its own <code>HiddenHttpMethodFilter</code> bean without setting either property gets that filter <strong>and</strong>
+the dispatcher-mode behaviour described here, including the generated <code>POST</code> member route. Set the property
+alongside the bean.</p>
+</li>
+<li>
+<p><strong>A controller&#8217;s <code>request.method</code> reports <code>POST</code>.</strong> The servlet request reports the method the request
+arrived as&#8201;&#8212;&#8201;the one Spring Security saw and the access log recorded. That is deliberate: with the rewrite
+moved out of the filter chain, a request object that reported anything else would put back the divergence
+between what an application sees and what the infrastructure saw.</p>
+<div class="paragraph">
+<p>Everything Grails resolves <strong>from</strong> the request answers with the overridden method instead, so that an
+application behaves the same whichever mode is in force:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Reports the overridden method</th>
+<th class="tableblock halign-left valign-top">Reports the method on the wire</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">URL mapping resolution, including a method-keyed <code>controller</code>/<code>action</code> name</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>request.method</code>, and the servlet request generally</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>allowedMethods</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spring Security and every other servlet filter</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Link generation, when no <code>method</code> attribute is given</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The container&#8217;s access log</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RenderContext.getHttpMethod()</code></p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Command object initialization, and whether a request body is bound</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Anything branching on <code>request.method</code> itself for a <code>PUT</code>, <code>PATCH</code> or <code>DELETE</code> form submit needs
+<code>allowedMethods</code>, separate actions, or its own read of the parameter. Enabling the filter restores the old
+reading, as described below.</p>
+</div>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_50_3_restoring_the_previous_behaviour">50.3 Restoring the previous behaviour</h5>
+<div class="listingblock">
+<div class="title">grails-app/conf/application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">web</span>:
+        <span class="key">hiddenmethod</span>:
+            <span class="key">filter</span>:
+                <span class="key">enabled</span>: <span class="string"><span class="content">true</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>That restores the filter exactly as it behaved in Grails 7, including the header and the unrestricted method
+names, and suppresses the <code>POST</code> member route so the mappings a <code>resources</code> block generates are unchanged.</p>
+</div>
+<div class="paragraph">
+<p>Spring Boot&#8217;s <code>spring.mvc.hiddenmethod.filter.enabled</code> selects the same mode, registering Spring&#8217;s filter
+rather than the Grails one. Either property is enough: whichever is set, a filter is on the chain, the
+dispatcher stops resolving <code>_method</code> itself, and the <code>POST</code> member route is not generated.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Spring&#8217;s filter is contributed by <code>WebMvcAutoConfiguration</code>, which backs off entirely for an application
+declaring <code>@EnableWebMvc</code>. Grails contributes its own filter in that case, so asking for Boot&#8217;s still leaves a
+filter on the chain rather than silently leaving none. Previously the two definitions could also collide on the
+shared <code>hiddenHttpMethodFilter</code> bean name and fail application startup; they no longer can.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_51_tag_libraries_are_described_when_compiled">51. Tag Libraries Are Described When Compiled</h4>
 <div class="paragraph">
 <p>Tag calls are resolved against a description each tag library contributes as it is compiled, and a
 resolved call is compiled into a direct invocation. The tag itself is still selected by name when the
@@ -4406,7 +4569,7 @@ unqualified call from a controller to a method-declared tag changes.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_51_quartz_job_scheduling_behavior_changes">51. Quartz Job Scheduling Behavior Changes</h4>
+<h4 id="_52_quartz_job_scheduling_behavior_changes">52. Quartz Job Scheduling Behavior Changes</h4>
 <div class="paragraph">
 <p>Three behaviors of the Quartz plugin changed in this release. All three concern what happens when
 something about a schedule is wrong; none of them require a change to a job class.</p>
@@ -4496,7 +4659,295 @@ job is disabled with <code>jobEnabled = false</code>, or the class is not a job 
 </div>
 </div>
 <div class="sect3">
-<h4 id="_52_coordinate_changes">52. Coordinate Changes</h4>
+<h4 id="_53_request_is_no_longer_a_multiparthttpservletrequest">53. <code>request</code> Is No Longer a <code>MultipartHttpServletRequest</code></h4>
+<div class="paragraph">
+<p>The <code>request</code> object Grails exposes to controllers, tag libraries and GSPs is now always the outermost
+servlet request. Previously, for a file upload, Grails replaced it with the resolved
+<code>MultipartHttpServletRequest</code>, which discarded the request wrappers contributed by other filters — the
+hidden HTTP method filter, Spring Security, and any application filter.</p>
+</div>
+<div class="paragraph">
+<p>All file upload methods work exactly as before:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> <span class="function">upload</span>() {
+    <span class="keyword">def</span> file = request.getFile(<span class="string"><span class="delimiter">'</span><span class="content">myFile</span><span class="delimiter">'</span></span>)
+    <span class="keyword">if</span> (file.empty) {
+        flash.message = <span class="string"><span class="delimiter">'</span><span class="content">file cannot be empty</span><span class="delimiter">'</span></span>
+        render(<span class="key">view</span>: <span class="string"><span class="delimiter">'</span><span class="content">uploadForm</span><span class="delimiter">'</span></span>)
+        <span class="keyword">return</span>
+    }
+    file.transferTo(<span class="keyword">new</span> <span class="predefined-type">File</span>(<span class="string"><span class="delimiter">'</span><span class="content">/some/local/dir/myfile.txt</span><span class="delimiter">'</span></span>))
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>request.getFiles(name)</code>, <code>request.getFileNames()</code>, <code>request.getFileMap()</code>, <code>request.getMultiFileMap()</code>
+and <code>request.getMultipartContentType(name)</code> are likewise unchanged, as is binding a file through
+<code>params</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> img = <span class="keyword">new</span> <span class="predefined-type">Image</span>(params)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>What no longer works is treating <code>request</code> as a <code>MultipartHttpServletRequest</code> by type:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">// Before</span>
+<span class="keyword">if</span> (request <span class="keyword">instanceof</span> MultipartHttpServletRequest) {
+    <span class="keyword">def</span> file = ((MultipartHttpServletRequest) request).getFile(<span class="string"><span class="delimiter">'</span><span class="content">myFile</span><span class="delimiter">'</span></span>)
+}
+
+<span class="comment">// After</span>
+<span class="keyword">def</span> file = request.getFile(<span class="string"><span class="delimiter">'</span><span class="content">myFile</span><span class="delimiter">'</span></span>)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Calling one of the file methods on a request that is not a file upload throws <code>IllegalStateException</code>
+with a diagnostic message, the same way it previously failed with <code>MissingMethodException</code>.</p>
+</div>
+<div class="sect4">
+<h5 id="_53_1_oversized_uploads_now_reach_the_applications_error_handling">53.1 Oversized uploads now reach the application&#8217;s error handling</h5>
+<div class="paragraph">
+<p>An upload larger than <code>grails.controllers.upload.maxFileSize</code> or
+<code>grails.controllers.upload.maxRequestSize</code> (both 128000 bytes by default) fails when the servlet
+container parses the request parts, and every parameter read on that request fails with it from then
+on. Because Grails reads request parameters on paths that run before, alongside and after the handler
+— to resolve the <code>_method</code> override, whenever a filter such as Spring Security builds <code>params</code>, in the
+locale-change interceptor, and in the exception resolver&#8217;s request log — that failure used to abort
+the request inside the filter chain, where no exception handler could see it. The application was left
+with the container&#8217;s own error page.</p>
+</div>
+<div class="paragraph">
+<p>Those reads now tolerate a multipart request the container refuses to parse, so the failure surfaces
+where Spring raises it, as a
+<code>org.springframework.web.multipart.MultipartException</code>/<code>MaxUploadSizeExceededException</code> during
+dispatch. The exception is available to <code>HandlerExceptionResolver</code> beans, and the response is a <code>413</code>
+rendered through the application&#8217;s error dispatch instead of the container&#8217;s own error page.</p>
+</div>
+<div class="paragraph">
+<p>A <code>"413"</code> response code URL mapping handles it, the same way a <code>"404"</code> or <code>"500"</code> mapping handles those
+statuses:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="string"><span class="delimiter">&quot;</span><span class="content">413</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">errors</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">tooLarge</span><span class="delimiter">'</span></span>)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The mapped action runs on the container&#8217;s error dispatch, so <code>request.dispatcherType</code> is <code>ERROR</code> and
+<code>params</code> is empty — the container never parsed the request. <code>request.getFile(..)</code> is unavailable there
+for the same reason. The upload itself is gone by then; the action&#8217;s job is to render the response.</p>
+</div>
+<div class="paragraph">
+<p>The parameters of such a request are empty everywhere, not just in the error handler. The request
+cannot reach the originally requested controller either way — <code>DispatcherServlet</code> rejects it before
+handler resolution — so outside the error handler this is only observable in a filter that inspects
+<code>params</code> ahead of the dispatch.</p>
+</div>
+<div class="sect5">
+<h6 id="_servlet_container_differences">Servlet container differences</h6>
+<div class="paragraph">
+<p>Tomcat and Jetty both surface the failure to the application as described above. Undertow applies the
+limit while it reads the request entity and refuses the request at the HTTP layer, so no application
+code runs at all: the response is a bare <code>413</code> with an empty body, and a <code>"413"</code> mapping is not
+consulted. Raising <code>grails.controllers.upload.maxRequestSize</code> raises the point at which Undertow
+refuses, but there is no way to render a body for a request the container never dispatches.</p>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_53_2_an_error_handler_that_fails_is_no_longer_forwarded_to_from_inside_itself">53.2 An error handler that fails is no longer forwarded to from inside itself</h5>
+<div class="paragraph">
+<p>A <code>"500"</code> (or exception-specific) URL mapping that names a controller is reached by forwarding to it.
+That forward re-enters the <code>DispatcherServlet</code>, and the forwarded dispatch resolves the same status
+code mapping again. An error handler that failed for a reason belonging to the request rather than to
+the moment — an unparseable multipart body, a missing collaborator — therefore failed again inside its
+own forward, and that failure forwarded to it once more, until the dispatch stack overflowed.</p>
+</div>
+<div class="paragraph">
+<p>The error handler is no longer forwarded to while a forward to it is already running. The repeat
+failure is logged and the exception is returned to the <code>DispatcherServlet</code>, which reports it through
+the container, so the response is a single container-level error rather than a dispatch that never
+terminates. Once the forward returns, a later error on the same request — from an enclosing request
+whose include failed, for instance — is forwarded to the error handler as before.</p>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_54_request_processing_behaviour_changes">54. Request Processing Behaviour Changes</h4>
+<div class="paragraph">
+<p>Four changes fall out of Grails 8 delegating more of the request path to Spring.</p>
+</div>
+<div class="sect4">
+<h5 id="_54_1_api_versioning_headers_are_now_emitted_for_grails_mapped_requests">54.1 API versioning headers are now emitted for Grails-mapped requests</h5>
+<div class="paragraph">
+<p><code>UrlMappingsHandlerMapping</code> previously assembled its own handler execution chain rather than using
+Spring&#8217;s. As a result, Grails-mapped requests skipped the interceptor Spring adds for API versioning,
+so the <code>Deprecation</code>, <code>Sunset</code> and <code>Link</code> headers configured through <code>spring.mvc.apiversion.*</code> were
+never sent. The chain is now assembled by Spring, and those headers are emitted as configured.</p>
+</div>
+<div class="paragraph">
+<p>If an application relied on those headers being absent, unset the corresponding
+<code>spring.mvc.apiversion.*</code> configuration.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_54_2_the_localecontext_is_restored_rather_than_cleared">54.2 The <code>LocaleContext</code> is restored rather than cleared</h5>
+<div class="paragraph">
+<p>At the end of a request Grails previously called <code>LocaleContextHolder.setLocale(null)</code>, which discarded
+any <code>LocaleContext</code> established earlier in the filter chain by non-Grails code. Grails now saves and
+restores the previous <code>LocaleContext</code>, matching Spring&#8217;s own <code>RequestContextFilter</code>.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_54_3_the_application_attributes_object_is_shared_per_servlet_context">54.3 The application attributes object is shared per servlet context</h5>
+<div class="paragraph">
+<p><code>GrailsApplicationAttributes</code> was constructed once per request. It is now created once per servlet
+context and reused, so the beans it caches are resolved once rather than on every request. It is
+rebuilt automatically if the <code>ApplicationContext</code> is replaced.</p>
+</div>
+<div class="paragraph">
+<p>Applications that implemented <code>GrailsApplicationAttributes</code> themselves must ensure their
+implementation holds no request-scoped state and is safe to use from multiple request threads.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_54_4_grailswebrequest_setmultipartrequest_is_deprecated">54.4 <code>GrailsWebRequest.setMultipartRequest(..)</code> is deprecated</h5>
+<div class="paragraph">
+<p><code>setMultipartRequest(HttpServletRequest)</code> installed the resolved multipart request on the web request. With
+the substitution gone the resolver publishes it as a request attribute instead, and Grails finds it there or
+by unwrapping. The method still works&#8201;&#8212;&#8201;it publishes its argument and discards the cached params&#8201;&#8212;&#8201;but a
+caller that has one should move to letting the resolver publish it, or set the attribute directly:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">// Before</span>
+webRequest.setMultipartRequest(resolved)
+
+<span class="comment">// After</span>
+request.setAttribute(WebUtils.MULTIPART_HTTP_SERVLET_REQUEST_ATTRIBUTE, resolved)
+webRequest.multipartRequestResolved()</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_54_5_grailswebrequest_getcurrentrequest_returns_what_getrequest_returns">54.5 <code>GrailsWebRequest.getCurrentRequest()</code> returns what <code>getRequest()</code> returns</h5>
+<div class="paragraph">
+<p><code>getCurrentRequest()</code> existed to hand back the resolved multipart request in place of the request Grails was
+bound to. That substitution is gone (see <em>53. <code>request</code> Is No Longer a `MultipartHttpServletRequest`</em>), so
+the two accessors now answer with the same object. The method stays, and calling it is fine; there is simply
+nothing left that distinguishes the two.</p>
+</div>
+<div class="paragraph">
+<p>Code that reaches for the uploaded files of a multipart request should use the <code>request.getFile(..)</code> methods
+described in section 53.</p>
+</div>
+<div class="paragraph">
+<p>Tests that mock a <code>GrailsWebRequest</code> and stub <code>getCurrentRequest()</code> need updating. <code>getRequest()</code> is
+<code>final</code> on Spring&#8217;s <code>ServletRequestAttributes</code>, so <code>getCurrentRequest()</code> was the only stubbable request
+accessor, and framework code now calls <code>getRequest()</code> directly. Drive a real <code>GrailsWebRequest</code> over a
+<code>MockHttpServletRequest</code> rather than stubbing the accessor:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">// Before</span>
+<span class="keyword">def</span> webRequest = Mock(GrailsWebRequest)
+webRequest.getCurrentRequest() &gt;&gt; request
+
+<span class="comment">// After</span>
+<span class="keyword">def</span> webRequest = <span class="keyword">new</span> GrailsWebRequest(request, response, servletContext)</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_55_url_mapping_names_come_from_the_uri_not_from_request_parameters">55. URL Mapping Names Come From the URI, Not From Request Parameters</h4>
+<div class="paragraph">
+<p>A mapping that captures its controller, action or namespace from the URL — <code>"/$controller/$action?/$id?"</code>,
+the default mapping every application starts with — used to resolve those names by reading the request&#8217;s
+parameters during dispatch. The values were normally the ones the URI supplied, because the match wrote its
+captures over the request parameters first. But a token the URI did <strong>not</strong> supply left whatever the request
+carried under that name in place, and the request&#8217;s own value decided the route.</p>
+</div>
+<div class="paragraph">
+<p>A request for <code>/article?action=gallery</code> therefore reached <code>ArticleController.gallery()</code> instead of the
+controller&#8217;s default action: the optional <code>$action</code> token captured nothing, and the query string filled the
+gap. The same held for <code>controller</code> and <code>namespace</code>, and for a form body as well as a query string.</p>
+</div>
+<div class="paragraph">
+<p>Captured names now come from the match itself. A token the URI does not supply is simply absent, and a
+request parameter of the same name has no say in routing:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/controllers/UrlMappings.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="directive">static</span> mappings = {
+    <span class="string"><span class="delimiter">&quot;</span><span class="content">/</span><span class="inline"><span class="inline-delimiter">$</span>controller</span><span class="content">/</span><span class="inline"><span class="inline-delimiter">$</span>action</span><span class="content">?/</span><span class="inline"><span class="inline-delimiter">$</span>id</span><span class="content">?</span><span class="delimiter">&quot;</span></span>()
+}</code></pre>
+</div>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Request</th>
+<th class="tableblock halign-left valign-top">Grails 7</th>
+<th class="tableblock halign-left valign-top">Grails 8</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/article/gallery</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ArticleController.gallery()</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ArticleController.gallery()</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/article?action=gallery</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ArticleController.gallery()</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the default action of <code>ArticleController</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><code>params.action</code> still holds <code>gallery</code> in both versions — only the routing decision changed.</p>
+</div>
+<div class="paragraph">
+<p>Choosing an action from a request parameter is still supported, by asking for it explicitly with a closure:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/controllers/UrlMappings.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="directive">static</span> mappings = {
+    <span class="string"><span class="delimiter">&quot;</span><span class="content">/</span><span class="inline"><span class="inline-delimiter">$</span>controller</span><span class="delimiter">&quot;</span></span> {
+        action = { params.goHere }
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A closure supplied by the mapping keeps reading request state, exactly as before, and mappings that use one
+are unaffected by this change.</p>
+</div>
+<div class="paragraph">
+<p>Two consequences beyond the routing fix. Request parameters are now built once per request rather than once
+per candidate mapping, since candidates no longer have to be configured onto the request to be identified.
+And <code>grails.web.mapping.UrlMappingInfo</code> gains a
+<code>isNameResolutionRequestDependent()</code> method for callers that resolve names themselves; it is a default
+method that reports <code>true</code>, so an implementation outside the framework keeps its current behaviour without
+changes.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_56_coordinate_changes">56. Coordinate Changes</h4>
 <div class="paragraph">
 <p><code>grails-datamapping-async</code> provides the asynchronous programming model for Grails Data — the
 <code>AsyncEntity</code> trait and the <code>async</code> namespace — and is meant to be depended on directly by
@@ -4524,7 +4975,7 @@ Grails 7 (<code>org.apache.grails.data:grails-datamapping-async</code>) coordina
 </div>
 </div>
 <div class="sect3">
-<h4 id="_53_importjavatime_removed">53. <code>importJavaTime</code> Removed</h4>
+<h4 id="_57_importjavatime_removed">57. <code>importJavaTime</code> Removed</h4>
 <div class="paragraph">
 <p>The <code>org.apache.grails.gradle.grails-app</code> plugin no longer accepts <code>importJavaTime</code>.</p>
 </div>
@@ -4566,6 +5017,166 @@ is no replacement:</p>
 imported whether or not they are present — a star import of an absent package contributes no classes and is
 not an error in Groovy, so the probe changed nothing it could observe. An application that relied on the
 import being <strong>omitted</strong> when the package was absent sees no difference in compiled output.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_54_non_public_bean_classes_are_marshalled_and_reported_once">54. Non-Public Bean Classes Are Marshalled, and Reported Once</h4>
+<div class="paragraph">
+<p>Groovy 4 stamped <code>ACC_PUBLIC</code> on anonymous inner classes; Groovy 5, which Grails 8 builds on, does not.
+Reflection cannot invoke a method on a class that is not <code>public</code> from another package, even when the method
+itself is public, so code that marshalled an anonymous class perfectly well under Grails 7 started failing on
+Grails 8 with <code>ConverterException</code> wrapping <code>IllegalAccessException</code>. Nothing in the application changed —
+only the class modifier the compiler emits.</p>
+</div>
+<div class="paragraph">
+<p>A second failure in the same code path is fixed alongside it: converting any <code>Serializable</code> bean threw
+<code>IllegalArgumentException</code>, because the marshaller asked whether a <code>private static final long
+serialVersionUID</code> field was accessible before checking that it was static, which the JDK rejects. Practically
+every serializable bean declares that field, so this affected a large share of objects passed to <code>as JSON</code>.</p>
+</div>
+<div class="paragraph">
+<p>Grails 8 adds compatibility handling for the non-public case, and reports each such class once so that the
+code can be corrected — see 54.2 below. The shape that hits it is an anonymous implementation of a public
+interface:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> <span class="function">show</span>() {
+    <span class="keyword">def</span> user = <span class="keyword">new</span> UserDetails() {
+        <span class="annotation">@Override</span> <span class="predefined-type">Collection</span>&lt;? <span class="directive">extends</span> GrantedAuthority&gt; getAuthorities() { [<span class="keyword">new</span> SimpleGrantedAuthority(<span class="string"><span class="delimiter">'</span><span class="content">ROLE_ADMIN</span><span class="delimiter">'</span></span>)] }
+        <span class="annotation">@Override</span> <span class="predefined-type">String</span> getPassword() { <span class="predefined-constant">null</span> }
+        <span class="annotation">@Override</span> <span class="predefined-type">String</span> getUsername() { <span class="string"><span class="delimiter">'</span><span class="content">user</span><span class="delimiter">'</span></span> }
+    }
+    render([<span class="key">user</span>: user] <span class="keyword">as</span> JSON)
+}</code></pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Ordinary Groovy code is unaffected. Property access and method calls through the metaclass still work
+on such an object from any package, as does the JDK&#8217;s <code>Introspector</code>; only raw reflection against the method
+as the non-public class declares it fails. That is what bean marshalling was doing.
+</td>
+</tr>
+</table>
+</div>
+<div class="sect4">
+<h5 id="_54_1_public_fields_of_non_public_classes_are_now_included">54.1 Public Fields of Non-Public Classes Are Now Included</h5>
+<div class="paragraph">
+<p>Java and Groovy beans are now treated alike. A <code>public</code> instance field declared on a class that is not
+public was silently omitted from the JSON or XML body when the bean was a plain Java object; it is now
+included, as it always was for a Groovy bean. If a field was being dropped by accident and should stay out
+of the payload, exclude it explicitly or register an <code>ObjectMarshaller</code> for the class:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> json = someObject <span class="keyword">as</span> JSON
+json.excludes = [<span class="string"><span class="delimiter">'</span><span class="content">nickname</span><span class="delimiter">'</span></span>]
+render json</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A <code>public</code> <strong>field</strong> that cannot be read at all — because its class is in a named module that does not open
+its package — is skipped, and the rest of the object still converts. A <strong>getter</strong> in that same situation is
+not skipped: the conversion fails, as it did before Grails 8.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_54_2_the_warning">54.2 The Warning</h5>
+<div class="paragraph">
+<p>Reading a bean whose class is not public is compatibility handling rather than a supported contract, so each
+such class is reported once:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="text">Class [com.example.DemoController$1] is not public. Grails reads its properties through compatibility
+handling that may be withdrawn in a future major release. Declare it as a named public class so that it
+reads as a standard JavaBean, or register an ObjectMarshaller for it if the class is not yours. To silence
+this, set the log level of [org.apache.grails.common.reflect.ReflectionUtils] above WARN. (warned once per class)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The fix is to declare the class <code>public</code> — as a named class where it is currently anonymous — or, for a class
+you do not own, to register an <code>ObjectMarshaller</code> for it. Classes from the JDK, Groovy, and Spring are never
+reported, since an application cannot declare those public.</p>
+</div>
+<div class="paragraph">
+<p>To silence the warning instead:</p>
+</div>
+<div class="listingblock">
+<div class="title">application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">logging</span>:
+    <span class="key">level</span>:
+        <span class="key">org.apache.grails.common.reflect.ReflectionUtils</span>: <span class="string"><span class="content">ERROR</span></span></code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_58_interceptor_uri_matching_uses_the_dispatched_path">58. Interceptor URI Matching Uses the Dispatched Path</h4>
+<div class="paragraph">
+<p>Interceptors that match on <code>uri</code>, with <code>match(uri: &#8230;&#8203;)</code> or <code>excludes(uri: &#8230;&#8203;)</code>, now match the same path that URL
+mappings route on: percent escapes are decoded, matrix parameters (<code>;name=value</code>) are removed and the context path is
+stripped before the pattern is applied. Previously the raw request URI was matched, so an encoded (<code>/%61dmin/users</code>)
+or matrix-parameter (<code>/admin;x=1/users</code>) request could reach a controller without triggering an interceptor declared
+for <code>/admin/**</code>. Interceptors matched by controller, action or namespace are unaffected.</p>
+</div>
+<div class="paragraph">
+<p>Review interceptors that use <code>uri</code> matching for the following changes:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Interceptors combining <code>match(uri:)</code> with an <code>excludes(&#8230;&#8203;)</code> now run under a context path.</strong>
+In earlier versions a matcher that paired a <code>uri</code> pattern with any exclusion (<code>excludes(uri:)</code>, <code>excludes(controller:)</code>,
+<code>excludes(action:)</code> or a closure) never matched when the application was deployed under a non-root context path (for
+example <code>server.servlet.context-path=/app</code>), because the exclusion check required the pattern to match both the
+context-prefixed and the context-relative request URI, which a pattern such as <code>/api/<strong></code> cannot do. Only that shape was
+affected: <code>matchAll()</code> with exclusions, <code>match(controller:)</code> and other name-based matchers, <code>match(uri:)</code> without an
+exclusion, and <code>uri</code> patterns that match both forms such as <code>/</strong></code> all ran as expected. The affected shape now behaves
+as configured, so an interceptor written that way starts executing under a context path.</p>
+</li>
+<li>
+<p><strong>Patterns are matched against the path within the application only.</strong>
+A pattern is no longer also compared with the context-prefixed request URI, so <code>match(uri: '/*/*')</code> no longer matches
+<code>/app/save</code> under the context path <code>/app</code>. Patterns that begin with the context path, such as
+<code>match(uri: '/app/admin/**')</code>, are still accepted for backwards compatibility.</p>
+</li>
+<li>
+<p><strong>Includes are matched against the included path.</strong>
+During a <code>&lt;g:include&gt;</code> or <code>RequestDispatcher</code> include, <code>uri</code> matchers see the included path rather than the URI of the
+outer request. This is consistent with the controller selected for the include and with <code>match(controller:)</code>
+matchers, which already matched the included controller.</p>
+</li>
+<li>
+<p><strong>Custom <code>grails.interceptors.Matcher</code> implementations receive the canonical path.</strong>
+The <code>uri</code> argument passed to <code>doesMatch</code> is now the decoded, application-relative path without matrix parameters. A new
+<code>doesMatch(String uri, UrlMappingInfo info, String method, String contextPath)</code> default method also supplies the
+context path; override it when a matcher needs the context-prefixed form.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The Spring Security plugin applies the same canonicalization when matching <code>ipRestrictions</code> patterns and when the
+<code>AntPathRequestMatcher</code> compatibility class selects a filter chain, so an encoded or matrix-parameter variant of a
+restricted path is subject to the same restriction as the plain path.</p>
+</div>
+<div class="paragraph">
+<p>The canonical form follows the URI and Servlet specifications, with two deliberate exceptions. Path parameters are
+removed from each segment before percent-decoding, as Jakarta Servlet 6.0 section 3.5.2 requires of containers, so an
+encoded semicolon (<code>%3B</code>) is a literal character and not a parameter delimiter (RFC 3986 section 2.2). Percent-encoded
+unreserved characters such as <code>%61</code> are decoded (RFC 3986 section 2.3), and the path is decoded exactly once
+(RFC 3986 section 2.4). The exceptions are inherited from Spring&#8217;s <code>UrlPathHelper</code>, which Grails URL mapping dispatch
+has used since Grails 3: the context path is compared case-insensitively although RFC 3986 section 6.2.2.1 and
+RFC 9110 section 4.2.3 define paths as case-sensitive, and during a <code>RequestDispatcher</code> include the included path is
+matched. Interceptors and the Spring Security matchers follow dispatch on both points because a matcher that
+disagrees with dispatch lets a request reach a controller without its interceptors or restrictions.</p>
 </div>
 </div>
 </div>
