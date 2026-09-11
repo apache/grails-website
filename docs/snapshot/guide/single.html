@@ -7885,6 +7885,48 @@ matched. Interceptors and the Spring Security matchers follow dispatch on both p
 disagrees with dispatch lets a request reach a controller without its interceptors or restrictions.</p>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_59_sort_and_order_query_arguments_are_validated">59. Sort and Order Query Arguments Are Validated</h4>
+<div class="paragraph">
+<p>Grails 8 checks the <code>sort</code> and <code>order</code> arguments of <code>list()</code>, dynamic finders, where queries, criteria queries and <code>listOrderBy*</code> before the query is built, on both Hibernate 5 and Hibernate 7. A client-supplied sort value used to be interpolated into the query, and the entry points did not agree on how a bad value was handled. They now fail the same way everywhere, with an <code>IllegalArgumentException</code> whose message deliberately does not echo the value.</p>
+</div>
+<div class="paragraph">
+<p>A <code>sort</code> key must be a property path made up of identifiers separated by dots, such as <code>"title"</code> or <code>"author.name"</code>, that resolves through the domain class mapping. A dotted key whose first segment is an alias created with <code>createAlias</code> or declared in a where query is still left to the query to resolve. Anything else is rejected with the message <code>Invalid sort property</code>:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>A value carrying a second expression, a direction or a function call, for example <code>"title, id"</code>, <code>"title desc"</code> or <code>"upper(title)"</code>.</p>
+</li>
+<li>
+<p>A bare name that is not a property of the domain class. Previously this reached Hibernate and failed with a Hibernate exception or a <code>NullPointerException</code>.</p>
+</li>
+<li>
+<p>A path into an unknown property of an association, or into a property that is not an association, for example <code>"author.unknown"</code> or <code>"title.length"</code>.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>An <code>order</code> value must be <code>"asc"</code> or <code>"desc"</code>, compared case-insensitively with surrounding whitespace ignored. Any other value is rejected with the message <code>Invalid sort direction</code>. Previously most entry points treated anything other than <code>desc</code> as ascending, so a typo such as <code>order: "descending"</code> silently sorted ascending. The value is checked even when no <code>sort</code> argument is given.</p>
+</div>
+<div class="paragraph">
+<p>With Hibernate 7, <code>list()</code> additionally requires each <code>fetch</code> key to name a persistent property, and rejects anything else with the message <code>Invalid fetch property</code>.</p>
+</div>
+<div class="paragraph">
+<p>Applications that pass request parameters straight through to these methods no longer need their own checks. Code that relied on an invalid value being ignored must now pass <code>asc</code> or <code>desc</code> and a real property name. To return a different response for a bad value, catch <code>IllegalArgumentException</code> where the query is issued:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> <span class="function">index</span>(<span class="predefined-type">Integer</span> max) {
+    <span class="keyword">try</span> {
+        respond <span class="predefined-type">Book</span>.list(<span class="key">max</span>: max, <span class="key">sort</span>: params.sort, <span class="key">order</span>: params.order)
+    } <span class="keyword">catch</span> (<span class="exception">IllegalArgumentException</span> ignored) {
+        render <span class="key">status</span>: <span class="integer">400</span>
+    }
+}</code></pre>
+</div>
+</div>
+</div>
 </div>
 
 
