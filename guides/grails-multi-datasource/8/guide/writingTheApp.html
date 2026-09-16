@@ -1,0 +1,888 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+                      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+    <title>2 Writing the Application</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="canonical" href="https://grails.apache.org/guides/grails-multi-datasource/8/guide/index.html"/>
+    <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
+    <link rel="stylesheet" href="../css/guide.css" type="text/css" media="screen, print" title="Style" charset="utf-8" />            
+    <link rel="stylesheet" href="../css/pdf.css" type="text/css" media="print" title="PDF" charset="utf-8"/>
+    <script type="text/javascript" src="../js/clipboard.min.js"></script>
+    <script type="text/javascript">
+function addJsClass() {
+    var classes = document.body.className.split(" ");
+    classes.push("js");
+    document.body.className = classes.join(" ");
+}
+    </script>
+</head>
+
+<body class="body" onload="addJsClass();">
+<div id="navigation">
+    <div class="navTitle">
+        
+        Grails Framework Guide 
+    </div>
+    <div class="navLinks">
+        <ul>
+            <li>
+                <div id="nav-summary">
+                    <a href="../guide/index.html" class="button" aria-haspopup="true">Table of contents</a>
+
+                    <div id="nav-summary-childs">
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/gettingStarted.html"><strong>1</strong><span>Getting Started</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/writingTheApp.html"><strong>2</strong><span>Writing the Application</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/testingTheApp.html"><strong>3</strong><span>Testing the Application</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>4</strong><span>Help with Grails</span></a>
+                        </div>
+                        
+                    </div>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+
+</div>
+
+<table id="colset" border="0" cellpadding="0" cellspacing="0">
+    <tr>
+        <td id="col1">
+            <div id="main" class="corner-all">
+
+                <nav class="chapter-navigation" aria-label="Chapter navigation">
+                    
+                        <div class="toc-item prev-left"><a href="../guide/gettingStarted.html">&lt;&lt; <strong>1</strong><span>Getting Started</span></a></div>
+                    
+
+                    
+                        <div class="toc-item next-right"><a href="../guide/testingTheApp.html"><strong>3</strong><span>Testing the Application</span> >></a></div>
+                    
+                </nav>
+
+
+                
+                <div id="table-of-content">
+                    <h2>Table of Contents</h2>
+                    
+                    <div class="toc-item" style="margin-left:0px"><a href="#configuration"><strong>2.1</strong><span>Configuration</span></a>
+                    </div>
+                    
+                    <div class="toc-item" style="margin-left:0px"><a href="#domain"><strong>2.2</strong><span>Domain Classes</span></a>
+                    </div>
+                    
+                    <div class="toc-item" style="margin-left:0px"><a href="#services"><strong>2.3</strong><span>Services</span></a>
+                    </div>
+                    
+                    <div class="toc-item" style="margin-left:0px"><a href="#controllers"><strong>2.4</strong><span>Controllers</span></a>
+                    </div>
+                    
+                    <div class="toc-item" style="margin-left:0px"><a href="#views"><strong>2.5</strong><span>Views</span></a>
+                    </div>
+                    
+                    <div class="toc-item" style="margin-left:0px"><a href="#test"><strong>2.6</strong><span>Functional Test</span></a>
+                    </div>
+                    
+                </div>
+                
+
+                
+
+<h1 id="writingTheApp">2 Writing the Application</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-multi-datasource/v8/guide/writingTheApp.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>We are writing a Grails application using the <code>rest-api</code> profile that connects to two data sources.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="../img/graph.jpg" alt="graph">
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+In older Grails releases a best-effort transaction chain tried to manage a transaction across every configured data source. That is not a true XA transaction and it costs performance, so it is not used here. Declare the data source you need on <code>@Transactional</code> / <code>@ReadOnly</code> (or use <code>withConnection</code>) instead.
+</td>
+</tr>
+</table>
+</div>
+
+
+<h2 id="configuration">2.1 Configuration</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-multi-datasource/v8/guide/configuration.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Wire up the default data source and a second <code>books</code> data source in <code>application.yml</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">dataSource</span>:
+  <span class="key">driverClassName</span>: <span class="string"><span class="content">org.h2.Driver</span></span>
+  <span class="key">username</span>: <span class="string"><span class="content">sa</span></span>
+  <span class="key">password</span>: <span class="string"><span class="content">''</span></span>
+  <span class="key">pooled</span>: <span class="string"><span class="content">true</span></span>
+  <span class="key">jmxExport</span>: <span class="string"><span class="content">true</span></span>
+<span class="key">environments</span>:
+  <span class="key">development</span>:
+    <span class="key">dataSource</span>:
+      <span class="key">dbCreate</span>: <span class="string"><span class="content">create-drop</span></span>
+      <span class="key">url</span>: <span class="string"><span class="content">jdbc:h2:mem:devDb;LOCK_TIMEOUT=10000;DB_CLOSE_ON_EXIT=FALSE</span></span>
+    <span class="key">dataSources</span>:
+      <span class="key">books</span>:
+        <span class="key">dbCreate</span>: <span class="string"><span class="content">create-drop</span></span>
+        <span class="key">url</span>: <span class="string"><span class="content">jdbc:h2:mem:bookDevDb;LOCK_TIMEOUT=10000;DB_CLOSE_ON_EXIT=FALSE</span></span>
+  <span class="key">test</span>:
+    <span class="key">dataSource</span>:
+      <span class="key">dbCreate</span>: <span class="string"><span class="content">create-drop</span></span>
+      <span class="key">url</span>: <span class="string"><span class="content">jdbc:h2:mem:testDb;LOCK_TIMEOUT=10000;DB_CLOSE_ON_EXIT=FALSE</span></span>
+    <span class="key">dataSources</span>:
+      <span class="key">books</span>:
+        <span class="key">dbCreate</span>: <span class="string"><span class="content">create-drop</span></span>
+        <span class="key">url</span>: <span class="string"><span class="content">jdbc:h2:mem:bookTestDb;LOCK_TIMEOUT=10000;DB_CLOSE_ON_EXIT=FALSE</span></span>
+  <span class="key">production</span>:
+    <span class="key">dataSource</span>:
+      <span class="key">dbCreate</span>: <span class="string"><span class="content">none</span></span>
+      <span class="key">url</span>: <span class="string"><span class="content">jdbc:h2:./prodDb;LOCK_TIMEOUT=10000;DB_CLOSE_ON_EXIT=FALSE</span></span>
+    <span class="key">dataSources</span>:
+      <span class="key">books</span>:
+        <span class="key">dbCreate</span>: <span class="string"><span class="content">none</span></span>
+        <span class="key">url</span>: <span class="string"><span class="content">jdbc:h2:./bookProdDb;LOCK_TIMEOUT=10000;DB_CLOSE_ON_EXIT=FALSE</span></span></code></pre>
+</div>
+</div>
+
+
+<h2 id="domain">2.2 Domain Classes</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-multi-datasource/v8/guide/domain.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Create a <code>Movie</code> domain class. If you do not specify a data source, it uses the <strong>default</strong> data source.</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/domain/demo/Movie.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="type">class</span> <span class="class">Movie</span> {
+    <span class="predefined-type">String</span> title
+    <span class="directive">static</span> hasMany = [<span class="key">keywords</span>: Keyword]
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Create a <code>Book</code> domain class.</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/domain/demo/Book.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="type">class</span> <span class="class">Book</span> {
+    <span class="predefined-type">String</span> title
+
+    <span class="directive">static</span> hasMany = [<span class="key">keywords</span>: Keyword]
+
+    <span class="directive">static</span> mapping = {
+        datasource <span class="string"><span class="delimiter">'</span><span class="content">books</span><span class="delimiter">'</span></span> <i class="conum" data-value="1"></i><b>(1)</b>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The <code>Book</code> domain class is associated with the <code>books</code> data source.</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Create a <code>Keyword</code> domain class.</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/domain/demo/Keyword.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">org.grails.datastore.mapping.core.connections.ConnectionSource</span>
+
+<span class="type">class</span> <span class="class">Keyword</span> {
+    <span class="predefined-type">String</span> name
+
+    <span class="directive">static</span> mapping = {
+        datasources([ConnectionSource.DEFAULT, <span class="string"><span class="delimiter">'</span><span class="content">books</span><span class="delimiter">'</span></span>]) <i class="conum" data-value="1"></i><b>(1)</b>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The <code>Keyword</code> domain class is associated with both data sources (the default <code>dataSource</code> and <code>books</code>).</td>
+</tr>
+</table>
+</div>
+
+
+<h2 id="services">2.3 Services</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-multi-datasource/v8/guide/services.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Create a <a href="https://gorm.grails.org/latest/hibernate/manual/index.html#dataServices">Data Service</a> for <code>Movie</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/services/demo/MovieDataService.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Join</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Service</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="annotation">@Service</span>(Movie)
+<span class="type">interface</span> MovieDataService {
+
+    <span class="type">void</span> deleteByTitle(<span class="predefined-type">String</span> title)
+
+    <span class="annotation">@Join</span>(<span class="string"><span class="delimiter">'</span><span class="content">keywords</span><span class="delimiter">'</span></span>) <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="predefined-type">List</span>&lt;Movie&gt; findAll()
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>You can specify query joins with the <code>@Join</code> annotation.</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Add a regular service:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/services/demo/MovieService.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
+
+<span class="annotation">@Slf4j</span>
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">MovieService</span> {
+
+    <span class="annotation">@Transactional</span>
+    Movie addMovie(<span class="predefined-type">String</span> title, <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; keywords) {
+        Movie movie = <span class="keyword">new</span> Movie(<span class="key">title</span>: title)
+        <span class="keyword">if</span> (keywords) {
+            <span class="keyword">for</span> (<span class="predefined-type">String</span> keyword : keywords) {
+                movie.addToKeywords(<span class="keyword">new</span> Keyword(<span class="key">name</span>: keyword))
+            }
+        }
+        <span class="keyword">if</span> (!movie.save()) {
+            log.error <span class="string"><span class="delimiter">'</span><span class="content">Unable to save movie</span><span class="delimiter">'</span></span>
+        }
+        movie
+    }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/services/demo/BookDataService.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Join</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.services.Service</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.ReadOnly</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="annotation">@Service</span>(<span class="predefined-type">Book</span>)
+<span class="type">interface</span> BookDataService {
+
+    <span class="annotation">@Join</span>(<span class="string"><span class="delimiter">'</span><span class="content">keywords</span><span class="delimiter">'</span></span>) <i class="conum" data-value="2"></i><b>(2)</b>
+    <span class="annotation">@ReadOnly</span>(<span class="string"><span class="delimiter">'</span><span class="content">books</span><span class="delimiter">'</span></span>) <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">Book</span>&gt; findAll()
+
+    <span class="annotation">@Transactional</span>(<span class="string"><span class="delimiter">'</span><span class="content">books</span><span class="delimiter">'</span></span>) <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="type">void</span> deleteByTitle(<span class="predefined-type">String</span> title)
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Specify the data source name in <code>@Transactional</code> and <code>@ReadOnly</code>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>You can specify query joins with the <code>@Join</code> annotation.</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+If you use <code>@ReadOnly</code> instead of <code>@ReadOnly('books')</code> you will get <code>org.hibernate.HibernateException: No Session found for current thread</code>.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Add a regular service:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/services/demo/BookService.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
+
+<span class="annotation">@Slf4j</span>
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">BookService</span> {
+
+    <span class="annotation">@Transactional</span>(<span class="string"><span class="delimiter">'</span><span class="content">books</span><span class="delimiter">'</span></span>) <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="predefined-type">Book</span> addBook(<span class="predefined-type">String</span> title, <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; keywords) {
+        <span class="predefined-type">Book</span> book = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: title)
+        <span class="keyword">if</span> (keywords) {
+            <span class="keyword">for</span> (<span class="predefined-type">String</span> keyword : keywords) {
+                book.addToKeywords(<span class="keyword">new</span> Keyword(<span class="key">name</span>: keyword))
+            }
+        }
+        <span class="keyword">if</span> (!book.save()) {
+            log.error <span class="string"><span class="delimiter">'</span><span class="content">Unable to save book</span><span class="delimiter">'</span></span>
+        }
+        book
+    }
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Specify the data source name in <code>@Transactional</code>.</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Add a <code>Keyword</code> service that works with multiple data sources.</p>
+</div>
+<div class="paragraph">
+<p>The first data source listed on a domain class is the default when you do not use an explicit connection. For <code>Keyword</code>, <code>ConnectionSource.DEFAULT</code> is used by default.</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/services/demo/KeywordService.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.DetachedCriteria</span>
+<span class="keyword">import</span> <span class="include">grails.gorm.transactions.ReadOnly</span>
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">KeywordService</span> {
+
+    <span class="annotation">@ReadOnly</span>(<span class="string"><span class="delimiter">'</span><span class="content">books</span><span class="delimiter">'</span></span>)
+    <span class="predefined-type">List</span>&lt;Keyword&gt; findAllBooksKeywords() {
+        booksQuery().list()
+    }
+
+    <span class="annotation">@ReadOnly</span>
+    <span class="predefined-type">List</span>&lt;Keyword&gt; findAllDefaultDataSourceKeywords() {
+        defaultDataSourceQuery().list()
+    }
+
+    <span class="directive">private</span> DetachedCriteria&lt;Keyword&gt; booksQuery() {
+        Keyword.where {}.withConnection(<span class="string"><span class="delimiter">'</span><span class="content">books</span><span class="delimiter">'</span></span>) <i class="conum" data-value="1"></i><b>(1)</b>
+    }
+
+    <span class="directive">private</span> DetachedCriteria&lt;Keyword&gt; defaultDataSourceQuery() {
+        Keyword.where {}
+    }
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Specify the data source name with <code>withConnection</code> for a query.</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>You could write the <code>books</code> query with a dynamic finder or a criteria query instead of a where query:</p>
+</div>
+<div class="paragraph">
+<p>Where query: <code>Keyword.where {}.withConnection('books').list()</code></p>
+</div>
+<div class="paragraph">
+<p>Dynamic finder: <code>Keyword.books.findAll()</code></p>
+</div>
+<div class="paragraph">
+<p>Criteria: <code>Keyword.books.createCriteria().list { }</code></p>
+</div>
+
+
+<h2 id="controllers">2.4 Controllers</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-multi-datasource/v8/guide/controllers.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Create <code>BookController</code> and <code>MovieController</code>. They consume the services from the previous step.</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/controllers/demo/SaveBookCommand.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.compiler.GrailsCompileStatic</span>
+<span class="keyword">import</span> <span class="include">grails.validation.Validateable</span>
+
+<span class="annotation">@GrailsCompileStatic</span>
+<span class="type">class</span> <span class="class">SaveBookCommand</span> <span class="directive">implements</span> Validateable {
+    <span class="predefined-type">String</span> title
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; keywords
+
+    <span class="directive">static</span> constraints = {
+        title <span class="key">nullable</span>: <span class="predefined-constant">false</span>
+        keywords <span class="key">nullable</span>: <span class="predefined-constant">true</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/controllers/demo/BookController.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">BookController</span> {
+
+    <span class="directive">static</span> allowedMethods = [<span class="key">save</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>, <span class="key">index</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>, <span class="key">delete</span>: <span class="string"><span class="delimiter">'</span><span class="content">DELETE</span><span class="delimiter">'</span></span>]
+
+    <span class="directive">static</span> responseFormats = [<span class="string"><span class="delimiter">'</span><span class="content">json</span><span class="delimiter">'</span></span>]
+
+    BookService bookService
+
+    KeywordService keywordService
+
+    BookDataService bookDataService
+
+    <span class="keyword">def</span> <span class="function">save</span>(SaveBookCommand cmd) {
+        bookService.addBook(cmd.title, cmd.keywords)
+        render <span class="key">status</span>: <span class="integer">201</span>
+    }
+
+    <span class="keyword">def</span> <span class="function">index</span>() {
+        [<span class="key">bookList</span>: bookDataService.findAll()]
+    }
+
+    <span class="keyword">def</span> <span class="function">delete</span>(<span class="predefined-type">String</span> title) {
+        bookDataService.deleteByTitle(title)
+        render <span class="key">status</span>: <span class="integer">204</span>
+    }
+
+    <span class="keyword">def</span> <span class="function">keywords</span>() {
+        render <span class="key">view</span>: <span class="string"><span class="delimiter">'</span><span class="content">/keyword/index</span><span class="delimiter">'</span></span>,
+               <span class="key">model</span>: [<span class="key">keywordList</span>: keywordService.findAllBooksKeywords()]
+    }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/controllers/demo/SaveMovieCommand.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.compiler.GrailsCompileStatic</span>
+<span class="keyword">import</span> <span class="include">grails.validation.Validateable</span>
+
+<span class="annotation">@GrailsCompileStatic</span>
+<span class="type">class</span> <span class="class">SaveMovieCommand</span> <span class="directive">implements</span> Validateable {
+    <span class="predefined-type">String</span> title
+    <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; keywords
+
+    <span class="directive">static</span> constraints = {
+        title <span class="key">nullable</span>: <span class="predefined-constant">false</span>
+        keywords <span class="key">nullable</span>: <span class="predefined-constant">true</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/controllers/demo/MovieController.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">MovieController</span> {
+
+    <span class="directive">static</span> allowedMethods = [<span class="key">save</span>: <span class="string"><span class="delimiter">'</span><span class="content">POST</span><span class="delimiter">'</span></span>, <span class="key">index</span>: <span class="string"><span class="delimiter">'</span><span class="content">GET</span><span class="delimiter">'</span></span>, <span class="key">delete</span>: <span class="string"><span class="delimiter">'</span><span class="content">DELETE</span><span class="delimiter">'</span></span>]
+
+    <span class="directive">static</span> responseFormats = [<span class="string"><span class="delimiter">'</span><span class="content">json</span><span class="delimiter">'</span></span>]
+
+    MovieService movieService
+
+    MovieDataService movieDataService
+
+    KeywordService keywordService
+
+    <span class="keyword">def</span> <span class="function">save</span>(SaveMovieCommand cmd) {
+        movieService.addMovie(cmd.title, cmd.keywords)
+        render <span class="key">status</span>: <span class="integer">201</span>
+    }
+
+    <span class="keyword">def</span> <span class="function">index</span>() {
+        [<span class="key">movieList</span>: movieDataService.findAll()]
+    }
+
+    <span class="keyword">def</span> <span class="function">delete</span>(<span class="predefined-type">String</span> title) {
+        movieDataService.deleteByTitle(title)
+        render <span class="key">status</span>: <span class="integer">204</span>
+    }
+
+    <span class="keyword">def</span> <span class="function">keywords</span>() {
+        render <span class="key">view</span>: <span class="string"><span class="delimiter">'</span><span class="content">/keyword/index</span><span class="delimiter">'</span></span>,
+               <span class="key">model</span>: [<span class="key">keywordList</span>: keywordService.findAllDefaultDataSourceKeywords()]
+    }
+}</code></pre>
+</div>
+</div>
+
+
+<h2 id="views">2.5 Views</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-multi-datasource/v8/guide/views.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Add <a href="https://grails.apache.org/docs/latest/guide/theWebLayer.html#gson">JSON Views</a> to render the output.</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/views/book/_book.gson</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">demo.Book</span>
+
+model {
+    <span class="predefined-type">Book</span> book
+}
+
+json {
+    title book.title
+    keywords book.keywords*.name.unique().sort()
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/views/book/index.gson</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">demo.Book</span>
+
+model {
+    <span class="predefined-type">Iterable</span>&lt;<span class="predefined-type">Book</span>&gt; bookList
+}
+
+json tmpl.book(bookList)</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/views/movie/_movie.gson</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">demo.Movie</span>
+
+model {
+    Movie movie
+}
+
+json {
+    title movie.title
+    keywords movie.keywords*.name.unique().sort()
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/views/movie/index.gson</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">demo.Movie</span>
+
+model {
+    <span class="predefined-type">Iterable</span>&lt;Movie&gt; movieList
+}
+
+json tmpl.movie(movieList)</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/views/keyword/index.gson</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">demo.Keyword</span>
+
+model {
+    <span class="predefined-type">Iterable</span>&lt;Keyword&gt; keywordList
+}
+
+json {
+    keywords keywordList*.name.unique().sort()
+}</code></pre>
+</div>
+</div>
+
+
+<h2 id="test">2.6 Functional Test</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-multi-datasource/v8/guide/test.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Add a functional test that verifies Grails handles multiple data sources as expected. The companion uses <code>java.net.http.HttpClient</code> (no extra HTTP-client dependency):</p>
+</div>
+<div class="listingblock">
+<div class="title">src/integration-test/groovy/demo/MultipleDataSourceSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">groovy.json.JsonOutput</span>
+<span class="keyword">import</span> <span class="include">groovy.json.JsonSlurper</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Shared</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="keyword">import</span> <span class="include">java.net.http.HttpClient</span>
+<span class="keyword">import</span> <span class="include">java.net.http.HttpRequest</span>
+<span class="keyword">import</span> <span class="include">java.net.http.HttpResponse</span>
+
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">MultipleDataSourceSpec</span> <span class="directive">extends</span> Specification {
+
+    <span class="annotation">@Shared</span>
+    HttpClient client = HttpClient.newHttpClient()
+
+    <span class="directive">private</span> HttpResponse&lt;<span class="predefined-type">String</span>&gt; saveResource(<span class="predefined-type">String</span> resource, <span class="predefined-type">String</span> itemTitle, <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt; itemKeywords) {
+        <span class="predefined-type">String</span> body = JsonOutput.toJson([<span class="key">title</span>: itemTitle, <span class="key">keywords</span>: itemKeywords])
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(<span class="predefined-type">URI</span>.create(<span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/</span><span class="inline"><span class="inline-delimiter">${</span>resource<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>))
+                .header(<span class="string"><span class="delimiter">'</span><span class="content">Content-Type</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+                .header(<span class="string"><span class="delimiter">'</span><span class="content">Accept</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .build()
+        client.send(request, HttpResponse.BodyHandlers.ofString())
+    }
+
+    <span class="directive">private</span> HttpResponse&lt;<span class="predefined-type">String</span>&gt; deleteResource(<span class="predefined-type">String</span> resource, <span class="predefined-type">String</span> itemTitle) {
+        <span class="predefined-type">String</span> encoded = <span class="predefined-type">URLEncoder</span>.encode(itemTitle, <span class="string"><span class="delimiter">'</span><span class="content">UTF-8</span><span class="delimiter">'</span></span>)
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(<span class="predefined-type">URI</span>.create(<span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/</span><span class="inline"><span class="inline-delimiter">${</span>resource<span class="inline-delimiter">}</span></span><span class="content">?title=</span><span class="inline"><span class="inline-delimiter">${</span>encoded<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>))
+                .header(<span class="string"><span class="delimiter">'</span><span class="content">Accept</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+                .DELETE()
+                .build()
+        client.send(request, HttpResponse.BodyHandlers.ofString())
+    }
+
+    <span class="directive">private</span> HttpResponse&lt;<span class="predefined-type">String</span>&gt; fetchResource(<span class="predefined-type">String</span> resource) {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(<span class="predefined-type">URI</span>.create(<span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/</span><span class="inline"><span class="inline-delimiter">${</span>resource<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>))
+                .header(<span class="string"><span class="delimiter">'</span><span class="content">Accept</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+                .GET()
+                .build()
+        client.send(request, HttpResponse.BodyHandlers.ofString())
+    }
+
+    <span class="directive">private</span> HttpResponse&lt;<span class="predefined-type">String</span>&gt; resourceKeywords(<span class="predefined-type">String</span> resource) {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(<span class="predefined-type">URI</span>.create(<span class="string"><span class="delimiter">&quot;</span><span class="content">http://localhost:</span><span class="inline"><span class="inline-delimiter">${</span>serverPort<span class="inline-delimiter">}</span></span><span class="content">/</span><span class="inline"><span class="inline-delimiter">${</span>resource<span class="inline-delimiter">}</span></span><span class="content">/keywords</span><span class="delimiter">&quot;</span></span>))
+                .header(<span class="string"><span class="delimiter">'</span><span class="content">Accept</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">application/json</span><span class="delimiter">'</span></span>)
+                .GET()
+                .build()
+        client.send(request, HttpResponse.BodyHandlers.ofString())
+    }
+
+    <span class="keyword">def</span> <span class="string"><span class="delimiter">'</span><span class="content">Test Multi-Datasource support saving and retrieving books and movies</span><span class="delimiter">'</span></span>() {
+        <span class="key">given</span>:
+        <span class="predefined-type">List</span>&lt;<span class="predefined-type">Map</span>&gt; books = [
+                [<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Change Agent</span><span class="delimiter">'</span></span>, <span class="key">tags</span>: [<span class="string"><span class="delimiter">'</span><span class="content">dna</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">sci-fi</span><span class="delimiter">'</span></span>]],
+                [<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Influx</span><span class="delimiter">'</span></span>, <span class="key">tags</span>: [<span class="string"><span class="delimiter">'</span><span class="content">sci-fi</span><span class="delimiter">'</span></span>]],
+                [<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Kill Decision</span><span class="delimiter">'</span></span>, <span class="key">tags</span>: [<span class="string"><span class="delimiter">'</span><span class="content">drone</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">sci-fi</span><span class="delimiter">'</span></span>]],
+                [<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Freedom (TM)</span><span class="delimiter">'</span></span>, <span class="key">tags</span>: [<span class="string"><span class="delimiter">'</span><span class="content">sci-fi</span><span class="delimiter">'</span></span>]],
+                [<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Daemon</span><span class="delimiter">'</span></span>, <span class="key">tags</span>: [<span class="string"><span class="delimiter">'</span><span class="content">sci-fi</span><span class="delimiter">'</span></span>]],
+        ]
+        <span class="predefined-type">List</span>&lt;<span class="predefined-type">Map</span>&gt; movies = [
+                [<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Pirates of Silicon Valley</span><span class="delimiter">'</span></span>, <span class="key">tags</span>: [<span class="string"><span class="delimiter">'</span><span class="content">apple</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">microsoft</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">technology</span><span class="delimiter">'</span></span>]],
+                [<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Inception</span><span class="delimiter">'</span></span>, <span class="key">tags</span>: [<span class="string"><span class="delimiter">'</span><span class="content">sci-fi</span><span class="delimiter">'</span></span>]],
+        ]
+        books.each { book -&gt;
+            HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = saveResource(<span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>, book.title <span class="keyword">as</span> <span class="predefined-type">String</span>, book.tags <span class="keyword">as</span> <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt;)
+            <span class="keyword">assert</span> resp.statusCode() == <span class="integer">201</span>
+        }
+        movies.each { movie -&gt;
+            HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = saveResource(<span class="string"><span class="delimiter">'</span><span class="content">movie</span><span class="delimiter">'</span></span>, movie.title <span class="keyword">as</span> <span class="predefined-type">String</span>, movie.tags <span class="keyword">as</span> <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt;)
+            <span class="keyword">assert</span> resp.statusCode() == <span class="integer">201</span>
+        }
+
+        <span class="key">when</span>:
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; resourceResp = fetchResource(<span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>)
+        <span class="predefined-type">List</span> bookBody = <span class="keyword">new</span> JsonSlurper().parseText(resourceResp.body()) <span class="keyword">as</span> <span class="predefined-type">List</span>
+
+        <span class="key">then</span>:
+        resourceResp.statusCode() == <span class="integer">200</span>
+        bookBody.collect { <span class="local-variable">it</span>.title }.sort() == books.collect { <span class="local-variable">it</span>.title }.sort()
+
+        <span class="key">when</span>:
+        resourceResp = fetchResource(<span class="string"><span class="delimiter">'</span><span class="content">movie</span><span class="delimiter">'</span></span>)
+        <span class="predefined-type">List</span> movieBody = <span class="keyword">new</span> JsonSlurper().parseText(resourceResp.body()) <span class="keyword">as</span> <span class="predefined-type">List</span>
+
+        <span class="key">then</span>:
+        resourceResp.statusCode() == <span class="integer">200</span>
+        movieBody.collect { <span class="local-variable">it</span>.title }.sort() == movies.collect { <span class="local-variable">it</span>.title }.sort()
+
+        <span class="key">when</span>:
+        HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = resourceKeywords(<span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>)
+        <span class="predefined-type">Map</span> bookKeywords = <span class="keyword">new</span> JsonSlurper().parseText(resp.body()) <span class="keyword">as</span> <span class="predefined-type">Map</span>
+
+        <span class="key">then</span>:
+        resp.statusCode() == <span class="integer">200</span>
+        (bookKeywords.keywords <span class="keyword">as</span> <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt;).sort() == books.collect { <span class="local-variable">it</span>.tags }.flatten().unique().sort()
+
+        <span class="key">when</span>:
+        resp = resourceKeywords(<span class="string"><span class="delimiter">'</span><span class="content">movie</span><span class="delimiter">'</span></span>)
+        <span class="predefined-type">Map</span> movieKeywords = <span class="keyword">new</span> JsonSlurper().parseText(resp.body()) <span class="keyword">as</span> <span class="predefined-type">Map</span>
+
+        <span class="key">then</span>:
+        resp.statusCode() == <span class="integer">200</span>
+        (movieKeywords.keywords <span class="keyword">as</span> <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt;).sort() == movies.collect { <span class="local-variable">it</span>.tags }.flatten().unique().sort()
+
+        <span class="key">cleanup</span>:
+        books.each { book -&gt;
+            <span class="keyword">assert</span> deleteResource(<span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>, book.title <span class="keyword">as</span> <span class="predefined-type">String</span>).statusCode() == <span class="integer">204</span>
+        }
+        movies.each { movie -&gt;
+            <span class="keyword">assert</span> deleteResource(<span class="string"><span class="delimiter">'</span><span class="content">movie</span><span class="delimiter">'</span></span>, movie.title <span class="keyword">as</span> <span class="predefined-type">String</span>).statusCode() == <span class="integer">204</span>
+        }
+    }
+}</code></pre>
+</div>
+</div>
+
+
+                <div style="clear:both;margin-top:15px;"></div>
+                
+                    <div class="toc-item prev-left"><a href="../guide/gettingStarted.html">&lt;&lt; <strong>1</strong><span>Getting Started</span></a></div>
+                
+                    <div class="toc-item next-right"><a href="../guide/testingTheApp.html"><strong>3</strong><span>Testing the Application</span> >></a></div>
+                
+                <div style="clear:both"></div>
+            </div>
+        </td>
+        <td id="col2">
+            <div class="local clearfix">
+                <div class="local-title">
+                    <a href="https://github.com/grails-guides/grails-multi-datasource">
+                    <svg height="35" class="octicon octicon-mark-github" viewBox="0 0 16 16" version="1.1" width="35" aria-hidden="true"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a> &nbsp;&nbsp;Get the Code
+                </div>
+                <div class="menu">
+                    <div class="input-group">                        
+                        <button href="#" onclick="document.getElementById('github-url').value='git@github.com:grails-guides/grails-multi-datasource.git'" class="codeButton">SSH</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-multi-datasource.git'" class="codeButton">HTTPS</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-multi-datasource'" class="codeButton">Subversion</button>
+                    </div>
+       
+                    <div class="input-group">                    
+                        <!-- Target -->
+                        <input id="github-url" aria-label="Git repository URL" value="git@github.com:grails-guides/grails-multi-datasource.git" type="text" />
+
+                        <!-- Trigger -->
+                        <button class="clipbtn" type="button" data-clipboard-target="#github-url" aria-label="Copy Git repository URL">
+
+                            <img width="13" src="../img/clippy.svg" alt="Copy to clipboard">
+                        </button>       
+                        <script type="text/javascript">new Clipboard('.clipbtn');</script>
+
+                    </div>
+                    <div class="input-group">
+                      <a href="https://github.com/grails-guides/grails-multi-datasource/archive/grails8.zip" class="downloadButton">Download ZIP</a>
+                    </div>
+                </div>
+            </div>
+        </td>
+    </tr>
+</table>
+
+<div id="footer">
+    
+    
+</div>
+
+<script type="text/javascript" src="../js/docs.js"></script>
+
+</body>
+</html>
