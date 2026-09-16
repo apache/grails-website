@@ -386,11 +386,9 @@ If you use <code>@ReadOnly</code> instead of <code>@ReadOnly('books')</code> you
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
 
 <span class="keyword">import</span> <span class="include">grails.gorm.transactions.Transactional</span>
-<span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
 <span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
 
 <span class="annotation">@Slf4j</span>
-<span class="annotation">@CompileStatic</span>
 <span class="type">class</span> <span class="class">BookService</span> {
 
     <span class="annotation">@Transactional</span>(<span class="string"><span class="delimiter">'</span><span class="content">books</span><span class="delimiter">'</span></span>) <i class="conum" data-value="1"></i><b>(1)</b>
@@ -398,7 +396,9 @@ If you use <code>@ReadOnly</code> instead of <code>@ReadOnly('books')</code> you
         <span class="predefined-type">Book</span> book = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: title)
         <span class="keyword">if</span> (keywords) {
             <span class="keyword">for</span> (<span class="predefined-type">String</span> keyword : keywords) {
-                book.addToKeywords(<span class="keyword">new</span> Keyword(<span class="key">name</span>: keyword))
+                Keyword keywordInstance = <span class="keyword">new</span> Keyword(<span class="key">name</span>: keyword)
+                keywordInstance.books.save() <i class="conum" data-value="2"></i><b>(2)</b>
+                book.addToKeywords(keywordInstance)
             }
         }
         <span class="keyword">if</span> (!book.save()) {
@@ -414,6 +414,10 @@ If you use <code>@ReadOnly</code> instead of <code>@ReadOnly('books')</code> you
 <tr>
 <td><i class="conum" data-value="1"></i><b>1</b></td>
 <td>Specify the data source name in <code>@Transactional</code>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td><code>Keyword</code> is mapped to both datasources and defaults to <code>ConnectionSource.DEFAULT</code>. Save it on the <code>books</code> connection so Hibernate does not flush it on the default session (which has no transaction here).</td>
 </tr>
 </table>
 </div>
@@ -781,12 +785,12 @@ json {
                 [<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Inception</span><span class="delimiter">'</span></span>, <span class="key">tags</span>: [<span class="string"><span class="delimiter">'</span><span class="content">sci-fi</span><span class="delimiter">'</span></span>]],
         ]
         books.each { book -&gt;
-            HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = saveResource(<span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>, book.title <span class="keyword">as</span> <span class="predefined-type">String</span>, book.tags <span class="keyword">as</span> <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt;)
-            <span class="keyword">assert</span> resp.statusCode() == <span class="integer">201</span>
+            HttpResponse&lt;<span class="predefined-type">String</span>&gt; saveResp = saveResource(<span class="string"><span class="delimiter">'</span><span class="content">book</span><span class="delimiter">'</span></span>, book.title <span class="keyword">as</span> <span class="predefined-type">String</span>, book.tags <span class="keyword">as</span> <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt;)
+            <span class="keyword">assert</span> saveResp.statusCode() == <span class="integer">201</span>
         }
         movies.each { movie -&gt;
-            HttpResponse&lt;<span class="predefined-type">String</span>&gt; resp = saveResource(<span class="string"><span class="delimiter">'</span><span class="content">movie</span><span class="delimiter">'</span></span>, movie.title <span class="keyword">as</span> <span class="predefined-type">String</span>, movie.tags <span class="keyword">as</span> <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt;)
-            <span class="keyword">assert</span> resp.statusCode() == <span class="integer">201</span>
+            HttpResponse&lt;<span class="predefined-type">String</span>&gt; saveResp = saveResource(<span class="string"><span class="delimiter">'</span><span class="content">movie</span><span class="delimiter">'</span></span>, movie.title <span class="keyword">as</span> <span class="predefined-type">String</span>, movie.tags <span class="keyword">as</span> <span class="predefined-type">List</span>&lt;<span class="predefined-type">String</span>&gt;)
+            <span class="keyword">assert</span> saveResp.statusCode() == <span class="integer">201</span>
         }
 
         <span class="key">when</span>:
