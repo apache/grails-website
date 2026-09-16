@@ -1,0 +1,421 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+                      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+    <title>4 Functional Tests</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="canonical" href="https://grails.apache.org/guides/database-per-tenant/8/guide/index.html"/>
+    <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
+    <link rel="stylesheet" href="../css/guide.css" type="text/css" media="screen, print" title="Style" charset="utf-8" />            
+    <link rel="stylesheet" href="../css/pdf.css" type="text/css" media="print" title="PDF" charset="utf-8"/>
+    <script type="text/javascript" src="../js/clipboard.min.js"></script>
+    <script type="text/javascript">
+function addJsClass() {
+    var classes = document.body.className.split(" ");
+    classes.push("js");
+    document.body.className = classes.join(" ");
+}
+    </script>
+</head>
+
+<body class="body" onload="addJsClass();">
+<div id="navigation">
+    <div class="navTitle">
+        
+        Grails Framework Guide 
+    </div>
+    <div class="navLinks">
+        <ul>
+            <li>
+                <div id="nav-summary">
+                    <a href="../guide/index.html" class="button" aria-haspopup="true">Table of contents</a>
+
+                    <div id="nav-summary-childs">
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/gettingStarted.html"><strong>1</strong><span>Getting Started</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/writingTheApp.html"><strong>2</strong><span>Writing the Application</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/testingTheApp.html"><strong>3</strong><span>Multi-Tenancy Unit Testing</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/integrationTest.html"><strong>4</strong><span>Functional Tests</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/runningTheApp.html"><strong>5</strong><span>Running the Application</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>6</strong><span>Do you need help with Grails?</span></a>
+                        </div>
+                        
+                    </div>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+
+</div>
+
+<table id="colset" border="0" cellpadding="0" cellspacing="0">
+    <tr>
+        <td id="col1">
+            <div id="main" class="corner-all">
+
+                <nav class="chapter-navigation" aria-label="Chapter navigation">
+                    
+                        <div class="toc-item prev-left"><a href="../guide/testingTheApp.html">&lt;&lt; <strong>3</strong><span>Multi-Tenancy Unit Testing</span></a></div>
+                    
+
+                    
+                        <div class="toc-item next-right"><a href="../guide/runningTheApp.html"><strong>5</strong><span>Running the Application</span> >></a></div>
+                    
+                </nav>
+
+
+                
+
+                
+
+<h1 id="integrationTest">4 Functional Tests</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/database-per-tenant/v8/guide/integrationTest.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>We map the CRUD pages with Geb page objects:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/integration-test/groovy/demo/ManufacturersPage.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">geb.Page</span>
+
+<span class="type">class</span> <span class="class">ManufacturersPage</span> <span class="directive">extends</span> Page {
+
+    <span class="directive">static</span> at = { <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">h2</span><span class="delimiter">'</span></span>).text().contains(<span class="string"><span class="delimiter">'</span><span class="content">Available Manufacturers</span><span class="delimiter">'</span></span>) }
+
+    <span class="directive">static</span> content = {
+        audiLink { <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">a</span><span class="delimiter">'</span></span>, <span class="key">text</span>: <span class="string"><span class="delimiter">'</span><span class="content">Audi</span><span class="delimiter">'</span></span>) }
+        fordLink { <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">a</span><span class="delimiter">'</span></span>, <span class="key">text</span>: <span class="string"><span class="delimiter">'</span><span class="content">Ford</span><span class="delimiter">'</span></span>) }
+    }
+
+    <span class="type">void</span> selectAudi() {
+        audiLink.click()
+    }
+
+    <span class="type">void</span> selectFord() {
+        fordLink.click()
+    }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">src/integration-test/groovy/demo/NewVehiclePage.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">geb.Page</span>
+
+<span class="type">class</span> <span class="class">NewVehiclePage</span> <span class="directive">extends</span> Page {
+
+    <span class="directive">static</span> at = { title.contains(<span class="string"><span class="delimiter">'</span><span class="content">Create Vehicle</span><span class="delimiter">'</span></span>) }
+
+    <span class="directive">static</span> content = {
+        inputModel { <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">input</span><span class="delimiter">'</span></span>, <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">model</span><span class="delimiter">'</span></span>) }
+        inputYear { <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">input</span><span class="delimiter">'</span></span>, <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">year</span><span class="delimiter">'</span></span>) }
+        createButton { <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">input</span><span class="delimiter">'</span></span>, <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">create</span><span class="delimiter">'</span></span>) }
+    }
+
+    <span class="type">void</span> newVehicle(<span class="predefined-type">String</span> model, <span class="type">int</span> year) {
+        inputModel &lt;&lt; model
+        inputYear = year
+        createButton.click()
+    }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">src/integration-test/groovy/demo/ShowVehiclePage.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">geb.Page</span>
+
+<span class="type">class</span> <span class="class">ShowVehiclePage</span> <span class="directive">extends</span> Page {
+
+    <span class="directive">static</span> at = { title.contains(<span class="string"><span class="delimiter">'</span><span class="content">Show Vehicle</span><span class="delimiter">'</span></span>) }
+
+    <span class="directive">static</span> content = {
+        listButton { <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">a</span><span class="delimiter">'</span></span>, <span class="key">text</span>: <span class="string"><span class="delimiter">'</span><span class="content">Vehicle List</span><span class="delimiter">'</span></span>) }
+    }
+
+    <span class="type">void</span> vehicleList() {
+        listButton.click()
+    }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">src/integration-test/groovy/demo/VehiclesPage.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">geb.Page</span>
+
+<span class="type">class</span> <span class="class">VehiclesPage</span> <span class="directive">extends</span> Page {
+
+    <span class="directive">static</span> at = { title.contains(<span class="string"><span class="delimiter">'</span><span class="content">Vehicle List</span><span class="delimiter">'</span></span>) }
+
+    <span class="directive">static</span> content = {
+        newVehicleLink { <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">a</span><span class="delimiter">'</span></span>, <span class="key">text</span>: <span class="string"><span class="delimiter">'</span><span class="content">New Vehicle</span><span class="delimiter">'</span></span>) }
+        vehiclesRows { <span class="error">$</span>(<span class="string"><span class="delimiter">'</span><span class="content">tbody tr</span><span class="delimiter">'</span></span>) }
+    }
+
+    <span class="type">void</span> newVehicle() {
+        newVehicleLink.click()
+    }
+
+    <span class="type">int</span> numberOfVehicles() {
+        vehiclesRows.size()
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>We test tenant selection with a <code>ContainerGebSpec</code> functional test (requires Docker / Testcontainers):</p>
+</div>
+<div class="listingblock">
+<div class="title">src/integration-test/groovy/demo/TenantSelectionFuncSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.plugin.geb.ContainerGebSpec</span>
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">spock.lang.IgnoreIf</span>
+
+<span class="annotation">@Integration</span>
+<span class="annotation">@IgnoreIf</span>({ !<span class="predefined-type">System</span>.getenv(<span class="string"><span class="delimiter">'</span><span class="content">CI</span><span class="delimiter">'</span></span>) &amp;&amp; !isDockerAvailable() })
+<span class="type">class</span> <span class="class">TenantSelectionFuncSpec</span> <span class="directive">extends</span> ContainerGebSpec {
+
+    <span class="directive">private</span> <span class="directive">static</span> <span class="type">boolean</span> isDockerAvailable() {
+        <span class="keyword">try</span> {
+            <span class="keyword">def</span> process = [<span class="string"><span class="delimiter">'</span><span class="content">docker</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">info</span><span class="delimiter">'</span></span>].execute()
+            process.waitFor()
+            <span class="keyword">return</span> process.exitValue() == <span class="integer">0</span>
+        } <span class="keyword">catch</span> (<span class="exception">Exception</span> ignored) {
+            <span class="keyword">return</span> <span class="predefined-constant">false</span>
+        }
+    }
+
+    <span class="keyword">def</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">it is possible to change tenants and get different lists of vehicles</span><span class="delimiter">&quot;</span></span>() {
+
+        <span class="key">when</span>:
+        to ManufacturersPage
+
+        <span class="key">then</span>:
+        at ManufacturersPage
+
+        <span class="key">when</span>:
+        page.selectAudi()
+
+        <span class="key">then</span>:
+        at VehiclesPage
+
+        <span class="key">when</span>:
+        page.newVehicle()
+
+        <span class="key">then</span>:
+        at NewVehiclePage
+
+        <span class="key">when</span>:
+        page.newVehicle(<span class="string"><span class="delimiter">'</span><span class="content">A5</span><span class="delimiter">'</span></span>, <span class="integer">2000</span>)
+
+        <span class="key">then</span>:
+        at ShowVehiclePage
+
+        <span class="key">when</span>:
+        page.vehicleList()
+
+        <span class="key">then</span>:
+        at VehiclesPage
+        page.numberOfVehicles() == <span class="integer">1</span>
+
+        <span class="key">when</span>:
+        page.newVehicle()
+
+        <span class="key">then</span>:
+        at NewVehiclePage
+
+        <span class="key">when</span>:
+        page.newVehicle(<span class="string"><span class="delimiter">'</span><span class="content">A3</span><span class="delimiter">'</span></span>, <span class="integer">2001</span>)
+
+        <span class="key">then</span>:
+        at ShowVehiclePage
+
+        <span class="key">when</span>:
+        page.vehicleList()
+
+        <span class="key">then</span>:
+        at VehiclesPage
+        page.numberOfVehicles() == <span class="integer">2</span>
+
+        <span class="key">when</span>:
+        to ManufacturersPage
+
+        <span class="key">then</span>:
+        at ManufacturersPage
+
+        <span class="key">when</span>:
+        page.selectFord()
+
+        <span class="key">then</span>:
+        at VehiclesPage
+
+        <span class="key">when</span>:
+        page.newVehicle()
+
+        <span class="key">then</span>:
+        at NewVehiclePage
+
+        <span class="key">when</span>:
+        page.newVehicle(<span class="string"><span class="delimiter">'</span><span class="content">KA</span><span class="delimiter">'</span></span>, <span class="integer">1996</span>)
+
+        <span class="key">then</span>:
+        at ShowVehiclePage
+
+        <span class="key">when</span>:
+        page.vehicleList()
+
+        <span class="key">then</span>:
+        at VehiclesPage
+        page.numberOfVehicles() == <span class="integer">1</span>
+    }
+
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>There is also a non-browser integration test that proves tenant isolation with <code>Tenants.withId</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">src/integration-test/groovy/demo/TenantIsolationIntegrationSpec.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> demo
+
+<span class="keyword">import</span> <span class="include">grails.gorm.multitenancy.Tenants</span>
+<span class="keyword">import</span> <span class="include">grails.testing.mixin.integration.Integration</span>
+<span class="keyword">import</span> <span class="include">spock.lang.Specification</span>
+
+<span class="annotation">@Integration</span>
+<span class="type">class</span> <span class="class">TenantIsolationIntegrationSpec</span> <span class="directive">extends</span> Specification {
+
+    VehicleService vehicleService
+
+    <span class="type">void</span> <span class="string"><span class="delimiter">'</span><span class="content">vehicles created for one tenant are not visible to another</span><span class="delimiter">'</span></span>() {
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">create a vehicle in the audi tenant</span><span class="delimiter">'</span></span>
+        <span class="predefined-type">Long</span> audiId = Tenants.withId(<span class="string"><span class="delimiter">'</span><span class="content">audi</span><span class="delimiter">'</span></span>) {
+            vehicleService.save(<span class="string"><span class="delimiter">'</span><span class="content">A5</span><span class="delimiter">'</span></span>, <span class="integer">2011</span>).id
+        }
+
+        <span class="key">then</span>:
+        Tenants.withId(<span class="string"><span class="delimiter">'</span><span class="content">audi</span><span class="delimiter">'</span></span>) {
+            vehicleService.count() == <span class="integer">1</span>
+            vehicleService.find(audiId)?.model == <span class="string"><span class="delimiter">'</span><span class="content">A5</span><span class="delimiter">'</span></span>
+        }
+
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">switch to the ford tenant</span><span class="delimiter">'</span></span>
+        <span class="key">then</span>: <span class="string"><span class="delimiter">'</span><span class="content">audi data is not visible</span><span class="delimiter">'</span></span>
+        Tenants.withId(<span class="string"><span class="delimiter">'</span><span class="content">ford</span><span class="delimiter">'</span></span>) {
+            vehicleService.count() == <span class="integer">0</span>
+            vehicleService.find(audiId) == <span class="predefined-constant">null</span>
+        }
+
+        <span class="key">when</span>: <span class="string"><span class="delimiter">'</span><span class="content">create a ford vehicle</span><span class="delimiter">'</span></span>
+        <span class="predefined-type">Long</span> fordId = Tenants.withId(<span class="string"><span class="delimiter">'</span><span class="content">ford</span><span class="delimiter">'</span></span>) {
+            vehicleService.save(<span class="string"><span class="delimiter">'</span><span class="content">KA</span><span class="delimiter">'</span></span>, <span class="integer">1996</span>).id
+        }
+
+        <span class="key">then</span>:
+        Tenants.withId(<span class="string"><span class="delimiter">'</span><span class="content">ford</span><span class="delimiter">'</span></span>) {
+            vehicleService.count() == <span class="integer">1</span>
+            vehicleService.find(fordId)?.model == <span class="string"><span class="delimiter">'</span><span class="content">KA</span><span class="delimiter">'</span></span>
+        }
+
+        <span class="key">cleanup</span>:
+        Tenants.withId(<span class="string"><span class="delimiter">'</span><span class="content">audi</span><span class="delimiter">'</span></span>) {
+            <span class="keyword">if</span> (audiId) {
+                vehicleService.delete(audiId)
+            }
+        }
+        Tenants.withId(<span class="string"><span class="delimiter">'</span><span class="content">ford</span><span class="delimiter">'</span></span>) {
+            <span class="keyword">if</span> (fordId) {
+                vehicleService.delete(fordId)
+            }
+        }
+    }
+}</code></pre>
+</div>
+</div>
+
+
+                <div style="clear:both;margin-top:15px;"></div>
+                
+                    <div class="toc-item prev-left"><a href="../guide/testingTheApp.html">&lt;&lt; <strong>3</strong><span>Multi-Tenancy Unit Testing</span></a></div>
+                
+                    <div class="toc-item next-right"><a href="../guide/runningTheApp.html"><strong>5</strong><span>Running the Application</span> >></a></div>
+                
+                <div style="clear:both"></div>
+            </div>
+        </td>
+        <td id="col2">
+            <div class="local clearfix">
+                <div class="local-title">
+                    <a href="https://github.com/grails-guides/database-per-tenant">
+                    <svg height="35" class="octicon octicon-mark-github" viewBox="0 0 16 16" version="1.1" width="35" aria-hidden="true"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a> &nbsp;&nbsp;Get the Code
+                </div>
+                <div class="menu">
+                    <div class="input-group">                        
+                        <button href="#" onclick="document.getElementById('github-url').value='git@github.com:grails-guides/database-per-tenant.git'" class="codeButton">SSH</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/database-per-tenant.git'" class="codeButton">HTTPS</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/database-per-tenant'" class="codeButton">Subversion</button>
+                    </div>
+       
+                    <div class="input-group">                    
+                        <!-- Target -->
+                        <input id="github-url" aria-label="Git repository URL" value="git@github.com:grails-guides/database-per-tenant.git" type="text" />
+
+                        <!-- Trigger -->
+                        <button class="clipbtn" type="button" data-clipboard-target="#github-url" aria-label="Copy Git repository URL">
+
+                            <img width="13" src="../img/clippy.svg" alt="Copy to clipboard">
+                        </button>       
+                        <script type="text/javascript">new Clipboard('.clipbtn');</script>
+
+                    </div>
+                    <div class="input-group">
+                      <a href="https://github.com/grails-guides/database-per-tenant/archive/grails8.zip" class="downloadButton">Download ZIP</a>
+                    </div>
+                </div>
+            </div>
+        </td>
+    </tr>
+</table>
+
+<div id="footer">
+    
+    
+</div>
+
+<script type="text/javascript" src="../js/docs.js"></script>
+
+</body>
+</html>
