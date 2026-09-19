@@ -573,6 +573,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#querying">Querying</a>
 <ul class="sectlevel2">
 <li><a href="#queryingBasics">Basic Querying</a></li>
+<li><a href="#_bulk_updates">Bulk Updates</a></li>
 <li><a href="#geoSpatial">Geospacial Querying</a></li>
 <li><a href="#textSearch">Full Text Search</a></li>
 </ul>
@@ -930,6 +931,53 @@ MongoDB plugin 1.2 and above requires Grails 2.1.5 or 2.2.1 as a minimum Grails 
 <div class="sect2">
 <h3 id="upgradeNotes">Upgrade Notes</h3>
 <div class="sect3">
+<h4 id="_string_id_storage_now_defaults_to_objectid">String id Storage Now Defaults to ObjectId</h4>
+<div class="paragraph">
+<p>A domain that declares <code>String id</code> without its own <code>storedAs</code> mapping now persists <code>_id</code> as a BSON <code>ObjectId</code>. Before 8.0.0 the default was BSON <code>String</code>.</p>
+</div>
+<div class="paragraph">
+<p>Application code is unaffected: <code>person.id</code> is still the 24-char hex <code>String</code>, and <code>get</code>, <code>findAllByIdInList</code>, updates and deletes still accept hex strings. What changes is the BSON type written to and matched in the database.</p>
+</div>
+<div class="paragraph">
+<p><strong>This is a data-compatibility change.</strong> An application upgrading from 7.x whose collections already hold String <code>_id</code> values has two options:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Keep the previous behavior by pinning the old default:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+  <span class="key">mongodb</span>:
+    <span class="key">stringIds</span>:
+      <span class="key">defaultStoredAs</span>: <span class="string"><span class="content">string</span></span></code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Or migrate the stored <code>_id</code> values to <code>ObjectId</code>. Because <code>_id</code> is immutable, each document must be reinserted under the converted id rather than updated in place.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Domains keyed by a natural string value (slug, email, UUID) should declare the opt-out explicitly, since such values are not valid ObjectId hex:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">UserProfile</span> {
+    <span class="predefined-type">String</span> id   <span class="comment">// e.g. &quot;jsmith@example.com&quot;</span>
+
+    <span class="directive">static</span> mapping = {
+        id <span class="key">generator</span>: <span class="string"><span class="delimiter">'</span><span class="content">assigned</span><span class="delimiter">'</span></span>, <span class="key">storedAs</span>: <span class="predefined-type">String</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>See <a href="#idGeneration">Identity Generation</a> for the full description of <code>storedAs</code>.</p>
+</div>
+</div>
+<div class="sect3">
 <h4 id="_dependency_upgrades">Dependency Upgrades</h4>
 <div class="paragraph">
 <p>GORM 7.1 supports Apache Groovy 3, Java 14, MongoDB Driver 4.3 and Spring 5.3.x.</p>
@@ -1242,7 +1290,34 @@ mongoClient.close()  <span class="comment">// close the client you created</span
 <p>The <code>*</code> method is used to indicate that the setting applies to all properties.</p>
 </div>
 <div class="paragraph">
-<p>You can also set a global default for the storage type of <code>String id</code> fields via <code>grails.mongodb.stringIds.defaultStoredAs</code> (values <code>string</code> or <code>objectid</code>). See <a href="#idGeneration">Identity Generation</a> for details.</p>
+<p>The storage type of <code>String id</code> fields is controlled globally by <code>grails.mongodb.stringIds.defaultStoredAs</code> (values <code>objectid</code>, the default as of 8.0.0, or <code>string</code>). See <a href="#idGeneration">Identity Generation</a> for details, including the upgrade note for applications with existing String <code>_id</code> data.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_persistence_engine_deprecated">Persistence Engine (deprecated)</h4>
+<div class="paragraph">
+<p><code>grails.mongodb.engine</code> selects the persistence engine. <code>codec</code> is the default and the recommended value. <code>mapping</code> remains available for compatibility, but is deprecated.</p>
+</div>
+<div class="paragraph">
+<p>The <code>mapping</code> engine is deprecated and will be removed in a future release. It reaches MongoDB through a separate persister hierarchy that has to be kept in step with the codec one for every change to the storage layer, and it offers no capability the codec engine lacks. An application setting it should remove the setting:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+  <span class="key">mongodb</span>:
+    <span class="key">engine</span>: <span class="string"><span class="content">mapping   </span></span><i class="conum" data-value="1"></i><b>(1)</b></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Deprecated. Remove this to use the default codec engine.</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Selecting it logs a warning at startup.</p>
 </div>
 </div>
 <div class="sect3">
@@ -2132,10 +2207,10 @@ p.save()</code></pre>
 <div class="sect3">
 <h4 id="_decoupling_the_declared_type_from_the_storage_type">Decoupling the Declared Type from the Storage Type</h4>
 <div class="paragraph">
-<p>When a domain declares <code>String id</code>, GORM by default writes <code>_id</code> as a BSON <code>String</code>. This is convenient in application code — HTTP controllers return clean JSON, URLs embed ids directly, and you never need <code>new ObjectId(...)</code> at call sites — but it gives up the native <code>ObjectId</code> benefits at the storage layer (12-byte index entries vs. 24-byte hex strings, embedded creation timestamp, etc.).</p>
+<p>A domain that declares <code>String id</code> is convenient in application code — HTTP controllers return clean JSON, URLs embed ids directly, and you never need <code>new ObjectId(...)</code> at call sites. Writing <code>_id</code> as a BSON <code>String</code> to match would give up the native <code>ObjectId</code> benefits at the storage layer (12-byte index entries vs. 24-byte hex strings, embedded creation timestamp, etc.).</p>
 </div>
 <div class="paragraph">
-<p>You can get both using the <code>storedAs</code> mapping option. The domain sees a <code>String id</code> (hex form), but <code>_id</code> on disk is a BSON <code>ObjectId</code>:</p>
+<p>The <code>storedAs</code> mapping option decouples the two, so you get both: the domain sees a <code>String id</code> (hex form), while <code>_id</code> on disk is a BSON <code>ObjectId</code>. As of Grails 8.0.0 this is the default for any <code>String id</code> that declares no <code>storedAs</code> of its own — the mapping below is what that default applies for you, and is only needed to be explicit or to override a global <code>defaultStoredAs: string</code>:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -2175,18 +2250,33 @@ p.save()</code></pre>
 <div class="sect4">
 <h5 id="_global_default">Global Default</h5>
 <div class="paragraph">
-<p>You can opt in globally with an <code>application.yml</code> setting, which applies to every domain declaring <code>String id</code> that does not specify its own <code>storedAs</code>:</p>
+<p>As of Grails 8.0.0 this is the <strong>default</strong>: every domain declaring <code>String id</code> that does not specify its own <code>storedAs</code> stores <code>_id</code> as a BSON <code>ObjectId</code>. No configuration is required to get the behavior described above.</p>
+</div>
+<div class="paragraph">
+<p>To opt the whole application back out — for example an existing application whose data already holds BSON String <code>_id</code> values — pin the previous default in <code>application.yml</code>:</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
   <span class="key">mongodb</span>:
     <span class="key">stringIds</span>:
-      <span class="key">defaultStoredAs</span>: <span class="string"><span class="content">objectid</span></span></code></pre>
+      <span class="key">defaultStoredAs</span>: <span class="string"><span class="content">string</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Valid values are <code>string</code> (current default, BSON String) and <code>objectid</code> (BSON ObjectId). Unrecognized values fall back to the default with a warning logged at startup.</p>
+<p>Valid values are <code>objectid</code> (BSON ObjectId, the default) and <code>string</code> (BSON String, the pre-8.0.0 default). Unrecognized values fall back to the default with a warning logged at startup.</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+This default changed in 8.0.0. An application upgrading from 7.x with existing <code>String id</code> data is reading and writing BSON String <code>_id</code> values; on 8.0.0 those documents are no longer matched by id lookups unless you either migrate the stored <code>_id</code> values to <code>ObjectId</code> or set <code>defaultStoredAs: string</code> above.
+</td>
+</tr>
+</table>
 </div>
 <div class="paragraph">
 <p>Per-domain <code>storedAs</code> always wins over the global default. Domains using a natural string key (slug, email, UUID) should opt out explicitly:</p>
@@ -2244,8 +2334,45 @@ p.save()</code></pre>
 collection type.</p>
 </div>
 <div class="paragraph">
-<p>One of the implications of this is if you override the collection with a non-dirty checking aware type it can disable
-dirty checking and prevent the property from being updated.</p>
+<p>Assigning a new collection over a tracked one keeps dirty checking active: the generated setter wraps the
+replacement in the same dirty checking aware type, so a pattern such as re-initialising an empty collection
+(<code>if (!book.authors) book.authors = []</code>) followed by in-place mutation is tracked and persisted. This holds
+for basic collections and maps, embedded collections, and one-to-many and many-to-many associations alike. The wrappers
+also track iterator-based mutation — Groovy&#8217;s <code>removeAll(Closure)</code> / <code>retainAll(Closure)</code>, <code>removeIf</code>,
+<code>ListIterator</code> operations, <code>sort</code> / <code>replaceAll</code>, <code>addFirst</code> / <code>addLast</code> on a <code>List</code> property,
+<code>removeFirst</code> / <code>removeLast</code> on a <code>List</code> or <code>SortedSet</code> property, and the <code>subList</code>, <code>reversed</code>,
+<code>headSet</code>, <code>tailSet</code> and <code>subSet</code> views — and for <code>Map</code> properties the default
+methods (<code>putIfAbsent</code>, <code>merge</code>, <code>compute*</code>, <code>replace*</code>) and removals through the <code>entrySet()</code> / <code>keySet()</code> /
+<code>values()</code> views.</p>
+</div>
+<div class="paragraph">
+<p>Assigning a collection that belongs to <strong>another</strong> entity re-binds it to the entity being assigned to, so
+<code>bookA.tags = bookB.tags</code> followed by <code>bookA.tags.add('classic')</code> marks <code>bookA</code> dirty rather than <code>bookB</code>.
+The two properties go on sharing the same underlying collection afterwards, exactly as a plain Groovy
+assignment would. This applies to the properties GORM wraps in a dirty checking aware collection — basic
+collections and maps, and embedded collections. When <strong>borrowed from another entity</strong> a one-to-many or
+many-to-many behaves differently: it is held in a <code>PersistentCollection</code>, which is stored as-is and left to
+the store, as with the store-specific types below. Re-initialising such a property on its own entity is
+still tracked, as described above.</p>
+</div>
+<div class="paragraph">
+<p>A few paths remain outside automatic dirty checking and still require an explicit <code>markDirty(propertyName)</code>:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>a hand-written setter (one you define yourself rather than the generated one) stores the value it is given
+without re-wrapping, so a collection assigned through it loses tracking until the next load;</p>
+</li>
+<li>
+<p>mutating an entry&#8217;s value directly during map iteration (<code>Map.Entry.setValue</code>);</p>
+</li>
+<li>
+<p>replacing a collection wrapped by a store-specific type (for example the Neo4j collection wrappers) is
+deliberately left to that store&#8217;s persister, which re-wraps the raw replacement on save — that store&#8217;s
+behaviour is unchanged.</p>
+</li>
+</ul>
 </div>
 <div class="paragraph">
 <p>If any of your updates are not updating the properties that you anticipate you can force an update using the <a href="../api/org/grails/datastore/mapping/dirty/checking/DirtyCheckable.html#markDirty(java.lang.String)">markDirty()</a> method:</p>
@@ -2806,6 +2933,72 @@ For the full MongoDB client model refer to the <a href="https://api.mongodb.com/
 Document doc = Product.collection
         .find(eq(<span class="string"><span class="delimiter">&quot;</span><span class="content">title</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">coffee</span><span class="delimiter">&quot;</span></span>))
         .first()</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_bulk_updates">Bulk Updates</h3>
+<div class="paragraph">
+<p><code>updateAll</code> sets the given properties on every document the criteria match, in a single <code>updateMany</code>, without loading the entities:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">Ticket.where { status == <span class="string"><span class="delimiter">'</span><span class="content">open</span><span class="delimiter">'</span></span> }.updateAll(<span class="key">assignee</span>: user)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>An association value is written the way normal persistence writes it: the target&#8217;s identifier, in the type that target&#8217;s <code>_id</code> is stored as, and as a <code>DBRef</code> where the mapping declares <code>reference: true</code>. Either the associated instance or its identifier can be passed, so <code>updateAll(assignee: user)</code> and <code>updateAll(assignee: user.id)</code> write the same value.</p>
+</div>
+<div class="paragraph">
+<p>Whether an association can be bulk-updated depends on which document holds the reference:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 16.6666%;">
+<col style="width: 50.0001%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Association</th>
+<th class="tableblock halign-left valign-top">Supported</th>
+<th class="tableblock halign-left valign-top">Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">to-one reference</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Yes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The reference is a field on this document.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">unidirectional one-to-many, many-to-many</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Yes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The identifiers are stored as an array on this document.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">embedded, and collections of simple values such as <code>hasMany = [labels: String]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Yes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The value is written like any other property.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hasOne</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The foreign key is held by the associated document.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">bidirectional one-to-many</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The foreign key is held by each child.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The unsupported kinds throw <code>UnsupportedOperationException</code> rather than writing a field normal persistence never reads. Update the side that holds the foreign key instead. For a bidirectional one-to-many, that means updating the children:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">Child.where { id <span class="keyword">in</span> childIds }.updateAll(<span class="key">parent</span>: newParent)</code></pre>
 </div>
 </div>
 </div>

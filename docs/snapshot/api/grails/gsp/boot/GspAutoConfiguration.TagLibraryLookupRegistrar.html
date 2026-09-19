@@ -180,14 +180,22 @@ implements <a href='https://docs.spring.io/spring-framework/docs/7.0.9/javadoc-a
                         
                         <tr class="rowColor">
                             <td class="colFirst"><code></code></td>
-                            <td class="colLast"><code>public&nbsp;void</code></td>
-                            <td class="colLast"><code><strong><a href="#registerBeanDefinitions(org.springframework.core.type.AnnotationMetadata, org.springframework.beans.factory.support.BeanDefinitionRegistry)">registerBeanDefinitions</a></strong>(<a href='https://docs.spring.io/spring-framework/docs/7.0.9/javadoc-api/org/springframework/core/type/AnnotationMetadata.html' title='AnnotationMetadata'>AnnotationMetadata</a> importingClassMetadata, <a href='https://docs.spring.io/spring-framework/docs/7.0.9/javadoc-api/org/springframework/beans/factory/support/BeanDefinitionRegistry.html' title='BeanDefinitionRegistry'>BeanDefinitionRegistry</a> registry)</code><br></td>
+                            <td class="colLast"><code>protected&nbsp;<a href='https://docs.spring.io/spring-framework/docs/7.0.9/javadoc-api/org/springframework/beans/factory/support/GenericBeanDefinition.html' title='GenericBeanDefinition'>GenericBeanDefinition</a></code></td>
+                            <td class="colLast"><code><strong><a href="#createTagLibBeanDefinition(Class)">createTagLibBeanDefinition</a></strong>(java.lang.Class&lt;?&gt; beanClass)</code><br>Tag libraries are wired from their own <CODE>@Autowired</CODE> declarations rather than by name.
+ </td>
                         </tr>
                         
                         <tr class="altColor">
                             <td class="colFirst"><code></code></td>
+                            <td class="colLast"><code>public&nbsp;void</code></td>
+                            <td class="colLast"><code><strong><a href="#registerBeanDefinitions(org.springframework.core.type.AnnotationMetadata, org.springframework.beans.factory.support.BeanDefinitionRegistry)">registerBeanDefinitions</a></strong>(<a href='https://docs.spring.io/spring-framework/docs/7.0.9/javadoc-api/org/springframework/core/type/AnnotationMetadata.html' title='AnnotationMetadata'>AnnotationMetadata</a> importingClassMetadata, <a href='https://docs.spring.io/spring-framework/docs/7.0.9/javadoc-api/org/springframework/beans/factory/support/BeanDefinitionRegistry.html' title='BeanDefinitionRegistry'>BeanDefinitionRegistry</a> registry)</code><br>Registers the tag libraries as beans of the context and the lookup that finds them, which
+ it does once they all exist rather than by holding them. </td>
+                        </tr>
+                        
+                        <tr class="rowColor">
+                            <td class="colFirst"><code></code></td>
                             <td class="colLast"><code>protected&nbsp;void</code></td>
-                            <td class="colLast"><code><strong><a href="#registerTagLibs(ManagedList)">registerTagLibs</a></strong>(<a href='https://docs.spring.io/spring-framework/docs/7.0.9/javadoc-api/org/springframework/beans/factory/support/ManagedList.html' title='ManagedList'>ManagedList</a>&lt;<a href='https://docs.spring.io/spring-framework/docs/7.0.9/javadoc-api/org/springframework/beans/factory/config/BeanDefinition.html' title='BeanDefinition'>BeanDefinition</a>&gt; list)</code><br></td>
+                            <td class="colLast"><code><strong><a href="#registerTagLibs(org.springframework.beans.factory.support.BeanDefinitionRegistry)">registerTagLibs</a></strong>(<a href='https://docs.spring.io/spring-framework/docs/7.0.9/javadoc-api/org/springframework/beans/factory/support/BeanDefinitionRegistry.html' title='BeanDefinitionRegistry'>BeanDefinitionRegistry</a> registry)</code><br></td>
                         </tr>
                         
                     </table>
@@ -266,18 +274,37 @@ implements <a href='https://docs.spring.io/spring-framework/docs/7.0.9/javadoc-a
                             </li>
                         </ul>
                     
+                        <a name="createTagLibBeanDefinition(Class)"><!-- --></a>
+                        <ul class="blockListLast">
+                            <li class="blockList">
+                                <h4>protected&nbsp;<a href='https://docs.spring.io/spring-framework/docs/7.0.9/javadoc-api/org/springframework/beans/factory/support/GenericBeanDefinition.html' title='GenericBeanDefinition'>GenericBeanDefinition</a> <strong>createTagLibBeanDefinition</strong>(java.lang.Class&lt;?&gt; beanClass)</h4>
+                                <p> Tag libraries are wired from their own <CODE>@Autowired</CODE> declarations rather than by name.
+ A tag library depends on the view resolver, which depends on the template engine, which
+ depends on the lookup; they break that cycle by declaring the dependency <CODE>@Lazy</CODE>.
+ Autowiring them by name would inject the view resolver eagerly - <CODE>viewResolver</CODE> is an
+ alias of <CODE>gspViewResolver</CODE> - and the context would fail to start with a cycle nothing
+ could break.
+         </p>
+                            </li>
+                        </ul>
+                    
                         <a name="registerBeanDefinitions(org.springframework.core.type.AnnotationMetadata, org.springframework.beans.factory.support.BeanDefinitionRegistry)"><!-- --></a>
                         <ul class="blockListLast">
                             <li class="blockList">
                                 <h4>@java.lang.Override<br>public&nbsp;void <strong>registerBeanDefinitions</strong>(<a href='https://docs.spring.io/spring-framework/docs/7.0.9/javadoc-api/org/springframework/core/type/AnnotationMetadata.html' title='AnnotationMetadata'>AnnotationMetadata</a> importingClassMetadata, <a href='https://docs.spring.io/spring-framework/docs/7.0.9/javadoc-api/org/springframework/beans/factory/support/BeanDefinitionRegistry.html' title='BeanDefinitionRegistry'>BeanDefinitionRegistry</a> registry)</h4>
-                                <p></p>
+                                <p> Registers the tag libraries as beans of the context and the lookup that finds them, which
+ it does once they all exist rather than by holding them. Every tag library takes the
+ lookup itself - <CODE>TagLibraryInvoker</CODE> autowires it - so a lookup that held its tag
+ libraries would be a bean each of them depended on and which depended on each of them,
+ a cycle an application had to allow before it would start.
+         </p>
                             </li>
                         </ul>
                     
-                        <a name="registerTagLibs(ManagedList)"><!-- --></a>
+                        <a name="registerTagLibs(org.springframework.beans.factory.support.BeanDefinitionRegistry)"><!-- --></a>
                         <ul class="blockListLast">
                             <li class="blockList">
-                                <h4>protected&nbsp;void <strong>registerTagLibs</strong>(<a href='https://docs.spring.io/spring-framework/docs/7.0.9/javadoc-api/org/springframework/beans/factory/support/ManagedList.html' title='ManagedList'>ManagedList</a>&lt;<a href='https://docs.spring.io/spring-framework/docs/7.0.9/javadoc-api/org/springframework/beans/factory/config/BeanDefinition.html' title='BeanDefinition'>BeanDefinition</a>&gt; list)</h4>
+                                <h4>protected&nbsp;void <strong>registerTagLibs</strong>(<a href='https://docs.spring.io/spring-framework/docs/7.0.9/javadoc-api/org/springframework/beans/factory/support/BeanDefinitionRegistry.html' title='BeanDefinitionRegistry'>BeanDefinitionRegistry</a> registry)</h4>
                                 <p></p>
                             </li>
                         </ul>

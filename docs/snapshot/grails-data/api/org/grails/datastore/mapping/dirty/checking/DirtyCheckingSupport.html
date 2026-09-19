@@ -204,8 +204,21 @@ extends java.lang.Object</pre>
                         
                         <tr class="altColor">
                             <td class="colFirst"><code></code></td>
+                            <td class="colLast"><code>static&nbsp;java.lang.Object</code></td>
+                            <td class="colLast"><code><strong><a href="#rewrap(org.grails.datastore.mapping.dirty.checking.DirtyCheckable, java.lang.String, java.lang.Object, java.lang.Object)">rewrap</a></strong>(<a href='../../../../../../org/grails/datastore/mapping/dirty/checking/DirtyCheckable.html'>DirtyCheckable</a> parent, java.lang.String property, java.lang.Object oldValue, java.lang.Object newValue)</code><br>Re-establishes change tracking when a tracked collection or map value is replaced
+ through a generated dirty-checking setter.</td>
+                        </tr>
+                        
+                        <tr class="rowColor">
+                            <td class="colFirst"><code></code></td>
                             <td class="colLast"><code>static&nbsp;java.util.Collection</code></td>
                             <td class="colLast"><code><strong><a href="#wrap(java.util.Collection, org.grails.datastore.mapping.dirty.checking.DirtyCheckable, java.lang.String)">wrap</a></strong>(java.util.Collection coll, <a href='../../../../../../org/grails/datastore/mapping/dirty/checking/DirtyCheckable.html'>DirtyCheckable</a> parent, java.lang.String property)</code><br>Wraps a collection in dirty checking capability</td>
+                        </tr>
+                        
+                        <tr class="altColor">
+                            <td class="colFirst"><code></code></td>
+                            <td class="colLast"><code>static&nbsp;java.util.Map</code></td>
+                            <td class="colLast"><code><strong><a href="#wrap(java.util.Map, org.grails.datastore.mapping.dirty.checking.DirtyCheckable, java.lang.String)">wrap</a></strong>(java.util.Map map, <a href='../../../../../../org/grails/datastore/mapping/dirty/checking/DirtyCheckable.html'>DirtyCheckable</a> parent, java.lang.String property)</code><br>Wraps a map in dirty checking capability. </td>
                         </tr>
                         
                     </table>
@@ -310,11 +323,50 @@ extends java.lang.Object</pre>
                             </li>
                         </ul>
                     
+                        <a name="rewrap(org.grails.datastore.mapping.dirty.checking.DirtyCheckable, java.lang.String, java.lang.Object, java.lang.Object)"><!-- --></a>
+                        <ul class="blockListLast">
+                            <li class="blockList">
+                                <h4>static&nbsp;java.lang.Object <strong>rewrap</strong>(<a href='../../../../../../org/grails/datastore/mapping/dirty/checking/DirtyCheckable.html'>DirtyCheckable</a> parent, java.lang.String property, java.lang.Object oldValue, java.lang.Object newValue)</h4>
+                                <p> Re-establishes change tracking when a tracked collection or map value is replaced
+ through a generated dirty-checking setter.
+
+ <p>Interception-based stores (MongoDB et al.) install the DirtyChecking* wrappers when an
+ entity is decoded and rely on them exclusively — there is no flush-time snapshot
+ comparison. The generated setter used to store whatever raw value it was handed, so
+ reassigning a collection property replaced the tracked wrapper with a plain, untracked
+ collection and every later in-place mutation became invisible to change tracking. The
+ common defensive re-init <CODE>if (!entity.items) entity.items = []</CODE> triggered this on
+ every load (an empty tracked collection is falsy in Groovy), and because the new empty
+ collection equals the old one the assignment itself was never flagged either.
+
+ <p>Tracking is only re-established, never introduced: the value being replaced must
+ already be one of the exact classes a datastore decode installs — a generic wrapper, or
+ the <CODE>PersistentList</CODE>/<CODE>PersistentSet</CODE>/<CODE>PersistentSortedSet</CODE> a to-many
+ association decodes into. Anything else is returned untouched: a transient instance, a
+ store like Hibernate that performs its own snapshot-based dirty checking, or a
+ store-specific subclass such as the Neo4j collection types. Store-specific wrappers in
+ particular must NOT be replaced by a generic one:
+ the store's persister recognises its own types (and treats anything already
+ dirty-checkable as such), so a generic replacement would permanently disable that store's
+ relationship handling for the property. Leaving the raw value lets the persister wrap it
+ in its own type on save, exactly as it did before this method existed. <DL><DT><B>Parameters:</B></DT><DD><code>parent</code> -  The dirty-checkable owner</DD><DD><code>property</code> -  The property being assigned</DD><DD><code>oldValue</code> -  The value being replaced</DD><DD><code>newValue</code> -  The value being assigned</DD></DL><DL><DT><B>Returns:</B></DT><DD>The value to store: <CODE>newValue</CODE>, wrapped if it replaces a tracked value</DD></DL></p>
+                            </li>
+                        </ul>
+                    
                         <a name="wrap(java.util.Collection, org.grails.datastore.mapping.dirty.checking.DirtyCheckable, java.lang.String)"><!-- --></a>
                         <ul class="blockListLast">
                             <li class="blockList">
                                 <h4>static&nbsp;java.util.Collection <strong>wrap</strong>(java.util.Collection coll, <a href='../../../../../../org/grails/datastore/mapping/dirty/checking/DirtyCheckable.html'>DirtyCheckable</a> parent, java.lang.String property)</h4>
                                 <p> Wraps a collection in dirty checking capability <DL><DT><B>Parameters:</B></DT><DD><code>coll</code> -  The collection</DD><DD><code>parent</code> -  The parent</DD><DD><code>property</code> -  The property</DD></DL><DL><DT><B>Returns:</B></DT><DD>The wrapped collection</DD></DL></p>
+                            </li>
+                        </ul>
+                    
+                        <a name="wrap(java.util.Map, org.grails.datastore.mapping.dirty.checking.DirtyCheckable, java.lang.String)"><!-- --></a>
+                        <ul class="blockListLast">
+                            <li class="blockList">
+                                <h4>static&nbsp;java.util.Map <strong>wrap</strong>(java.util.Map map, <a href='../../../../../../org/grails/datastore/mapping/dirty/checking/DirtyCheckable.html'>DirtyCheckable</a> parent, java.lang.String property)</h4>
+                                <p> Wraps a map in dirty checking capability. Returns an already-wrapped map unchanged —
+ without that guard an encoder that write-backs on every save nests one wrapper per save. <DL><DT><B>Parameters:</B></DT><DD><code>map</code> -  The map</DD><DD><code>parent</code> -  The parent</DD><DD><code>property</code> -  The property</DD></DL><DL><DT><B>Returns:</B></DT><DD>The wrapped map</DD></DL></p>
                             </li>
                         </ul>
                     

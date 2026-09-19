@@ -363,10 +363,51 @@ p.onComplete { result -&gt;
 <div class="sect2">
 <h3 id="_the_promisefactory_interface">The PromiseFactory Interface</h3>
 <div class="paragraph">
-<p>By default, the <code>Promises</code> static methods use an instance of <code>PromiseFactory</code>. This <code>PromiseFactory</code> interface has various implementations. The default implementation is <a href="../api/org/grails/async/factory/future/CachedThreadPoolPromiseFactory.html">CachedThreadPoolPromiseFactory</a> which uses a thread pool that will create threads as needed (the same as <code>java.util.concurrent.Executors.newCachedThreadPool()</code>)</p>
+<p>By default, the <code>Promises</code> static methods use an instance of <code>PromiseFactory</code>. This <code>PromiseFactory</code> interface has various implementations. The default implementation is <a href="../api/org/grails/async/factory/future/CompletableFuturePromiseFactory.html">CompletableFuturePromiseFactory</a>, which uses JDK <code>CompletableFuture</code> for execution and composition.</p>
 </div>
 <div class="paragraph">
-<p>However, the design of the Grails promises framework is such that you can swap out the underlying implementation for your own or one of the pre-supported implementations. For example to use RxJava 1.x simply add the RxJava dependency to <code>build.gradle</code>:</p>
+<p>In a Grails application, the async plugin uses Spring Boot&#8217;s <code>applicationTaskExecutor</code>. This means promise execution shares Boot&#8217;s lifecycle management, graceful shutdown, and <code>spring.task.execution</code> configuration. For example:</p>
+</div>
+<div class="listingblock">
+<div class="title">application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">spring</span>:
+    <span class="key">task</span>:
+        <span class="key">execution</span>:
+            <span class="key">pool</span>:
+                <span class="key">max-size</span>: <span class="string"><span class="content">16</span></span>
+                <span class="key">queue-capacity</span>: <span class="string"><span class="content">100</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>On Java 21 or later, virtual threads can be enabled for the application task executor without changing promise code:</p>
+</div>
+<div class="listingblock">
+<div class="title">application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">spring</span>:
+    <span class="key">threads</span>:
+        <span class="key">virtual</span>:
+            <span class="key">enabled</span>: <span class="string"><span class="content">true</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Spring Boot also composes any <code>org.springframework.core.task.TaskDecorator</code> beans with the executor. Grails contributes a decorator that makes the current <code>GrailsWebRequest</code> available inside <code>task { }</code>. When Micrometer context propagation is on the classpath, setting <code>spring.task.execution.propagate-context</code> to <code>true</code> additionally propagates observation and logging context.</p>
+</div>
+<div class="paragraph">
+<p>The Grails decorator also applies to other Boot-managed executors that consume <code>TaskDecorator</code> beans, including <code>@Async</code> execution and scheduling initiated during a web request. Avoid retaining request state in long-lived background work.</p>
+</div>
+<div class="paragraph">
+<p>If Boot does not provide a bean named <code>applicationTaskExecutor</code>, Grails uses its managed <code>grailsPromiseExecutor</code>, with eight core threads and an unbounded queue. Other executor and scheduler beans do not change that selection. Tune the Boot executor using <code>spring.task.execution</code> for application workloads; blocking on tasks queued to the same saturated pool can deadlock. A standalone factory continues to use a cached pool, and standalone <code>WebPromises</code> propagate request context without requiring the plugin.</p>
+</div>
+<div class="paragraph">
+<p>With the default and virtual-thread factories, direct and chained <code>get()</code> calls (including timed calls) report failures as <code>ExecutionException</code>, with the original failure as the cause, including checked exceptions such as <code>IOException</code>. Error callbacks, including list callbacks, receive the original failure, preserving its own cause chain. A single-promise <code>onError</code> can recover with its callback result; aggregate <code>onError</code> observes the failure and leaves the returned promise failed. Third-party factories retain their own contracts.</p>
+</div>
+<div class="paragraph">
+<p>The default promise is also a JDK <code>CompletionStage</code>. Asynchronous stage operations such as <code>thenApplyAsync</code> continue to use Boot&#8217;s <code>applicationTaskExecutor</code>, so they retain the same lifecycle, virtual-thread, and context-propagation configuration as Groovy <code>then</code> callbacks.</p>
+</div>
+<div class="paragraph">
+<p>However, the design of the Grails promises framework is such that you can swap out the underlying implementation for your own or one of the pre-supported implementations. For example to use RxJava 3 simply add the RxJava dependency to <code>build.gradle</code>:</p>
 </div>
 <div class="listingblock">
 <div class="title">build.gradle</div>
@@ -375,7 +416,25 @@ p.onComplete { result -&gt;
 </div>
 </div>
 <div class="paragraph">
-<p>With the above in place RxJava 1.x will be used to create <code>Promise</code> instances.</p>
+<p>With the above in place RxJava 3 will be used to create <code>Promise</code> instances.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Since Grails 8, an opt-in Java 21 virtual-thread promise factory is also available.
+To use it, set the JVM system property <code>grails.async.promiseFactory=virtual-thread</code>.
+This implementation is selected only when no service-loaded PromiseFactory is available.
+It uses its own executor instead of the supplied application executor. For virtual threads on the default Spring-managed path, prefer <code>spring.threads.virtual.enabled=true</code> instead.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The opt-in factory uses the same <code>CompletableFuture</code> implementation and failure semantics as the default factory. Its executor also serves the default event bus and, when registered by the async plugin, receives the application&#8217;s composed <code>TaskDecorator</code> beans. It owns and closes that executor; Boot pool-size and shutdown settings do not configure it. Standalone <code>WebPromises</code> decorate the entire executor task, preserving request context through chained <code>then { }</code> callbacks as well as the initial task.</p>
 </div>
 <div class="paragraph">
 <p>The following table summarizes the available implementation and the dependency that should be added to activate them:</p>
@@ -433,6 +492,15 @@ Promises.promiseFactory = <span class="keyword">new</span> SynchronousPromiseFac
 </div>
 <div class="paragraph">
 <p>Using the <code>PromiseFactory</code> mechanism it is theoretically possible to plug in other concurrency libraries into the Grails framework. For this you need to override the two interfaces <code>grails.async.Promise</code> and <code>grails.async.PromiseFactory</code>.</p>
+</div>
+<div class="sect3">
+<h4 id="_migrating_legacy_promise_configuration">Migrating Legacy Promise Configuration</h4>
+<div class="paragraph">
+<p>The FutureTask-based promise classes and the Spring <code>PromiseFactoryBean</code> are deprecated for removal. Applications should use the normal async plugin registration and configure <code>spring.task.execution</code> instead of constructing <code>CachedThreadPoolPromiseFactory</code> or <code>PromiseFactoryBean</code> beans.</p>
+</div>
+<div class="paragraph">
+<p>Code that needs a standalone factory can construct <code>CompletableFuturePromiseFactory</code> with a JDK <code>Executor</code>. Grails applications should normally inject <code>PromiseFactory</code> and allow Spring Boot to supply and manage the executor.</p>
+</div>
 </div>
 </div>
 <div class="sect2">
@@ -624,7 +692,10 @@ map.onComplete { <span class="predefined-type">Map</span> results -&gt;
 </div>
 </div>
 <div class="paragraph">
-<p>If no asynchronous framework is present on the classpath then by default Grails creates an EventBus based off of the currently active <code>PromiseFactory</code>. The default implementation is <a href="../api/org/grails/async/factory/future/CachedThreadPoolPromiseFactory.html">CachedThreadPoolPromiseFactory</a> which uses a thread pool that will create threads as needed (the same as <code>java.util.concurrent.Executors.newCachedThreadPool()</code>).</p>
+<p>If no asynchronous framework is present on the classpath then Grails creates an EventBus based on the currently active <code>PromiseFactory</code>. The default is <a href="../api/org/grails/async/factory/future/CompletableFuturePromiseFactory.html">CompletableFuturePromiseFactory</a>. In a Grails application it executes work on Spring Boot&#8217;s <code>applicationTaskExecutor</code>.</p>
+</div>
+<div class="paragraph">
+<p>When <code>grails.async.promiseFactory=virtual-thread</code> selects the opt-in factory, the event bus instead shares that factory&#8217;s decorated virtual-thread executor and remains asynchronous.</p>
 </div>
 <div class="paragraph">
 <p>If you wish to use a popular async framework such as RxJava as the <code>EventBus</code> implementation then you will need to add the appropriate dependency. For example for RxJava 1.x:</p>
@@ -1349,7 +1420,7 @@ Person updatedPerson = promise.get()</code></pre>
 
 
 <div class="paragraph">
-<p>If you are deploying to a Servlet 3.0 container such as Tomcat 7 and above then it is possible to deal with responses asynchronously.</p>
+<p>When running a Servlet application, Grails controller actions can produce responses asynchronously.</p>
 </div>
 <div class="paragraph">
 <p>In general for controller actions that execute quickly there is little benefit in handling requests asynchronously. However, for long running controller actions it is extremely beneficial.</p>
@@ -1361,17 +1432,13 @@ Person updatedPerson = promise.get()</code></pre>
 <p>For example, if you have 70 available container threads and an action takes a minute to complete, if the actions are not executed in a non-blocking fashion the likelihood of all 70 threads being occupied and the container not being able to respond is quite high and you should consider asynchronous request processing.</p>
 </div>
 <div class="paragraph">
-<p>Since Grails 2.3, Grails features a simplified API for creating asynchronous responses built on the <code>Promise</code> mechanism discussed previously.</p>
+<p>Grails provides a simplified API for creating asynchronous responses built on the <code>Promise</code> mechanism discussed previously. Promise results are integrated with Spring MVC&#8217;s asynchronous request lifecycle. Spring MVC manages the Servlet async dispatch, timeout callbacks, and normal exception resolution when a promise fails.</p>
 </div>
 <div class="paragraph">
-<p>The implementation is based on Servlet 3.0 async. So, to enable the async features you need to set your servlet target version to 3.0 in application.yml:</p>
+<p>The raw <code>AsyncController.startAsync()</code> API and its Grails-specific Servlet wrappers are deprecated for removal. Return a <code>Promise</code> from the action instead; this allows Spring MVC to manage the request lifecycle and Spring Boot to manage execution and context propagation.</p>
 </div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="key">grails</span>:
-    <span class="key">servlet</span>:
-        <span class="key">version</span>: <span class="float">3.0</span></code></pre>
-</div>
+<div class="paragraph">
+<p>Both <code>WebPromises.task { }</code> and promises returned from actions honor <code>spring.mvc.async.request-timeout</code> (for example, <code>30s</code>). When unset, the Servlet container&#8217;s default applies (normally 30 seconds on Tomcat). This replaces the previous infinite timeout for <code>WebPromises</code>. A timeout produces HTTP 503 (Service Unavailable), without logging an application-error stack trace. An application can customize its response with a <code>503</code> URL mapping, optionally restricted to <code>org.springframework.web.context.request.async.AsyncRequestTimeoutException</code>. The timeout ends the response lifecycle; it does not cancel the underlying task. Tasks must not continue writing to the response after timeout.</p>
 </div>
 <div class="sect3">
 <h4 id="_async_models">Async Models</h4>
@@ -1466,6 +1533,18 @@ def index() {
 </div>
 <div class="sect3">
 <h4 id="_servlet_3_0_asynchronous_rendering">Servlet 3.0 Asynchronous Rendering</h4>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<code>AsyncController</code> and its <code>startAsync()</code> API are deprecated for removal in Grails 8. Prefer returning a <code>Promise</code> from an action so Spring MVC manages completion, dispatch, timeouts, and errors. The examples below are retained for migrating existing applications.
+</td>
+</tr>
+</table>
+</div>
 <div class="paragraph">
 <p>To do so your should first implement the <code>grails.async.web.AsyncController</code> trait in your controller:</p>
 </div>

@@ -1523,6 +1523,15 @@ On a <code>*GrailsPlugin.groovy</code> plugin descriptor or an application&#8217
 <p>Leaving the closure&#8217;s <strong>body</strong> empty means the same thing for a bean with dependencies: the parameters say what is injected, and the constructor call is generated. <code>bean('validateableConstraintsEvaluator', DefaultConstraintEvaluatorFactoryBean).lazy() { List&lt;MessageSource&gt; messageSources, @Qualifier('grailsDomainClassMappingContext') MappingContext mappingContext, GrailsApplication grailsApplication &#8594; }</code> generates a method with exactly those three parameters whose body is <code>new DefaultConstraintEvaluatorFactoryBean(messageSources, mappingContext, grailsApplication)</code> — the parameters in the order written. Which constructor that selects is decided by the compiler from the parameter types, exactly as for a body you wrote yourself, so nothing here depends on the declared type&#8217;s other constructors. A body is still needed whenever construction is more than passing the parameters straight through — <code>new ConfigProperties(grailsApplication.config)</code>, or anything followed by <code>.tap { }</code>.</p>
 </li>
 <li>
+<p><code>bean(["name", ] Type, Implementation)</code> declares a bean as the interface its consumers inject while constructing something else: <code>bean('calendarUserProvider', CalendarUserProvider, DefaultCalendarUserProvider)</code> compiles to a method returning <code>CalendarUserProvider</code> whose body is <code>new DefaultCalendarUserProvider()</code>, taking constructor arguments from the closure parameters exactly as the bodyless form does. Naming an implementation is itself the construction, so that form takes no body; an interface with neither an implementation nor a body is an error.</p>
+</li>
+<li>
+<p>Whatever a bean constructs — a named implementation, or a body that is just a <code>new &#8230;&#8203;</code> expression — also settles the declared type&#8217;s type arguments wherever it binds them concretely, so <code>bean('auditorAware', AuditorAware, SpringSecurityAuditorAware)</code> declares an <code>AuditorAware&lt;Long&gt;</code> without repeating <code>Long</code>. Where it does not — the construction is raw, its binding is itself a type variable, or the body is anything but a bare construction — the raw type stands and <code>.typeArguments(Type, &#8230;&#8203;)</code> states them: <code>bean('webExpressionHandler', SecurityExpressionHandler).typeArguments(FilterInvocation) { &#8230;&#8203; }</code>. This matters because Spring resolves an injection point by its full generic type, and the type in <code>bean(&#8230;&#8203;)</code> is a class literal, on which Groovy has no syntax for writing type arguments.</p>
+</li>
+<li>
+<p>An implementation configured by <strong>properties</strong> rather than constructor arguments still needs a body, but only ever one expression: Groovy&#8217;s map construction says in one line what declare-set-return says in four, and being a construction it settles type arguments like any other — <code>bean('panel', Panel) { PanelService service &#8594; new PanelImpl(service: service) }</code>.</p>
+</li>
+<li>
 <p>The same bean name may be declared by more than one <code>bean(&#8230;&#8203;)</code> statement — the standard Spring Boot pattern for mutually exclusive variants of one bean, such as the framework&#8217;s own <code>grailsUrlConverter</code> selected by <code>@ConditionalOnProperty</code> — provided every declaration with the name carries its own discriminating condition (such as <code>.annotate(ConditionalOnProperty, &#8230;&#8203;)</code>), so that at most one of them registers at runtime. Duplicating a bean name without that is a compile-time error, since Spring would keep the first definition and silently skip the rest.</p>
 </li>
 <li>
@@ -1532,13 +1541,31 @@ On a <code>*GrailsPlugin.groovy</code> plugin descriptor or an application&#8217
 <p>Chaining <code>.conditionalOnMissingBeanName(&#8230;&#8203;)</code> is the name-based counterpart: "register this bean unless a bean with <strong>this bean&#8217;s name</strong> already exists". The condition&#8217;s <code>name</code> member is set from the bean&#8217;s own (explicit or convention-derived) name, so <code>bean(MessageSource).conditionalOnMissingBeanName(search: SearchStrategy.CURRENT) { &#8230;&#8203; }</code> states <code>messageSource</code> once and it feeds both <code>@Bean</code> and the condition — the two strings the explicit form has to keep in sync cannot diverge. It accepts the annotation&#8217;s other attributes (<code>search:</code>, <code>ignored:</code>, &#8230;&#8203;) but rejects <code>name:</code> and types, which would contradict its purpose; use <code>.conditionalOnMissingBean(&#8230;&#8203;)</code> for those.</p>
 </li>
 <li>
-<p>Chaining <code>.primary()</code>, <code>.lazy()</code>, and/or <code>.scope("name")</code> adds <code>@Primary</code>, <code>@Lazy</code>, and <code>@Scope("name")</code> respectively.</p>
+<p>Chaining <code>.conditionalOnBean(&#8230;&#8203;)</code> is the positive counterpart — "register this only when something else supplied that" — taking the same positional types and named attributes. It has no zero-argument form: with nothing named Spring deduces the type from the bean&#8217;s own return type, conditioning a bean on a bean of its own type already existing. Note that it matches only against bean definitions the context has <strong>already processed</strong>, which is why Spring restricts it to auto-configurations; naming a bean declared beside it in the same block is not a condition that reliably holds.</p>
 </li>
 <li>
-<p>Chaining <code>.staticMethod()</code> makes the generated factory method <code>static</code> — Spring&#8217;s recommended shape for <code>BeanFactoryPostProcessor</code> and <code>BeanPostProcessor</code> beans, which must be creatable without instantiating their declaring configuration class. A static bean&#8217;s closure cannot reference <code>field(&#8230;&#8203;)</code> or <code>method(&#8230;&#8203;)</code> members, since those are instance members; under <code>@CompileStatic</code> that mistake is a compile error.</p>
+<p>Chaining <code>.conditionalOnProperty("app.offline"[, &#8230;&#8203;], havingValue: "false", matchIfMissing: true)</code> takes property names positionally or as <code>name:</code>/<code>value:</code>, and the annotation&#8217;s other attributes by name. All named properties must match, as the annotation defines.</p>
 </li>
 <li>
-<p>Chaining <code>.annotate(AnnotationType[, attr: value, &#8230;&#8203;])</code> attaches any other single-valued annotation directly — any <code>@Conditional*</code> (built-in or a custom <code>Condition</code>), <code>@Order</code>, <code>@DependsOn</code>, or anything else a hand-written <code>@Bean</code> method could carry. It&#8217;s repeatable, so several different annotations can be chained onto the same bean: <code>bean('special', Special).annotate(Order, value: 1).annotate(ConditionalOnProperty, prefix: 'myapp', name: 'enabled', havingValue: 'true') { &#8230;&#8203; }</code>.</p>
+<p>Chaining <code>.conditionalOnExpression("&#8230;&#8203;")</code> takes one SpEL string, for what the others cannot say — most often a disjunction, since <code>.conditionalOnProperty</code> only ever conjoins. Write it single-quoted in Groovy: the <code>${&#8230;&#8203;}</code> placeholders are Spring&#8217;s, and a double-quoted string would interpolate them away at compile time.</p>
+</li>
+<li>
+<p>Chaining <code>.conditionalOnClass(SomeType[, "com.example.Other", &#8230;&#8203;])</code> takes types and String class names in the same positional list. The two are not interchangeable: a literal reads better and is checked by the compiler, but can only be written for a class this module compiles against, while a class that may be <strong>absent</strong> has to be named as a String or the reference is itself what fails — which is why Spring&#8217;s own annotation carries both <code>value</code> and <code>name</code>. Mind where the condition goes: Spring reads it from the bytecode before loading anything, but a <code>@Bean</code> method&#8217;s parameter and return types are resolved when the configuration class is parsed, so guarding a method whose own signature names the absent class is not reliably safe. Use <code>group(&#8230;&#8203;)</code> below for that.</p>
+</li>
+<li>
+<p>Chaining <code>.conditionalOnGrailsEnv("development"[, &#8230;&#8203;])</code> registers the bean only in those Grails environments.</p>
+</li>
+<li>
+<p>Chaining <code>.aliases("legacyName"[, &#8230;&#8203;])</code> gives the bean additional names, which Spring resolves to the same singleton. The canonical name stays the one <code>bean(&#8230;&#8203;)</code> states — it is what the generated method is named after and what duplicate-name validation runs against — so aliases are their own call rather than more arguments there. The case they exist for is a migration: something reachable under an old name that must stay reachable while its callers move.</p>
+</li>
+<li>
+<p>Chaining <code>.primary()</code>, <code>.lazy()</code>, and/or <code>.scope("name")</code> adds <code>@Primary</code>, <code>@Lazy</code>, and <code>@Scope("name")</code> respectively. <code>.scope(&#8230;&#8203;)</code> also takes the annotation&#8217;s other attributes by name — <code>proxyMode</code> being the one to know about, since a session- or request-scoped bean injected into a singleton needs <code>.scope('session', proxyMode: ScopedProxyMode.TARGET_CLASS)</code>, or the singleton captures one scope instance for the lifetime of the application and serves it to everyone.</p>
+</li>
+<li>
+<p>Chaining <code>.staticMethod()</code> makes the generated factory method <code>static</code> — required for <code>BeanFactoryPostProcessor</code> and <code>BeanPostProcessor</code> beans, which must be creatable without instantiating their declaring configuration class, and rejected at compile time when such a bean is declared without it. A static bean&#8217;s closure cannot reference <code>field(&#8230;&#8203;)</code> or <code>method(&#8230;&#8203;)</code> members, since those are instance members; under <code>@CompileStatic</code> that mistake is a compile error.</p>
+</li>
+<li>
+<p>Chaining <code>.annotate(AnnotationType[, attr: value, &#8230;&#8203;])</code> attaches any other annotation directly, with as many attributes as it declares — an array-valued one takes either a list or a single value that widens into a one-element array, exactly as it would written out (<code>.annotate(DependsOn, value: 'other')</code>). Naming an annotation a <strong>qualifier</strong> already attached is not a collision but a merge into it, which is the only way to reach attributes no qualifier sets: <code>.annotate(Bean, destroyMethod: '')</code> is how a bean wrapping a client it does not own stops Spring inferring and calling <code>close()</code> on it — any <code>@Conditional*</code> (built-in or a custom <code>Condition</code>), <code>@Order</code>, <code>@DependsOn</code>, or anything else a hand-written <code>@Bean</code> method could carry. It&#8217;s repeatable, so several different annotations can be chained onto the same bean: <code>bean('special', Special).annotate(Order, value: 1).annotate(ConditionalOnProperty, prefix: 'myapp', name: 'enabled', havingValue: 'true') { &#8230;&#8203; }</code>.</p>
 </li>
 <li>
 <p>Any combination of the above can be chained together, in any order — for example <code>bean('slowGreeter', SlowGreeter).lazy().scope('prototype') { &#8230;&#8203; }</code>.</p>
@@ -1547,6 +1574,9 @@ On a <code>*GrailsPlugin.groovy</code> plugin descriptor or an application&#8217
 <p>Typed closure parameters (<code>{ MessageSource messageSource &#8594; &#8230;&#8203; }</code>) become the generated method&#8217;s parameters, so other beans are injected the same way a hand-written <code>@Bean</code> method would declare them — and a parameter-level annotation such as <code>{ @Qualifier('special') Greeter g &#8594; &#8230;&#8203; }</code> carries straight through too, since the closure&#8217;s own parameters become the generated method&#8217;s parameters directly.</p>
 </li>
 </ul>
+</div>
+<div class="paragraph">
+<p>A member&#8217;s name may be a String literal or any compile-time String constant — a bare reference to one declared on the same class, a qualified <code>Other.CONSTANT</code>, or a concatenation of those. Bean names are often already constants, because something else looks the bean up by one, and the DSL being the single place that could not say the constant&#8217;s name would mean writing the string twice.</p>
 </div>
 <div class="paragraph">
 <p>Two more statement kinds can appear inside <code>beans { }</code> alongside <code>bean(&#8230;&#8203;)</code>, for state and logic shared across bean methods — the same role a hand-written <code>@Configuration</code> class&#8217;s own fields and private methods play:</p>
@@ -1576,6 +1606,72 @@ bean(<span class="string"><span class="delimiter">'</span><span class="content">
     <span class="keyword">new</span> Greeting(buildGreeting(<span class="string"><span class="delimiter">'</span><span class="content">World</span><span class="delimiter">'</span></span>))
 }</code></pre>
 </div>
+</div>
+<div class="paragraph">
+<p>A third statement kind, <code>group(["name"]).&lt;conditions&gt; { &#8230;&#8203; }</code>, declares a nested static <code>@Configuration(proxyBeanMethods = false)</code> class holding the declarations in its body, with the chained conditions on the class rather than on each bean:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">group(<span class="string"><span class="delimiter">'</span><span class="content">imageServing</span><span class="delimiter">'</span></span>).conditionalOnClass(<span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">com.example.ManagedFileAccessProvider</span><span class="delimiter">'</span></span>) {
+    bean(<span class="string"><span class="delimiter">'</span><span class="content">roomFileAccessProvider</span><span class="delimiter">'</span></span>, RoomFileAccessProvider)
+    bean(<span class="string"><span class="delimiter">'</span><span class="content">chatFileAccessProvider</span><span class="delimiter">'</span></span>, ChatFileAccessProvider)
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This is the shape real auto-configurations take — Spring Boot&#8217;s own <code>JacksonAutoConfiguration</code> carries four nested <code>@ConditionalOnClass</code> configuration classes — and it is the only shape that works for a bean whose <strong>own signature</strong> names a class that may be absent. A condition is read from the bytecode before anything is loaded, but a <code>@Bean</code> method&#8217;s parameter and return types are resolved when its configuration class is parsed, so guarding such a bean on the method is not reliably safe; moving it into a group moves the guard onto a class that is never parsed when the condition fails. Spring finds the nested class unaided, since <code>ConfigurationClassParser</code> processes a configuration class&#8217;s member classes. Groups take the condition qualifiers and <code>.annotate(&#8230;&#8203;)</code>; they do not nest, and the closure takes no parameters, since it declares a class rather than a bean.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_diagnostics">Diagnostics</h3>
+<div class="paragraph">
+<p>Three mistakes the DSL used to accept are now compile errors, because each of them fails at runtime in a way that is hard to trace back:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>A <code>beans</code> closure containing any top-level <code>bean</code>/<code>field</code>/<code>method</code> call must be entirely such calls. A stray statement among real declarations — a typo in a call name, or an <code>if</code> wrapped around some beans — used to make the whole block register <strong>nothing</strong>, silently, with the failure surfacing far away as beans that are simply absent. To register a bean conditionally, put the condition on the bean rather than around it; for state or logic shared between beans, use <code>field(&#8230;&#8203;)</code> or <code>method(&#8230;&#8203;)</code>. A <code>beans</code> closure containing no such calls at all is not the DSL and is left alone, as before.</p>
+</li>
+<li>
+<p>Calling one bean from another does not return the registered singleton unless the host is a proxied <code>@Configuration</code> class — and the DSL&#8217;s usual hosts are not: <code>@AutoConfiguration</code> is <code>@Configuration(proxyBeanMethods = false)</code>, a generated plugin sibling carries exactly that, and an <code>Application</code> class is a configuration source without being annotated at all. Such a call silently constructs a second instance, so it is rejected; inject the bean as a closure parameter instead. A static <code>@Bean</code> method is never intercepted even on a proxied class, so <code>.staticMethod()</code> beans are checked everywhere.</p>
+</li>
+<li>
+<p>A <code>BeanFactoryPostProcessor</code> or <code>BeanPostProcessor</code> bean must be <code>.staticMethod()</code>.</p>
+</li>
+</ul>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>An anonymous inner class written in a bean body keeps the class the <code>beans</code> block was written on as its outer class — Groovy fixes that when it creates the class, and it cannot be moved afterwards. Wherever the beans land somewhere else — a <strong>plugin descriptor</strong>'s generated sibling, or a <code>group(&#8230;&#8203;)&#8217;s static nested class — the enclosing-instance field is retyped to that new home while the outer class stays the old one, so nothing reachable only through it survives. Such a class may use its own members, anything it inherits, Groovy&#8217;s extension methods (`println</code>, <code>with</code>, <code>tap</code>, <code>join</code>), and static members of the enclosing class when Groovy compiles the reference to a direct static access. A method&#8217;s <code>@CompileStatic</code> can enable that access, but not inside another method marked <code>@CompileDynamic</code> or <code>@CompileStatic(TypeCheckingMode.SKIP)</code>. Inside a method marked <code>@CompileStatic</code>, a nested anonymous method follows the enclosing class&#8217;s mode unless it opts out; its own <code>@CompileStatic</code> does not enable static access on a dynamic host. An unannotated enclosing method imposes neither restriction. Qualifying a static member with its declaring class avoids these differences. An unqualified reference that requires the retyped enclosing instance — a member the block declared, a member the descriptor itself declares, one inherited from <code>Plugin</code> — is a compile error rather than a <code>NoSuchFieldError</code> at runtime. Give the anonymous class what it needs as a constructor argument or a captured local, or give it a name and declare it as a static nested class. A class that declares its own <code>methodMissing</code> or <code>propertyMissing</code> can answer anything and is left alone.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_seeing_what_a_block_compiled_to">Seeing what a block compiled to</h3>
+<div class="paragraph">
+<p>The property is read by the transform, which runs inside the process that runs the Groovy compiler — and <code>GroovyCompile</code> forks by default, so <code>./gradlew build -Dgrails.beans.dsl.dumpdir=&#8230;&#8203;</code> sets it on the Gradle client and daemon, not on the compiler, and nothing is written. Set it where the compiler will see it:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">tasks.withType(GroovyCompile).configureEach {
+    groovyOptions.forkOptions.jvmArgs += <span class="string"><span class="delimiter">'</span><span class="content">-Dgrails.beans.dsl.dumpdir=/absolute/path/to/beans</span><span class="delimiter">'</span></span>
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>An absolute path is the safe form, since a relative one resolves against that worker process&#8217;s working directory rather than the project&#8217;s.</p>
+</div>
+<div class="paragraph">
+<p>Building with the property set writes one <code>&lt;qualified name&gt;.beans.txt</code> per generated class — not per host: a plugin descriptor&#8217;s beans are filed under its sibling&#8217;s name, and each <code>group(&#8230;&#8203;)</code> writes its own file under the nested class&#8217;s name, holding only the beans declared inside it. Each lists the generated members — bean names, the annotations the qualifiers became, modifiers, declared types with any type arguments they ended up carrying, and parameter annotations. Bodies are omitted, being the closure bodies from the source. Nothing is written unless the property is set.</p>
 </div>
 <div class="paragraph">
 <p>Because the result is an ordinary <code>AutoConfiguration</code> class, it must be registered the same way any Spring Boot auto-configuration is: listed in <code>META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports</code>. <strong>The compiler writes that entry for you.</strong> The class is generated rather than written, so its name is one only the compiler knows — leaving the registration to be typed by hand made a plugin whose beans are silently never registered the ordinary consequence of not knowing the class exists.</p>
@@ -1701,7 +1797,6 @@ bean(<span class="string"><span class="delimiter">'</span><span class="content">
 <p>On both the standalone-class and <code>Plugin</code>-subclass forms, the generated <code>@Bean</code> methods are genuinely statically compiled whenever <code>@CompileStatic</code> or <code>@GrailsCompileStatic</code> is present — verified directly by disassembling the bytecode (no <code>invokedynamic</code> call sites). The Plugin form requires one additional step internally: because its sibling class is generated after Groovy discovers local annotation transforms, <code>@GrailsBeans</code> invokes Groovy&#8217;s static-compilation transform directly after generating the sibling&#8217;s methods.</p>
 </div>
 </div>
-</div>
 <div class="sect3">
 <h4 id="_customizing_the_servlet_environment">Customizing the Servlet Environment</h4>
 <div class="paragraph">
@@ -1791,6 +1886,7 @@ Grails' internal registered filters (<code>GrailsWebRequestFilter</code>, <code>
         <span class="comment">// do something here with session factory</span>
     }
 }</code></pre>
+</div>
 </div>
 </div>
 </div>

@@ -116,6 +116,13 @@ implements <a href='https://docs.spring.io/spring-framework/docs/7.0.9/javadoc-a
  guards — auto-configured defaults then back off in favour of the plugin beans, without any
  override or removal afterwards.
 
+ <p>It runs for a Grails application only: <a href='../../../grails/boot/config/GrailsPluginLifecycleInitializer.html' title='GrailsPluginLifecycleInitializer'>GrailsPluginLifecycleInitializer</a> is registered for
+ every Spring Boot application that has grails-core on its class path, and this phase stands down
+ unless <a href='../../../grails/boot/GrailsApp.html' title='GrailsApp'>GrailsApp</a> launched the application or one of the context's sources is a
+ <a href='../../../grails/core/GrailsApplicationClass.html' title='GrailsApplicationClass'>GrailsApplicationClass</a>. A Spring Boot application
+ using a Grails library - GSP for its views, say - gets that library's auto-configuration and nothing
+ else: no plugin manager, no <a href='../../../grails/core/GrailsApplication.html' title='GrailsApplication'>GrailsApplication</a>, and no beans from plugins it never asked for.
+
  <p>It is added to the context programmatically (see <a href='../../../grails/boot/config/GrailsPluginLifecycleInitializer.html' title='GrailsPluginLifecycleInitializer'>GrailsPluginLifecycleInitializer</a>), so its
  <CODE>postProcessBeanDefinitionRegistry</CODE> runs ahead of Boot's <CODE>ConfigurationClassPostProcessor</CODE>
  (which expands the <CODE>@AutoConfiguration</CODE> imports). Manually-added
@@ -130,8 +137,8 @@ implements <a href='https://docs.spring.io/spring-framework/docs/7.0.9/javadoc-a
  (controllers, services, interceptors) iterate <CODE>grailsApplication</CODE> artefacts inside their
  <CODE>doWithSpring</CODE> closures. Application classes are resolved from the source classes stashed by
  <a href='../../../grails/boot/GrailsApp.html' title='GrailsApp'>GrailsApp</a> (see <a href='#APPLICATION_SOURCE_CLASSES_BEAN_NAME'>APPLICATION_SOURCE_CLASSES_BEAN_NAME</a>) and scanned with the
- same logic <a href='../../../grails/boot/config/GrailsAutoConfiguration.html#classes()' title='GrailsAutoConfiguration.classes'>GrailsAutoConfiguration.classes</a> uses; when the application was not started
- through <CODE>GrailsApp</CODE> the phase proceeds without application classes.
+ same logic <a href='../../../grails/boot/config/GrailsAutoConfiguration.html#classes()' title='GrailsAutoConfiguration.classes'>GrailsAutoConfiguration.classes</a> uses; an application <CODE>GrailsApp</CODE> did not
+ start has its sources read from the context instead.
 
  <p>Once complete, the <CODE>grailsApplication</CODE> and <CODE>pluginManager</CODE> singletons are promoted to
  the bean factory together with the <a href='#EARLY_REGISTRATION_COMPLETE_BEAN_NAME'>EARLY_REGISTRATION_COMPLETE_BEAN_NAME</a> marker, so

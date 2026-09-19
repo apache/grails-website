@@ -450,6 +450,53 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div class="sect2">
 <h3 id="_upgrade_notes">Upgrade Notes</h3>
 <div class="sect3">
+<h4 id="_string_id_storage_now_defaults_to_objectid">String id Storage Now Defaults to ObjectId</h4>
+<div class="paragraph">
+<p>A domain that declares <code>String id</code> without its own <code>storedAs</code> mapping now persists <code>_id</code> as a BSON <code>ObjectId</code>. Before 8.0.0 the default was BSON <code>String</code>.</p>
+</div>
+<div class="paragraph">
+<p>Application code is unaffected: <code>person.id</code> is still the 24-char hex <code>String</code>, and <code>get</code>, <code>findAllByIdInList</code>, updates and deletes still accept hex strings. What changes is the BSON type written to and matched in the database.</p>
+</div>
+<div class="paragraph">
+<p><strong>This is a data-compatibility change.</strong> An application upgrading from 7.x whose collections already hold String <code>_id</code> values has two options:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Keep the previous behavior by pinning the old default:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-yaml" data-lang="yaml">grails:
+  mongodb:
+    stringIds:
+      defaultStoredAs: string</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Or migrate the stored <code>_id</code> values to <code>ObjectId</code>. Because <code>_id</code> is immutable, each document must be reinserted under the converted id rather than updated in place.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Domains keyed by a natural string value (slug, email, UUID) should declare the opt-out explicitly, since such values are not valid ObjectId hex:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class UserProfile {
+    String id   // e.g. "jsmith@example.com"
+
+    static mapping = {
+        id generator: 'assigned', storedAs: String
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>See <a href="#idGeneration">Identity Generation</a> for the full description of <code>storedAs</code>.</p>
+</div>
+</div>
+<div class="sect3">
 <h4 id="_dependency_upgrades">Dependency Upgrades</h4>
 <div class="paragraph">
 <p>GORM 7.1 supports Apache Groovy 3, Java 14, MongoDB Driver 4.3 and Spring 5.3.x.</p>

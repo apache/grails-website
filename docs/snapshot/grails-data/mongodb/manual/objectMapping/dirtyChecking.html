@@ -473,8 +473,45 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 collection type.</p>
 </div>
 <div class="paragraph">
-<p>One of the implications of this is if you override the collection with a non-dirty checking aware type it can disable
-dirty checking and prevent the property from being updated.</p>
+<p>Assigning a new collection over a tracked one keeps dirty checking active: the generated setter wraps the
+replacement in the same dirty checking aware type, so a pattern such as re-initialising an empty collection
+(<code>if (!book.authors) book.authors = []</code>) followed by in-place mutation is tracked and persisted. This holds
+for basic collections and maps, embedded collections, and one-to-many and many-to-many associations alike. The wrappers
+also track iterator-based mutation — Groovy&#8217;s <code>removeAll(Closure)</code> / <code>retainAll(Closure)</code>, <code>removeIf</code>,
+<code>ListIterator</code> operations, <code>sort</code> / <code>replaceAll</code>, <code>addFirst</code> / <code>addLast</code> on a <code>List</code> property,
+<code>removeFirst</code> / <code>removeLast</code> on a <code>List</code> or <code>SortedSet</code> property, and the <code>subList</code>, <code>reversed</code>,
+<code>headSet</code>, <code>tailSet</code> and <code>subSet</code> views — and for <code>Map</code> properties the default
+methods (<code>putIfAbsent</code>, <code>merge</code>, <code>compute*</code>, <code>replace*</code>) and removals through the <code>entrySet()</code> / <code>keySet()</code> /
+<code>values()</code> views.</p>
+</div>
+<div class="paragraph">
+<p>Assigning a collection that belongs to <strong>another</strong> entity re-binds it to the entity being assigned to, so
+<code>bookA.tags = bookB.tags</code> followed by <code>bookA.tags.add('classic')</code> marks <code>bookA</code> dirty rather than <code>bookB</code>.
+The two properties go on sharing the same underlying collection afterwards, exactly as a plain Groovy
+assignment would. This applies to the properties GORM wraps in a dirty checking aware collection — basic
+collections and maps, and embedded collections. When <strong>borrowed from another entity</strong> a one-to-many or
+many-to-many behaves differently: it is held in a <code>PersistentCollection</code>, which is stored as-is and left to
+the store, as with the store-specific types below. Re-initialising such a property on its own entity is
+still tracked, as described above.</p>
+</div>
+<div class="paragraph">
+<p>A few paths remain outside automatic dirty checking and still require an explicit <code>markDirty(propertyName)</code>:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>a hand-written setter (one you define yourself rather than the generated one) stores the value it is given
+without re-wrapping, so a collection assigned through it loses tracking until the next load;</p>
+</li>
+<li>
+<p>mutating an entry&#8217;s value directly during map iteration (<code>Map.Entry.setValue</code>);</p>
+</li>
+<li>
+<p>replacing a collection wrapped by a store-specific type (for example the Neo4j collection wrappers) is
+deliberately left to that store&#8217;s persister, which re-wraps the raw replacement on save — that store&#8217;s
+behaviour is unchanged.</p>
+</li>
+</ul>
 </div>
 <div class="paragraph">
 <p>If any of your updates are not updating the properties that you anticipate you can force an update using the <a href="../api/org/grails/datastore/mapping/dirty/checking/DirtyCheckable.html#markDirty(java.lang.String)">markDirty()</a> method:</p>

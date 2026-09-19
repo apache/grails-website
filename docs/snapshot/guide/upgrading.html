@@ -244,6 +244,24 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
 <p>The values <code>true</code>, <code>false</code>, <code>'true'</code>, and <code>'false'</code> are accepted for <code>grails.databinding.denyByDefault</code>, ignoring case and surrounding whitespace for strings.  An unrecognised value logs a warning and enables secure deny-by-default binding.</p>
 </div>
 </div>
+<div class="sect2">
+<h3 id="_xml_parsing_defaults">XML Parsing Defaults</h3>
+<div class="paragraph">
+<p>XML that Grails parses on an application&#8217;s behalf is read with external entity expansion, external DTD retrieval and DTD grammar loading disabled.  This closes the XXE vector: an entity that points at a file on disk contributes nothing to the parsed document, and a DTD that a document names is skipped rather than fetched.</p>
+</div>
+<div class="paragraph">
+<p>How a <code>DOCTYPE</code> declaration is treated depends on where the document comes from.</p>
+</div>
+<div class="paragraph">
+<p>Request bodies are refused if they declare one.  An <code>application/xml</code>, <code>text/xml</code> or <code>application/hal+xml</code> request body, or a string passed to <code>XML.parse</code>, that carries a <code>DOCTYPE</code> is rejected rather than bound: binding fails with the <code>invalidRequestBody</code> error code and the target is left unpopulated.  This is stricter than blocking external entities, because a body whose <code>DOCTYPE</code> is entirely internal and harmless is refused too, and there is no setting that relaxes it.  A client that sends a declaration, which is unusual for an API payload, needs to omit it.</p>
+</div>
+<div class="paragraph">
+<p>Descriptors that Grails reads from the classpath may declare one.  JSP tag library descriptors and <code>web.xml</code> are trusted input and routinely carry a <code>DOCTYPE</code>; <code>jakarta.servlet.jsp.jstl</code> ships several such descriptors, among them <code>c-1_0-rt.tld</code>, which the default <code>grails.gsp.tldScanPattern</code> scans.  These are parsed with the declaration permitted and the entity and DTD hardening above still in force, so the DTD a descriptor names is never retrieved.  The same applies to <code>response.xml</code> in a controller unit test, whose document is the controller&#8217;s own output.</p>
+</div>
+<div class="paragraph">
+<p>The plugin descriptor <code>grails-plugin.xml</code> is the exception among the descriptors.  Grails generates it during compilation and never writes a <code>DOCTYPE</code>, so both the compiler that rewrites it and the plugin discovery that reads it back use the strict parser.  A descriptor that has been hand-edited to add a declaration is refused: at compile time it is discarded and regenerated, and at runtime the plugin it describes is skipped.</p>
+</div>
+</div>
 
 
 <h2 id="upgrading80x">3.1 Upgrading from Grails 7 to Grails 8</h2>
@@ -575,184 +593,10 @@ response.status = HttpStatus.FOUND.value()</code></pre>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_7_micronaut_integration_changes">7. Micronaut Integration Changes</h4>
-<div class="sect4">
-<h5 id="_7_1_classic_boot_loader_removed">7.1 CLASSIC Boot Loader Removed</h5>
+<h4 id="_7_micronaut_integration">7. Micronaut Integration</h4>
 <div class="paragraph">
-<p>Spring Boot 4 removed the <code>CLASSIC</code> loader implementation (<code>LoaderImplementation.CLASSIC</code>).
-In Grails 7, the Grails Gradle Plugin automatically configured <code>bootJar</code> and <code>bootWar</code> tasks to use the <code>CLASSIC</code> loader when the <code>grails-micronaut</code> plugin was detected.
-This was required for <code>java -jar</code> execution to work correctly with the Micronaut-Spring integration.</p>
-</div>
-<div class="paragraph">
-<p>In Grails 8, this automatic configuration has been removed since the <code>CLASSIC</code> loader no longer exists in Spring Boot 4.</p>
-</div>
-<div class="paragraph">
-<p><strong>Action required:</strong></p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>If you have explicitly set <code>loaderImplementation</code> in your <code>build.gradle</code>, remove it:</p>
-</li>
-</ul>
-</div>
-<div class="listingblock">
-<div class="title">build.gradle - remove this block</div>
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">// This is no longer valid in Spring Boot 4 - remove it</span>
-tasks.withType(BootArchive).configureEach {
-    loaderImplementation = org.springframework.boot.loader.tools.LoaderImplementation.CLASSIC
-}</code></pre>
-</div>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>The <code>grails-micronaut</code> plugin continues to work with Spring Boot 4&#8217;s default loader.
-If you experience issues running your Micronaut-enabled Grails application via <code>java -jar</code>, please report them to the <a href="https://github.com/apache/grails-core/issues">Grails issue tracker</a>.</p>
-</li>
-</ul>
-</div>
-</div>
-<div class="sect4">
-<h5 id="_7_2_enforcedplatform_required_for_micronaut_boms">7.2 enforcedPlatform Required for Micronaut BOMs</h5>
-<div class="paragraph">
-<p>When using Micronaut, select a Micronaut-compatible Grails BOM and apply it as <code>enforcedPlatform</code> instead of <code>platform</code>.
-The default choice is <code>grails-micronaut-bom</code>; Hibernate-specific variants are covered in section 7.4.
-The Micronaut 5 platform declares its own managed dependency versions that conflict with those managed by the <code>grails-bom</code>.
-Without <code>enforcedPlatform</code>, Gradle&#8217;s default conflict resolution (highest version wins) allows the Micronaut platform to silently override <code>grails-bom</code> versions, leading to binary incompatibilities at runtime.</p>
-</div>
-<div class="paragraph">
-<p>For example, without <code>enforcedPlatform</code>:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><strong>Groovy</strong> is upgraded from 4.0.x to 5.0.x&#8201;&#8212;&#8201;Groovy 5 has breaking API changes (e.g. <code>ArrayGroovyMethods</code> moved) that cause <code>NoClassDefFoundError</code> at runtime</p>
-</li>
-<li>
-<p><strong>Spock</strong> is upgraded from 2.3-groovy-4.0 to 2.4-groovy-5.0&#8201;&#8212;&#8201;compiled against Groovy 5, incompatible with Groovy 4 classes</p>
-</li>
-<li>
-<p><strong>Kotlin</strong>, <strong>Mockito</strong>, <strong>Byte Buddy</strong> are upgraded to versions not tested with the Grails stack</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>Using <code>enforcedPlatform</code> makes the selected Micronaut BOM constraints strictly versioned so they cannot be overridden by any transitive dependency.</p>
-</div>
-<div class="paragraph">
-<p>The Grails Gradle Plugin will error at configuration time if <code>grails-micronaut</code> is detected and no Micronaut-compatible Grails BOM is applied as <code>enforcedPlatform</code>.</p>
-</div>
-<div class="listingblock">
-<div class="title">build.gradle</div>
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
-    <span class="comment">// enforcedPlatform is required when using grails-micronaut</span>
-    implementation enforcedPlatform(<span class="string"><span class="delimiter">&quot;</span><span class="content">org.apache.grails:grails-micronaut-bom:</span><span class="inline"><span class="inline-delimiter">$</span>grailsVersion</span><span class="delimiter">&quot;</span></span>)
-
-    implementation <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-micronaut</span><span class="delimiter">'</span></span>
-}</code></pre>
-</div>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-Applications generated by the Grails Forge automatically use the appropriate Micronaut BOM as <code>enforcedPlatform</code> when the Micronaut feature is selected.
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div class="sect4">
-<h5 id="_7_3_micronaut_features_require_jdk_25">7.3 Micronaut Features Require JDK 25</h5>
-<div class="paragraph">
-<p>While the Grails 8 baseline remains JDK 21, any Grails application that uses the Micronaut integration <strong>must</strong> run on JDK 25 or later.</p>
-</div>
-<div class="paragraph">
-<p>Micronaut Core&#8217;s internal <code>io.micronaut.core.propagation.ScopedValues</code> class references <code>java.lang.ScopedValue.CallableOp</code>, which only exists in JDK 25.
-<code>ScopedValue</code> was a preview API in JDK 21–24 and was finalized by <a href="https://openjdk.org/jeps/506">JEP 506</a> in JDK 25, at which point its inner type was renamed from <code>Callable</code> to <code>CallableOp</code>.
-Running Micronaut on JDK 21–24 therefore fails at runtime with:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code>java.lang.NoClassDefFoundError: java/lang/ScopedValue$CallableOp
-    at io.micronaut.core.propagation.ScopedValues.propagate(ScopedValues.java:45)
-    ...</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>This affects any code path that goes through Micronaut&#8217;s HTTP client, filters, or context propagation&#8201;&#8212;&#8201;including the declarative <code>@Client</code> interfaces and <code>micronaut-http-client-jdk</code>.</p>
-</div>
-<div class="paragraph">
-<p><strong>Action required:</strong></p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>If your Grails 8 application uses <code>grails-micronaut</code>, <code>micronaut-http-client</code>, or any other Micronaut feature, upgrade your build, CI, and deployment JDK to <strong>JDK 25 or later</strong>.</p>
-</li>
-<li>
-<p>Grails applications that do <strong>not</strong> use any Micronaut integration are unaffected and continue to run on JDK 21.</p>
-</li>
-</ul>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-The Grails Forge generator enforces this requirement: selecting any Micronaut feature with a JDK version below 25 will fail with <code>IllegalArgumentException</code> at generation time.
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div class="sect4">
-<h5 id="_7_4_hibernate_specific_micronaut_boms">7.4 Hibernate-Specific Micronaut BOMs</h5>
-<div class="paragraph">
-<p>Grails 8 introduces new BOMs for projects that combine Micronaut integration with a specific Hibernate version:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><code>org.apache.grails:grails-hibernate5-micronaut-bom</code>&#8201;&#8212;&#8201;For Micronaut projects using Hibernate 5. This is the default Micronaut BOM for Hibernate 5 users (analogous to how <code>grails-micronaut-bom</code> is the default). Use this when your Micronaut-enabled Grails application targets Hibernate 5.</p>
-</li>
-<li>
-<p><code>org.apache.grails:grails-hibernate7-micronaut-bom</code>&#8201;&#8212;&#8201;For Micronaut projects using Hibernate 7. Use this when your Micronaut-enabled Grails application targets Hibernate 7.</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>This BOM extends <code>grails-base-bom</code> and the Micronaut platform directly, and includes the appropriate Hibernate dependency versions alongside the Micronaut-specific overrides (Groovy 5, Spock 2.4, etc.). This ensures no version conflicts when consumed via <code>enforcedPlatform</code>.</p>
-</div>
-<div class="listingblock">
-<div class="title">build.gradle - Hibernate 5 with Micronaut (default)</div>
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
-    implementation enforcedPlatform(<span class="string"><span class="delimiter">&quot;</span><span class="content">org.apache.grails:grails-hibernate5-micronaut-bom:</span><span class="inline"><span class="inline-delimiter">$</span>grailsVersion</span><span class="delimiter">&quot;</span></span>)
-    implementation <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-micronaut</span><span class="delimiter">'</span></span>
-}</code></pre>
-</div>
-</div>
-<div class="listingblock">
-<div class="title">build.gradle - Hibernate 7 with Micronaut</div>
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
-    implementation enforcedPlatform(<span class="string"><span class="delimiter">&quot;</span><span class="content">org.apache.grails:grails-hibernate7-micronaut-bom:</span><span class="inline"><span class="inline-delimiter">$</span>grailsVersion</span><span class="delimiter">&quot;</span></span>)
-    implementation <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-micronaut</span><span class="delimiter">'</span></span>
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The existing <code>grails-micronaut-bom</code> remains available and is equivalent to <code>grails-hibernate5-micronaut-bom</code> for backward compatibility. If the framework changes its default Hibernate version in the future, <code>grails-micronaut-bom</code> will track the new default while the Hibernate-specific BOMs remain pinned to their versions.</p>
-</div>
+<p>The Grails Micronaut plugin and its BOMs are now maintained and released from the <a href="https://github.com/apache/grails-micronaut">Apache Grails Micronaut repository</a>.
+Applications using Grails Micronaut should follow that project&#8217;s upgrade and dependency-management documentation.</p>
 </div>
 </div>
 <div class="sect3">
@@ -1135,34 +979,11 @@ If you require Spring DM&#8217;s "BOM wins always" behaviour for the default man
 <p>An <strong>explicit</strong> property override (<code>ext['…']</code> or <code>gradle.properties</code>) is applied as a strict constraint and always wins - including when it downgrades a version - so overrides behave as they did under Spring DM.
 Overriding a property that selects an imported BOM&#8217;s version (for example <code>spring-boot.version</code>) re-imports that BOM at the overridden version and applies its updated managed set.</p>
 </div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-Projects that apply the <code>grails-micronaut</code> plugin already require <code>enforcedPlatform</code> for unrelated reasons (see section 7.2); those projects retain Spring DM&#8217;s strict-version semantics automatically.
-</td>
-</tr>
-</table>
-</div>
 <div class="paragraph">
 <p><strong>Selecting or opting out of the auto-applied BOM.</strong>
 The Grails Gradle plugin applies a single Grails BOM automatically, selected by the <code>grails.bom</code> property. Its value is the BOM artifact name within the <code>org.apache.grails</code> group, which the plugin resolves as <code>org.apache.grails:$bom:$grailsVersion</code>.
 It defaults to <code>grails-bom</code>, which preserves the Grails 7 behaviour and is the right choice for the vast majority of applications.
-Exactly one Grails BOM is ever applied; the BOMs are split by integration (default / hibernate5 / micronaut), so the plugin never layers two of them.</p>
-</div>
-<div class="paragraph">
-<p>Select a different curated variant when your application needs it - for example the Micronaut variant, which the plugin applies as an <code>enforcedPlatform</code>:</p>
-</div>
-<div class="listingblock">
-<div class="title">build.gradle</div>
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">grails {
-    bom = <span class="string"><span class="delimiter">'</span><span class="content">grails-micronaut-bom</span><span class="delimiter">'</span></span>
-}</code></pre>
-</div>
+Exactly one Grails BOM is ever applied; the BOMs are split by integration, so the plugin never layers two of them.</p>
 </div>
 <div class="paragraph">
 <p>Set it to <code>null</code> to suppress the automatic BOM application entirely - for example when you intentionally want to manage Grails dependency versions yourself (consuming Grails modules from a different curated platform):</p>
@@ -5020,7 +4841,7 @@ import being <strong>omitted</strong> when the package was absent sees no differ
 </div>
 </div>
 <div class="sect3">
-<h4 id="_54_non_public_bean_classes_are_marshalled_and_reported_once">54. Non-Public Bean Classes Are Marshalled, and Reported Once</h4>
+<h4 id="_58_non_public_bean_classes_are_marshalled_and_reported_once">58. Non-Public Bean Classes Are Marshalled, and Reported Once</h4>
 <div class="paragraph">
 <p>Groovy 4 stamped <code>ACC_PUBLIC</code> on anonymous inner classes; Groovy 5, which Grails 8 builds on, does not.
 Reflection cannot invoke a method on a class that is not <code>public</code> from another package, even when the method
@@ -5036,7 +4857,7 @@ every serializable bean declares that field, so this affected a large share of o
 </div>
 <div class="paragraph">
 <p>Grails 8 adds compatibility handling for the non-public case, and reports each such class once so that the
-code can be corrected — see 54.2 below. The shape that hits it is an anonymous implementation of a public
+code can be corrected — see 58.2 below. The shape that hits it is an anonymous implementation of a public
 interface:</p>
 </div>
 <div class="listingblock">
@@ -5066,7 +4887,7 @@ as the non-public class declares it fails. That is what bean marshalling was doi
 </table>
 </div>
 <div class="sect4">
-<h5 id="_54_1_public_fields_of_non_public_classes_are_now_included">54.1 Public Fields of Non-Public Classes Are Now Included</h5>
+<h5 id="_58_1_public_fields_of_non_public_classes_are_now_included">58.1 Public Fields of Non-Public Classes Are Now Included</h5>
 <div class="paragraph">
 <p>Java and Groovy beans are now treated alike. A <code>public</code> instance field declared on a class that is not
 public was silently omitted from the JSON or XML body when the bean was a plain Java object; it is now
@@ -5087,7 +4908,7 @@ not skipped: the conversion fails, as it did before Grails 8.</p>
 </div>
 </div>
 <div class="sect4">
-<h5 id="_54_2_the_warning">54.2 The Warning</h5>
+<h5 id="_58_2_the_warning">58.2 The Warning</h5>
 <div class="paragraph">
 <p>Reading a bean whose class is not public is compatibility handling rather than a supported contract, so each
 such class is reported once:</p>
@@ -5119,7 +4940,7 @@ reported, since an application cannot declare those public.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_58_interceptor_uri_matching_uses_the_dispatched_path">58. Interceptor URI Matching Uses the Dispatched Path</h4>
+<h4 id="_59_interceptor_uri_matching_uses_the_dispatched_path">59. Interceptor URI Matching Uses the Dispatched Path</h4>
 <div class="paragraph">
 <p>Interceptors that match on <code>uri</code>, with <code>match(uri: &#8230;&#8203;)</code> or <code>excludes(uri: &#8230;&#8203;)</code>, now match the same path that URL
 mappings route on: percent escapes are decoded, matrix parameters (<code>;name=value</code>) are removed and the context path is
@@ -5180,7 +5001,7 @@ disagrees with dispatch lets a request reach a controller without its intercepto
 </div>
 </div>
 <div class="sect3">
-<h4 id="_59_sort_and_order_query_arguments_are_validated">59. Sort and Order Query Arguments Are Validated</h4>
+<h4 id="_60_sort_and_order_query_arguments_are_validated">60. Sort and Order Query Arguments Are Validated</h4>
 <div class="paragraph">
 <p>Grails 8 checks the <code>sort</code> and <code>order</code> arguments of <code>list()</code>, dynamic finders, where queries, criteria queries and <code>listOrderBy*</code> before the query is built, on both Hibernate 5 and Hibernate 7. A client-supplied sort value used to be interpolated into the query, and the entry points did not agree on how a bad value was handled. They now fail the same way everywhere, with an <code>IllegalArgumentException</code> whose message deliberately does not echo the value.</p>
 </div>
@@ -5219,6 +5040,337 @@ disagrees with dispatch lets a request reach a controller without its intercepto
     }
 }</code></pre>
 </div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_61_xml_request_bodies_that_declare_a_doctype_are_refused">61. XML Request Bodies That Declare a DOCTYPE Are Refused</h4>
+<div class="paragraph">
+<p>XML that Grails parses on an application&#8217;s behalf is now read with external entity expansion, external DTD retrieval and
+DTD grammar loading disabled. Earlier releases set these parser features under identifiers the parser did not recognise,
+so the parser&#8217;s own defaults applied instead.</p>
+</div>
+<div class="paragraph">
+<p>An <code>application/xml</code>, <code>text/xml</code> or <code>application/hal+xml</code> request body, or a string passed to <code>XML.parse</code>, that declares
+a <code>DOCTYPE</code> is additionally refused rather than bound, whether or not the declaration references anything external.
+Binding such a body fails with the <code>invalidRequestBody</code> error code. There is no setting that relaxes this; a client that
+sends a declaration needs to omit it.</p>
+</div>
+<div class="paragraph">
+<p>Descriptors that Grails reads from the classpath, such as JSP tag library descriptors and <code>web.xml</code>, and the
+<code>response.xml</code> accessor in controller unit tests are not affected. They may declare a <code>DOCTYPE</code>, though the DTD it names
+is never retrieved. The plugin descriptor <code>grails-plugin.xml</code> is not among them: Grails generates it and never writes a
+declaration, so it is read strictly at compile time and at runtime alike.</p>
+</div>
+<div class="paragraph">
+<p>See <a href="#upgrading">[upgrading]</a> for the full description of the XML parsing defaults.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_62_generated_groovy_compiler_configuration_scripts">62. Generated Groovy Compiler Configuration Scripts</h4>
+<div class="paragraph">
+<p>On Gradle 9.7+, configure <code>groovyOptions.configurationScriptFile</code> before task execution. Assigning
+<code>groovyOptions.configurationScript</code> from <code>compileGroovy.doFirst { &#8230;&#8203; }</code> fails because Gradle has
+already finalized the compiler options. Grails prepares the combined compiler script before compilation.</p>
+</div>
+<div class="paragraph">
+<p>If another task generates your compiler script, prefer passing that task&#8217;s output provider to
+<code>configurationScriptFile</code>. The provider carries both the file location and its producing task, so
+Grails can prepare the combined script after your script is generated.</p>
+</div>
+<div class="paragraph">
+<p>Declare the generated script as an output and connect it through its provider:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">org.gradle.api.DefaultTask</span>
+<span class="keyword">import</span> <span class="include">org.gradle.api.file.RegularFileProperty</span>
+<span class="keyword">import</span> <span class="include">org.gradle.api.tasks.OutputFile</span>
+<span class="keyword">import</span> <span class="include">org.gradle.api.tasks.TaskAction</span>
+<span class="keyword">import</span> <span class="include">org.gradle.api.tasks.compile.GroovyCompile</span>
+<span class="keyword">import</span> <span class="include">org.gradle.work.DisableCachingByDefault</span>
+
+<span class="annotation">@DisableCachingByDefault</span>(because = <span class="string"><span class="delimiter">'</span><span class="content">Writing a short compiler script is inexpensive</span><span class="delimiter">'</span></span>)
+<span class="directive">abstract</span> <span class="type">class</span> <span class="class">GenerateCompilerScript</span> <span class="directive">extends</span> DefaultTask {
+    <span class="annotation">@OutputFile</span>
+    <span class="directive">abstract</span> RegularFileProperty getOutputFile()
+
+    <span class="annotation">@TaskAction</span>
+    <span class="type">void</span> generate() {
+        <span class="keyword">def</span> script = outputFile.get().asFile
+        script.parentFile.mkdirs()
+        script.text = <span class="string"><span class="delimiter">&quot;</span><span class="content">withConfig(configuration) { imports { star 'java.nio.file' } }</span><span class="delimiter">&quot;</span></span>
+    }
+}
+
+<span class="keyword">def</span> generateUserConfigScript = tasks.register(<span class="string"><span class="delimiter">'</span><span class="content">generateUserConfigScript</span><span class="delimiter">'</span></span>, GenerateCompilerScript) {
+    outputFile.set(layout.buildDirectory.file(<span class="string"><span class="delimiter">'</span><span class="content">user-config.groovy</span><span class="delimiter">'</span></span>))
+}
+
+tasks.named(<span class="string"><span class="delimiter">'</span><span class="content">compileGroovy</span><span class="delimiter">'</span></span>, GroovyCompile) {
+    groovyOptions.configurationScriptFile.set(generateUserConfigScript.flatMap { <span class="local-variable">it</span>.outputFile })
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>No separate <code>dependsOn</code> is needed for this producer. If the script&#8217;s content depends on task properties
+or other files, declare those as task inputs so changes regenerate the script.</p>
+</div>
+<div class="paragraph">
+<p>Existing builds can also keep the plain file assignment with an explicit compile dependency:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle (alternative wiring for the producer above)</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">tasks.named(<span class="string"><span class="delimiter">'</span><span class="content">compileGroovy</span><span class="delimiter">'</span></span>, GroovyCompile) {
+    dependsOn generateUserConfigScript
+    groovyOptions.configurationScript = file(<span class="string"><span class="delimiter">'</span><span class="content">build/user-config.groovy</span><span class="delimiter">'</span></span>)
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Grails matches the configured file against the declared outputs of the compile task&#8217;s direct
+dependencies and orders script preparation after the matching producer. This preserves the Grails 7
+pattern when the producer declares the exact script file as an output, whether through an <code>@OutputFile</code>
+property as <code>GenerateCompilerScript</code> does above or through <code>outputs.file(&#8230;&#8203;)</code> on an ad-hoc task. A
+dependency that declares only a containing output directory, writes the file without declaring it as an
+output, or is reachable only through another task&#8217;s <code>dependsOn</code> cannot be identified this way. Such a
+build fails from a clean checkout before compilation starts, with a validation error on the
+<code>generateCompileGroovyGrailsCompilerConfig</code> task that Grails registers:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="text">A problem was found with the configuration of task ':generateCompileGroovyGrailsCompilerConfig' (type 'GrailsCompilerConfigScriptTask').
+Input file does not exist
+  ... property 'configurationScript' specifies file '.../build/user-config.groovy' which doesn't exist</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If you see this error, expose the script as an output file and use the provider wiring instead.</p>
+</div>
+<div class="paragraph">
+<p>An existing, checked-in compiler script can still use a plain file assignment without a producer.
+Tasks that only generate source or classpath entries do not need additional ordering against
+compiler-script preparation: Grails does not read the compile or runtime classpath to prepare its script.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_63_count_returns_long">63. <code>count()</code> Returns <code>Long</code></h4>
+<div class="paragraph">
+<p><code>count()</code> and the <code>count</code> property return <code>Long</code> instead of <code>Integer</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">// Grails 7</span>
+<span class="predefined-type">Integer</span> total = <span class="predefined-type">Book</span>.count()
+
+<span class="comment">// Grails 8</span>
+<span class="predefined-type">Long</span> total = <span class="predefined-type">Book</span>.count()</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>How wide the underlying value is depends on the datastore. Hibernate counts with SQL <code>COUNT(<strong>)</code> and Neo4j
+with Cypher <code>count(</strong>)</code>, both 64-bit. MongoDB aggregates with <code>{$sum: 1}</code>, which returns Int32 and promotes
+to Int64 once the total exceeds it, so the width depends on how many documents the collection holds. Only
+the in-memory datastore is fixed at 32 bits, and it returns a list size. <code>GormStaticApi.count()</code> narrowed the datastore
+result with <code>intValue()</code>, which truncates silently, so
+a table with more than <code>Integer.MAX_VALUE</code> rows reported a wrong and possibly negative count with no
+error. <code>Long</code> is the only type that holds every value a datastore can produce here, so it is what the API
+now declares.</p>
+</div>
+<div class="paragraph">
+<p>The change affects <code>GormStaticOperations.count()</code> and <code>getCount()</code>, the <code>count()</code> and <code>count</code> members
+generated on every domain class, and <code>RestfulController.countResources()</code>. Dynamic Groovy is unaffected:
+<code>Book.count() == 5</code>, <code>int n = Book.count()</code> and arithmetic on the result all continue to work, because
+Groovy converts between numeric types on assignment and compares them by value.</p>
+</div>
+<div class="paragraph">
+<p>Code that is statically compiled, or that overrides one of these methods, needs updating:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">ReportService</span> {
+    <span class="comment">// Grails 7</span>
+    <span class="comment">// Integer bookCount() { Book.count() }</span>
+
+    <span class="comment">// Grails 8</span>
+    <span class="predefined-type">Long</span> bookCount() { <span class="predefined-type">Book</span>.count() }
+}
+
+<span class="type">class</span> <span class="class">BookController</span> <span class="directive">extends</span> RestfulController&lt;<span class="predefined-type">Book</span>&gt; {
+    <span class="comment">// Grails 7</span>
+    <span class="comment">// protected Integer countResources() { ... }</span>
+
+    <span class="comment">// Grails 8</span>
+    <span class="directive">protected</span> <span class="predefined-type">Long</span> countResources() { ... }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Java callers assigning the result to an <code>Integer</code> or <code>int</code> need an explicit conversion, since <code>Long</code> does
+not unbox to <code>int</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="java"><span class="type">long</span> total = <span class="predefined-type">Book</span>.count();            <span class="comment">// auto-unboxes, no change needed</span>
+<span class="type">int</span>  small = <span class="predefined-type">Book</span>.count().intValue();  <span class="comment">// only when the count is known to be small</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A GSP that declares the count in a typed model directive should declare it as <code>Number</code>, which accepts
+whatever a controller supplies:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="html">@{ model=&quot;List<span class="tag">&lt;Book&gt;</span> bookList; Number bookCount&quot; }</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>JSON views declare their model the same way, and bind it the same way, so a <code>model</code> block naming the count
+with a concrete numeric type needs the same treatment:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/views/book/index.gson</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">model {
+    <span class="predefined-type">Iterable</span>&lt;<span class="predefined-type">Book</span>&gt; bookList
+    <span class="comment">// Grails 7</span>
+    <span class="comment">// Integer bookCount</span>
+    <span class="predefined-type">Long</span> bookCount     <span class="comment">// or Number, to accept either width</span>
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>HalViewHelper.paginate()</code> and <code>links()</code> now declare <code>total</code> as <code>Long</code>, and <code>paginate()</code> declares <code>offset</code>
+as <code>Long</code> with it. Callers are unaffected, because Groovy widens an <code>Integer</code> argument to <code>Long</code> in both
+dynamic and statically compiled code, but anyone implementing <code>HalViewHelper</code> has to update their
+signatures.</p>
+</div>
+<div class="paragraph">
+<p>The GraphQL count field changes type with it. <code>graphql-java</code> maps <code>Long</code> to
+<code>ExtendedScalars.GraphQLLong</code>, so a schema that exposed</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="graphql">type Query {
+  personCount: Int
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>now exposes</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="graphql">type Query {
+  personCount: Long
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Queries that select the field are unchanged and the JSON value is unchanged, but generated clients and
+schema snapshots need regenerating. The count fetcher previously narrowed the datastore result to fit
+<code>Int</code>, so counts above <code>Integer.MAX_VALUE</code> were truncated there too.</p>
+</div>
+<div class="paragraph">
+<p>Paginated list responses already type <code>totalCount</code> as <code>Long</code> through the same type manager, in
+<code>DefaultGraphQLPaginationResponseHandler</code>, so this aligns the count field with a scalar the schema
+already used rather than introducing a new one.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_64_grails_plugins_run_for_a_grails_application_only">64. Grails Plugins Run for a Grails Application Only</h4>
+<div class="paragraph">
+<p>In earlier Grails 8 milestones, the Grails plugin lifecycle ran for any Spring Boot application that had
+<code>grails-core</code> on its class path, whether or not it was a Grails application. An application that depended on
+a Grails library — GSP for its views, say — had Grails plugin beans registered alongside the library&#8217;s own
+auto-configuration. This could prevent the context from starting because of duplicate beans or circular
+references. Grails 7 did not run the plugin lifecycle for a context that omitted the Grails application class.</p>
+</div>
+<div class="paragraph">
+<p>The lifecycle now runs only for a Grails application: one that <code>GrailsApp</code> launched, or one where a source of
+the context is a Grails application class, which is what <code>grails-app/init/Application.groovy</code> is. A Grails
+application is unaffected either way. A Spring Boot application using a Grails library gets that library&#8217;s
+auto-configuration and nothing else.</p>
+</div>
+<div class="paragraph">
+<p>This matters if you deliberately put a Grails plugin on the class path of an application that is not a Grails
+application and relied on its <code>doWithSpring</code> or <code>beanRegistrar</code> beans being contributed. Those beans are no
+longer registered. A plugin that also publishes an auto-configuration — as the Grails modules do, and as
+<code>@GrailsBeans</code> generates for a plugin&#8217;s <code>beans</code> block — continues to contribute through Spring Boot&#8217;s own
+auto-configuration, which needs no lifecycle.</p>
+</div>
+<div class="paragraph">
+<p>Inside a Grails application, <code>@SpringBootTest(classes = SomeConfig)</code> uses the explicitly named configuration
+classes. If those sources do not include the Grails application class, the plugin lifecycle does not run.
+This matches Grails 7. Earlier Grails 8 milestones attempted to register plugin beans in this context; with
+Hibernate, that could fail during startup because a plain Spring Boot application disallows circular references.</p>
+</div>
+<div class="paragraph">
+<p>A bare <code>@SpringBootTest</code> can discover the application&#8217;s <code>Application</code> class automatically, so it does not
+need an explicit <code>classes</code> attribute to select the Grails lifecycle. When specifying custom configuration
+classes, include <code>Application</code> only if the test needs the Grails plugin runtime:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">// A context using only this configuration, without the Grails plugin lifecycle</span>
+<span class="annotation">@SpringBootTest</span>(classes = SomeConfig)
+<span class="type">class</span> <span class="class">ConfigurationSpec</span> <span class="directive">extends</span> Specification { }
+
+<span class="comment">// Include the application and start through its main method to apply GrailsApp's defaults</span>
+<span class="annotation">@SpringBootTest</span>(classes = [Application, SomeConfig], useMainMethod = SpringBootTest.UseMainMethod.ALWAYS)
+<span class="type">class</span> <span class="class">ApplicationSpec</span> <span class="directive">extends</span> Specification { }</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Selecting the application class and applying the startup defaults from <code>GrailsApp</code> are separate concerns.
+By default, <code>@SpringBootTest</code> does not invoke the application&#8217;s main method. In a Grails application with
+Hibernate, it can therefore fail on bean overriding or circular references even when the application class
+is selected. Use <code>useMainMethod = SpringBootTest.UseMainMethod.ALWAYS</code>, as above, or set both
+<code>spring.main.allow-bean-definition-overriding=true</code> and <code>spring.main.allow-circular-references=true</code> on the
+test. This startup limitation also existed before the lifecycle change.</p>
+</div>
+<div class="paragraph">
+<p><code>@Integration</code> tests are unaffected: they name the application class and invoke its main method. So are
+tests using the <code>grails-testing-support</code> unit test mixins, which build their context without the lifecycle
+either way.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_65_sitemesh_decorator_default_is_consulted_for_the_default_layout">65. <code>sitemesh.decorator.default</code> Is Consulted for the Default Layout</h4>
+<div class="paragraph">
+<p>The SiteMesh 3 integration resolved the default layout from <code>grails.sitemesh.default.layout</code>, falling back to
+the legacy <code>grails.views.layout.default</code>. With neither set it used the implicit <code>application</code> layout.</p>
+</div>
+<div class="paragraph">
+<p>SiteMesh&#8217;s own <code>sitemesh.decorator.default</code> is now consulted as a last fallback, after both Grails keys. It is
+the property a Spring Boot application rendering views with GSP configures, and a Grails application has it
+set from the Grails keys already, so it decides only where neither Grails key is set.</p>
+</div>
+<div class="paragraph">
+<p>This changes behaviour for a Grails application that set <code>sitemesh.decorator.default</code> and neither Grails key:
+it was decorated with the implicit <code>application</code> layout and is now decorated with the layout that property
+names. Set <code>grails.sitemesh.default.layout</code> to be explicit, or remove <code>sitemesh.decorator.default</code> to keep the
+implicit <code>application</code> layout. An application that sets either Grails key is unaffected — those still win.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_66_promise_execution_and_async_request_migration">66. Promise Execution and Async Request Migration</h4>
+<div class="paragraph">
+<p>The default <code>PromiseFactory</code> now uses JDK <code>CompletableFuture</code>; it is no longer an <code>ExecutorPromiseFactory</code> or an <code>ExecutorService</code>. Inject <code>PromiseFactory</code> for promise operations rather than casting it to the legacy executor implementation. Explicit GPars and RxJava providers remain available.</p>
+</div>
+<div class="paragraph">
+<p>In applications, promises and the default event bus share Boot&#8217;s named <code>applicationTaskExecutor</code>. This changes the usual execution policy from an expanding cached pool to Boot&#8217;s configured executor (normally eight core threads with an unbounded queue). Review blocking workloads and configure <code>spring.task.execution.pool</code> and shutdown settings accordingly, or enable <code>spring.threads.virtual.enabled</code> on Java 21+. Avoid waiting synchronously for nested tasks in the same saturated pool. If Boot does not provide the named executor, Grails supplies an eight-core-thread managed fallback. Standalone promise factories retain a cached pool.</p>
+</div>
+<div class="paragraph">
+<p>The FutureTask-based promise implementations, <code>PromiseFactoryBean</code>, <code>AsyncController.startAsync()</code>, and the Grails-specific Servlet async wrappers are deprecated for removal. Replace custom legacy factory wiring with the async plugin and Boot executor configuration; replace manual Servlet dispatch/completion with a returned <code>Promise</code>. Existing Groovy <code>task</code>, <code>tasks</code>, <code>then</code>, and <code>onError</code> entry points remain supported.</p>
+</div>
+<div class="paragraph">
+<p>Both eager web promises and returned promises now honor <code>spring.mvc.async.request-timeout</code>; the Servlet container default applies when unset (normally 30 seconds on Tomcat), rather than an infinite timeout for eager web promises. Timeouts return HTTP 503 and can use a <code>503</code> URL mapping. Set a timeout explicitly if your application requires long-running responses. With the default and virtual-thread factories, single and aggregate error callbacks receive the original failure, while both direct and chained <code>get()</code> methods use the <code>Future</code> contract&#8217;s <code>ExecutionException</code> wrapper.</p>
+</div>
+<div class="paragraph">
+<p>The <code>grails.async.promiseFactory=virtual-thread</code> opt-in now uses the same CompletableFuture implementation with its own decorated executor; it no longer relies on the deprecated FutureTask classes. Its default event bus remains asynchronous and its web tasks propagate request context. Its aggregate <code>onComplete</code> resolves to the callback&#8217;s result, and aggregate <code>onError</code> observes the original failure while leaving the returned promise failed, rather than recovering to an empty list.</p>
 </div>
 </div>
 </div>

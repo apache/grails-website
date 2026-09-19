@@ -443,6 +443,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div id="toctitle">Table of Contents</div>
 <ul class="sectlevel2">
 <li><a href="#_basic_querying">Basic Querying</a></li>
+<li><a href="#_bulk_updates">Bulk Updates</a></li>
 </ul>
 </div>
 </div>
@@ -493,6 +494,72 @@ For the full MongoDB client model refer to the <a href="https://api.mongodb.com/
 Document doc = Product.collection
         .find(eq("title", "coffee"))
         .first()</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_bulk_updates">Bulk Updates</h3>
+<div class="paragraph">
+<p><code>updateAll</code> sets the given properties on every document the criteria match, in a single <code>updateMany</code>, without loading the entities:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">Ticket.where { status == 'open' }.updateAll(assignee: user)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>An association value is written the way normal persistence writes it: the target&#8217;s identifier, in the type that target&#8217;s <code>_id</code> is stored as, and as a <code>DBRef</code> where the mapping declares <code>reference: true</code>. Either the associated instance or its identifier can be passed, so <code>updateAll(assignee: user)</code> and <code>updateAll(assignee: user.id)</code> write the same value.</p>
+</div>
+<div class="paragraph">
+<p>Whether an association can be bulk-updated depends on which document holds the reference:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 16.6666%;">
+<col style="width: 50.0001%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Association</th>
+<th class="tableblock halign-left valign-top">Supported</th>
+<th class="tableblock halign-left valign-top">Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">to-one reference</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Yes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The reference is a field on this document.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">unidirectional one-to-many, many-to-many</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Yes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The identifiers are stored as an array on this document.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">embedded, and collections of simple values such as <code>hasMany = [labels: String]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Yes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The value is written like any other property.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hasOne</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The foreign key is held by the associated document.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">bidirectional one-to-many</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The foreign key is held by each child.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The unsupported kinds throw <code>UnsupportedOperationException</code> rather than writing a field normal persistence never reads. Update the side that holds the foreign key instead. For a bidirectional one-to-many, that means updating the children:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">Child.where { id in childIds }.updateAll(parent: newParent)</code></pre>
 </div>
 </div>
 </div>
