@@ -314,6 +314,28 @@ Update your project&#8217;s toolchain, CI pipelines, and deployment environments
 </div>
 </div>
 <div class="sect3">
+<h4 id="_1_1_gradle_9_7_minimum_requirement">1.1 Gradle 9.7 Minimum Requirement</h4>
+<div class="paragraph">
+<p>The Grails 8 Gradle plugins require Gradle 9.7 or later.
+Grails 7 applications were generated with a Gradle 8.14.x wrapper, and a wrapper carried over from Grails 7 does not work with Grails 8.
+The Groovy compiler configuration that the Grails Gradle plugin sets up relies on the <code>groovyOptions.configurationScriptFile</code> property, which only exists from Gradle 9.7 on.
+On an older Gradle version <code>compileGroovy</code> fails with a <code>NoSuchMethodError</code> for <code>GroovyCompileOptions.getConfigurationScriptFile()</code>.</p>
+</div>
+<div class="paragraph">
+<p>Update the Gradle wrapper of your project as part of the upgrade:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="console">./gradlew wrapper --gradle-version 9.7.1</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Afterwards, check that the <code>distributionUrl</code> in <code>gradle/wrapper/gradle-wrapper.properties</code> points to the new version.
+Gradle 9 has breaking changes of its own that may affect your build scripts and other Gradle plugins you use; consult the <a href="https://docs.gradle.org/9.7.1/userguide/upgrading_major_version_9.html">Gradle 9 upgrade guide</a>.
+See also <a href="#groovy-compiler-config-scripts">Generated Groovy Compiler Configuration Scripts</a> if your build assigns a Groovy compiler configuration script itself.</p>
+</div>
+</div>
+<div class="sect3">
 <h4 id="_2_spring_boot_4_1_x">2. Spring Boot 4.1.x</h4>
 <div class="paragraph">
 <p>Grails 8 upgrades from Spring Boot 3.5.x to Spring Boot 4.1.x.
@@ -418,7 +440,9 @@ If your application or plugin contributes an <code>EnvironmentPostProcessor</cod
 </div>
 </div>
 <div class="sect3">
-<h4 id="_4_mongodb_configuration_property_changes">4. MongoDB Configuration Property Changes</h4>
+<h4 id="_4_spring_boot_configuration_property_changes">4. Spring Boot Configuration Property Changes</h4>
+<div class="sect4">
+<h5 id="_4_1_mongodb_configuration">4.1 MongoDB Configuration</h5>
 <div class="paragraph">
 <p>Spring Boot 4 renamed the MongoDB configuration property namespace for Spring Boot&#8217;s own auto-configuration.
 If your <code>application.yml</code> or <code>application.groovy</code> uses <code>spring.data.mongodb.<strong></code> properties for Spring Boot auto-configuration, you must rename them to <code>spring.mongodb.</strong></code>.
@@ -443,6 +467,43 @@ Note that Grails GORM for MongoDB uses its own <code>mongodb.*</code> configurat
         <span class="key">host</span>: <span class="string"><span class="content">localhost</span></span>
         <span class="key">port</span>: <span class="string"><span class="content">27017</span></span>
         <span class="key">database</span>: <span class="string"><span class="content">mydb</span></span></code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="multipart-upload-configuration">4.2 Multipart Upload Configuration</h5>
+<div class="paragraph">
+<p>The <code>grails.controllers.upload.*</code> configuration properties are no longer supported.
+Applications that still define any property under <code>grails.controllers.upload</code> fail at startup with migration instructions.
+This startup check is a migration aid for Grails 8 only and will be removed in Grails 9, after which leftover <code>grails.controllers.upload</code> properties are silently ignored.
+Move those settings to Spring Boot&#8217;s <code>spring.servlet.multipart.*</code> namespace:</p>
+</div>
+<div class="listingblock">
+<div class="title">application.yml - Before (Grails 7)</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">controllers</span>:
+        <span class="key">upload</span>:
+            <span class="key">maxFileSize</span>: <span class="string"><span class="content">200000</span></span>
+            <span class="key">maxRequestSize</span>: <span class="string"><span class="content">200000</span></span></code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">application.yml - After (Grails 8)</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">spring</span>:
+    <span class="key">servlet</span>:
+        <span class="key">multipart</span>:
+            <span class="key">maxFileSize</span>: <span class="string"><span class="content">200MB</span></span>
+            <span class="key">maxRequestSize</span>: <span class="string"><span class="content">200MB</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Spring Boot also provides <code>spring.servlet.multipart.location</code>, <code>spring.servlet.multipart.fileSizeThreshold</code>, <code>spring.servlet.multipart.enabled</code>, <code>spring.servlet.multipart.resolveLazily</code>, and <code>spring.servlet.multipart.strictServletCompliance</code> as replacements for the corresponding legacy settings. See the <a href="https://docs.spring.io/spring-boot/4.1.1/reference/../appendix/application-properties/index.html">Spring Boot multipart application properties</a> reference for the complete list.</p>
+</div>
+<div class="paragraph">
+<p>Unlike the Grails 7 default, the multipart location is not set to <code>System.getProperty("java.io.tmpdir")</code>; when <code>spring.servlet.multipart.location</code> is not configured, the resulting <code>MultipartConfigElement</code> has an empty location and uploads use the servlet container&#8217;s temporary directory. This can matter when the container&#8217;s temporary storage is constrained or when an application expects uploaded files in <code>java.io.tmpdir</code>.
+When no upload limits are configured, Spring Boot&#8217;s defaults apply: 1MB per file and 10MB per request. Set <code>spring.servlet.multipart.maxFileSize</code> and <code>spring.servlet.multipart.maxRequestSize</code> explicitly if your application requires different limits.</p>
 </div>
 </div>
 </div>
@@ -4534,14 +4595,14 @@ with a diagnostic message, the same way it previously failed with <code>MissingM
 <div class="sect4">
 <h5 id="_53_1_oversized_uploads_now_reach_the_applications_error_handling">53.1 Oversized uploads now reach the application&#8217;s error handling</h5>
 <div class="paragraph">
-<p>An upload larger than <code>grails.controllers.upload.maxFileSize</code> or
-<code>grails.controllers.upload.maxRequestSize</code> (both 128000 bytes by default) fails when the servlet
-container parses the request parts, and every parameter read on that request fails with it from then
-on. Because Grails reads request parameters on paths that run before, alongside and after the handler
-— to resolve the <code>_method</code> override, whenever a filter such as Spring Security builds <code>params</code>, in the
-locale-change interceptor, and in the exception resolver&#8217;s request log — that failure used to abort
-the request inside the filter chain, where no exception handler could see it. The application was left
-with the container&#8217;s own error page.</p>
+<p>An upload larger than <code>spring.servlet.multipart.maxFileSize</code> or <code>spring.servlet.multipart.maxRequestSize</code>
+(1MB per file and 10MB per request by default, see <a href="#multipart-upload-configuration">Multipart Upload
+Configuration</a>) fails when the servlet container parses the request parts, and every parameter read on
+that request fails with it from then on. Because Grails reads request parameters on paths that run
+before, alongside and after the handler — to resolve the <code>_method</code> override, whenever a filter such as
+Spring Security builds <code>params</code>, in the locale-change interceptor, and in the exception resolver&#8217;s
+request log — that failure used to abort the request inside the filter chain, where no exception
+handler could see it. The application was left with the container&#8217;s own error page.</p>
 </div>
 <div class="paragraph">
 <p>Those reads now tolerate a multipart request the container refuses to parse, so the failure surfaces
@@ -4576,7 +4637,7 @@ handler resolution — so outside the error handler this is only observable in a
 <p>Tomcat and Jetty both surface the failure to the application as described above. Undertow applies the
 limit while it reads the request entity and refuses the request at the HTTP layer, so no application
 code runs at all: the response is a bare <code>413</code> with an empty body, and a <code>"413"</code> mapping is not
-consulted. Raising <code>grails.controllers.upload.maxRequestSize</code> raises the point at which Undertow
+consulted. Raising <code>spring.servlet.multipart.maxRequestSize</code> raises the point at which Undertow
 refuses, but there is no way to render a body for a request the container never dispatches.</p>
 </div>
 </div>
@@ -5066,7 +5127,7 @@ declaration, so it is read strictly at compile time and at runtime alike.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_62_generated_groovy_compiler_configuration_scripts">62. Generated Groovy Compiler Configuration Scripts</h4>
+<h4 id="groovy-compiler-config-scripts">62. Generated Groovy Compiler Configuration Scripts</h4>
 <div class="paragraph">
 <p>On Gradle 9.7+, configure <code>groovyOptions.configurationScriptFile</code> before task execution. Assigning
 <code>groovyOptions.configurationScript</code> from <code>compileGroovy.doFirst { &#8230;&#8203; }</code> fails because Gradle has
