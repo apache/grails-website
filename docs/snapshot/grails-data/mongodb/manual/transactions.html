@@ -442,7 +442,11 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
 <ul class="sectlevel1">
-<li><a href="#_transactions">Transactions</a></li>
+<li><a href="#_transactions">Transactions</a>
+<ul class="sectlevel2">
+<li><a href="#readOnlyTransactions">Read-Only Transactions</a></li>
+</ul>
+</li>
 </ul>
 </div>
 </div>
@@ -451,7 +455,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <h2 id="_transactions">Transactions</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>MongoDB doesn&#8217;t support transactions directly, however GORM for MongoDB does batch up inserts and updates until the session is flushed. This makes it possible to support some rollback options.</p>
+<p>By default GORM for MongoDB does not use server-side transactions, however it does batch up inserts and updates until the session is flushed. This makes it possible to support some rollback options. To run transactions as real MongoDB multi-document transactions, see <a href="#advancedConfig">Multi-Document Transactions</a>.</p>
 </div>
 <div class="paragraph">
 <p>You can use either transactional services or the static <code>withTransaction</code> method. To mark a service as using the MongoDB transaction manager, use the static <code>transactional</code> property with the value <code>'mongo'</code>:</p>
@@ -478,6 +482,49 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </div>
 <div class="paragraph">
 <p>Using the lower level API you can of course also take advantage of Mongo&#8217;s support for <a href="https://docs.mongodb.org/manual/tutorial/isolate-sequence-of-operations">Atomic operations</a>.</p>
+</div>
+<div class="sect2">
+<h3 id="readOnlyTransactions">Read-Only Transactions</h3>
+<div class="paragraph">
+<p>A read-only transaction, such as a service method annotated with <code>@ReadOnly</code> or <code>@Transactional(readOnly = true)</code>, commits without flushing the session. This holds whether or not multi-document transactions are enabled, and is how read-only transactions behave on GORM&#8217;s other datastores — on Hibernate, for instance, a read-only transaction puts the session into <code>MANUAL</code> flush mode.</p>
+</div>
+<div class="paragraph">
+<p>It matters for a write that is saved without <code>flush: true</code> and is still queued when read-only code runs in the same session:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class ReportService {
+    @ReadOnly
+    int countPeople() {
+        Person.count()
+    }
+}
+
+new Person(name: "Fred").save()   // queued, not yet flushed
+reportService.countPeople()       // read-only: commits without flushing</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The read-only transaction does not persist <code>Fred</code>. The session is left in <code>COMMIT</code> flush mode, so later queries in the same session no longer flush ahead of running and do not see the queued insert, and the insert is discarded when the session closes.</p>
+</div>
+<div class="paragraph">
+<p>In earlier versions, committing a read-only transaction flushed the session, so a write like this was persisted as a side effect of the read. If your code relies on that, flush the write explicitly with <code>save(flush: true)</code>, or perform it inside a read-write transaction.</p>
+</div>
+<div class="paragraph">
+<p>To help find such code, a read-only transaction that commits while its session still holds queued inserts, updates or deletes logs a warning from <code>org.grails.datastore.mapping.transactions.DatastoreTransactionManager</code>. The warning names the session and reports that the transaction did not persist the queued operations; it does not say whether a later read-write transaction in the same session will.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+When GORM and Spring Data MongoDB share a transaction, <code>readOnly</code> only governs GORM&#8217;s flush. See <a href="#springDataInterop">Spring Data MongoDB Interoperability</a>.
+</td>
+</tr>
+</table>
+</div>
 </div>
 </div>
 </div>

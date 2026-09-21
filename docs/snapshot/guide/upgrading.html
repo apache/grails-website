@@ -1384,6 +1384,16 @@ The Spring annotations still work, so this is non-blocking, but new code should 
 When a link, form action, pagination link, sortable column link, redirect, chain, or include targets a controller without an explicit <code>namespace</code>, Grails now resolves the namespace automatically. In the normal case, where only one controller has the target name, <code>controller</code> and <code>action</code> generate the correct namespaced or non-namespaced URL. Ambiguity only occurs when multiple controllers share the same name. In that case, specify <code>namespace</code> to choose the target explicitly. Pass <code>namespace: null</code> from Groovy code or <code>namespace=""</code> in a GSP tag to target the non-namespaced controller explicitly.</p>
 </li>
 <li>
+<p><strong>A read-only transaction no longer flushes the session.</strong>
+A read-only transaction (<code>@ReadOnly</code>, <code>@Transactional(readOnly = true)</code>) commits without flushing the session on every GORM datastore. Hibernate, Neo4j and the simple map datastore already behaved this way; GORM for MongoDB flushed the session when a read-only transaction committed, and no longer does.</p>
+<div class="paragraph">
+<p>So on MongoDB, a write saved without <code>flush: true</code> before read-only code ran in the same session used to be persisted as a side effect of the read. It is now left queued in a session whose flush mode is <code>COMMIT</code>: later queries in that session do not see it, and it is discarded when the session closes. Flush such writes explicitly with <code>save(flush: true)</code>, or perform them in a read-write transaction. To make this discoverable, a read-only transaction that commits while its session holds pending inserts, updates or deletes now logs a warning from <code>org.grails.datastore.mapping.transactions.DatastoreTransactionManager</code> naming the session. See <a href="../grails-data/mongodb/manual/index.html#readOnlyTransactions">Read-Only Transactions</a> in the GORM for MongoDB guide.</p>
+</div>
+<div class="paragraph">
+<p>A GORM datastore implementation outside the Grails repository inherits this if it uses <code>SessionOnlyTransaction</code>; one that supplies its own <code>Transaction</code> can honour <code>readOnly</code> by overriding the new <code>AbstractSession.beginTransactionInternal(TransactionDefinition)</code>, which now receives the transaction definition instead of discarding it.</p>
+</div>
+</li>
+<li>
 <p><strong><code>bindData</code> can clear omitted included fields.</strong>
 <code>bindData(target, source, [include: [&#8230;&#8203;], clearMissing: true])</code> now clears included properties that are absent from the binding source. The behavior is opt-in, requires an <code>include</code> list, and does not apply globally. Existing <code>bindData</code> calls without <code>clearMissing: true</code> keep omitted fields unchanged.</p>
 </li>
@@ -2540,6 +2550,7 @@ Now the framework bean simply backs off.</p>
 <td class="content">
 The clean back-off applies to beans that are registered before auto-configuration conditions are evaluated: <code>@Bean</code> methods in application configuration classes, and — as of the retimed plugin lifecycle (see <em>Plugin Beans Now Register Before Spring Boot Auto-Configuration</em> below) — beans contributed through a plugin&#8217;s <code>doWithSpring</code> or <code>beanRegistrar()</code>.
 Beans contributed through the application&#8217;s <code>resources.groovy</code> or <code>resources.xml</code> register later and continue to take effect through bean-definition overriding, exactly as in previous releases.
+The one exception is a <code>@Configuration</code> class registered there, which is no longer processed — see <a href="#resources-groovy-configuration-classes"><code>@Configuration</code> classes registered in <code>resources.groovy</code></a> below.
 </td>
 </tr>
 </table>
@@ -2632,6 +2643,38 @@ A plugin that wanted to replace a Boot-provided bean therefore had to rely on be
 </div>
 <div class="paragraph">
 <p><strong>Bean-definition overriding edge case.</strong> Grails defaults <code>spring.main.allow-bean-definition-overriding</code> to <code>true</code>, and under that default nothing changes: an application bean (from the application class, <code>resources.groovy</code> or <code>resources.xml</code>) that uses the same name as a plugin bean still replaces the plugin&#8217;s bean. However, because plugin beans now register earlier and application beans register in a separate, later step, an application that explicitly sets <code>spring.main.allow-bean-definition-overriding</code> to <code>false</code> will see a <code>BeanDefinitionOverrideException</code> for an application bean that shadows a plugin bean — in previous releases the two definitions were merged before a single registry write, so the shadowing was silent even with overriding disabled.</p>
+</div>
+<div id="resources-groovy-configuration-classes" class="paragraph">
+<p><strong><code>@Configuration</code> classes registered in <code>resources.groovy</code> are no longer processed.</strong> In Grails 7 and earlier, a class annotated with <code>@Configuration</code> could be registered as a bean in the application&#8217;s <code>resources.groovy</code> or <code>resources.xml</code>, or in the <code>doWithSpring</code> of the <code>Application</code> class, and its <code>@Bean</code> methods, <code>@Import</code> and <code>@Enable&#8230;&#8203;</code> annotations were still honored. This is a breaking change in Grails 8: those bean definitions register after Spring has finished parsing configuration classes, so such a class is now created as a plain bean and none of the beans it declares are registered. No error or warning is reported — the beans are simply missing. The same applies to the application&#8217;s <code>beanRegistrar()</code>.</p>
+</div>
+<div class="paragraph">
+<p><code>@Configuration</code> classes contributed by a plugin&#8217;s <code>doWithSpring</code> or <code>beanRegistrar()</code> are not affected, because plugin beans now register before configuration classes are parsed.</p>
+</div>
+<div class="paragraph">
+<p><code>resources.groovy</code> and <code>resources.xml</code> are for defining beans. Register a configuration class with Spring directly instead, either by importing it from the <code>Application</code> class:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">org.springframework.context.annotation.Import</span>
+
+<span class="keyword">import</span> <span class="include">grails.boot.GrailsApp</span>
+<span class="keyword">import</span> <span class="include">grails.boot.config.GrailsAutoConfiguration</span>
+
+<span class="annotation">@Import</span>(MyConfiguration)
+<span class="type">class</span> <span class="class">Application</span> <span class="directive">extends</span> GrailsAutoConfiguration {
+
+    <span class="directive">static</span> <span class="type">void</span> main(<span class="predefined-type">String</span><span class="type">[]</span> args) {
+        GrailsApp.run(Application, args)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>or by annotating the <code>Application</code> class with <code>@ComponentScan</code> so that configuration classes in the application&#8217;s packages are discovered.
+Alternatively, declare the beans themselves — in <code>resources.groovy</code>, or in a <code>beans</code> block on the <code>Application</code> class (see <a href="spring.html#springdslAdditional">Configuring Additional Beans</a>).</p>
+</div>
+<div class="paragraph">
+<p>Plugin authors who previously told users to replace a plugin-provided <code>@Configuration</code> class through <code>resources.groovy</code> should ship that class as a Spring Boot auto-configuration and let users customize it through <code>@ConditionalOnMissingBean</code>-guarded beans or configuration properties instead.</p>
 </div>
 </div>
 <div class="sect3">

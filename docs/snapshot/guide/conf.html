@@ -428,6 +428,46 @@ startup failed:script14738267015581837265078.groovy: 13: unable to resolve class
 </div>
 </div>
 <div class="sect2">
+<h3 id="_configuration_metadata">Configuration Metadata</h3>
+<div class="paragraph">
+<p>Grails framework modules publish standard Spring Boot configuration metadata in
+<code>META-INF/spring-configuration-metadata.json</code>. IDEs use this metadata for key completion, types, descriptions, defaults,
+and value hints. The Grails configuration report command and the
+<a href="../ref/Configuration/Application%20Properties.html">Application Properties reference</a> use its property and group
+entries.</p>
+</div>
+<div class="paragraph">
+<p>For configuration classes written in Groovy, Grails collects metadata with a compiler AST transformation. The
+transformation writes the metadata of each <code>@ConfigurationProperties</code> class to its own build-time file next to the
+compiled classes, and the build merges those files after compilation. Nothing is added to the compiled classes, and
+the per-class files are not packaged. Java configuration classes are inspected from their compiled bytecode. This
+avoids Java annotation processing on Groovy sources, which would interfere with incremental Groovy compilation.</p>
+</div>
+<div class="paragraph">
+<p>Some plugins, such as Spring Security, declare their defaults in a Groovy configuration script rather than in a
+configuration class. The published metadata covers those settings as well. The script is read without being executed:
+a literal value becomes the documented default, while a value that comes from a method call, an environment block, or
+another dynamic expression is listed without a default, because its result depends on where the application runs.</p>
+</div>
+<div class="paragraph">
+<p>The generated metadata describes bindable fields and bean properties. A module can also provide
+<code>META-INF/additional-spring-configuration-metadata.json</code> for descriptions, hints, legacy or indirect properties, and
+other details that cannot be derived safely from bytecode or static DSL syntax. Curated values override generated values
+for the same property. The module build merges all generated and curated entries into the single standard
+<code>META-INF/spring-configuration-metadata.json</code> resource published in the module JAR.</p>
+</div>
+<div class="paragraph">
+<p>Generated types follow the Spring Boot convention of naming primitives by their wrapper, for example
+<code>java.lang.Boolean</code>. Properties contributed by a Groovy <code>@Delegate</code> field are generated when the delegate is compiled
+by the same module; otherwise the build asks for them to be described in the curated metadata.</p>
+</div>
+<div class="paragraph">
+<p>Only compile-time constant Groovy initializers are emitted as generated defaults. Defaults calculated by constructors,
+method calls, environment checks, system properties, or other dynamic expressions are intentionally omitted unless a
+curated metadata overlay supplies an authoritative value.</p>
+</div>
+</div>
+<div class="sect2">
 <h3 id="_grailsconfigurationaware_interface">GrailsConfigurationAware Interface</h3>
 <div class="paragraph">
 <p>Accessing configuration dynamically at runtime can have a small effect on application performance. An alternative approach is to implement the <a href="../api/grails/core/support/GrailsConfigurationAware.html">GrailsConfigurationAware</a> interface, which provides a <code>setConfiguration</code> method that accepts the application configuration as a parameter when the class is initialized. You can then assign relevant configuration properties to instance properties on the class for later usage.</p>

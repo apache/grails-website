@@ -678,6 +678,26 @@ guide for details.</p>
 </div>
 </div>
 <div class="sect3">
+<h4 id="_read_only_transactions_do_not_flush_the_session">Read-Only Transactions Do Not Flush the Session</h4>
+<div class="paragraph">
+<p><code>@ReadOnly</code> and <code>@Transactional(readOnly = true)</code> now mean the same thing on every GORM datastore: a read-only
+transaction commits without flushing the session. Hibernate, Neo4j and the simple map datastore already behaved this
+way, and GORM for MongoDB was the exception — a read-only commit there flushed whatever the session had queued, so
+read-only code could persist another caller&#8217;s unflushed writes, and a read-only transaction started while a session was
+flushing (for example from a validator or a <code>beforeInsert</code> event) could re-enter validation.</p>
+</div>
+<div class="paragraph">
+<p><code>AbstractSession</code> now passes the transaction definition to <code>beginTransactionInternal(TransactionDefinition)</code> rather than
+discarding it, so a datastore can act on <code>readOnly</code> and on anything else the definition carries. <code>Session</code> also gained
+<code>hasPendingOperations()</code>, and <code>DatastoreTransactionManager</code> uses it to log a warning when a read-only transaction commits
+while its session still holds queued inserts, updates or deletes, so a write that a read-only transaction used to persist
+by accident is reported rather than silently dropped. This is a behavior change for MongoDB code that saves without
+<code>flush: true</code> and relies on a later read-only transaction to persist the write; see the
+<a href="upgrading.html#upgrading80x">upgrade guide</a> and the
+<a href="../grails-data/mongodb/manual/index.html#readOnlyTransactions">Read-Only Transactions</a> section of the GORM for MongoDB guide.</p>
+</div>
+</div>
+<div class="sect3">
 <h4 id="_ahead_of_time_processing">Ahead-of-Time Processing</h4>
 <div class="paragraph">
 <p>A Grails application can now be processed by Spring&#8217;s ahead-of-time engine. Applying Spring Boot&#8217;s AOT plugin adds a

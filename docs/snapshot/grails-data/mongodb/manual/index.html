@@ -603,7 +603,11 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 </ul>
 </li>
 <li><a href="#lowLevelApi">Using the MongoDB Driver Directly</a></li>
-<li><a href="#transactions">Transactions</a></li>
+<li><a href="#transactions">Transactions</a>
+<ul class="sectlevel2">
+<li><a href="#readOnlyTransactions">Read-Only Transactions</a></li>
+</ul>
+</li>
 <li><a href="#testing">Unit Testing</a></li>
 <li><a href="#_integration_testing">Integration Testing</a></li>
 <li><a href="#reference">Reference</a>
@@ -1905,6 +1909,18 @@ println Person.count()</code></pre>
 </td>
 <td class="content">
 Because it is primary, in an application that mixes this with another persistence stack (for example Hibernate/JPA), an unqualified <code>@Transactional</code> resolves to this MongoDB manager. If you run multiple persistence stacks, define your own primary <code>transactionManager</code> (or qualify every <code>@Transactional</code> explicitly) so each method targets the intended manager.
+</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+On the unified manager, <code>readOnly</code> only governs GORM&#8217;s flush. A GORM write queued inside a read-only transaction is not flushed (see <a href="#readOnlyTransactions">Read-Only Transactions</a>), but a Spring Data write such as <code>mongoTemplate.insert(...)</code> goes directly into the shared <code>ClientSession</code> and still commits. A read-only transaction does not prevent Spring Data writes.
 </td>
 </tr>
 </table>
@@ -3998,7 +4014,7 @@ Person.collection.findOne(<span class="key">firstName</span>:<span class="string
 <h2 id="transactions">Transactions</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>MongoDB doesn&#8217;t support transactions directly, however GORM for MongoDB does batch up inserts and updates until the session is flushed. This makes it possible to support some rollback options.</p>
+<p>By default GORM for MongoDB does not use server-side transactions, however it does batch up inserts and updates until the session is flushed. This makes it possible to support some rollback options. To run transactions as real MongoDB multi-document transactions, see <a href="#advancedConfig">Multi-Document Transactions</a>.</p>
 </div>
 <div class="paragraph">
 <p>You can use either transactional services or the static <code>withTransaction</code> method. To mark a service as using the MongoDB transaction manager, use the static <code>transactional</code> property with the value <code>'mongo'</code>:</p>
@@ -4025,6 +4041,49 @@ Person.collection.findOne(<span class="key">firstName</span>:<span class="string
 </div>
 <div class="paragraph">
 <p>Using the lower level API you can of course also take advantage of Mongo&#8217;s support for <a href="https://docs.mongodb.org/manual/tutorial/isolate-sequence-of-operations">Atomic operations</a>.</p>
+</div>
+<div class="sect2">
+<h3 id="readOnlyTransactions">Read-Only Transactions</h3>
+<div class="paragraph">
+<p>A read-only transaction, such as a service method annotated with <code>@ReadOnly</code> or <code>@Transactional(readOnly = true)</code>, commits without flushing the session. This holds whether or not multi-document transactions are enabled, and is how read-only transactions behave on GORM&#8217;s other datastores — on Hibernate, for instance, a read-only transaction puts the session into <code>MANUAL</code> flush mode.</p>
+</div>
+<div class="paragraph">
+<p>It matters for a write that is saved without <code>flush: true</code> and is still queued when read-only code runs in the same session:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">ReportService</span> {
+    <span class="annotation">@ReadOnly</span>
+    <span class="type">int</span> countPeople() {
+        Person.count()
+    }
+}
+
+<span class="keyword">new</span> Person(<span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Fred</span><span class="delimiter">&quot;</span></span>).save()   <span class="comment">// queued, not yet flushed</span>
+reportService.countPeople()       <span class="comment">// read-only: commits without flushing</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The read-only transaction does not persist <code>Fred</code>. The session is left in <code>COMMIT</code> flush mode, so later queries in the same session no longer flush ahead of running and do not see the queued insert, and the insert is discarded when the session closes.</p>
+</div>
+<div class="paragraph">
+<p>In earlier versions, committing a read-only transaction flushed the session, so a write like this was persisted as a side effect of the read. If your code relies on that, flush the write explicitly with <code>save(flush: true)</code>, or perform it inside a read-write transaction.</p>
+</div>
+<div class="paragraph">
+<p>To help find such code, a read-only transaction that commits while its session still holds queued inserts, updates or deletes logs a warning from <code>org.grails.datastore.mapping.transactions.DatastoreTransactionManager</code>. The warning names the session and reports that the transaction did not persist the queued operations; it does not say whether a later read-write transaction in the same session will.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+When GORM and Spring Data MongoDB share a transaction, <code>readOnly</code> only governs GORM&#8217;s flush. See <a href="#springDataInterop">Spring Data MongoDB Interoperability</a>.
+</td>
+</tr>
+</table>
+</div>
 </div>
 </div>
 </div>
