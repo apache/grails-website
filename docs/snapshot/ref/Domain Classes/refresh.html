@@ -200,6 +200,21 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
 b.refresh()</code></pre>
 </div>
 </div>
+<div class="paragraph">
+<p>Refreshing under a pessimistic write lock:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="predefined-type">Book</span>.withTransaction {
+    <span class="keyword">def</span> book = <span class="predefined-type">Book</span>.get(<span class="integer">1</span>)
+    book.refresh(<span class="key">lock</span>: <span class="predefined-constant">true</span>)
+    <span class="keyword">if</span> (book.title == <span class="string"><span class="delimiter">'</span><span class="content">Draft</span><span class="delimiter">'</span></span>) {
+        book.title = <span class="string"><span class="delimiter">'</span><span class="content">Ready for review</span><span class="delimiter">'</span></span>
+        book.save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+    }
+}</code></pre>
+</div>
+</div>
 </div>
 <div class="sect2">
 <h3 id="_description">Description</h3>
@@ -221,6 +236,107 @@ b.refresh()</code></pre>
 <p>after inserting a Blob or Clob</p>
 </li>
 </ul>
+</div>
+<div class="paragraph">
+<p>Pass <code>lock: true</code> to reload the instance&#8217;s database state and version under a pessimistic WRITE lock. <code>entity.refresh(lock: true)</code> acquires the row lock before it reads, so the state and version it loads are the ones the lock protects; it never checks the already-loaded version, and it returns the same instance.</p>
+</div>
+<div class="paragraph">
+<p>To request a different lock, pass a <code>jakarta.persistence.LockModeType</code> (or its name) instead of <code>true</code>. For example <code>entity.refresh(lock: LockModeType.PESSIMISTIC_READ)</code> reloads the instance under a pessimistic READ lock. <code>lock: true</code> is equivalent to <code>lock: LockModeType.PESSIMISTIC_WRITE</code>; <code>lock: false</code> and <code>lock: LockModeType.NONE</code> request no lock and behave like <code>entity.refresh()</code>. A value that is neither a boolean, a <code>LockModeType</code>, nor the name of one throws <code>IllegalArgumentException</code>. The semantics of each lock mode are those of the JPA <code>LockModeType</code> of the same name.</p>
+</div>
+<div class="paragraph">
+<p>The lock modes behave as follows on Hibernate 5 and Hibernate 7:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 28.5714%;">
+<col style="width: 28.5714%;">
+<col style="width: 42.8572%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Lock mode</th>
+<th class="tableblock halign-left valign-top">Database lock</th>
+<th class="tableblock halign-left valign-top">Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PESSIMISTIC_WRITE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Exclusive row lock, typically <code>SELECT &#8230;&#8203; FOR UPDATE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The default, so <code>lock: true</code> means <code>lock: LockModeType.PESSIMISTIC_WRITE</code>. Other transactions cannot update the row or take a pessimistic lock on it until this transaction ends.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PESSIMISTIC_READ</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Shared row lock, <code>SELECT &#8230;&#8203; FOR SHARE</code> where the database supports it</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Other transactions cannot update the row but may take the same shared lock. Databases without shared row locks take an exclusive lock instead.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PESSIMISTIC_FORCE_INCREMENT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Exclusive row lock</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">As <code>PESSIMISTIC_WRITE</code>, and the version is incremented as part of taking the lock, so a transaction still holding the previous version fails its next update.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OPTIMISTIC</code> (JPA alias <code>READ</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">None</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The version is re-read when the transaction commits, and the commit fails if another transaction changed it.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OPTIMISTIC_FORCE_INCREMENT</code> (JPA alias <code>WRITE</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">None</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The version is incremented when the transaction commits, so other transactions holding the previous version fail.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>NONE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">None</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A plain refresh, exactly like <code>lock: false</code>: the state is reloaded and no lock is taken.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>An active transaction is required whenever a lock is requested. Use <a href="../../ref/Domain%20Classes/withTransaction.html">withTransaction</a> as above or a GORM <code>@Transactional</code> method, and keep the lock and the work it protects in the same transaction. The lock is held until that transaction commits or rolls back. Calling <code>refresh</code> with a lock but without an active transaction throws <code>jakarta.persistence.TransactionRequiredException</code>. The instance must be attached to the current session: refreshing a detached instance under a lock throws <code>IllegalArgumentException</code> on every supported implementation, so re-attach it with <a href="../../ref/Domain%20Classes/attach.html">attach</a> first.</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<code>refresh(lock: true)</code> discards unflushed changes to the entity. Configured refresh cascades can also discard unflushed changes to associated entities; this is not a refresh of the whole object graph. Call it <strong>before</strong> making decisions based on the entity&#8217;s state or applying mutations. It does not preserve or merge pending edits.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The lock applies to the refreshed entity&#8217;s own row. Associated entities reloaded through a refresh cascade are not guaranteed to be locked.</p>
+</div>
+<div class="paragraph">
+<p>The database and transaction isolation level determine which state is visible to the locked refresh. <code>refresh(lock: true)</code> does not override isolation rules or guarantee that every concurrent attempt succeeds. Deadlocks, lock timeouts, and transaction serialization failures remain possible.</p>
+</div>
+<div class="paragraph">
+<p>The same operation is available on a named connection and under a bound tenant:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="predefined-type">Book</span>.secondary.withTransaction {
+    <span class="keyword">def</span> book = <span class="predefined-type">Book</span>.secondary.get(<span class="integer">1</span>)
+    book.secondary.refresh(<span class="key">lock</span>: <span class="predefined-constant">true</span>)     <i class="conum" data-value="1"></i><b>(1)</b>
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Reloads and locks the row on the <code>secondary</code> connection. The transaction and the instance must both belong to that connection; a transaction on the default datasource does not satisfy the requirement.</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Refreshing under a lock is supported by GORM for Hibernate 5 and Hibernate 7. Other datastores throw <code>UnsupportedOperationException</code> rather than silently falling back to a plain refresh.</p>
+</div>
+<div class="paragraph">
+<p><code>entity.refresh()</code> is unchanged. <code>entity.refresh([:])</code>, <code>entity.refresh(lock: false)</code> and <code>entity.refresh(lock: LockModeType.NONE)</code> behave exactly like <code>entity.refresh()</code>: a plain refresh with no lock and no transaction requirement. To lock by identifier and reload an already-managed instance under the lock, use <a href="../../ref/Domain%20Classes/lock.html">DomainClass.lock(id, refresh: true)</a>. There is no <code>entity.lock(refresh: true)</code>: that call throws <code>IllegalArgumentException</code> pointing to the two supported forms.</p>
 </div>
 </div>
 </div>

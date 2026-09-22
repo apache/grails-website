@@ -757,6 +757,14 @@ public boolean supportsEventType(Class&lt;? extends ApplicationEvent&gt; eventTy
 <p>The <code>AbstractPersistenceEvent</code> class has many subclasses (<code>PreInsertEvent</code>, <code>PostInsertEvent</code> etc.) that provide further information specific to the event. A <code>cancel()</code> method is also provided on the event which allows you to veto an insert, update or delete operation.</p>
 </div>
 <div class="paragraph">
+<p>GORM for Hibernate 7 also publishes a <code>PersistEvent</code> (<code>eventType</code> <code>Persist</code>) whenever an entity is persisted, whether explicitly through <code>save()</code> or by a cascade when the session flushes, and a <code>MergeEvent</code> (<code>eventType</code> <code>Merge</code>) whenever an entity is merged. Both are published before Hibernate performs the operation and cannot be cancelled; the exception is an
+application that registers a listener of its own for <code>merge</code> or <code>persist</code>, in which case that listener performs
+the operation and GORM&#8217;s event is published after it. A <code>MergeEvent</code> carries the detached instance passed to the merge rather than the managed copy it produces, and neither event is published for an uninitialized proxy.</p>
+</div>
+<div class="paragraph">
+<p>GORM for Hibernate 5 publishes a <code>SaveOrUpdateEvent</code> (<code>eventType</code> <code>SaveOrUpdate</code>) when an entity is saved, and publishes no event for a merge. A listener that switches over every <code>eventType</code> and runs against either version should therefore handle all three values.</p>
+</div>
+<div class="paragraph">
 <p>Once you have created your event listener you need to register it. If you are using Spring this can be done via the <code>ApplicationContext</code>:</p>
 </div>
 <div class="listingblock">

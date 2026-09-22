@@ -537,6 +537,49 @@ abstract class BookService {
 </div>
 </div>
 <div class="sect3">
+<h4 id="_configuration_is_now_applied_to_an_externally_supplied_client">Configuration Is Now Applied to an Externally-Supplied Client</h4>
+<div class="paragraph">
+<p>When GORM is handed a <code>MongoClient</code> that it did not create — which is what happens whenever a <code>MongoClient</code> bean is already present, as with Spring Boot&#8217;s MongoDB auto-configuration — it built its settings from the defaults and applied only the database name. Everything else configured under <code>grails.gorm</code> and <code>grails.mongodb</code> was silently ignored on that path. Those settings are now applied, exactly as they always were when GORM creates the client itself.</p>
+</div>
+<div class="paragraph">
+<p>Nothing in your configuration changes. What changes is that configuration you already have starts taking effect:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>grails.gorm.failOnError</code> — an invalid <code>save()</code> now throws <code>ValidationException</code> instead of returning <code>null</code>. An application that has had this set for years while running without it will start throwing on the first invalid save.</p>
+</li>
+<li>
+<p><code>grails.gorm.default.mapping</code> and <code>grails.gorm.default.constraints</code> — now applied to every domain class.</p>
+</li>
+<li>
+<p><code>grails.gorm.autoFlush</code>, <code>grails.gorm.markDirty</code> and <code>grails.gorm.flushMode</code> — now honoured.</p>
+</li>
+<li>
+<p><code>grails.gorm.multiTenancy</code> / <code>grails.mongodb.multiTenancy</code> — tenant discrimination and routing now follow the configured mode instead of <code>NONE</code>, so review your tenant resolver and your existing data before upgrading.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Multi-tenancy needs one extra step on this path. A <code>TenantResolver</code> registered as a Spring bean is injected into the connection source factory, and there is no factory involved when the client is supplied, so the bean is never consulted. Configure the resolver by class instead:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-yaml" data-lang="yaml">grails:
+    gorm:
+        multiTenancy:
+            mode: DISCRIMINATOR
+            tenantResolverClass: com.example.MyTenantResolver</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Without it the mode is active but the resolver is <code>NoTenantResolver</code>, which throws <code>TenantNotFoundException</code> on every tenant-scoped operation. Settings under <code>grails.mongodb</code> continue to take precedence over the <code>grails.gorm</code> equivalents.</p>
+</div>
+<div class="paragraph">
+<p>The connection details are the exception, since the supplied client is already connected: <code>grails.mongodb.url</code> is not applied to it. That also matters for a connection declared under <code>grails.mongodb.connections</code> without a <code>url</code> of its own, which falls back to the <code>host</code>, <code>port</code>, <code>username</code> and <code>password</code> settings — <code>localhost:27017</code> unless those are set — rather than to <code>grails.mongodb.url</code>. Give each such connection its own <code>url</code>.</p>
+</div>
+</div>
+<div class="sect3">
 <h4 id="_mongoclient_lifecycle_for_an_externally_supplied_client">MongoClient Lifecycle for an Externally-Supplied Client</h4>
 <div class="paragraph">
 <p>When you construct a <code>MongoDatastore</code> with a <code>MongoClient</code> that you created yourself, GORM no longer closes that client when the datastore shuts down. The client is owned by whoever created it, so closing it is now your responsibility.</p>

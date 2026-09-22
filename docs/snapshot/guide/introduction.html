@@ -319,7 +319,7 @@ Notable new features are included below.</p>
 <h4 id="_platform_baseline">Platform Baseline</h4>
 <div class="paragraph">
 <p>Grails 8 raises the standard build and runtime baseline to Java 21 and uses Gradle 9.7.1.
-The standard Grails BOM uses Groovy 5.1.2 and Spock 2.4-groovy-5.0.</p>
+The standard Grails BOM uses Groovy 5.1.3 and Spock 2.4-groovy-5.0.</p>
 </div>
 </div>
 <div class="sect3">
@@ -600,6 +600,175 @@ changes the type of a field that already holds data, so it is a choice to make w
 written rather than one to switch on over an existing database. See the
 <a href="../grails-data/mongodb/manual/index.html#idGeneration">Identity Generation</a> section of the GORM for MongoDB guide for
 details.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_gorm_for_hibernate_locking_improvements">GORM for Hibernate Locking Improvements</h4>
+<div class="paragraph">
+<p>GORM for Hibernate 5 and Hibernate 7 gain three related locking capabilities. All of them require an active transaction, hold the lock until that transaction commits or rolls back, and are available on named connections (<code>Book.secondary.lock(id, refresh: true)</code>, <code>book.secondary.refresh(lock: true)</code>, within a transaction on that connection) and under a bound tenant. Datastores that do not support a capability throw <code>UnsupportedOperationException</code> rather than silently falling back to a plain refresh or an ordinary lock. The existing <code>entity.lock()</code>, <code>DomainClass.lock(id)</code> and <code>entity.refresh()</code> methods are unchanged; <code>entity.mutex</code> is built on the first of these capabilities and changes behaviour, as described below.</p>
+</div>
+<div class="sect4">
+<h5 id="_refresh_under_a_lock">Refresh Under a Lock</h5>
+<div class="paragraph">
+<p>The instance method <a href="../ref/Domain%20Classes/refresh.html">refresh</a> accepts a <code>lock</code> argument. <code>lock: true</code> reloads the entity&#8217;s database state and version under a pessimistic WRITE lock that is acquired before the state is read, and returns the same instance. It never checks the already-loaded version, which is what <code>entity.lock()</code> does and why a concurrent update between <code>get()</code> and <code>lock()</code> can still cause an optimistic locking failure.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="predefined-type">Book</span>.withTransaction {
+    <span class="keyword">def</span> book = <span class="predefined-type">Book</span>.get(<span class="integer">1</span>)
+    book.refresh(<span class="key">lock</span>: <span class="predefined-constant">true</span>)
+    <span class="keyword">if</span> (book.title == <span class="string"><span class="delimiter">'</span><span class="content">Draft</span><span class="delimiter">'</span></span>) {
+        book.title = <span class="string"><span class="delimiter">'</span><span class="content">Ready for review</span><span class="delimiter">'</span></span>
+        book.save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>lock</code> also accepts a <code>jakarta.persistence.LockModeType</code>, or its name, to refresh under a different mode, for example <code>book.refresh(lock: LockModeType.PESSIMISTIC_READ)</code>. <code>lock: true</code> is equivalent to <code>lock: LockModeType.PESSIMISTIC_WRITE</code>. <code>lock: false</code> and <code>lock: LockModeType.NONE</code> request no lock, so <code>entity.refresh([:])</code>, <code>entity.refresh(lock: false)</code> and <code>entity.refresh(lock: LockModeType.NONE)</code> behave exactly like <code>entity.refresh()</code>. Any other value throws <code>IllegalArgumentException</code>.</p>
+</div>
+<div class="paragraph">
+<p>The instance must be attached to the current session; a detached instance is rejected with <code>IllegalArgumentException</code> on both Hibernate versions rather than being silently re-attached. Re-attach it with <code>attach()</code> first.</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+Refreshing discards unflushed entity changes, including changes to associated entities reached by configured refresh cascades; it does not refresh the whole object graph. Call <code>refresh(lock: &#8230;&#8203;)</code> or <code>lock(id, refresh: true)</code> <strong>before</strong> making decisions based on the entity&#8217;s state or applying mutations. The lock applies to the refreshed entity&#8217;s own row; associated entities reloaded through the cascade are not guaranteed to be locked.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>On Hibernate 5, a locked refresh also resets GORM&#8217;s dirty-checking state on the refreshed entity, its embedded components, and every initialized entity the refresh cascade reloaded, including associations reached through an embedded component, so the discarded edits do not schedule an update or bump a version at the next flush. A plain <code>refresh()</code> on Hibernate 5 leaves that state in place. Hibernate 7 resets it itself.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_lock_by_identifier_with_refresh">Lock by Identifier with Refresh</h5>
+<div class="paragraph">
+<p>The static <a href="../ref/Domain%20Classes/lock.html">lock</a> method accepts <code>refresh: true</code>. <code>Book.lock(id, refresh: true)</code> behaves like <code>Book.lock(id)</code>, but when the entity is already managed in the current session it reloads that instance&#8217;s state and version under the lock instead of locking the already-loaded state, and returns that same managed instance. When the entity is not in the session it is loaded under the lock. <code>null</code> is returned when no row exists for the identifier. <code>DomainClass.lock(id)</code> and <code>DomainClass.lock(id, refresh: false)</code> continue to lock without refreshing.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="predefined-type">Book</span>.withTransaction {
+    <span class="keyword">def</span> book = <span class="predefined-type">Book</span>.lock(<span class="integer">1</span>, <span class="key">refresh</span>: <span class="predefined-constant">true</span>)
+    <span class="keyword">if</span> (book?.title == <span class="string"><span class="delimiter">'</span><span class="content">Draft</span><span class="delimiter">'</span></span>) {
+        book.title = <span class="string"><span class="delimiter">'</span><span class="content">Ready for review</span><span class="delimiter">'</span></span>
+        book.save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>There is no <code>entity.lock(refresh: true)</code>. Groovy resolves that call to the static <code>lock(Serializable id)</code> method with the options map as the identifier, so GORM now rejects it with an <code>IllegalArgumentException</code> naming the two supported forms instead of reporting a missing identifier.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_choosing_the_lock_mode">Choosing the Lock Mode</h5>
+<div class="paragraph">
+<p>The static <code>lock</code> method also accepts <code>type</code>, a <code>jakarta.persistence.LockModeType</code> or its name, to acquire a lock other than the default <code>PESSIMISTIC_WRITE</code>. It applies whether the entity is loaded by the call or is already managed in the session, and it can be combined with <code>refresh: true</code> to reload a managed instance under that mode. <code>NONE</code> is rejected.</p>
+</div>
+<div class="paragraph">
+<p>Every lock mode is available to <code>refresh(lock: &#8230;&#8203;)</code> and to the static <code>type</code> argument on both Hibernate 5 and Hibernate 7:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 28.5714%;">
+<col style="width: 28.5714%;">
+<col style="width: 42.8572%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Lock mode</th>
+<th class="tableblock halign-left valign-top">Database lock</th>
+<th class="tableblock halign-left valign-top">Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PESSIMISTIC_WRITE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Exclusive row lock, typically <code>SELECT &#8230;&#8203; FOR UPDATE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The default for <code>lock: true</code>, <code>lock(id)</code> and <code>lock(id, refresh: true)</code>. Other transactions cannot update the row or take a pessimistic lock on it until this transaction ends.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PESSIMISTIC_READ</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Shared row lock, <code>SELECT &#8230;&#8203; FOR SHARE</code> where the database supports it</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Other transactions cannot update the row but may take the same shared lock. Databases without shared row locks take an exclusive lock instead.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PESSIMISTIC_FORCE_INCREMENT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Exclusive row lock</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">As <code>PESSIMISTIC_WRITE</code>, and the version is incremented as part of taking the lock, so a transaction still holding the previous version fails its next update.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OPTIMISTIC</code> (JPA alias <code>READ</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">None</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The version is re-read when the transaction commits, and the commit fails if another transaction changed it.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OPTIMISTIC_FORCE_INCREMENT</code> (JPA alias <code>WRITE</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">None</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The version is incremented when the transaction commits, so other transactions holding the previous version fail.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>NONE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">None</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>refresh(lock: LockModeType.NONE)</code> is a plain refresh, exactly like <code>refresh(lock: false)</code>. <code>lock(id, type: LockModeType.NONE)</code> is rejected with <code>IllegalArgumentException</code>: a lock call must name a lock.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="predefined-type">Book</span>.withTransaction {
+    <span class="keyword">def</span> shared = <span class="predefined-type">Book</span>.lock(<span class="integer">1</span>, <span class="key">type</span>: LockModeType.PESSIMISTIC_READ)
+    <span class="keyword">def</span> current = <span class="predefined-type">Book</span>.lock(<span class="integer">2</span>, <span class="key">refresh</span>: <span class="predefined-constant">true</span>, <span class="key">type</span>: LockModeType.PESSIMISTIC_READ)
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Without an active transaction, <code>refresh</code> with a lock, <code>lock(id, refresh: true)</code> and any <code>lock(id, &#8230;&#8203;)</code> call naming a <code>type</code> throw <code>jakarta.persistence.TransactionRequiredException</code> before anything is loaded. The database and transaction isolation level determine which state is visible. Locking does not guarantee that every concurrent attempt succeeds: deadlocks, lock timeouts, and transaction serialization failures remain possible. See the Optimistic and Pessimistic Locking section of the GORM for <a href="../grails-data/hibernate7/manual/index.html#locking">Hibernate 7</a> or <a href="../grails-data/hibernate5/manual/index.html#locking">Hibernate 5</a> guide for details.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_holding_a_lock_for_a_block_of_work">Holding a Lock for a Block of Work</h5>
+<div class="paragraph">
+<p><code>entity.mutex(Closure)</code> locks an instance for the scope of a closure. It took an exclusive lock on the state already loaded, and because that lock is version-checked, a transaction that committed to the row after the instance was loaded failed the call with an optimistic locking failure and the closure never ran. Where the datastore supports a locked refresh, it now reloads the row under the lock instead, so it waits for the competing writer and the closure runs on the committed state. The lock is always exclusive; there is no argument to select another mode, because a shared or optimistic lock would not give the closure mutual exclusion.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">Airport.withTransaction {
+    <span class="keyword">def</span> airport = Airport.get(<span class="integer">10</span>)
+    airport.mutex {
+        airport.name = <span class="string"><span class="delimiter">'</span><span class="content">Heathrow</span><span class="delimiter">'</span></span>
+        airport.save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+Reloading discards unflushed changes to the instance, exactly as <code>refresh(lock: true)</code> does, so apply them <strong>inside</strong> the closure rather than before the call. <code>mutex</code> now also requires an active transaction and an attached instance. See the upgrade notes for the full list of consequences. Datastores that cannot reload under a lock keep their previous behaviour.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_gorm_for_hibernate_7_persist_and_merge_events">GORM for Hibernate 7 Persist and Merge Events</h4>
+<div class="paragraph">
+<p>GORM for Hibernate 7 now starts tracking changes to an entity when it is persisted or merged, not only once its row has been inserted. Previously an entity whose identifier is generated before the insert, such as one mapped with <code>id generator: 'increment'</code> or any member of a <code>tablePerConcreteClass</code> hierarchy, was written with an <code>INSERT</code> immediately followed by an <code>UPDATE</code> of the same row and started at <code>version</code> 1. It now starts at <code>version</code> 0 with a single statement, as on Hibernate 5.</p>
+</div>
+<div class="paragraph">
+<p>As part of this change, persistence event listeners on Hibernate 7 receive a <code>PersistEvent</code> (<code>eventType</code> <code>Persist</code>) for every explicit or flush-time cascaded persist and a <code>MergeEvent</code> (<code>eventType</code> <code>Merge</code>) for every merge. Neither event can be cancelled. Hibernate 5 continues to publish <code>SaveOrUpdateEvent</code> when an entity is saved, and publishes no event for a merge. A listener that switches over <code>event.eventType</code> with a default branch that throws should handle the new values. See the Events and Auto Timestamping section of the GORM for <a href="../grails-data/hibernate7/manual/index.html#eventsAutoTimestamping">Hibernate 7</a> guide.</p>
 </div>
 </div>
 <div class="sect3">
@@ -923,7 +1092,7 @@ child resources cannot be nested within the mapping. See
 <p>Java 21 minimum baseline</p>
 </li>
 <li>
-<p>Groovy 5.1.2</p>
+<p>Groovy 5.1.3</p>
 </li>
 <li>
 <p>Spring Framework 7.0.9</p>

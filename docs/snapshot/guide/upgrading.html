@@ -1397,6 +1397,10 @@ A read-only transaction (<code>@ReadOnly</code>, <code>@Transactional(readOnly =
 <p><strong><code>bindData</code> can clear omitted included fields.</strong>
 <code>bindData(target, source, [include: [&#8230;&#8203;], clearMissing: true])</code> now clears included properties that are absent from the binding source. The behavior is opt-in, requires an <code>include</code> list, and does not apply globally. Existing <code>bindData</code> calls without <code>clearMissing: true</code> keep omitted fields unchanged.</p>
 </li>
+<li>
+<p><strong>GORM for MongoDB rejects Map criterion values that contain <code>$</code> keys.</strong>
+<code>findWhere</code>, <code>findAllWhere</code>, criteria queries, the <code>where</code> DSL and dynamic finders now throw <code>InvalidDataAccessResourceUsageException</code> when a <code>Map</code> passed as a criterion value contains a key starting with <code>$</code> at any level, on any property type including enums. MongoDB interprets such a value document as an operator expression rather than as a value. Maps without such keys are still sent as literal subdocument comparisons, so exact matches on <code>Map</code> properties, dotted paths and array elements are unchanged, and geospatial criteria are exempt. Code that deliberately passed an operator document through a criteria value should use the native <code>find(Bson)</code> API instead.</p>
+</li>
 </ul>
 </div>
 </div>
@@ -5475,6 +5479,230 @@ implicit <code>application</code> layout. An application that sets either Grails
 </div>
 <div class="paragraph">
 <p>The <code>grails.async.promiseFactory=virtual-thread</code> opt-in now uses the same CompletableFuture implementation with its own decorated executor; it no longer relies on the deprecated FutureTask classes. Its default event bus remains asynchronous and its web tasks propagate request context. Its aggregate <code>onComplete</code> resolves to the callback&#8217;s result, and aggregate <code>onError</code> observes the original failure while leaving the returned promise failed, rather than recovering to an empty list.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_67_gorm_for_hibernate_7_tracks_changes_from_persist_not_from_insert">67. GORM for Hibernate 7 Tracks Changes From Persist, Not From Insert</h4>
+<div class="paragraph">
+<p>GORM for Hibernate 7 now activates its dirty-check tracking when an entity is persisted or merged rather
+than after its row has been inserted. Two observable behaviours change for existing applications on
+Hibernate 7. Applications on Hibernate 5 are unaffected.</p>
+</div>
+<div class="sect4">
+<h5 id="_67_1_a_new_entity_starts_at_version_0">67.1 A New Entity Starts at Version 0</h5>
+<div class="paragraph">
+<p>An entity whose identifier is generated before the insert, for example one mapped with
+<code>id generator: 'increment'</code> or <code>'assigned'</code>, or any member of a <code>tablePerConcreteClass</code> hierarchy, was
+written with an <code>INSERT</code> immediately followed by an <code>UPDATE</code> of the same row, so it started at <code>version</code> 1.
+It now starts at <code>version</code> 0 and costs a single statement, as on Hibernate 5 and as entities using the
+default <code>identity</code> generator always did.</p>
+</div>
+<div class="paragraph">
+<p>Code that compared such a version against 1, or that counted statements or update events for a new entity,
+needs to expect the value it would have had on Hibernate 5:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> book = <span class="keyword">new</span> <span class="predefined-type">Book</span>(<span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">Grails</span><span class="delimiter">'</span></span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)   <span class="comment">// id generator: 'increment'</span>
+<span class="keyword">assert</span> book.version == <span class="integer">0</span>                                  <span class="comment">// was 1 before Grails 8.0</span></code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_67_2_persistence_listeners_receive_persist_and_merge_events">67.2 Persistence Listeners Receive Persist and Merge Events</h5>
+<div class="paragraph">
+<p>An <code>AbstractPersistenceEventListener</code> on Hibernate 7 now receives a <code>PersistEvent</code> (<code>eventType</code> <code>Persist</code>)
+for every explicit or flush-time cascaded persist, and a <code>MergeEvent</code> (<code>eventType</code> <code>Merge</code>) for every
+merge. Neither can be cancelled. Hibernate 5 publishes <code>SaveOrUpdateEvent</code> when an entity is saved and
+publishes no event for a merge.</p>
+</div>
+<div class="paragraph">
+<p>A listener that switches over <code>event.eventType</code> and throws in its default branch must handle the new
+values:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="annotation">@Override</span>
+<span class="directive">protected</span> <span class="type">void</span> onPersistenceEvent(AbstractPersistenceEvent event) {
+    <span class="keyword">switch</span> (event.eventType) {
+        <span class="keyword">case</span> <span class="key">Persist</span>:                      <span class="comment">// new on Hibernate 7</span>
+        <span class="keyword">case</span> <span class="key">Merge</span>:                        <span class="comment">// new on Hibernate 7</span>
+        <span class="keyword">case</span> <span class="key">PreInsert</span>:
+            <span class="comment">// ...</span>
+            <span class="keyword">break</span>
+        <span class="keyword">default</span>:
+            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="exception">IllegalStateException</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">Unhandled </span><span class="inline"><span class="inline-delimiter">${</span>event.eventType<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>)
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_68_lockid_applies_the_multi_tenancy_filter">68. <code>lock(id)</code> Applies the Multi-Tenancy Filter</h4>
+<div class="paragraph">
+<p><code>DomainClass.lock(id)</code> loaded the row by identifier, and Hibernate&#8217;s tenant filter does not apply to a load
+by identifier. A <code>MultiTenant</code> entity could therefore be locked, and returned, by a tenant that does not own
+it, even though <code>get(id)</code> correctly returned <code>null</code> for the same identifier.</p>
+</div>
+<div class="paragraph">
+<p>The lock now loads a multi-tenant entity through a query, as <code>get(id)</code> does, so it resolves within the bound
+tenant and returns <code>null</code> for a row that belongs to another one. Entities that are not multi-tenant are
+unaffected, and so is the statement issued for them.</p>
+</div>
+<div class="paragraph">
+<p>Code that relied on <code>lock(id)</code> reaching across tenants has to bind the owning tenant explicitly:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">Tenants.withId(<span class="string"><span class="delimiter">'</span><span class="content">tenant1</span><span class="delimiter">'</span></span>) {
+    <span class="predefined-type">Book</span>.lock(id)
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_69_instance_operations_on_a_named_connection_static_api_use_that_connection">69. Instance Operations on a Named-Connection Static API Use That Connection</h4>
+<div class="paragraph">
+<p>Reaching an instance operation through a named-connection static API - <code>Book.secondary.save(book)</code>,
+<code>Book.secondary.delete(book)</code> and so on - resolved the instance API for the <strong>default</strong> connection rather than
+for <code>secondary</code>. With only the named connection&#8217;s session open, which is the normal arrangement, the call
+failed with <code>No Session found for current thread</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="predefined-type">Book</span>.secondary.withNewSession {
+    <span class="predefined-type">Book</span>.secondary.withTransaction {
+        <span class="predefined-type">Book</span>.secondary.save(book)     <span class="comment">// threw: resolved the default connection</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Every such operation now resolves the connection the handle was obtained for: <code>save</code>, <code>insert</code>, <code>merge</code>,
+<code>delete</code>, <code>attach</code>, <code>isAttached</code>, <code>discard</code>, <code>ident</code>, <code>lock</code>, <code>mutex</code>, <code>refresh</code> and <code>instanceOf</code>. The example
+above now saves to <code>secondary</code>.</p>
+</div>
+<div class="paragraph">
+<p>GORM for Hibernate 5 needed a second fix for this to take effect. Its static API discarded the connection
+qualifier it was created with and reported <code>DEFAULT</code> for every connection, so a named-connection handle could
+not resolve anything but the default one. It now records its own qualifier, as GORM for Hibernate 7 already
+did. Anything that reads the qualifier of a Hibernate 5 named-connection static API therefore sees the real
+connection name where it previously saw <code>default</code>.</p>
+</div>
+<div class="paragraph">
+<p>Applications using a single datasource are unaffected, and so is the instance form <code>book.secondary.save()</code>,
+which already resolved the named connection.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_70_mutex_reloads_the_instance_under_the_lock">70. <code>mutex</code> Reloads the Instance Under the Lock</h4>
+<div class="paragraph">
+<p><code>entity.mutex { }</code> took an exclusive lock on the instance&#8217;s already-loaded state and ran the closure. Because
+that lock is version-checked, a transaction that committed to the row between the load and the <code>mutex</code> call
+made it fail with an optimistic locking failure - the closure never ran.</p>
+</div>
+<div class="paragraph">
+<p>Where the datastore supports it, GORM for Hibernate 5 and 7 included, <code>mutex</code> now acquires the lock without a
+version check and reloads the row under it, so it waits for a competing writer and the closure runs on the
+committed state. The lock stays exclusive; there is no argument to weaken it, since a shared or optimistic
+lock would not give the closure mutual exclusion.</p>
+</div>
+<div class="paragraph">
+<p>Three consequences for existing code:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Unflushed changes to the instance are discarded</strong>, as they are for <code>refresh</code>. Apply changes inside the
+closure, not before the <code>mutex</code> call:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">book.title = <span class="string"><span class="delimiter">'</span><span class="content">new title</span><span class="delimiter">'</span></span>
+book.mutex { book.save() }        <span class="comment">// the pending title is discarded by the reload</span>
+
+book.mutex {                      <span class="comment">// apply the change inside instead</span>
+    book.title = <span class="string"><span class="delimiter">'</span><span class="content">new title</span><span class="delimiter">'</span></span>
+    book.save()
+}</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p><strong>An active transaction is required.</strong> Without one the call now throws
+<code>jakarta.persistence.TransactionRequiredException</code>.</p>
+</li>
+<li>
+<p><strong>The instance must be attached</strong> to the current session; a detached one throws <code>IllegalArgumentException</code>.
+Re-attach it with <code>attach()</code> first.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Code that relied on <code>mutex</code> failing fast on a stale version should check the version itself, or use
+<code>entity.lock()</code>, which is unchanged.</p>
+</div>
+<div class="paragraph">
+<p>Datastores that cannot reload under a lock keep their previous behaviour.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_71_id_generator_sequence_derives_its_name_from_the_table_on_hibernate_7">71. <code>id generator: 'sequence'</code> Derives Its Name From the Table on Hibernate 7</h4>
+<div class="paragraph">
+<p>On GORM for Hibernate 7, mapping an identifier with <code>id generator: 'sequence'</code> and no <code>params: [sequence:
+'&#8230;&#8203;']</code> failed at session factory bootstrap:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="directive">static</span> mapping = {
+    id <span class="key">generator</span>: <span class="string"><span class="delimiter">'</span><span class="content">sequence</span><span class="delimiter">'</span></span>   <span class="comment">// threw: Unable to determine implicit sequence name for target table 'null'</span>
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Hibernate&#8217;s own generator-creation path supplies the target table so it can derive an implicit sequence name
+when none is given; the Grails-specific path that constructs the generator directly did not. The table name
+is now supplied the same way, so the mapping above starts the application.</p>
+</div>
+<div class="paragraph">
+<p>The derived name is not the one Grails 7 used. Hibernate 7 names the sequence after the entity&#8217;s table with
+its own <code>_SEQ</code> suffix, where Grails 7 on Hibernate 5 gave every such mapping the same <code>hibernate_sequence</code>:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top"><code>id generator: 'sequence'</code> on table <code>book</code></th>
+<th class="tableblock halign-left valign-top">Sequence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Grails 7, on Hibernate 5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hibernate_sequence</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Grails 8, on Hibernate 7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>book_SEQ</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>An application whose schema is created at startup is unaffected. One that upgrades against an existing
+database has to either add the new sequences to that schema or keep the old name explicitly:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="directive">static</span> mapping = {
+    id <span class="key">generator</span>: <span class="string"><span class="delimiter">'</span><span class="content">sequence</span><span class="delimiter">'</span></span>, <span class="key">params</span>: [<span class="key">sequence</span>: <span class="string"><span class="delimiter">'</span><span class="content">hibernate_sequence</span><span class="delimiter">'</span></span>]
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Mappings that already name a sequence are unaffected, and so is GORM for Hibernate 5.</p>
 </div>
 </div>
 </div>
