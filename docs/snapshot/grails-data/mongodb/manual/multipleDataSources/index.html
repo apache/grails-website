@@ -568,7 +568,10 @@ class ZipCode {
 </div>
 </div>
 <div class="paragraph">
-<p>Any logic executed within the body of the closure will use the alternate connection. Once the close finishes execution GORM will switch back to the default connection automatically.</p>
+<p>Every operation on <code>Book</code> in the closure, on the thread that calls <code>withConnection</code>, uses the alternate connection: static methods called on the class, such as <code>Book.list()</code> or a dynamic finder, instance methods such as <code>book.save()</code>, and the methods the closure calls without naming the class. An operation that names its own connection, such as <code>Book.moreBooks.count()</code>, keeps it. For a multi-tenant domain class the block&#8217;s connection takes precedence over the current tenant, as a connection named explicitly does. Once the closure finishes, including by throwing an exception, GORM switches back to the default connection automatically.</p>
+</div>
+<div class="paragraph">
+<p>A session or transaction opened through a connection covers its block in the same way. Inside <code>Book.moreBooks.withTransaction { }</code> or <code>Book.moreBooks.withNewSession { }</code>, <code>Book.list()</code> and <code>book.save()</code> use <code>moreBooks</code>, whose session and transaction are the ones open. Other domain classes are not affected. A method annotated <code>@Transactional(connection = 'moreBooks')</code> routes in the same way, for every domain class that declares <code>moreBooks</code> in its <code>connections</code> mapping, <code>ALL</code> included, and leaves a multi-tenant class to its tenant. A class that declares no connection is reachable through <code>Book.moreBooks</code> but is not routed by the annotation.</p>
 </div>
 </div>
 <div class="sect2">
@@ -596,7 +599,7 @@ for(ConnectionSource&lt;MongoClient, MongoConnectionSourceSettings&gt; connectio
 </div>
 <div id="footer">
 <div id="footer-text">
-Version 8.0.0-SNAPSHOT<br>
+Version 9.0.0-SNAPSHOT<br>
 </div>
 </div>
 </body>

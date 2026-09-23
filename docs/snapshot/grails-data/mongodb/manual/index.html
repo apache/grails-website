@@ -530,7 +530,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <div id="header">
 <h1>GORM for MongoDB</h1>
 <div class="details">
-<span id="revnumber">version 8.0.0-SNAPSHOT</span>
+<span id="revnumber">version 9.0.0-SNAPSHOT</span>
 </div>
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
@@ -723,7 +723,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <p>Text and other special indexes via <code>indexAttributes: [type: 'text']</code></p>
 </li>
 <li>
-<p>In-place reconciliation of changed index options, with opt-in <code>indexAttributes: [recreateOnConflict: true]</code></p>
+<p>In-place reconciliation of changed index options, and of a declared index name held by an index on other keys, with opt-in <code>indexAttributes: [recreateOnConflict: true]</code></p>
 </li>
 <li>
 <p>Index creation on startup can be switched off with <code>grails.mongodb.buildIndexes = false</code>, and run on demand with <code>MongoDatastore.buildIndex()</code>, or moved off the startup thread with <code>grails.mongodb.buildIndexesAsync = true</code></p>
@@ -733,6 +733,15 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 </li>
 <li>
 <p>The index build reports what it created, what was already present and how long it took, in one summary line per build</p>
+</li>
+<li>
+<p>Inside a <code>withConnection</code> block, static methods called on the class and instance methods such as <code>save()</code> now use the block&#8217;s connection, as documented; previously only the methods called without naming the class did</p>
+</li>
+<li>
+<p>The same holds inside a session or transaction opened through a connection, such as <code>Book.moreBooks.withTransaction { }</code>, and inside a method annotated <code>@Transactional(connection = 'moreBooks')</code>: <code>book.save()</code> in it was written to the default connection</p>
+</li>
+<li>
+<p>An application can be checkpointed and restored with CRaC: GORM closes every <code>MongoClient</code> it created, on every connection and including the one built from Spring Boot&#8217;s settings, before the checkpoint and builds replacements after the restore. See <a href="#advancedConfig">Advanced Configuration</a>.</p>
 </li>
 </ul>
 </div>
@@ -1070,7 +1079,13 @@ abstract class BookService {
 <p>Without it the mode is active but the resolver is <code>NoTenantResolver</code>, which throws <code>TenantNotFoundException</code> on every tenant-scoped operation. Settings under <code>grails.mongodb</code> continue to take precedence over the <code>grails.gorm</code> equivalents.</p>
 </div>
 <div class="paragraph">
-<p>The connection details are the exception, since the supplied client is already connected: <code>grails.mongodb.url</code> is not applied to it. That also matters for a connection declared under <code>grails.mongodb.connections</code> without a <code>url</code> of its own, which falls back to the <code>host</code>, <code>port</code>, <code>username</code> and <code>password</code> settings — <code>localhost:27017</code> unless those are set — rather than to <code>grails.mongodb.url</code>. Give each such connection its own <code>url</code>.</p>
+<p>The connection details are the exception, since the supplied client is already connected: <code>grails.mongodb.url</code> is not applied to it. That also matters for a connection declared under <code>grails.mongodb.connections</code> without a <code>url</code> of its own, which falls back to the <code>host</code>, <code>port</code>, <code>username</code> and <code>password</code> settings — <code>127.0.0.1:27017</code> unless those are set — rather than to <code>grails.mongodb.url</code>. Give each such connection its own <code>url</code>.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_calls_on_a_class_inside_a_named_connections_session_or_transaction_use_that_connection">Calls on a Class Inside a Named Connection&#8217;s Session or Transaction Use That Connection</h4>
+<div class="paragraph">
+<p>Inside <code>Book.moreBooks.withTransaction { }</code>, <code>Book.moreBooks.withNewSession { }</code>, a <code>withConnection</code> block or a method annotated <code>@Transactional(connection = 'moreBooks')</code> for a class that declares that connection, the calls on <code>Book</code> itself, such as <code>Book.list()</code> or <code>book.save()</code>, now use that connection. Previously they used the default connection, so a document saved there was written to the default database. Code that reached the default connection from inside such a block by calling the class directly should name it, as in ``Book.<em>default</em>.list()``.</p>
 </div>
 </div>
 <div class="sect3">
@@ -1110,7 +1125,7 @@ mongoClient.close()  <span class="comment">// close the client you created</span
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
-    compile 'org.grails.plugins:mongodb:8.0.0-SNAPSHOT'
+    compile 'org.grails.plugins:mongodb:9.0.0-SNAPSHOT'
 }</code></pre>
 </div>
 </div>
@@ -1408,6 +1423,18 @@ These settings are read by name, so write them exactly as they are documented. U
 <h4 id="_index_creation_on_startup">Index Creation on Startup</h4>
 <div class="paragraph">
 <p>GORM creates and reconciles the indexes declared in your mapping blocks each time the datastore starts, and startup waits for MongoDB to finish building them. Set <code>grails.mongodb.buildIndexes = false</code> to leave the indexes on the server untouched instead, and build them with <code>MongoDatastore.buildIndex()</code> when you choose, or <code>grails.mongodb.buildIndexesAsync = true</code> to keep building them but on a background thread — see <a href="#queryIndexes">Querying Indexing</a> for details and when to use each.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_checkpoint_and_restore_crac">Checkpoint and Restore (CRaC)</h4>
+<div class="paragraph">
+<p>GORM takes part in the Spring lifecycle, so an application can be checkpointed with <a href="https://openjdk.org/projects/crac/">CRaC</a> and restored. CRaC refuses to checkpoint a process holding open sockets, and a connected <code>MongoClient</code> holds several, so before the checkpoint GORM closes the client of every connection: the default one, each one under <code>grails.mongodb.connections</code>, and any added at runtime. When the application is restored, GORM builds a replacement for each from the same settings. An <a href="#embeddedMongo">embedded MongoDB</a> is stopped after the clients and started again before them.</p>
+</div>
+<div class="paragraph">
+<p>Everything that reaches MongoDB through GORM uses the replacements, including multi-tenancy and the <a href="#springDataInterop">Spring Data MongoDB integration</a>. A <code>MongoClient</code> that application code obtained before the checkpoint, for example from <code>MongoDatastore.getMongoClient()</code>, is one of the closed ones: obtain it again after the restore rather than keeping it.</p>
+</div>
+<div class="paragraph">
+<p>A client the application supplied to GORM is neither closed nor replaced. It belongs to whoever created it, and that code has to close it before the checkpoint for the checkpoint to succeed. The client that Spring Boot&#8217;s settings produce, which GORM builds itself when the application declares no <code>MongoClient</code> bean of its own, is GORM&#8217;s and is closed and built again like the rest.</p>
 </div>
 </div>
 <div class="sect3">
@@ -1803,7 +1830,7 @@ does not duplicate.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">compile("org.apache.grails:grails-data-mongodb-spring-boot:8.0.0-SNAPSHOT")</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">compile("org.apache.grails:grails-data-mongodb-spring-boot:9.0.0-SNAPSHOT")</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1860,7 +1887,7 @@ If your GORM entities are in a different package specify the package name as the
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.grails:grails-datastore-gorm-mongodb:8.0.0-SNAPSHOT"</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.grails:grails-datastore-gorm-mongodb:9.0.0-SNAPSHOT"</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1937,7 +1964,7 @@ println Person.count()</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">implementation "org.apache.grails:grails-data-mongodb-spring-data:8.0.0-SNAPSHOT"</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">implementation "org.apache.grails:grails-data-mongodb-spring-data:9.0.0-SNAPSHOT"</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1946,7 +1973,7 @@ println Person.count()</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p>a <code>MongoDatabaseFactory</code> bound to GORM&#8217;s <code>MongoClient</code> and default database (GORM keeps ownership of the client; the factory will not close it),</p>
+<p>a <code>MongoDatabaseFactory</code> bound to GORM&#8217;s <code>MongoClient</code> and default database (GORM keeps ownership of the client; the factory will not close it, and uses the replacement GORM builds after a <a href="#advancedConfig">CRaC restore</a>),</p>
 </li>
 <li>
 <p>a <code>MongoTemplate</code> (named <code>mongoTemplate</code>) and its <code>MappingMongoConverter</code>, sharing the driver-level codec registry,</p>
@@ -2665,6 +2692,22 @@ Dropping and recreating an index rebuilds it from scratch, during which queries 
 </td>
 </tr>
 </table>
+</div>
+<div class="paragraph">
+<p>A declared index whose <code>name</code> is already held by an index on different keys is the same kind of conflict, reported by MongoDB as an <code>IndexKeySpecsConflict</code>, and <code>recreateOnConflict</code> resolves it the same way:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">Person</span> {
+    <span class="predefined-type">String</span> name
+    <span class="directive">static</span> mapping = {
+        name <span class="key">index</span>:<span class="predefined-constant">true</span>, <span class="key">indexAttributes</span>: [<span class="key">name</span>:<span class="string"><span class="delimiter">'</span><span class="content">byName</span><span class="delimiter">'</span></span>, <span class="key">recreateOnConflict</span>:<span class="predefined-constant">true</span>]
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Without it, GORM says which name is taken, leaves the index that holds it alone, and counts the declaration as failed.</p>
 </div>
 <div class="paragraph">
 <p>A change to a TTL index&#8217;s <code>expireAfterSeconds</code> is handled automatically and does not require <code>recreateOnConflict</code>, because GORM updates the expiry in place rather than rebuilding the index.</p>
@@ -3738,7 +3781,10 @@ new Entry(<span class="key">shape</span>: <span class="predefined-type">Polygon<
 </div>
 </div>
 <div class="paragraph">
-<p>Any logic executed within the body of the closure will use the alternate connection. Once the close finishes execution GORM will switch back to the default connection automatically.</p>
+<p>Every operation on <code>Book</code> in the closure, on the thread that calls <code>withConnection</code>, uses the alternate connection: static methods called on the class, such as <code>Book.list()</code> or a dynamic finder, instance methods such as <code>book.save()</code>, and the methods the closure calls without naming the class. An operation that names its own connection, such as <code>Book.moreBooks.count()</code>, keeps it. For a multi-tenant domain class the block&#8217;s connection takes precedence over the current tenant, as a connection named explicitly does. Once the closure finishes, including by throwing an exception, GORM switches back to the default connection automatically.</p>
+</div>
+<div class="paragraph">
+<p>A session or transaction opened through a connection covers its block in the same way. Inside <code>Book.moreBooks.withTransaction { }</code> or <code>Book.moreBooks.withNewSession { }</code>, <code>Book.list()</code> and <code>book.save()</code> use <code>moreBooks</code>, whose session and transaction are the ones open. Other domain classes are not affected. A method annotated <code>@Transactional(connection = 'moreBooks')</code> routes in the same way, for every domain class that declares <code>moreBooks</code> in its <code>connections</code> mapping, <code>ALL</code> included, and leaves a multi-tenant class to its tenant. A class that declares no connection is reachable through <code>Book.moreBooks</code> but is not routed by the annotation.</p>
 </div>
 </div>
 <div class="sect2">
@@ -4385,7 +4431,7 @@ When GORM and Spring Data MongoDB share a transaction, <code>readOnly</code> onl
 <div class="paragraph">
 <p><code>MongoSpec</code> is an abstract class that will initialise GORM in the setup phase of the specification being executed. It
 uses by default a <code>MongoClient</code> instance that connects to a MongoDB instance as defined in your configuration
-(by default, <code>localhost</code> and port <code>27017</code>, see <a href="#gettingStarted">Getting Started</a> for more details):</p>
+(by default, <code>127.0.0.1</code> and port <code>27017</code>, see <a href="#gettingStarted">Getting Started</a> for more details):</p>
 </div>
 <div class="paragraph">
 <p>It is preferable to use testcontainers to automatically run MongoDB in a containerized environment and not have to run a MongoDB instance locally. The following examples use testcontainers:</p>
@@ -5087,7 +5133,7 @@ Hotel.findByLocationWithinCircle( Circle.valueOf( [[<span class="integer">40</sp
 </div>
 <div id="footer">
 <div id="footer-text">
-Version 8.0.0-SNAPSHOT<br>
+Version 9.0.0-SNAPSHOT<br>
 </div>
 </div>
 </body>

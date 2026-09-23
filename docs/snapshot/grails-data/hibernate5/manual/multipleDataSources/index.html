@@ -591,6 +591,21 @@ zipCode.auditing.save()</code></pre>
 <p>As you can see, you add the <code>DataSource</code> to the method call in both the static case and the instance case.</p>
 </div>
 <div class="paragraph">
+<p>A session or transaction opened through a namespace covers the whole block. Inside <code>ZipCode.auditing.withTransaction { }</code> or <code>ZipCode.auditing.withNewSession { }</code>, the calls on <code>ZipCode</code> itself use the <em>auditing</em> <code>DataSource</code>, whose session and transaction are the ones open:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">ZipCode.auditing.withTransaction {
+    def zipCode = ZipCode.get(42)    // read from 'auditing'
+    zipCode.code = '99501'
+    zipCode.save()                   // written to 'auditing', in its transaction
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Other domain classes are not affected, and an operation inside the block that names a <code>DataSource</code>, such as <code>ZipCode.lookup.count()</code>, uses the one it names. A method annotated <code>@Transactional(connection = 'auditing')</code> routes in the same way, for every domain class mapped to the <em>auditing</em> <code>DataSource</code>; a class that is not mapped to it keeps its own, and a multi-tenant class is left to its tenant, since a transaction opened for a <code>DataSource</code> does not say which tenant the operations in it belong to.</p>
+</div>
+<div class="paragraph">
 <p>You can use <code>Where</code> queries:</p>
 </div>
 <div class="listingblock">
@@ -653,7 +668,7 @@ for(ConnectionSource&lt;SessionFactory, HibernateConnectionSourceSettings&gt; co
 </div>
 <div id="footer">
 <div id="footer-text">
-Version 8.0.0-SNAPSHOT<br>
+Version 9.0.0-SNAPSHOT<br>
 </div>
 </div>
 </body>

@@ -463,7 +463,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <p>Text and other special indexes via <code>indexAttributes: [type: 'text']</code></p>
 </li>
 <li>
-<p>In-place reconciliation of changed index options, with opt-in <code>indexAttributes: [recreateOnConflict: true]</code></p>
+<p>In-place reconciliation of changed index options, and of a declared index name held by an index on other keys, with opt-in <code>indexAttributes: [recreateOnConflict: true]</code></p>
 </li>
 <li>
 <p>Index creation on startup can be switched off with <code>grails.mongodb.buildIndexes = false</code>, and run on demand with <code>MongoDatastore.buildIndex()</code>, or moved off the startup thread with <code>grails.mongodb.buildIndexesAsync = true</code></p>
@@ -473,6 +473,15 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </li>
 <li>
 <p>The index build reports what it created, what was already present and how long it took, in one summary line per build</p>
+</li>
+<li>
+<p>Inside a <code>withConnection</code> block, static methods called on the class and instance methods such as <code>save()</code> now use the block&#8217;s connection, as documented; previously only the methods called without naming the class did</p>
+</li>
+<li>
+<p>The same holds inside a session or transaction opened through a connection, such as <code>Book.moreBooks.withTransaction { }</code>, and inside a method annotated <code>@Transactional(connection = 'moreBooks')</code>: <code>book.save()</code> in it was written to the default connection</p>
+</li>
+<li>
+<p>An application can be checkpointed and restored with CRaC: GORM closes every <code>MongoClient</code> it created, on every connection and including the one built from Spring Boot&#8217;s settings, before the checkpoint and builds replacements after the restore. See <a href="#advancedConfig">Advanced Configuration</a>.</p>
 </li>
 </ul>
 </div>
@@ -684,7 +693,7 @@ MongoDB plugin 1.2 and above requires Grails 2.1.5 or 2.2.1 as a minimum Grails 
 </div>
 <div id="footer">
 <div id="footer-text">
-Version 8.0.0-SNAPSHOT<br>
+Version 9.0.0-SNAPSHOT<br>
 </div>
 </div>
 </body>
