@@ -772,6 +772,28 @@ Reloading discards unflushed changes to the instance, exactly as <code>refresh(l
 </div>
 </div>
 <div class="sect3">
+<h4 id="_default_security_response_headers">Default Security Response Headers</h4>
+<div class="paragraph">
+<p>Servlet web applications now send a baseline set of browser hardening headers on every response:
+<code>X-Content-Type-Options: nosniff</code>, <code>X-Frame-Options: SAMEORIGIN</code>, <code>Referrer-Policy: strict-origin-when-cross-origin</code>
+and <code>X-XSS-Protection: 0</code>. HSTS and Content Security Policy can be turned on alongside them but are off by default,
+because their right values depend on the deployment. Behind a TLS-terminating proxy, HSTS honors the scheme the proxy
+forwards in <code>X-Forwarded-Proto</code> or <code>Forwarded</code>.</p>
+</div>
+<div class="paragraph">
+<p>The headers are written when the response commits, and only if nothing else has set them, so a controller, an
+interceptor, another filter or Spring Security&#8217;s own header writers at Spring Boot&#8217;s default filter order win.
+Redirects, error pages, streamed bodies and responses served by other Grails filters, such as asset-pipeline assets,
+are covered too.</p>
+</div>
+<div class="paragraph">
+<p>Everything is configurable under <code>grails.security.headers.*</code>: the whole filter, each header, and its value. A
+deployment whose reverse proxy already sends these headers can set <code>grails.security.headers.defaults: auto</code> to send
+only explicitly configured headers on proxied requests. See the <a href="#security">Security</a> section of the user guide and
+the <a href="upgrading.html#upgrading80x">upgrade guide</a> for details.</p>
+</div>
+</div>
+<div class="sect3">
 <h4 id="_test_http_client_form_requests">Test HTTP Client Form Requests</h4>
 <div class="paragraph">
 <p>Integration tests that implement <code>HttpClientSupport</code> can now use <code>httpPostForm(&#8230;&#8203;)</code> to send <code>application/x-www-form-urlencoded</code>

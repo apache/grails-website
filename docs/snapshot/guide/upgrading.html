@@ -5764,6 +5764,17 @@ has to cover its writes.</p>
 <p>Applications using a single datasource are unaffected.</p>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_73_default_security_response_headers">73. Default Security Response Headers</h4>
+<div class="paragraph">
+<p>Grails 8 registers a servlet filter that sends default browser hardening headers (<code>X-Content-Type-Options: nosniff</code>, <code>X-Frame-Options: SAMEORIGIN</code>, <code>Referrer-Policy: strict-origin-when-cross-origin</code>, <code>X-XSS-Protection: 0</code>) on the responses of every servlet web application, so an upgraded application sends these headers without any change on your part.
+The filter is registered at <code>GrailsFilters.FIRST</code>, ahead of the other Grails filters, and writes its headers when the response commits, only if nothing else has set them by then, so values set by your controllers, interceptors, custom filters, or Spring Security header writers at Spring Boot&#8217;s default <code>spring.security.filter.order</code> are preserved.
+If you order the Spring Security chain ahead of <code>GrailsFilters.FIRST</code>, its header writers (other than the <code>X-Frame-Options</code> writer) find the Grails value already present and leave it; disable the corresponding <code>grails.security.headers.&lt;header&gt;</code> in that case.
+Filters ordered ahead of <code>GrailsFilters.FIRST</code>, such as Spring Boot&#8217;s forwarded-header filter and, in a WAR deployment, its <code>ErrorPageFilter</code>, run outside the Grails filter, so a response one of them serves itself receives no default headers.
+If a reverse proxy in front of the application already sends these headers (for example through nginx&#8217;s <code>add_header</code>), set <code>grails.security.headers.defaults: auto</code> so requests that arrive through the proxy (detected from forwarded request headers, <code>server.forward-headers-strategy</code>, or an active cloud platform) receive only the headers you configure explicitly, or strip the application&#8217;s copies at the proxy.
+To disable or customize the Grails defaults, configure <code>grails.security.headers.*</code>; see the Security guide&#8217;s HTTP Security Headers section for the full list and the reverse-proxy guidance.</p>
+</div>
+</div>
 </div>
 
 
