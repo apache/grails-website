@@ -5775,6 +5775,46 @@ If a reverse proxy in front of the application already sends these headers (for 
 To disable or customize the Grails defaults, configure <code>grails.security.headers.*</code>; see the Security guide&#8217;s HTTP Security Headers section for the full list and the reverse-proxy guidance.</p>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_74_scaffolded_views_are_compiled_with_the_application">74. Scaffolded Views Are Compiled With the Application</h4>
+<div class="paragraph">
+<p>In Grails 7 a scaffolded view was expanded from its template and compiled on the first request that asked
+for it. In Grails 8, the pages of every controller annotated <code>@Scaffold</code>, the application&#8217;s or a plugin&#8217;s, are
+expanded at build time by the <code>generateScaffoldedViews</code> task, into <code>build/generated/scaffolded-views</code>, and
+compiled by <code>compileGroovyPages</code> in the same compilation as <code>grails-app/views</code>, under a <code>grails-scaffolded</code>
+directory that no controller&#8217;s views resolve from. The resolver still chooses the
+template for a request exactly as before, and serves the page compiled from that template when there is one,
+so a request gets the same page it did. Which pages are compiled, and what happens to the others, is
+described in the <a href="scaffolding.html">Scaffolding</a> guide.</p>
+</div>
+<div class="paragraph">
+<p><code>compileGroovyPages</code> takes the pages as its <code>generatedViews</code>, beside its <code>source</code>, so a build that sets the
+<code>source</code> itself still compiles them. In a project that scaffolds nothing, <code>generateScaffoldedViews</code> writes
+nothing.</p>
+</div>
+<div class="paragraph">
+<p>A scaffolding template of the application&#8217;s own, in <code>src/main/templates/scaffolding</code> or packaged under
+<code>META-INF/templates/scaffolding</code>, is now compiled at build time, so one that cannot be expanded, or whose page
+does not compile, fails the build as a view that does not compile does - where in Grails 7 it failed on the
+first request for the view. A page expanded from a template a dependency supplies that cannot be compiled
+does not fail the build: it is left out, the build output names it, and it is expanded when it is first
+rendered, as in Grails 7.</p>
+</div>
+<div class="paragraph">
+<p>The <code>generateScaffoldedViews</code> task of 8.0.0-RC1 wrote pages into the controllers' view directories and had
+<code>templateClasspath</code> and <code>applicationViews</code> properties. Both are gone: the templates are read from the
+<code>runtimeClasspath</code> the pages are expanded on, and a view the application declares needs no exclusion, since
+it takes precedence over any scaffolded page when a request is resolved. A build that configures either
+property fails with an unknown property; remove the setting.</p>
+</div>
+<div class="paragraph">
+<p>8.0.0-RC1 also compiled a scaffolding project&#8217;s views from a copy made by a <code>stageGroovyPages</code> task, which
+it registered only when a controller source mentioned <code>@Scaffold</code> - decided by
+<code>GroovyPagePlugin.scaffoldsAnyController</code>. Both are gone: nothing is copied, and every project generates the
+pages its scaffolded controllers need, a plugin&#8217;s among them. A build that refers to <code>stageGroovyPages</code>
+fails with an unknown task; remove the reference.</p>
+</div>
+</div>
 </div>
 
 

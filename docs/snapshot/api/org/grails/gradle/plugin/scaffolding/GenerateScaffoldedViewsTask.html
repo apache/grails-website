@@ -70,11 +70,11 @@ if (location.href.indexOf('is-external=true') == -1) {
     <div>
         <ul class="subNavList">
             <li>Summary:&nbsp;</li>
-            Nested&nbsp;&nbsp;&nbsp;Field&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<li><a href="#constructor_summary">Constructor</a></li>&nbsp;&nbsp;&nbsp;<li><a href="#method_summary">Method</a></li>&nbsp;&nbsp;&nbsp;
+            Nested&nbsp;&nbsp;&nbsp;<li><a href="#field_summary">Field</a></li>&nbsp;&nbsp;&nbsp;<li><a href="#property_summary">Property</a></li>&nbsp;&nbsp;&nbsp;<li><a href="#constructor_summary">Constructor</a></li>&nbsp;&nbsp;&nbsp;<li><a href="#method_summary">Method</a></li>&nbsp;&nbsp;&nbsp;
         </ul>
         <ul class="subNavList">
             <li>&nbsp;|&nbsp;Detail:&nbsp;</li>
-            Field&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<li><a href="#constructor_detail">Constructor</a></li>&nbsp;&nbsp;&nbsp;<li><a href="#method_detail">Method</a></li>&nbsp;&nbsp;&nbsp;
+            <li><a href="#field_detail">Field</a></li>&nbsp;&nbsp;&nbsp;<li><a href="#prop_detail">Property</a></li>&nbsp;&nbsp;&nbsp;<li><a href="#constructor_detail">Constructor</a></li>&nbsp;&nbsp;&nbsp;<li><a href="#method_detail">Method</a></li>&nbsp;&nbsp;&nbsp;
         </ul>
     </div>
     <a name="skip-navbar_top">
@@ -106,23 +106,40 @@ if (location.href.indexOf('is-external=true') == -1) {
 abstract class GenerateScaffoldedViewsTask
 extends <a href='../../../../../org.gradle.api.DefaultTask.html'>DefaultTask</a></pre>
 
-    <p> Writes the views a scaffolded controller would otherwise generate on its first request.
+    <p> Expands the scaffolding templates at build time, so the pages a scaffolded controller renders are
+ compiled with the rest of the application instead of on the request that first asks for them.
 
- <p>Scaffolding expands a template into GSP source and compiles the result, and until now it did
- both when the view was first asked for. That costs the first request on the JVM, and a native
- image cannot do it at all: defining a class at runtime is exactly what an ahead-of-time image
- gives up. Expanding the templates here instead lets the ordinary GSP compiler precompile the
- result, so at runtime the views are found rather than produced.</p>
+ <p>Scaffolding expands a template into GSP source and compiles the result. At runtime that costs
+ the first request on the JVM, and a native image cannot do it at all: defining a class at runtime
+ is exactly what an ahead-of-time image gives up. The pages written here are compiled by the
+ ordinary GSP compiler instead.</p>
 
- <p>Only naming is substituted -- the templates read <CODE>className</CODE>, <CODE>propertyName</CODE>,
- <CODE>fullName</CODE> and <CODE>packageName</CODE>, and defer everything else about the domain class to the
- field tag libraries at render time. That is why this needs no GORM, no application context and no
- loading of application classes: the controllers are read with ASM and the domain class name is
- enough. The qualified name is bound too, so that a template can declare the type of its model in a
- form that resolves from the generated page.</p>
+ <p>They are written under <CODE>grails-scaffolded/&lt;domain class&gt;/</CODE>, a directory no controller's
+ views resolve from, and each is named for its template and a digest of the template and the model
+ it was expanded with. The runtime resolver decides which page a request gets exactly as it would
+ without them - a view the application or a plugin declares, a namespace-specific template, a
+ template override - and only where it would expand a template does it look for the page expanded
+ from the same template and model. So a page cannot shadow a declared view, and a template this
+ task did not expand finds nothing and is expanded at runtime as before.</p>
 
- <p>A view the application already declares is never overwritten, which keeps the existing
- precedence: a hand-written <CODE>grails-app/views</CODE> page wins over a scaffolded one.</p> <DL><DT><B>Since:</B></DT><DD>8.0</DD></DL></p>
+ <p>For each scaffolded controller - the application's own, and those plugins on the runtime
+ classpath provide - this expands for its domain class every copy of each template the resolver
+ could choose for it:</p>
+ <ul>
+   <li>Which copy the resolver finds is not something the build can know. On the JVM it looks
+   beside the controller's class first, then at a plugin that overrides the templates, then along
+   the classpath; a native image keeps no class files to look beside, and goes by the order of the
+   classpath it was built from. So every distinct copy is expanded - the application's own, from
+   <CODE>src/main/templates/scaffolding</CODE> or its resources, and each on the runtime classpath -
+   and whichever the resolver chooses has its page.</li>
+   <li>A namespace-specific template such as <CODE>admin/show.gsp</CODE> can only be chosen for a
+   controller with a namespace, so it is expanded only for the domain classes such controllers
+   scaffold.</li>
+ </ul>
+
+ <p>No application class is loaded: the controllers are read with ASM, and the pages are expanded
+ and named by <CODE>org.apache.grails.scaffolding.ScaffoldedPagesGenerator</CODE>, run in a JVM on the
+ application's runtime classpath, from the same code and the same Groovy as the resolver's.</p> <DL><DT><B>Since:</B></DT><DD>8.0</DD></DL></p>
 
           </li>
     </ul>
@@ -138,8 +155,56 @@ extends <a href='../../../../../org.gradle.api.DefaultTask.html'>DefaultTask</a>
         
         <!-- =========== FIELD SUMMARY =========== -->
         
+            <ul class="blockList">
+                <li class="blockList"><a name="field_summary"><!--   --></a>
+                    <h3>Field Summary</h3>
+                    <ul class="blockList">
+                    <table class="overviewSummary" border="0" cellpadding="3" cellspacing="0" summary="Enum constants summary table">
+                        <caption><span>Fields</span><span class="tabEnd">&nbsp;</span></caption>
+                        <tr>
+                            <th class="colFirst" scope="col">Modifiers</th>
+                            <th class="colLast" scope="col">Name</th>
+                            <th class="colLast" scope="col">Description</th>
+                        </tr>
+                        
+                        <tr class="altColor">
+                            <td class="colFirst"><code><strong>static&nbsp;int</strong></code>&nbsp;</td>
+                            <td class="colLast"><code><a href="#GENERATOR_PROTOCOL">GENERATOR_PROTOCOL</a></code></td>
+                            <td class="colLast">The version of the exchange with the generator this task speaks - the command line, and the
+ files handed over and back - as the generator declares its own in a <CODE>PROTOCOL</CODE>
+ constant. </td>
+                        </tr>
+                        
+                    </table>
+                   </ul>
+                </li>
+                
+            </ul>
+        
 
         <!-- =========== PROPERTY SUMMARY =========== -->
+        
+         <ul class="blockList"> 
+                <li class="blockList"><a name="property_summary"><!--   --></a>
+                    <h3>Properties Summary</h3>
+                    <ul class="blockList">
+                    <table class="overviewSummary" border="0" cellpadding="3" cellspacing="0" summary="Properties Summary table, listing nested classes, and an explanation">
+                        <caption><span>Properties</span><span class="tabEnd">&nbsp;</span></caption>
+                        <tr>
+                            <th class="colFirst" scope="col">Type</th>
+                            <th class="colLast" scope="col">Name and description</th>
+                        </tr>
+                        
+                        <tr class="altColor">
+                            <td class="colFirst"><code><strong>static&nbsp;java.lang.String</strong></code>&nbsp;</td>
+                            <td class="colLast"><code><a href="#GENERATOR">GENERATOR</a></code><br>The class that expands and names the pages, from the application's scaffolding library.</td>
+                        </tr>
+                        
+                    </table>
+                   </ul>
+                </li>
+                
+            </ul>
         
 
         <!-- =========== ELEMENT SUMMARY =========== -->
@@ -192,44 +257,67 @@ extends <a href='../../../../../org.gradle.api.DefaultTask.html'>DefaultTask</a>
                         <tr class="rowColor">
                             <td class="colFirst"><code></code></td>
                             <td class="colLast"><code>abstract&nbsp;<a href='../../../../../org.gradle.api.file.ConfigurableFileCollection.html'>ConfigurableFileCollection</a></code></td>
-                            <td class="colLast"><code><strong><a href="#getApplicationViews()">getApplicationViews</a></strong>()</code><br>The application's own views; anything declared here is left alone.</td>
+                            <td class="colLast"><code><strong><a href="#getClassesDirs()">getClassesDirs</a></strong>()</code><br>Compiled application classes, searched for scaffolded controllers.</td>
                         </tr>
                         
                         <tr class="altColor">
                             <td class="colFirst"><code></code></td>
-                            <td class="colLast"><code>abstract&nbsp;<a href='../../../../../org.gradle.api.file.ConfigurableFileCollection.html'>ConfigurableFileCollection</a></code></td>
-                            <td class="colLast"><code><strong><a href="#getClassesDirs()">getClassesDirs</a></strong>()</code><br>Compiled application classes, searched for scaffolded controllers.</td>
+                            <td class="colLast"><code>abstract&nbsp;<a href='../../../../../org.gradle.process.ExecOperations.html'>ExecOperations</a></code></td>
+                            <td class="colLast"><code><strong><a href="#getExecOperations()">getExecOperations</a></strong>()</code><br></td>
                         </tr>
                         
                         <tr class="rowColor">
                             <td class="colFirst"><code></code></td>
-                            <td class="colLast"><code>abstract&nbsp;<a href='../../../../../org.gradle.api.file.ConfigurableFileCollection.html'>ConfigurableFileCollection</a></code></td>
-                            <td class="colLast"><code><strong><a href="#getControllerClasspath()">getControllerClasspath</a></strong>()</code><br>The classpath a controller's superclasses are read from, to find a namespace it inherits.
+                            <td class="colLast"><code>java.lang.String</code></td>
+                            <td class="colLast"><code><strong><a href="#getFileSeparator()">getFileSeparator</a></strong>()</code><br>The separator the pages were expanded under. </td>
+                        </tr>
+                        
+                        <tr class="altColor">
+                            <td class="colFirst"><code></code></td>
+                            <td class="colLast"><code>abstract&nbsp;Property&lt;JavaLauncher&gt;</code></td>
+                            <td class="colLast"><code><strong><a href="#getJavaLauncher()">getJavaLauncher</a></strong>()</code><br>The Java the pages are expanded with; the build's own when not set.</td>
+                        </tr>
+                        
+                        <tr class="rowColor">
+                            <td class="colFirst"><code></code></td>
+                            <td class="colLast"><code>abstract&nbsp;<a href='../../../../../org.gradle.api.file.RegularFileProperty.html'>RegularFileProperty</a></code></td>
+                            <td class="colLast"><code><strong><a href="#getOptionalPages()">getOptionalPages</a></strong>()</code><br>Lists, a line apiece, the pages expanded from templates a dependency supplies, as paths under
+ <a href='#getOutputDirectory()'>getOutputDirectory()</a>, for the page compilation to leave out any that do not compile.
  </td>
                         </tr>
                         
                         <tr class="altColor">
                             <td class="colFirst"><code></code></td>
                             <td class="colLast"><code>abstract&nbsp;<a href='../../../../../org.gradle.api.file.DirectoryProperty.html'>DirectoryProperty</a></code></td>
-                            <td class="colLast"><code><strong><a href="#getOutputDirectory()">getOutputDirectory</a></strong>()</code><br>Where the generated views are written.</td>
+                            <td class="colLast"><code><strong><a href="#getOutputDirectory()">getOutputDirectory</a></strong>()</code><br>Where the pages are written, as a tree to be compiled with the application's views.</td>
                         </tr>
                         
                         <tr class="rowColor">
                             <td class="colFirst"><code></code></td>
                             <td class="colLast"><code>abstract&nbsp;<a href='../../../../../org.gradle.api.file.ConfigurableFileCollection.html'>ConfigurableFileCollection</a></code></td>
-                            <td class="colLast"><code><strong><a href="#getTemplateClasspath()">getTemplateClasspath</a></strong>()</code><br>The classpath the scaffolding templates are read from. </td>
+                            <td class="colLast"><code><strong><a href="#getPackagedTemplates()">getPackagedTemplates</a></strong>()</code><br>The application's templates as it packages them, each at
+ <CODE>META-INF/templates/scaffolding/&lt;template path&gt;</CODE> in its tree: normally the output of
+ <CODE>processResources</CODE>, filtered to them. </td>
+                        </tr>
+                        
+                        <tr class="altColor">
+                            <td class="colFirst"><code></code></td>
+                            <td class="colLast"><code>abstract&nbsp;Property&lt;java.lang.String&gt;</code></td>
+                            <td class="colLast"><code><strong><a href="#getPageEncoding()">getPageEncoding</a></strong>()</code><br>The encoding the pages are written in, which must be the one they are compiled with, so that
+ a page reads back as it was expanded. </td>
+                        </tr>
+                        
+                        <tr class="rowColor">
+                            <td class="colFirst"><code></code></td>
+                            <td class="colLast"><code>abstract&nbsp;<a href='../../../../../org.gradle.api.file.ConfigurableFileCollection.html'>ConfigurableFileCollection</a></code></td>
+                            <td class="colLast"><code><strong><a href="#getRuntimeClasspath()">getRuntimeClasspath</a></strong>()</code><br>The application's runtime classpath. </td>
                         </tr>
                         
                         <tr class="altColor">
                             <td class="colFirst"><code></code></td>
                             <td class="colLast"><code>abstract&nbsp;<a href='../../../../../org.gradle.api.file.ConfigurableFileCollection.html'>ConfigurableFileCollection</a></code></td>
-                            <td class="colLast"><code><strong><a href="#getTemplateOverrides()">getTemplateOverrides</a></strong>()</code><br>Application template overrides, normally <CODE>src/main/templates/scaffolding</CODE>.</td>
-                        </tr>
-                        
-                        <tr class="rowColor">
-                            <td class="colFirst"><code></code></td>
-                            <td class="colLast"><code>abstract&nbsp;<a href='../../../../../org.gradle.api.file.ConfigurableFileCollection.html'>ConfigurableFileCollection</a></code></td>
-                            <td class="colLast"><code><strong><a href="#getViewClasspath()">getViewClasspath</a></strong>()</code><br>Dependency views, including plugins used only at runtime.</td>
+                            <td class="colLast"><code><strong><a href="#getTemplateOverrides()">getTemplateOverrides</a></strong>()</code><br>The application's own templates, as trees rooted at the template directory: normally
+ <CODE>src/main/templates/scaffolding</CODE>. </td>
                         </tr>
                         
                     </table>
@@ -248,7 +336,46 @@ extends <a href='../../../../../org.gradle.api.DefaultTask.html'>DefaultTask</a>
            
 
             
+            <!-- =========== FIELD DETAIL =========== -->
+            <ul class="blockList">
+                <li class="blockList"><a name="field_detail">
+                    <!--   -->
+                </a>
+                    <h3>Field Detail</h3>
+                    
+                        <a name="GENERATOR_PROTOCOL"><!-- --></a>
+                        <ul class="blockListLast">
+                            <li class="blockList">
+                                <h4>public&nbsp;static&nbsp;final&nbsp;int <strong>GENERATOR_PROTOCOL</strong></h4>
+                                <p> The version of the exchange with the generator this task speaks - the command line, and the
+ files handed over and back - as the generator declares its own in a <CODE>PROTOCOL</CODE>
+ constant. The two ship apart, the generator in grails-scaffolding and this in the Gradle plugin,
+ so a build can pair one version with another; this reads the generator's before running it.</p>
+                            </li>
+                        </ul>
+                    
+                </li>
+            </ul>
+            
 
+            
+            <!-- =========== PROPERTY DETAIL =========== -->
+            <ul class="blockList">
+                <li class="blockList"><a name="prop_detail">
+                    <!--   -->
+                </a>
+                    <h3>Property Detail</h3>
+                    
+                        <a name="GENERATOR"><!-- --></a>
+                        <ul class="blockListLast">
+                            <li class="blockList">
+                                <h4>static&nbsp;final&nbsp;java.lang.String <strong>GENERATOR</strong></h4>
+                                <p>The class that expands and names the pages, from the application's scaffolding library.</p>
+                            </li>
+                        </ul>
+                    
+                </li>
+            </ul>
             
 
             
@@ -290,14 +417,6 @@ extends <a href='../../../../../org.gradle.api.DefaultTask.html'>DefaultTask</a>
                             </li>
                         </ul>
                     
-                        <a name="getApplicationViews()"><!-- --></a>
-                        <ul class="blockListLast">
-                            <li class="blockList">
-                                <h4>@org.gradle.api.tasks.InputFiles<br>@java.util.Optional<br>@org.gradle.api.tasks.PathSensitive(value: PathSensitivity.RELATIVE)<br>abstract&nbsp;<a href='../../../../../org.gradle.api.file.ConfigurableFileCollection.html'>ConfigurableFileCollection</a> <strong>getApplicationViews</strong>()</h4>
-                                <p>The application's own views; anything declared here is left alone.</p>
-                            </li>
-                        </ul>
-                    
                         <a name="getClassesDirs()"><!-- --></a>
                         <ul class="blockListLast">
                             <li class="blockList">
@@ -306,13 +425,40 @@ extends <a href='../../../../../org.gradle.api.DefaultTask.html'>DefaultTask</a>
                             </li>
                         </ul>
                     
-                        <a name="getControllerClasspath()"><!-- --></a>
+                        <a name="getExecOperations()"><!-- --></a>
                         <ul class="blockListLast">
                             <li class="blockList">
-                                <h4>@org.gradle.api.tasks.Classpath<br>abstract&nbsp;<a href='../../../../../org.gradle.api.file.ConfigurableFileCollection.html'>ConfigurableFileCollection</a> <strong>getControllerClasspath</strong>()</h4>
-                                <p> The classpath a controller's superclasses are read from, to find a namespace it inherits.
- Kept apart from <a href='#getTemplateClasspath()'>getTemplateClasspath()</a> so that narrowing where templates are read
- from cannot quietly stop inherited namespaces being seen.</p>
+                                <h4>@javax.inject.Inject<br>abstract&nbsp;<a href='../../../../../org.gradle.process.ExecOperations.html'>ExecOperations</a> <strong>getExecOperations</strong>()</h4>
+                                <p></p>
+                            </li>
+                        </ul>
+                    
+                        <a name="getFileSeparator()"><!-- --></a>
+                        <ul class="blockListLast">
+                            <li class="blockList">
+                                <h4>@org.gradle.api.tasks.Input<br>java.lang.String <strong>getFileSeparator</strong>()</h4>
+                                <p> The separator the pages were expanded under. A template that mentions <CODE>packagePath</CODE>
+ expands differently on Windows, so pages built on one platform are not taken from the build
+ cache for another.</p>
+                            </li>
+                        </ul>
+                    
+                        <a name="getJavaLauncher()"><!-- --></a>
+                        <ul class="blockListLast">
+                            <li class="blockList">
+                                <h4>@org.gradle.api.tasks.Nested<br>@java.util.Optional<br>abstract&nbsp;Property&lt;JavaLauncher&gt; <strong>getJavaLauncher</strong>()</h4>
+                                <p>The Java the pages are expanded with; the build's own when not set.</p>
+                            </li>
+                        </ul>
+                    
+                        <a name="getOptionalPages()"><!-- --></a>
+                        <ul class="blockListLast">
+                            <li class="blockList">
+                                <h4>@org.gradle.api.tasks.OutputFile<br>abstract&nbsp;<a href='../../../../../org.gradle.api.file.RegularFileProperty.html'>RegularFileProperty</a> <strong>getOptionalPages</strong>()</h4>
+                                <p> Lists, a line apiece, the pages expanded from templates a dependency supplies, as paths under
+ <a href='#getOutputDirectory()'>getOutputDirectory()</a>, for the page compilation to leave out any that do not compile.
+ A page expanded from a template of the application's own is not listed, so it has to compile,
+ as a view does.</p>
                             </li>
                         </ul>
                     
@@ -320,16 +466,38 @@ extends <a href='../../../../../org.gradle.api.DefaultTask.html'>DefaultTask</a>
                         <ul class="blockListLast">
                             <li class="blockList">
                                 <h4>@org.gradle.api.tasks.OutputDirectory<br>abstract&nbsp;<a href='../../../../../org.gradle.api.file.DirectoryProperty.html'>DirectoryProperty</a> <strong>getOutputDirectory</strong>()</h4>
-                                <p>Where the generated views are written.</p>
+                                <p>Where the pages are written, as a tree to be compiled with the application's views.</p>
                             </li>
                         </ul>
                     
-                        <a name="getTemplateClasspath()"><!-- --></a>
+                        <a name="getPackagedTemplates()"><!-- --></a>
                         <ul class="blockListLast">
                             <li class="blockList">
-                                <h4>@org.gradle.api.tasks.Classpath<br>abstract&nbsp;<a href='../../../../../org.gradle.api.file.ConfigurableFileCollection.html'>ConfigurableFileCollection</a> <strong>getTemplateClasspath</strong>()</h4>
-                                <p> The classpath the scaffolding templates are read from. The application's own
- <CODE>src/main/templates/scaffolding</CODE> takes precedence, matching the runtime lookup.</p>
+                                <h4>@org.gradle.api.tasks.InputFiles<br>@java.util.Optional<br>@org.gradle.api.tasks.PathSensitive(value: PathSensitivity.RELATIVE)<br>abstract&nbsp;<a href='../../../../../org.gradle.api.file.ConfigurableFileCollection.html'>ConfigurableFileCollection</a> <strong>getPackagedTemplates</strong>()</h4>
+                                <p> The application's templates as it packages them, each at
+ <CODE>META-INF/templates/scaffolding/&lt;template path&gt;</CODE> in its tree: normally the output of
+ <CODE>processResources</CODE>, filtered to them. That is where the resolver finds them beside the
+ application's controllers, however the build put them there - from
+ <CODE>src/main/templates</CODE>, from the resources, or from a task that feeds them.</p>
+                            </li>
+                        </ul>
+                    
+                        <a name="getPageEncoding()"><!-- --></a>
+                        <ul class="blockListLast">
+                            <li class="blockList">
+                                <h4>@org.gradle.api.tasks.Input<br>abstract&nbsp;Property&lt;java.lang.String&gt; <strong>getPageEncoding</strong>()</h4>
+                                <p> The encoding the pages are written in, which must be the one they are compiled with, so that
+ a page reads back as it was expanded. Normally <CODE>compileGroovyPages</CODE>' encoding.</p>
+                            </li>
+                        </ul>
+                    
+                        <a name="getRuntimeClasspath()"><!-- --></a>
+                        <ul class="blockListLast">
+                            <li class="blockList">
+                                <h4>@org.gradle.api.tasks.Classpath<br>abstract&nbsp;<a href='../../../../../org.gradle.api.file.ConfigurableFileCollection.html'>ConfigurableFileCollection</a> <strong>getRuntimeClasspath</strong>()</h4>
+                                <p> The application's runtime classpath. The templates and the plugins' controllers are read from
+ it, as the running application reads them, and the pages are expanded on it, by the
+ scaffolding library and the Groovy the application runs with.</p>
                             </li>
                         </ul>
                     
@@ -337,15 +505,10 @@ extends <a href='../../../../../org.gradle.api.DefaultTask.html'>DefaultTask</a>
                         <ul class="blockListLast">
                             <li class="blockList">
                                 <h4>@org.gradle.api.tasks.InputFiles<br>@java.util.Optional<br>@org.gradle.api.tasks.PathSensitive(value: PathSensitivity.RELATIVE)<br>abstract&nbsp;<a href='../../../../../org.gradle.api.file.ConfigurableFileCollection.html'>ConfigurableFileCollection</a> <strong>getTemplateOverrides</strong>()</h4>
-                                <p>Application template overrides, normally <CODE>src/main/templates/scaffolding</CODE>.</p>
-                            </li>
-                        </ul>
-                    
-                        <a name="getViewClasspath()"><!-- --></a>
-                        <ul class="blockListLast">
-                            <li class="blockList">
-                                <h4>@org.gradle.api.tasks.Classpath<br>abstract&nbsp;<a href='../../../../../org.gradle.api.file.ConfigurableFileCollection.html'>ConfigurableFileCollection</a> <strong>getViewClasspath</strong>()</h4>
-                                <p>Dependency views, including plugins used only at runtime.</p>
+                                <p> The application's own templates, as trees rooted at the template directory: normally
+ <CODE>src/main/templates/scaffolding</CODE>. A template's path within its tree is its path as the
+ resolver asks for it, so <CODE>admin/show.gsp</CODE> is the <CODE>show</CODE> template of the
+ <CODE>admin</CODE> namespace.</p>
                             </li>
                         </ul>
                     
@@ -383,11 +546,11 @@ extends <a href='../../../../../org.gradle.api.DefaultTask.html'>DefaultTask</a>
     <div>
         <ul class="subNavList">
             <li>Summary:&nbsp;</li>
-            Nested&nbsp;&nbsp;&nbsp;Field&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<li><a href="#constructor_summary">Constructor</a></li>&nbsp;&nbsp;&nbsp;<li><a href="#method_summary">Method</a></li>&nbsp;&nbsp;&nbsp;
+            Nested&nbsp;&nbsp;&nbsp;<li><a href="#field_summary">Field</a></li>&nbsp;&nbsp;&nbsp;<li><a href="#property_summary">Property</a></li>&nbsp;&nbsp;&nbsp;<li><a href="#constructor_summary">Constructor</a></li>&nbsp;&nbsp;&nbsp;<li><a href="#method_summary">Method</a></li>&nbsp;&nbsp;&nbsp;
         </ul>
         <ul class="subNavList">
             <li>&nbsp;|&nbsp;Detail:&nbsp;</li>
-            Field&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<li><a href="#constructor_detail">Constructor</a></li>&nbsp;&nbsp;&nbsp;<li><a href="#method_detail">Method</a></li>&nbsp;&nbsp;&nbsp;
+            <li><a href="#field_detail">Field</a></li>&nbsp;&nbsp;&nbsp;<li><a href="#prop_detail">Property</a></li>&nbsp;&nbsp;&nbsp;<li><a href="#constructor_detail">Constructor</a></li>&nbsp;&nbsp;&nbsp;<li><a href="#method_detail">Method</a></li>&nbsp;&nbsp;&nbsp;
         </ul>
     </div>
     <p><!-- Matomo -->
