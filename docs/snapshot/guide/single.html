@@ -1042,6 +1042,10 @@ A plugin bean now takes precedence over a Spring Boot default guarded by <code>@
 The DSL continues to work for now, but you are strongly urged to migrate.
 See the <a href="upgrading.html#upgrading80x">upgrade guide</a> for details.</p>
 </div>
+<div class="paragraph">
+<p>Unit tests get the same hooks: a test declares its beans in a <code>beans</code> block, as an application or plugin does, or overrides <code>beanRegistrar()</code>, or declares a static nested <code>@Configuration</code> class — and <code>doWithSpring()</code> on the testing traits is deprecated to match.
+See <a href="#unitTesting">Unit Testing</a>.</p>
+</div>
 </div>
 <div class="sect3">
 <h4 id="_cli_commands_move_to_companion_cli_artifacts">CLI Commands Move to Companion <code>-cli</code> Artifacts</h4>
@@ -5576,6 +5580,18 @@ A plugin that wanted to replace a Boot-provided bean therefore had to rely on be
 </div>
 <div class="paragraph">
 <p>Both hooks may be used on the same plugin during migration; when a registrar and the DSL register a bean under the same name, the registrar&#8217;s definition wins.</p>
+</div>
+<div class="paragraph">
+<p><strong>Unit tests follow.</strong> <code>doWithSpring()</code> on the <code>GrailsUnitTest</code> trait — and so on every testing trait — is deprecated too. A test now declares its beans in a <code>beans</code> block with the <code>beans</code> DSL, as an application or plugin does; overrides <code>beanRegistrar()</code>, applied where an application&#8217;s is; or declares a static nested <code>@Configuration</code> class, which its context registers ahead of the framework&#8217;s auto-configurations. A <code>beans</code> block compiles into one such class, named <code>BeansConfiguration</code>, so a test that already declares a nested class of that name must rename it. A test that includes a plugin through <code>getIncludePlugins()</code> also gets the beans the plugin&#8217;s <code>beans</code> block declares, which <code>defineBeans(plugin)</code> cannot apply. See <a href="#unitTesting">Unit Testing</a>.</p>
+</div>
+<div class="paragraph">
+<p>A unit test now registers an included plugin&#8217;s <code>doWithSpring</code> and <code>beanRegistrar</code> beans before its configuration is read, as an application&#8217;s early phase does. So a <code>@ConditionalOnMissingBean</code> bean, including one in the framework&#8217;s own auto-configurations, backs off from them in a test as it does in an application. A test&#8217;s <code>doWithSpring</code> bean now replaces an included plugin&#8217;s bean of the same name, where the plugin&#8217;s used to win. What a test&#8217;s <code>doWithConfig</code> sets now also reaches the Spring <code>Environment</code> before the context&#8217;s configuration is read, so a property condition, the framework&#8217;s <code>@ConditionalOnProperty</code> included, sees it; it used to reach only <code>grailsApplication.config</code> and <code>${}</code> placeholders.</p>
+</div>
+<div class="paragraph">
+<p>A test that already has a static nested <code>@Configuration</code> class meant for something other than its own context — one built for an <code>ApplicationContextRunner</code>, say — now has it registered there as well; override <code>getConfigurationClasses()</code> to leave it out.</p>
+</div>
+<div class="paragraph">
+<p><strong>A <code>beans</code> block names a nested type&#8217;s bean by its simple name.</strong> In 8.0.0-M6 and 8.0.0-RC1, <code>bean(Outer.Helper)</code> with no name given registered a bean named <code>outer$Helper</code>. It is now <code>helper</code>, the type&#8217;s decapitalized simple name, as documented. Name it explicitly, <code>bean('outer$Helper', Outer.Helper)</code>, if anything looks it up by the old name.</p>
 </div>
 <div class="paragraph">
 <p><strong>Bean-definition overriding edge case.</strong> Grails defaults <code>spring.main.allow-bean-definition-overriding</code> to <code>true</code>, and under that default nothing changes: an application bean (from the application class, <code>resources.groovy</code> or <code>resources.xml</code>) that uses the same name as a plugin bean still replaces the plugin&#8217;s bean. However, because plugin beans now register earlier and application beans register in a separate, later step, an application that explicitly sets <code>spring.main.allow-bean-definition-overriding</code> to <code>false</code> will see a <code>BeanDefinitionOverrideException</code> for an application bean that shadows a plugin bean — in previous releases the two definitions were merged before a single registry write, so the shadowing was silent even with overriding disabled.</p>
@@ -63410,6 +63426,9 @@ If you define a bean in <code>resources.groovy</code> with the same name as one 
 </div>
 <div class="paragraph">
 <p>No annotation is required on the <code>Application</code> class, or on a <code>*GrailsPlugin.groovy</code> plugin descriptor: a <code>beans</code> property on either is compiled automatically, in the same way <code>doWithSpring</code> and <code>watchedResources</code> are conventions rather than annotated members. <code>@GrailsBeans</code> is only needed on a class that is neither — a standalone <code>@AutoConfiguration</code> class, which must also be listed in <code>META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports</code> like any other hand-written auto-configuration. The sibling generated for a plugin descriptor is listed there by the compiler instead, since its name is not something the author can read off a source file. Declaring the annotation explicitly on a plugin or application class is harmless, and a class with no <code>beans</code> property is left entirely alone.</p>
+</div>
+<div class="paragraph">
+<p>A unit test&#8217;s <code>beans</code> property is compiled automatically too, onto a static nested <code>@Configuration</code> class named <code>BeansConfiguration</code> that the test&#8217;s application context registers; see <a href="#unitTesting">Unit Testing</a>.</p>
 </div>
 <div class="paragraph">
 <p>No further registration is needed on the <code>Application</code> class — Spring Boot already processes it. Beans declared here are also ordinary user beans as far as Spring Boot is concerned, so any auto-configuration guarded by <code>@ConditionalOnMissingBean</code> backs off in their favour, exactly as it would for a bean defined in <code>resources.groovy</code>. A standalone class annotated with both <code>@GrailsBeans</code> and <code>@AutoConfiguration</code> must instead be listed in <code>META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports</code>, like any other hand-written auto-configuration.</p>
