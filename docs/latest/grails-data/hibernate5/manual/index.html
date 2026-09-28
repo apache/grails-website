@@ -530,7 +530,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <div id="header">
 <h1>GORM for Hibernate</h1>
 <div class="details">
-<span id="revnumber">version 7.2.4</span>
+<span id="revnumber">version 8.0.0-RC1</span>
 </div>
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
@@ -914,12 +914,12 @@ abstract class BookService {
 <h2 id="gettingStarted">2. Getting Started</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>To use GORM 7.2.4 for Hibernate in Grails 7 you can specify the following configuration in <code>build.gradle</code>:</p>
+<p>To use GORM 8.0.0-RC1 for Hibernate in Grails 7 you can specify the following configuration in <code>build.gradle</code>:</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
-    implementation "org.grails.plugins:hibernate5:7.2.4"
+    implementation "org.grails.plugins:hibernate5:8.0.0-RC1"
     runtimeOnly 'org.hibernate:hibernate-ehcache:5.6.15.Final', {
     // exclude javax variant of hibernate-core
     exclude group: 'org.hibernate', module: 'hibernate-core'
@@ -935,7 +935,7 @@ abstract class BookService {
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="properties">gormVersion=7.2.4</code></pre>
+<pre class="CodeRay highlight"><code data-lang="properties">gormVersion=8.0.0-RC1</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -948,7 +948,7 @@ abstract class BookService {
     resolutionStrategy.eachDependency { DependencyResolveDetails details ->
         if( details.requested.group == 'org.grails' &&
             details.requested.name.startsWith('grails-datastore')) {
-            details.useVersion("7.2.4")
+            details.useVersion("8.0.0-RC1")
         }
     }
 }
@@ -974,7 +974,7 @@ dependencies {
 <div class="sect2">
 <h3 id="hibernateVersions">2.2. Configuring Different Hibernate Versions</h3>
 <div class="paragraph">
-<p>There are various changes you have to make to your build depending on the version of Grails when using GORM 7.2.4.</p>
+<p>There are various changes you have to make to your build depending on the version of Grails when using GORM 8.0.0-RC1.</p>
 </div>
 <div class="sect3">
 <h4 id="_grails_7_0_0_and_above_with_hibernate_5_6_x">2.2.1. Grails 7.0.0 and above with Hibernate 5.6.x</h4>
@@ -1062,7 +1062,7 @@ configurations.all {
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">implementation 'org.grails:gorm-hibernate5-spring-boot:7.2.4'</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">implementation 'org.grails:gorm-hibernate5-spring-boot:8.0.0-RC1'</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1094,7 +1094,7 @@ work as well.
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">groovy.transform.CompileStatic</span>
 <span class="keyword">import</span> <span class="include">org.springframework.boot.SpringApplication</span>
 <span class="keyword">import</span> <span class="include">org.springframework.boot.autoconfigure.SpringBootApplication</span>
-<span class="keyword">import</span> <span class="include">org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration</span>
+<span class="keyword">import</span> <span class="include">org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration</span>
 
 <span class="annotation">@CompileStatic</span>
 <span class="annotation">@SpringBootApplication</span>(exclude = HibernateJpaAutoConfiguration)
@@ -1181,7 +1181,7 @@ If your GORM entities are in a different package, specify the package name as th
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">implementation platform("org.apache.grails:grails-bom:7.2.4")
+<pre class="CodeRay highlight"><code data-lang="groovy">implementation platform("org.apache.grails:grails-bom:8.0.0-RC1")
 implementation "org.apache.grails.data:grails-data-hibernate5-core"
 runtimeOnly "com.h2database"
 runtimeOnly "org.apache.tomcat:tomcat-jdbc"
@@ -1643,10 +1643,34 @@ p.delete()</code></pre>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Location of additional Hibernate XML configuration files</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>hibernate.packagesToScan</code></p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Specify packages to search for autodetection of your entity classes in the classpath</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hibernate.grails.proxy.lazy_to_string</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Whether <code>toString()</code> on an uninitialized proxy avoids initializing it (see Proxies and toString())</p></td>
+</tr>
 </tbody>
 </table>
 <div class="paragraph">
 <p>In addition, any additional settings that start with <code>hibernate.</code> are passed through to Hibernate, so if there is any specific feature of Hibernate you wish to configure that is possible.</p>
+</div>
+<div class="sect3">
+<h4 id="_proxies_and_tostring">4.2.1. Proxies and toString()</h4>
+<div class="paragraph">
+<p>Grails proxies answer identifier access (<code>id</code>, <code>getId()</code>, <code>ident()</code>) and <code>metaClass</code> access without initializing the proxy. By default, calling <code>toString()</code> on an uninitialized proxy initializes it and delegates to the domain class&#8217;s own <code>toString()</code> implementation.</p>
+</div>
+<div class="paragraph">
+<p>If you prefer <code>toString()</code> to also avoid initialization — for example to keep log statements from triggering database access — enable lazy <code>toString()</code> in <code>application.yml</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">hibernate</span>:
+    <span class="key">grails</span>:
+        <span class="key">proxy</span>:
+            <span class="key">lazy_to_string</span>: <span class="string"><span class="content">true</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>With this setting enabled, <code>toString()</code> on an uninitialized proxy returns <code>entityName:id</code> (for example <code>com.example.Author:1</code>) without initializing it. Once the proxy has been initialized, <code>toString()</code> always delegates to the domain class&#8217;s implementation.</p>
 </div>
 <div class="admonitionblock tip">
 <table>
@@ -1659,6 +1683,7 @@ The above table covers the common configuration options. For all configuration r
 </td>
 </tr>
 </table>
+</div>
 </div>
 </div>
 <div class="sect2">
@@ -3150,11 +3175,12 @@ println airport.version</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> airport = Airport.get(<span class="integer">10</span>)
-
-<span class="keyword">try</span> {
-    airport.name = <span class="string"><span class="delimiter">&quot;</span><span class="content">Heathrow</span><span class="delimiter">&quot;</span></span>
-    airport.save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">try</span> {
+    Airport.withTransaction {
+        <span class="keyword">def</span> airport = Airport.get(<span class="integer">10</span>)
+        airport.name = <span class="string"><span class="delimiter">'</span><span class="content">Heathrow</span><span class="delimiter">'</span></span>
+        airport.save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+    }
 }
 <span class="keyword">catch</span> (org.springframework.dao.OptimisticLockingFailureException e) {
     <span class="comment">// deal with exception</span>
@@ -3183,44 +3209,244 @@ The <code>version</code> will only be updated after flushing the session.
 <div class="sect3">
 <h4 id="_pessimistic_locking">6.9.2. Pessimistic Locking</h4>
 <div class="paragraph">
-<p>Pessimistic locking is equivalent to doing a SQL "SELECT * FOR UPDATE" statement and locking a row in the database. This has the implication that other read operations will be blocking until the lock is released.</p>
+<p>Pessimistic locking acquires a database row lock, typically using SQL <code>SELECT ... FOR UPDATE</code>. Conflicting writes and lock requests may block; ordinary reads are not necessarily blocked. The exact behavior depends on the database and transaction isolation level.</p>
+</div>
+<div class="paragraph">
+<p>An active transaction is required. Use <code>withTransaction</code> as below or a GORM <code>@Transactional</code> method, keeping the lock and the work it protects in the same transaction. The lock is held until that transaction commits or rolls back. <code>refresh(lock: ...)</code>, <code>lock(id, refresh: true)</code> and any call passing <code>type</code> throw <code>jakarta.persistence.TransactionRequiredException</code> without an active transaction, before anything is loaded.</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<code>entity.lock()</code> and <code>lock(id)</code> do not report that mistake. Hibernate 5 does not require a transaction for them, so without one the <code>SELECT ... FOR UPDATE</code> runs on an auto-commit connection: the call returns the instance, <code>getCurrentLockMode</code> reports <code>PESSIMISTIC_WRITE</code>, and yet the row lock is released as soon as the statement completes - another transaction can take it immediately, and nothing protects the work that follows. GORM for Hibernate 7 rejects the same two calls with <code>jakarta.persistence.TransactionRequiredException</code>. Always lock inside a transaction.
+</td>
+</tr>
+</table>
 </div>
 <div class="paragraph">
 <p>In GORM pessimistic locking is performed on an existing instance with the <a href="../api/org/grails/datastore/gorm/GormEntity.html#lock()">lock()</a> method:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> airport = Airport.get(<span class="integer">10</span>)
-airport.lock() <span class="comment">// lock for update</span>
-airport.name = <span class="string"><span class="delimiter">&quot;</span><span class="content">Heathrow</span><span class="delimiter">&quot;</span></span>
-airport.save()</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">Airport.withTransaction {
+    <span class="keyword">def</span> airport = Airport.get(<span class="integer">10</span>)
+    airport.lock() <span class="comment">// lock without refreshing</span>
+    airport.name = <span class="string"><span class="delimiter">'</span><span class="content">Heathrow</span><span class="delimiter">'</span></span>
+    airport.save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>GORM will automatically deal with releasing the lock for you once the transaction has been committed.</p>
+<p>The instance method <code>airport.lock()</code> is unchanged: it acquires a lock without reloading the entity&#8217;s state. For an already-loaded, versioned entity, Hibernate still checks its version against the database. Another transaction can update the row between <code>get()</code> and <code>lock()</code>, causing an optimistic locking failure.</p>
 </div>
+<div class="sect4">
+<h5 id="_refreshing_while_locking">Refreshing While Locking</h5>
 <div class="paragraph">
-<p>However, in the above case what we are doing is "upgrading" from a regular SELECT to a SELECT..FOR UPDATE and another thread could still have updated the record in between the call to <code>get()</code> and the call to <code>lock()</code>.</p>
-</div>
-<div class="paragraph">
-<p>To get around this problem you can use the static <a href="../api/org/grails/datastore/gorm/GormEntity.html#lock(java.io.Serializable)">lock(id)</a> method that takes an id just like <a href="../api/org/grails/datastore/gorm/GormEntity.html#get(java.io.Serializable)">get(id)</a>:</p>
+<p>To reload an already-loaded entity&#8217;s database state and version directly under a pessimistic WRITE lock, pass <code>lock: true</code> to the <a href="../api/org/grails/datastore/gorm/GormEntity.html#refresh(java.util.Map)">refresh(Map)</a> instance method. The lock is acquired before the state is read, so the reload sees the committed state the lock protects. Unlike calling <code>lock()</code> first, the already-loaded version is never checked, and unlike calling <code>refresh()</code> first, no competing update can slip in between. The same instance is returned.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> airport = Airport.lock(<span class="integer">10</span>) <span class="comment">// lock for update</span>
-airport.name = <span class="string"><span class="delimiter">&quot;</span><span class="content">Heathrow</span><span class="delimiter">&quot;</span></span>
-airport.save()</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">Airport.withTransaction {
+    <span class="keyword">def</span> airport = Airport.get(<span class="integer">10</span>)
+    airport.refresh(<span class="key">lock</span>: <span class="predefined-constant">true</span>)
+    <span class="keyword">if</span> (airport.name == <span class="string"><span class="delimiter">'</span><span class="content">London Airport</span><span class="delimiter">'</span></span>) {
+        airport.name = <span class="string"><span class="delimiter">'</span><span class="content">Heathrow</span><span class="delimiter">'</span></span>
+        airport.save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>In this case only SELECT..FOR UPDATE is issued.</p>
+<p>To request a lock other than a pessimistic WRITE lock, pass a <code>jakarta.persistence.LockModeType</code> (or its name) as the <code>lock</code> argument, for example <code>airport.refresh(lock: LockModeType.PESSIMISTIC_READ)</code>. <code>lock: true</code> is equivalent to <code>lock: LockModeType.PESSIMISTIC_WRITE</code>, and the semantics of each mode are those of the JPA <code>LockModeType</code> of the same name. A value that is neither a boolean, a <code>LockModeType</code>, nor the name of one throws <code>IllegalArgumentException</code>.</p>
 </div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+An optimistic mode requested while the transaction already holds a stronger lock on the same instance is superseded by that lock, so no version check or increment is registered for it.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The instance must be attached to the current session; refreshing a detached instance under a lock throws <code>IllegalArgumentException</code>, so re-attach it with <code>attach()</code> first. <code>airport.refresh()</code> is unchanged, and <code>airport.refresh([:])</code>, <code>airport.refresh(lock: false)</code> or <code>airport.refresh(lock: LockModeType.NONE)</code> behave exactly like it: a plain refresh with no lock and no transaction requirement. To lock by identifier and reload at the same time, use <code>Airport.lock(id, refresh: true)</code> as described below.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+There is no <code>airport.lock(refresh: true)</code>. Groovy resolves that call to the static <code>lock(Serializable id)</code> method with the options map as the identifier, and GORM rejects it with an <code>IllegalArgumentException</code> that names the supported forms. The instance form is <code>airport.refresh(lock: true)</code>.
+</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+Refreshing discards unflushed changes to the entity. Configured refresh cascades can also discard unflushed changes to associated entities; this is not a refresh of the whole object graph. Call <code>refresh(lock: true)</code> <strong>before</strong> making decisions based on the entity&#8217;s state or applying mutations. It does not preserve or merge pending edits.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>After a locked refresh, GORM resets the dirty-checking state of the refreshed entity, its embedded components, and every initialized entity the refresh cascade reloaded, including associations reached through an embedded component, so discarded edits to a cascaded child do not schedule an update of that child or bump its version at the next flush. A plain <code>refresh()</code> does not reset that state on Hibernate 5. The lock applies to the refreshed entity&#8217;s own row; associated entities reloaded through a refresh cascade are not guaranteed to be locked.</p>
+</div>
+<div class="paragraph">
+<p>Refreshing under a lock is supported by GORM for Hibernate 5 and Hibernate 7. Datastores that do not support it throw <code>UnsupportedOperationException</code> rather than silently falling back to a plain refresh.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<code>PESSIMISTIC_FORCE_INCREMENT</code> is recorded by Hibernate 5 under its legacy <code>LockMode.FORCE</code> name, which <code>getCurrentLockMode</code> reports. On databases whose <code>SELECT ... FOR UPDATE</code> takes a <code>NOWAIT</code> clause for that mode, such as PostgreSQL, Oracle and MySQL 8, a contended row fails immediately rather than waiting.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The database and transaction isolation level determine which state is visible to the locked refresh. <code>refresh(lock: true)</code> does not override isolation rules or guarantee that every concurrent attempt succeeds. Deadlocks, lock timeouts, and transaction serialization failures remain possible.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_holding_the_lock_for_a_block_of_work">Holding the Lock for a Block of Work</h5>
+<div class="paragraph">
+<p><a href="../api/org/grails/datastore/gorm/GormEntity.html#mutex(groovy.lang.Closure)">mutex(Closure)</a> locks the instance exclusively for the scope of the closure and returns the closure&#8217;s result:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">Airport.withTransaction {
+    <span class="keyword">def</span> airport = Airport.get(<span class="integer">10</span>)
+    airport.mutex {
+        airport.name = <span class="string"><span class="delimiter">'</span><span class="content">Heathrow</span><span class="delimiter">'</span></span>
+        airport.save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>It reloads the instance&#8217;s state and version under the lock, so a transaction that committed to the row after it was loaded is waited for rather than reported as an optimistic locking failure, and the closure runs on the committed state. The lock is always exclusive; there is no argument to select another mode, because a shared or optimistic lock would not give the closure mutual exclusion.</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+Reloading discards unflushed changes to the instance, exactly as <code>refresh(lock: true)</code> does. Make changes <strong>inside</strong> the closure, not before the call. An active transaction and an attached instance are required, as they are for <code>refresh(lock: true)</code>.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_locking_by_identifier_or_query">Locking by Identifier or Query</h5>
+<div class="paragraph">
+<p>The static <a href="../api/org/grails/datastore/gorm/GormEntity.html#lock(java.io.Serializable)">lock(id)</a> method is unchanged. It takes an identifier just like <a href="../api/org/grails/datastore/gorm/GormEntity.html#get(java.io.Serializable)">get(id)</a> and loads the entity under a lock, avoiding a separate unlocked <code>get()</code> when it is not already managed:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">Airport.withTransaction {
+    <span class="keyword">def</span> airport = Airport.lock(<span class="integer">10</span>)
+    airport.name = <span class="string"><span class="delimiter">'</span><span class="content">Heathrow</span><span class="delimiter">'</span></span>
+    airport.save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If the entity is already managed in the current session, <code>Airport.lock(id)</code> locks and version-checks the already-loaded state; it does not reload it. <code>Airport.lock(id, refresh: false)</code> behaves the same way. Pass <code>refresh: true</code> to the <a href="../api/org/grails/datastore/gorm/GormEntity.html#lock(java.util.Map,%20java.io.Serializable)">lock(Map, id)</a> method to reload that instance&#8217;s state and version under the lock instead. The same managed instance is returned; when the entity is not in the session it is loaded and locked. Both forms return <code>null</code> when no row exists for the identifier.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">Airport.withTransaction {
+    <span class="keyword">def</span> airport = Airport.lock(<span class="integer">10</span>, <span class="key">refresh</span>: <span class="predefined-constant">true</span>)
+    <span class="keyword">if</span> (airport?.name == <span class="string"><span class="delimiter">'</span><span class="content">London Airport</span><span class="delimiter">'</span></span>) {
+        airport.name = <span class="string"><span class="delimiter">'</span><span class="content">Heathrow</span><span class="delimiter">'</span></span>
+        airport.save(<span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>lock(id, refresh: true)</code> has the same transaction requirement as <code>refresh(lock: true)</code>, discards unflushed changes in the same way, and throws <code>UnsupportedOperationException</code> on datastores that do not support it.</p>
+</div>
+<div class="paragraph">
+<p>Both static forms accept <code>type</code> to choose the lock mode: a <code>jakarta.persistence.LockModeType</code> or its name, defaulting to <code>PESSIMISTIC_WRITE</code> (<code>NONE</code> is rejected). <code>Airport.lock(10, type: LockModeType.PESSIMISTIC_READ)</code> acquires a pessimistic READ lock whether the entity is loaded by the call or already managed, and <code>Airport.lock(10, refresh: true, type: LockModeType.PESSIMISTIC_READ)</code> reloads a managed instance under that mode. Datastores that support only a pessimistic write lock throw <code>UnsupportedOperationException</code> for any other <code>type</code>.</p>
+</div>
+<div class="paragraph">
+<p>Every lock mode is available to <code>refresh(lock: ...)</code> and to the static <code>type</code> argument:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 28.5714%;">
+<col style="width: 28.5714%;">
+<col style="width: 42.8572%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Lock mode</th>
+<th class="tableblock halign-left valign-top">Database lock</th>
+<th class="tableblock halign-left valign-top">Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PESSIMISTIC_WRITE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Exclusive row lock, typically <code>SELECT ... FOR UPDATE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The default for <code>lock: true</code>, <code>lock(id)</code> and <code>lock(id, refresh: true)</code>. Other transactions cannot update the row or take a pessimistic lock on it until this transaction ends.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PESSIMISTIC_READ</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Shared row lock, <code>SELECT ... FOR SHARE</code> where the database supports it</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Other transactions cannot update the row but may take the same shared lock. Databases without shared row locks take an exclusive lock instead.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PESSIMISTIC_FORCE_INCREMENT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Exclusive row lock</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">As <code>PESSIMISTIC_WRITE</code>, and the version is incremented as part of taking the lock, so a transaction still holding the previous version fails its next update.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OPTIMISTIC</code> (JPA alias <code>READ</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">None</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The version is re-read when the transaction commits, and the commit fails if another transaction changed it.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OPTIMISTIC_FORCE_INCREMENT</code> (JPA alias <code>WRITE</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">None</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The version is incremented when the transaction commits, so other transactions holding the previous version fail.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>NONE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">None</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>refresh(lock: LockModeType.NONE)</code> is a plain refresh, exactly like <code>refresh(lock: false)</code>. <code>lock(id, type: LockModeType.NONE)</code> is rejected with <code>IllegalArgumentException</code>: a lock call must name a lock.</p></td>
+</tr>
+</tbody>
+</table>
 <div class="paragraph">
 <p>As well as the <a href="../api/org/grails/datastore/gorm/GormEntity.html#lock(java.io.Serializable)">lock(id)</a> method you can also obtain a pessimistic locking using queries. For example using a dynamic finder:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java">def airport = Airport.findByName(<span class="string"><span class="delimiter">&quot;</span><span class="content">Heathrow</span><span class="delimiter">&quot;</span></span>, [lock: <span class="predefined-constant">true</span>])</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">Airport.withTransaction {
+    <span class="keyword">def</span> airport = Airport.findByName(<span class="string"><span class="delimiter">'</span><span class="content">Heathrow</span><span class="delimiter">'</span></span>, [<span class="key">lock</span>: <span class="predefined-constant">true</span>])
+    <span class="comment">// Perform work protected by the lock here.</span>
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -3228,10 +3454,14 @@ airport.save()</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java">def airport = Airport.createCriteria().get {
-    eq(<span class="string"><span class="delimiter">'</span><span class="content">name</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Heathrow</span><span class="delimiter">'</span></span>)
-    lock <span class="predefined-constant">true</span>
+<pre class="CodeRay highlight"><code data-lang="groovy">Airport.withTransaction {
+    <span class="keyword">def</span> airport = Airport.createCriteria().get {
+        eq(<span class="string"><span class="delimiter">'</span><span class="content">name</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Heathrow</span><span class="delimiter">'</span></span>)
+        lock <span class="predefined-constant">true</span>
+    }
+    <span class="comment">// Perform work protected by the lock here.</span>
 }</code></pre>
+</div>
 </div>
 </div>
 </div>
@@ -3616,6 +3846,9 @@ books = <span class="predefined-type">Book</span>.findAllByReleaseDateIsNotNull(
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> books = <span class="predefined-type">Book</span>.findAllByTitleLike(<span class="string"><span class="delimiter">&quot;</span><span class="content">Harry Pot%</span><span class="delimiter">&quot;</span></span>,
                [<span class="key">max</span>: <span class="integer">3</span>, <span class="key">offset</span>: <span class="integer">2</span>, <span class="key">sort</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">title</span><span class="delimiter">&quot;</span></span>, <span class="key">order</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">desc</span><span class="delimiter">&quot;</span></span>])</code></pre>
 </div>
+</div>
+<div class="paragraph">
+<p>The <code>sort</code> value must be a property path made up of identifiers separated by dots, such as <code>"title"</code> or <code>"author.name"</code>, that resolves through the domain class mapping. Anything else, for example a value carrying a second expression or a function call, is rejected with an <code>IllegalArgumentException</code> before the query is built, so request parameters can be passed through safely. A dotted key whose first segment is not a property of the domain class is left for the query implementation to resolve, so aliases created with <code>createAlias</code> or declared in a <a href="#whereQueries">where query</a> can still be sorted on; a bare name must be a property of the domain class. The <code>order</code> value must be <code>"asc"</code> or <code>"desc"</code>, case-insensitive and ignoring surrounding whitespace; anything else is rejected in the same way. The same checks apply to the <code>sort</code> and <code>order</code> arguments of <code>list()</code>, of a criteria query&#8217;s <code>list()</code> call and of a where query&#8217;s <code>list()</code> call, and to the <code>order</code> argument of <code>listOrderBy*</code>, so a value is never silently coerced on one entry point and rejected on another.</p>
 </div>
 </div>
 </div>
@@ -5895,6 +6128,36 @@ Because the timestamp handling is only disabled for the duration of the closure,
 </td>
 </tr>
 </table>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The timestamp handling is only disabled for the thread executing the closure. Other threads persisting entities at the same time are unaffected and will continue to have their timestamps applied.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>If work inside the closure runs on other threads (for example an executor-based import), the suppression must be propagated to those threads explicitly. Capture the state with <code>captureTimestampSuppression</code> and apply it on the executing thread with <code>withTimestampSuppression</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">autoTimestampEventListener.withoutTimestamps {
+    <span class="keyword">def</span> suppression = autoTimestampEventListener.captureTimestampSuppression()
+    executor.submit {
+        autoTimestampEventListener.withTimestampSuppression(suppression) {
+            <span class="keyword">new</span> Foo(<span class="key">dateCreated</span>: <span class="keyword">new</span> <span class="predefined-type">Date</span>() - <span class="integer">2</span>, <span class="key">lastUpdated</span>: <span class="keyword">new</span> <span class="predefined-type">Date</span>() - <span class="integer">1</span>).save(<span class="key">flush</span>: <span class="predefined-constant">true</span>)
+        }
+    }.get()
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The captured state is immutable and may be applied on any number of threads, even after the capturing closure has completed.</p>
 </div>
 </div>
 </div>
@@ -8276,7 +8539,7 @@ RxJava 2.x support is planned for a future release
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.grails:grails-datastore-gorm-rx:7.2.4"</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.grails:grails-datastore-gorm-rx:8.0.0-RC1"</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -8482,6 +8745,21 @@ zipCode.auditing.save()</code></pre>
 </div>
 <div class="paragraph">
 <p>As you can see, you add the <code>DataSource</code> to the method call in both the static case and the instance case.</p>
+</div>
+<div class="paragraph">
+<p>A session or transaction opened through a namespace covers the whole block. Inside <code>ZipCode.auditing.withTransaction { }</code> or <code>ZipCode.auditing.withNewSession { }</code>, the calls on <code>ZipCode</code> itself use the <em>auditing</em> <code>DataSource</code>, whose session and transaction are the ones open:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">ZipCode.auditing.withTransaction {
+    <span class="keyword">def</span> zipCode = ZipCode.get(<span class="integer">42</span>)    <span class="comment">// read from 'auditing'</span>
+    zipCode.code = <span class="string"><span class="delimiter">'</span><span class="content">99501</span><span class="delimiter">'</span></span>
+    zipCode.save()                   <span class="comment">// written to 'auditing', in its transaction</span>
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Other domain classes are not affected, and an operation inside the block that names a <code>DataSource</code>, such as <code>ZipCode.lookup.count()</code>, uses the one it names. A method annotated <code>@Transactional(connection = 'auditing')</code> routes in the same way, for every domain class mapped to the <em>auditing</em> <code>DataSource</code>; a class that is not mapped to it keeps its own, and a multi-tenant class is left to its tenant, since a transaction opened for a <code>DataSource</code> does not say which tenant the operations in it belong to.</p>
 </div>
 <div class="paragraph">
 <p>You can use <code>Where</code> queries:</p>
@@ -8766,7 +9044,7 @@ SessionFactory sessionFactory = hibernateDatastore
 <i class="fa icon-tip" title="Tip"></i>
 </td>
 <td class="content">
-If you are interested in more examples, an <a href="https://github.com/apache/grails-core/blob/7.2.4/grails-data-mongodb/core/src/main/groovy/org/grails/datastore/mapping/mongo/connections/MongoConnectionSources.groovy">implementation exists for MongoDB</a> that reads connection sources from a MongoDB collection. However, it doesn&#8217;t implement support for provision MongoDB instances at runtime.
+If you are interested in more examples, an <a href="https://github.com/apache/grails-core/blob/8.0.0-RC1/grails-data-mongodb/core/src/main/groovy/org/grails/datastore/mapping/mongo/connections/MongoConnectionSources.groovy">implementation exists for MongoDB</a> that reads connection sources from a MongoDB collection. However, it doesn&#8217;t implement support for provision MongoDB instances at runtime.
 </td>
 </tr>
 </table>
@@ -9040,7 +9318,7 @@ sessionFactory.openSession()</code></pre>
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.grails:grails-datastore-web:7.2.4"</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.grails:grails-datastore-web:8.0.0-RC1"</code></pre>
 </div>
 </div>
 </div>
@@ -9846,25 +10124,13 @@ JUnit doesn&#8217;t have anything like Spock&#8217;s <code>AutoCleanup</code> so
 <pre class="CodeRay highlight"><code data-lang="groovy">buildscript {
    dependencies {
       ...
-      classpath 'org.apache.grails:grails-data-hibernate5-dbmigration:7.2.4'
+      classpath 'org.apache.grails:grails-data-hibernate5-dbmigration:8.0.0-RC1'
    }
 }
 
 dependencies {
    ...
-     implementation 'org.apache.grails:grails-data-hibernate5-dbmigration:7.2.4'
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>It is also recommended to add a direct dependency to liquibase because Spring Boot overrides the one provided by this plugin</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
-   ...
-     implementation "org.liquibase:liquibase-core:4.27.0"
-     implementation "org.liquibase.ext:liquibase-hibernate5:4.27.0"
+     implementation 'org.apache.grails:grails-data-hibernate5-dbmigration:8.0.0-RC1'
 }</code></pre>
 </div>
 </div>
@@ -13009,7 +13275,7 @@ For the <code>dataSource</code> parameter, if the data source is configured as <
 </div>
 <div id="footer">
 <div id="footer-text">
-Version 7.2.4<br>
+Version 8.0.0-RC1<br>
 </div>
 </div>
 </body>

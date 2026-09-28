@@ -486,6 +486,87 @@ class Person {
 <p>BSON <code>ObjectId</code> instances are generated in a similar fashion to <code>UUIDs</code>.</p>
 </div>
 <div class="sect3">
+<h4 id="_native_identity_types">Native Identity Types</h4>
+<div class="paragraph">
+<p>Declaring <code>String id</code> on every domain class ties that source to MongoDB: the same class compiled against
+Hibernate would need <code>Long id</code> instead. Where domain classes are shared, or an application is written to
+run against either store, the build can ask for the identity type of whichever GORM implementation each
+domain class is mapped with:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">grails {
+    gorm {
+        defaultIdType = 'native'
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A domain class mapped with MongoDB is then given a <code>String id</code> — holding the hexadecimal form of a
+generated <code>ObjectId</code>, exactly as if it had been declared — while one mapped with Hibernate keeps <code>Long</code>.
+Nothing in the domain class itself names a store.</p>
+</div>
+<div class="paragraph">
+<p>The default is <code>defaultIdType = 'long'</code>, which gives every domain class a <code>Long</code> id as earlier releases
+did. The type is resolved when the domain class is compiled, from its <code>mapWith</code> property and the GORM
+implementations on the compilation classpath, so an application using more than one implementation gets
+the right type for each domain class from the single setting. A domain class that declares an <code>id</code> of its
+own keeps the type it declares either way.</p>
+</div>
+<div class="paragraph">
+<p>Precompiled plugin domain classes cannot have their bytecode changed by the consuming application&#8217;s
+compiler. A plugin that wants to leave this choice to its consumer can declare a portable identity:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Book {
+    Serializable id
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The consuming application uses the same build setting above for both cases. The Grails Gradle plugin
+packages its value as <code>grails.gorm.defaultIdType</code>, which is used at runtime for precompiled plugin
+domains. No duplicate application configuration is required, although normal external configuration
+can override the packaged value.</p>
+</div>
+<div class="paragraph">
+<p>MongoDB resolves the portable identity to <code>String</code> for <code>native</code> and <code>Long</code> for <code>long</code>. The result is
+stored in the entity mapping metadata, so normal persistence operations do not perform repeated type
+resolution. An explicitly declared concrete identity type still wins.</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+This changes the type of a field that already holds data. An existing MongoDB application whose
+domain classes rely on the default has sequence-generated <code>Long</code> <code>_id</code> values stored, and turning this on
+makes new documents use <code>ObjectId</code> hex strings instead. Choose it when an application is written, or
+migrate what has already been stored.
+</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The setting reaches the compiler through the Grails Gradle plugin, so it applies to Gradle builds.
+Compiling the same sources with an IDE configured to bypass Gradle produces <code>Long</code> ids.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect3">
 <h4 id="_assigned_identifiers">Assigned Identifiers</h4>
 <div class="paragraph">
 <p>Note that if you manually assign an identifier, then you will need to use the <code>insert</code> method instead of the <code>save</code> method, otherwise GORM can&#8217;t work out whether you are trying to achieve an insert or an update. Example:</p>
@@ -508,10 +589,10 @@ p.save()</code></pre>
 <div class="sect3">
 <h4 id="_decoupling_the_declared_type_from_the_storage_type">Decoupling the Declared Type from the Storage Type</h4>
 <div class="paragraph">
-<p>When a domain declares <code>String id</code>, GORM by default writes <code>_id</code> as a BSON <code>String</code>. This is convenient in application code — HTTP controllers return clean JSON, URLs embed ids directly, and you never need <code>new ObjectId(...)</code> at call sites — but it gives up the native <code>ObjectId</code> benefits at the storage layer (12-byte index entries vs. 24-byte hex strings, embedded creation timestamp, etc.).</p>
+<p>A domain that declares <code>String id</code> is convenient in application code — HTTP controllers return clean JSON, URLs embed ids directly, and you never need <code>new ObjectId(...)</code> at call sites. Writing <code>_id</code> as a BSON <code>String</code> to match would give up the native <code>ObjectId</code> benefits at the storage layer (12-byte index entries vs. 24-byte hex strings, embedded creation timestamp, etc.).</p>
 </div>
 <div class="paragraph">
-<p>You can get both using the <code>storedAs</code> mapping option. The domain sees a <code>String id</code> (hex form), but <code>_id</code> on disk is a BSON <code>ObjectId</code>:</p>
+<p>The <code>storedAs</code> mapping option decouples the two, so you get both: the domain sees a <code>String id</code> (hex form), while <code>_id</code> on disk is a BSON <code>ObjectId</code>. As of Grails 8.0.0 this is the default for any <code>String id</code> that declares no <code>storedAs</code> of its own — the mapping below is what that default applies for you, and is only needed to be explicit or to override a global <code>defaultStoredAs: string</code>:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -551,18 +632,33 @@ class Person {
 <div class="sect4">
 <h5 id="_global_default">Global Default</h5>
 <div class="paragraph">
-<p>You can opt in globally with an <code>application.yml</code> setting, which applies to every domain declaring <code>String id</code> that does not specify its own <code>storedAs</code>:</p>
+<p>As of Grails 8.0.0 this is the <strong>default</strong>: every domain declaring <code>String id</code> that does not specify its own <code>storedAs</code> stores <code>_id</code> as a BSON <code>ObjectId</code>. No configuration is required to get the behavior described above.</p>
+</div>
+<div class="paragraph">
+<p>To opt the whole application back out — for example an existing application whose data already holds BSON String <code>_id</code> values — pin the previous default in <code>application.yml</code>:</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight"><code class="language-yaml" data-lang="yaml">grails:
   mongodb:
     stringIds:
-      defaultStoredAs: objectid</code></pre>
+      defaultStoredAs: string</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Valid values are <code>string</code> (current default, BSON String) and <code>objectid</code> (BSON ObjectId). Unrecognized values fall back to the default with a warning logged at startup.</p>
+<p>Valid values are <code>objectid</code> (BSON ObjectId, the default) and <code>string</code> (BSON String, the pre-8.0.0 default). Unrecognized values fall back to the default with a warning logged at startup.</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+This default changed in 8.0.0. An application upgrading from 7.x with existing <code>String id</code> data is reading and writing BSON String <code>_id</code> values; on 8.0.0 those documents are no longer matched by id lookups unless you either migrate the stored <code>_id</code> values to <code>ObjectId</code> or set <code>defaultStoredAs: string</code> above.
+</td>
+</tr>
+</table>
 </div>
 <div class="paragraph">
 <p>Per-domain <code>storedAs</code> always wins over the global default. Domains using a natural string key (slug, email, UUID) should opt out explicitly:</p>
@@ -597,7 +693,7 @@ class Person {
 </div>
 <div id="footer">
 <div id="footer-text">
-Version 7.2.4<br>
+Version 8.0.0-RC1<br>
 </div>
 </div>
 </body>

@@ -530,7 +530,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <div id="header">
 <h1>GORM for MongoDB</h1>
 <div class="details">
-<span id="revnumber">version 7.2.4</span>
+<span id="revnumber">version 8.0.0-RC1</span>
 </div>
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
@@ -550,8 +550,10 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#mongoOnly">Using MongoDB Standalone</a></li>
 <li><a href="#withHibernate">Combining MongoDB and Hibernate</a></li>
 <li><a href="#advancedConfig">Advanced Configuration</a></li>
+<li><a href="#embeddedMongo">Embedded MongoDB</a></li>
 <li><a href="#springBoot">Using GORM in Spring Boot</a></li>
 <li><a href="#outsideGrails">GORM for MongoDB without Grails</a></li>
+<li><a href="#springDataInterop">Spring Data MongoDB Interoperability</a></li>
 </ul>
 </li>
 <li><a href="#objectMapping">Mapping Domain Classes</a>
@@ -571,6 +573,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#querying">Querying</a>
 <ul class="sectlevel2">
 <li><a href="#queryingBasics">Basic Querying</a></li>
+<li><a href="#_bulk_updates">Bulk Updates</a></li>
 <li><a href="#geoSpatial">Geospacial Querying</a></li>
 <li><a href="#textSearch">Full Text Search</a></li>
 </ul>
@@ -600,7 +603,11 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 </ul>
 </li>
 <li><a href="#lowLevelApi">Using the MongoDB Driver Directly</a></li>
-<li><a href="#transactions">Transactions</a></li>
+<li><a href="#transactions">Transactions</a>
+<ul class="sectlevel2">
+<li><a href="#readOnlyTransactions">Read-Only Transactions</a></li>
+</ul>
+</li>
 <li><a href="#testing">Unit Testing</a></li>
 <li><a href="#_integration_testing">Integration Testing</a></li>
 <li><a href="#reference">Reference</a>
@@ -704,6 +711,40 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <h3 id="releaseNotes">Release Notes</h3>
 <div class="paragraph">
 <p>Below are the details of the changes across releases:</p>
+</div>
+<div class="sect3">
+<h4 id="_8_0">8.0</h4>
+<div class="ulist">
+<ul>
+<li>
+<p>TTL indexes via <code>indexAttributes: [expireAfterSeconds: N]</code> in the mapping DSL</p>
+</li>
+<li>
+<p>Text and other special indexes via <code>indexAttributes: [type: 'text']</code></p>
+</li>
+<li>
+<p>In-place reconciliation of changed index options, and of a declared index name held by an index on other keys, with opt-in <code>indexAttributes: [recreateOnConflict: true]</code></p>
+</li>
+<li>
+<p>Index creation on startup can be switched off with <code>grails.mongodb.buildIndexes = false</code>, and run on demand with <code>MongoDatastore.buildIndex()</code>, or moved off the startup thread with <code>grails.mongodb.buildIndexesAsync = true</code></p>
+</li>
+<li>
+<p><code>grails.gorm</code> and <code>grails.mongodb</code> settings are now applied when GORM is given an existing <code>MongoClient</code>, such as the one contributed by Spring Boot. Configuration that was previously ignored on this path — <code>failOnError</code>, the default mapping and constraints, flush behaviour and multi-tenancy — now takes effect. See <a href="#upgradeNotes">Upgrade Notes</a> before upgrading an application that supplies its own client.</p>
+</li>
+<li>
+<p>The index build reports what it created, what was already present and how long it took, in one summary line per build</p>
+</li>
+<li>
+<p>Inside a <code>withConnection</code> block, static methods called on the class and instance methods such as <code>save()</code> now use the block&#8217;s connection, as documented; previously only the methods called without naming the class did</p>
+</li>
+<li>
+<p>The same holds inside a session or transaction opened through a connection, such as <code>Book.moreBooks.withTransaction { }</code>, and inside a method annotated <code>@Transactional(connection = 'moreBooks')</code>: <code>book.save()</code> in it was written to the default connection</p>
+</li>
+<li>
+<p>An application can be checkpointed and restored with CRaC: GORM closes every <code>MongoClient</code> it created, on every connection and including the one built from Spring Boot&#8217;s settings, before the checkpoint and builds replacements after the restore. See <a href="#advancedConfig">Advanced Configuration</a>.</p>
+</li>
+</ul>
+</div>
 </div>
 <div class="sect3">
 <h4 id="_7_1">7.1</h4>
@@ -912,6 +953,53 @@ MongoDB plugin 1.2 and above requires Grails 2.1.5 or 2.2.1 as a minimum Grails 
 <div class="sect2">
 <h3 id="upgradeNotes">Upgrade Notes</h3>
 <div class="sect3">
+<h4 id="_string_id_storage_now_defaults_to_objectid">String id Storage Now Defaults to ObjectId</h4>
+<div class="paragraph">
+<p>A domain that declares <code>String id</code> without its own <code>storedAs</code> mapping now persists <code>_id</code> as a BSON <code>ObjectId</code>. Before 8.0.0 the default was BSON <code>String</code>.</p>
+</div>
+<div class="paragraph">
+<p>Application code is unaffected: <code>person.id</code> is still the 24-char hex <code>String</code>, and <code>get</code>, <code>findAllByIdInList</code>, updates and deletes still accept hex strings. What changes is the BSON type written to and matched in the database.</p>
+</div>
+<div class="paragraph">
+<p><strong>This is a data-compatibility change.</strong> An application upgrading from 7.x whose collections already hold String <code>_id</code> values has two options:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Keep the previous behavior by pinning the old default:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+  <span class="key">mongodb</span>:
+    <span class="key">stringIds</span>:
+      <span class="key">defaultStoredAs</span>: <span class="string"><span class="content">string</span></span></code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Or migrate the stored <code>_id</code> values to <code>ObjectId</code>. Because <code>_id</code> is immutable, each document must be reinserted under the converted id rather than updated in place.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Domains keyed by a natural string value (slug, email, UUID) should declare the opt-out explicitly, since such values are not valid ObjectId hex:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">UserProfile</span> {
+    <span class="predefined-type">String</span> id   <span class="comment">// e.g. &quot;jsmith@example.com&quot;</span>
+
+    <span class="directive">static</span> mapping = {
+        id <span class="key">generator</span>: <span class="string"><span class="delimiter">'</span><span class="content">assigned</span><span class="delimiter">'</span></span>, <span class="key">storedAs</span>: <span class="predefined-type">String</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>See <a href="#idGeneration">Identity Generation</a> for the full description of <code>storedAs</code>.</p>
+</div>
+</div>
+<div class="sect3">
 <h4 id="_dependency_upgrades">Dependency Upgrades</h4>
 <div class="paragraph">
 <p>GORM 7.1 supports Apache Groovy 3, Java 14, MongoDB Driver 4.3 and Spring 5.3.x.</p>
@@ -951,6 +1039,78 @@ abstract class BookService {
 <p>Please note that with autowire by-type as the default, when multiple beans for same type are found the application with throw Exception. Use the Spring `@Qualifier annotation for <a href="https://docs.spring.io/spring-framework/docs/5.3.10/reference/html/core.html#beans-autowired-annotation-qualifiers">Fine-tuning Annotation Based Autowiring with Qualifiers</a>.</p>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_configuration_is_now_applied_to_an_externally_supplied_client">Configuration Is Now Applied to an Externally-Supplied Client</h4>
+<div class="paragraph">
+<p>When GORM is handed a <code>MongoClient</code> that it did not create — which is what happens whenever a <code>MongoClient</code> bean is already present, as with Spring Boot&#8217;s MongoDB auto-configuration — it built its settings from the defaults and applied only the database name. Everything else configured under <code>grails.gorm</code> and <code>grails.mongodb</code> was silently ignored on that path. Those settings are now applied, exactly as they always were when GORM creates the client itself.</p>
+</div>
+<div class="paragraph">
+<p>Nothing in your configuration changes. What changes is that configuration you already have starts taking effect:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>grails.gorm.failOnError</code> — an invalid <code>save()</code> now throws <code>ValidationException</code> instead of returning <code>null</code>. An application that has had this set for years while running without it will start throwing on the first invalid save.</p>
+</li>
+<li>
+<p><code>grails.gorm.default.mapping</code> and <code>grails.gorm.default.constraints</code> — now applied to every domain class.</p>
+</li>
+<li>
+<p><code>grails.gorm.autoFlush</code>, <code>grails.gorm.markDirty</code> and <code>grails.gorm.flushMode</code> — now honoured.</p>
+</li>
+<li>
+<p><code>grails.gorm.multiTenancy</code> / <code>grails.mongodb.multiTenancy</code> — tenant discrimination and routing now follow the configured mode instead of <code>NONE</code>, so review your tenant resolver and your existing data before upgrading.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Multi-tenancy needs one extra step on this path. A <code>TenantResolver</code> registered as a Spring bean is injected into the connection source factory, and there is no factory involved when the client is supplied, so the bean is never consulted. Configure the resolver by class instead:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">gorm</span>:
+        <span class="key">multiTenancy</span>:
+            <span class="key">mode</span>: <span class="string"><span class="content">DISCRIMINATOR</span></span>
+            <span class="key">tenantResolverClass</span>: <span class="string"><span class="content">com.example.MyTenantResolver</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Without it the mode is active but the resolver is <code>NoTenantResolver</code>, which throws <code>TenantNotFoundException</code> on every tenant-scoped operation. Settings under <code>grails.mongodb</code> continue to take precedence over the <code>grails.gorm</code> equivalents.</p>
+</div>
+<div class="paragraph">
+<p>The connection details are the exception, since the supplied client is already connected: <code>grails.mongodb.url</code> is not applied to it. That also matters for a connection declared under <code>grails.mongodb.connections</code> without a <code>url</code> of its own, which falls back to the <code>host</code>, <code>port</code>, <code>username</code> and <code>password</code> settings — <code>127.0.0.1:27017</code> unless those are set — rather than to <code>grails.mongodb.url</code>. Give each such connection its own <code>url</code>.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_calls_on_a_class_inside_a_named_connections_session_or_transaction_use_that_connection">Calls on a Class Inside a Named Connection&#8217;s Session or Transaction Use That Connection</h4>
+<div class="paragraph">
+<p>Inside <code>Book.moreBooks.withTransaction { }</code>, <code>Book.moreBooks.withNewSession { }</code>, a <code>withConnection</code> block or a method annotated <code>@Transactional(connection = 'moreBooks')</code> for a class that declares that connection, the calls on <code>Book</code> itself, such as <code>Book.list()</code> or <code>book.save()</code>, now use that connection. Previously they used the default connection, so a document saved there was written to the default database. Code that reached the default connection from inside such a block by calling the class directly should name it, as in ``Book.<em>default</em>.list()``.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_mongoclient_lifecycle_for_an_externally_supplied_client">MongoClient Lifecycle for an Externally-Supplied Client</h4>
+<div class="paragraph">
+<p>When you construct a <code>MongoDatastore</code> with a <code>MongoClient</code> that you created yourself, GORM no longer closes that client when the datastore shuts down. The client is owned by whoever created it, so closing it is now your responsibility.</p>
+</div>
+<div class="paragraph">
+<p>This only affects you if you previously relied on <code>MongoDatastore.close()</code> to also close a client you passed in:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">MongoClient mongoClient = MongoClients.create(<span class="string"><span class="delimiter">&quot;</span><span class="content">mongodb://localhost/mydb</span><span class="delimiter">&quot;</span></span>)
+MongoDatastore datastore = <span class="keyword">new</span> MongoDatastore(mongoClient, Person)
+
+<span class="comment">// ...</span>
+
+datastore.close()    <span class="comment">// no longer closes mongoClient</span>
+mongoClient.close()  <span class="comment">// close the client you created</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>No change is required when GORM creates the client itself — for example <code>new MongoDatastore(Person)</code>, or configuration-driven setups where GORM builds the client from <code>grails.mongodb.*</code> settings — because GORM continues to own and close those clients. A <code>MongoClient</code> registered as a Spring bean likewise continues to be closed by the <code>ApplicationContext</code>.</p>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -965,7 +1125,7 @@ abstract class BookService {
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
-    compile 'org.grails.plugins:mongodb:7.2.4'
+    compile 'org.grails.plugins:mongodb:8.0.0-RC1'
 }</code></pre>
 </div>
 </div>
@@ -1002,7 +1162,7 @@ abstract class BookService {
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.mongodb:mongodb-driver:5.9.2"</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.mongodb:mongodb-driver:5.12.0"</code></pre>
 </div>
 </div>
 </div>
@@ -1094,7 +1254,21 @@ abstract class BookService {
 <div class="sect3">
 <h4 id="_mongo_database_connection_configuration">Mongo Database Connection Configuration</h4>
 <div class="paragraph">
-<p>As mentioned the GORM for MongoDB plugin will configure all the defaults for you, but if you wish to customize those defaults you can do so in the <code>grails-app/conf/application.groovy</code> file:</p>
+<p>As mentioned the GORM for MongoDB plugin will configure all the defaults for you, but if you wish to customize those defaults you can do so in <code>grails-app/conf/application.yml</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">mongodb</span>:
+        <span class="key">host</span>: <span class="string"><span class="content">localhost</span></span>
+        <span class="key">port</span>: <span class="string"><span class="content">27017</span></span>
+        <span class="key">username</span>: <span class="string"><span class="content">blah</span></span>
+        <span class="key">password</span>: <span class="string"><span class="content">blah</span></span>
+        <span class="key">databaseName</span>: <span class="string"><span class="content">foo</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>or equivalently in <code>grails-app/conf/application.groovy</code>:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -1108,6 +1282,18 @@ abstract class BookService {
     }
 }</code></pre>
 </div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+These settings are read by name, so write them exactly as they are documented. Unlike Spring Boot&#8217;s own configuration properties they are not relaxed-bound, and a kebab-case spelling such as <code>database-name</code> is not recognised — it is ignored, leaving the default in place.
+</td>
+</tr>
+</table>
 </div>
 <div class="paragraph">
 <p>The <code>databaseName</code> setting configures the default database name. If not specified the <code>databaseName</code> will default to the name of your application.</p>
@@ -1164,6 +1350,8 @@ abstract class BookService {
         username = <span class="string"><span class="delimiter">&quot;</span><span class="content">..</span><span class="delimiter">&quot;</span></span> <span class="comment">// the username to connect with</span>
         password = <span class="string"><span class="delimiter">&quot;</span><span class="content">..</span><span class="delimiter">&quot;</span></span> <span class="comment">// the password to connect with</span>
         stateless = <span class="predefined-constant">false</span> <span class="comment">// whether to use stateless sessions by default</span>
+        buildIndexes = <span class="predefined-constant">true</span> <span class="comment">// whether GORM creates the indexes declared in mapping blocks by itself on startup</span>
+        buildIndexesAsync = <span class="predefined-constant">false</span> <span class="comment">// whether index builds run on a background thread instead of blocking the caller</span>
 
         <span class="comment">// Alternatively, using  'url'</span>
         <span class="comment">// url = &quot;mongodb://localhost/mydb&quot;</span>
@@ -1201,7 +1389,437 @@ abstract class BookService {
 <p>The <code>*</code> method is used to indicate that the setting applies to all properties.</p>
 </div>
 <div class="paragraph">
-<p>You can also set a global default for the storage type of <code>String id</code> fields via <code>grails.mongodb.stringIds.defaultStoredAs</code> (values <code>string</code> or <code>objectid</code>). See <a href="#idGeneration">Identity Generation</a> for details.</p>
+<p>The storage type of <code>String id</code> fields is controlled globally by <code>grails.mongodb.stringIds.defaultStoredAs</code> (values <code>objectid</code>, the default as of 8.0.0, or <code>string</code>). See <a href="#idGeneration">Identity Generation</a> for details, including the upgrade note for applications with existing String <code>_id</code> data.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_persistence_engine_deprecated">Persistence Engine (deprecated)</h4>
+<div class="paragraph">
+<p><code>grails.mongodb.engine</code> selects the persistence engine. <code>codec</code> is the default and the recommended value. <code>mapping</code> remains available for compatibility, but is deprecated.</p>
+</div>
+<div class="paragraph">
+<p>The <code>mapping</code> engine is deprecated and will be removed in a future release. It reaches MongoDB through a separate persister hierarchy that has to be kept in step with the codec one for every change to the storage layer, and it offers no capability the codec engine lacks. An application setting it should remove the setting:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+  <span class="key">mongodb</span>:
+    <span class="key">engine</span>: <span class="string"><span class="content">mapping   </span></span><i class="conum" data-value="1"></i><b>(1)</b></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Deprecated. Remove this to use the default codec engine.</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Selecting it logs a warning at startup.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_index_creation_on_startup">Index Creation on Startup</h4>
+<div class="paragraph">
+<p>GORM creates and reconciles the indexes declared in your mapping blocks each time the datastore starts, and startup waits for MongoDB to finish building them. Set <code>grails.mongodb.buildIndexes = false</code> to leave the indexes on the server untouched instead, and build them with <code>MongoDatastore.buildIndex()</code> when you choose, or <code>grails.mongodb.buildIndexesAsync = true</code> to keep building them but on a background thread — see <a href="#queryIndexes">Querying Indexing</a> for details and when to use each.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_checkpoint_and_restore_crac">Checkpoint and Restore (CRaC)</h4>
+<div class="paragraph">
+<p>GORM takes part in the Spring lifecycle, so an application can be checkpointed with <a href="https://openjdk.org/projects/crac/">CRaC</a> and restored. CRaC refuses to checkpoint a process holding open sockets, and a connected <code>MongoClient</code> holds several, so before the checkpoint GORM closes the client of every connection: the default one, each one under <code>grails.mongodb.connections</code>, and any added at runtime. When the application is restored, GORM builds a replacement for each from the same settings. An <a href="#embeddedMongo">embedded MongoDB</a> is stopped after the clients and started again before them.</p>
+</div>
+<div class="paragraph">
+<p>Everything that reaches MongoDB through GORM uses the replacements, including multi-tenancy and the <a href="#springDataInterop">Spring Data MongoDB integration</a>. A <code>MongoClient</code> that application code obtained before the checkpoint, for example from <code>MongoDatastore.getMongoClient()</code>, is one of the closed ones: obtain it again after the restore rather than keeping it.</p>
+</div>
+<div class="paragraph">
+<p>A client the application supplied to GORM is neither closed nor replaced. It belongs to whoever created it, and that code has to close it before the checkpoint for the checkpoint to succeed. The client that Spring Boot&#8217;s settings produce, which GORM builds itself when the application declares no <code>MongoClient</code> bean of its own, is GORM&#8217;s and is closed and built again like the rest.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_multi_document_transactions">Multi-Document Transactions</h4>
+<div class="paragraph">
+<p>By default a GORM transaction for MongoDB is a client-side unit of work: pending inserts, updates and deletes are batched and flushed to the server when the transaction commits, but each write is applied individually and is not rolled back if a later operation fails.</p>
+</div>
+<div class="paragraph">
+<p>Since MongoDB 4.0, the server supports multi-document ACID transactions. To have GORM run transactional operations inside a real server-side transaction — so that all writes within a <code>withTransaction</code> block (or a <code>@Transactional</code> service method) commit or roll back atomically — enable:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails {
+    mongodb {
+        transactional = <span class="predefined-constant">true</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>With this enabled, a GORM transaction starts a MongoDB session and transaction; on commit all buffered writes are committed together, and on rollback they are discarded on the server:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">Person.withTransaction {
+    <span class="keyword">new</span> Person(<span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Fred</span><span class="delimiter">&quot;</span></span>).save()
+    <span class="keyword">new</span> Person(<span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Wilma</span><span class="delimiter">&quot;</span></span>).save()
+    <span class="comment">// both inserts commit together, or neither is applied if an exception is thrown</span>
+}</code></pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Multi-document transactions require a replica set or a sharded cluster; they are not supported on a standalone <code>mongod</code>. If <code>transactional</code> is enabled but a standalone topology is detected, GORM logs a warning once and falls back to the default client-side flush behavior. Identifier generation for native (<code>Long</code>) identity uses an independent counter and is intentionally not enrolled in the transaction, mirroring the non-transactional semantics of database sequences.
+</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+A per-transaction timeout is not supported for MongoDB server-side transactions. The session and transaction are started before the transaction manager applies a timeout, so a timeout on the <code>withTransaction</code> or <code>@Transactional</code> definition cannot be honored. Rather than silently ignore it, GORM throws a <code>TransactionUsageException</code> when a non-default timeout is requested. The server enforces its own maximum transaction duration via <code>transactionLifetimeLimitSeconds</code> (60 seconds by default).
+</td>
+</tr>
+</table>
+</div>
+<div class="sect4">
+<h5 id="_retry_semantics">Retry Semantics</h5>
+<div class="paragraph">
+<p>MongoDB labels two categories of transaction errors as retryable, and GORM deliberately handles only one of them:</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1"><code>UnknownTransactionCommitResult</code></dt>
+<dd>
+<p>The outcome of the commit is unknown — for example a network failure or a replica set election occurred while the commit was in flight. The commit may already have succeeded on the server, and MongoDB guarantees that re-issuing it is safe and will not apply the writes twice. GORM therefore retries the commit automatically (up to three times) before propagating the error.</p>
+</dd>
+<dt class="hdlist1"><code>TransientTransactionError</code></dt>
+<dd>
+<p>The entire transaction has failed — for example a write conflict with a concurrent transaction — and can only be recovered by re-executing everything inside it. GORM intentionally does <strong>not</strong> retry these. Re-running the transaction body would also re-run any side effects it contains (sending email, calling external services, publishing messages), which is only safe when the body is idempotent — something only the application can know. The exception is propagated and whole-transaction retry is left to application code, matching the behavior of Spring Data MongoDB&#8217;s <code>MongoTransactionManager</code>.</p>
+</dd>
+</dl>
+</div>
+<div class="paragraph">
+<p>Applications whose transaction body is safe to re-run can implement the retry themselves by checking for the <code>TransientTransactionError</code> label:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">com.mongodb.MongoException</span>
+
+<span class="type">int</span> attempts = <span class="integer">0</span>
+<span class="keyword">while</span> (<span class="predefined-constant">true</span>) {
+    <span class="keyword">try</span> {
+        Person.withTransaction {
+            <span class="comment">// transactional work that is safe to re-run</span>
+        }
+        <span class="keyword">break</span>
+    }
+    <span class="keyword">catch</span> (MongoException e) {
+        <span class="keyword">if</span> (e.hasErrorLabel(MongoException.TRANSIENT_TRANSACTION_ERROR_LABEL) &amp;&amp; ++attempts &lt; <span class="integer">3</span>) {
+            <span class="keyword">continue</span>
+        }
+        <span class="keyword">throw</span> e
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Declarative retry libraries such as Spring Retry (<code>@Retryable</code>) can be used instead of a manual loop, applied around the transactional method.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="embeddedMongo">Embedded MongoDB</h3>
+<div class="paragraph">
+<p><code>grails-data-mongodb-embedded</code> starts a MongoDB server as the application starts, so
+development and testing need neither a MongoDB installation nor Docker. Applications created
+by Grails Forge with MongoDB selected include it, asked for by the development and test
+environments.</p>
+</div>
+<div class="paragraph">
+<p>A server is asked for by the URL, the way an in-memory SQL database is. Where an application
+would name a host, it names <code>embedded</code> instead:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">implementation <span class="string"><span class="delimiter">&quot;</span><span class="content">org.apache.grails:grails-data-mongodb-embedded</span><span class="delimiter">&quot;</span></span></code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">environments</span>:
+    <span class="key">development</span>:
+        <span class="key">grails</span>:
+            <span class="key">mongodb</span>:
+                <span class="key">url</span>: <span class="string"><span class="content">mongodb://embedded/bookstore</span></span>
+    <span class="key">test</span>:
+        <span class="key">grails</span>:
+            <span class="key">mongodb</span>:
+                <span class="key">url</span>: <span class="string"><span class="content">mongodb://embedded/bookstore</span></span>
+    <span class="key">production</span>:
+        <span class="key">grails</span>:
+            <span class="key">mongodb</span>:
+                <span class="key">url</span>: <span class="string"><span class="content">mongodb://localhost:27017/bookstore</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Nothing else switches it on and nothing switches it off. A URL naming a host is served by the
+driver and no server is started, so adding the dependency alone never changes how an
+application connects — in the same way that an application with <code>h2</code> on its classpath and a
+PostgreSQL URL never starts H2.</p>
+</div>
+<div class="paragraph">
+<p>A port may be given as <code>mongodb://embedded:27018/bookstore</code>. Without one, the port is 27017
+offset by however far <code>server.port</code> has moved from 8080, so two applications run side by side
+without colliding.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+A host genuinely named <code>embedded</code> cannot be reached this way. Name it by its address or
+its fully qualified name instead.
+</td>
+</tr>
+</table>
+</div>
+<div class="sect3">
+<h4 id="_choosing_a_backend">Choosing a backend</h4>
+<div class="paragraph">
+<p>Two backends are supported.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 14.2857%;">
+<col style="width: 42.8571%;">
+<col style="width: 42.8572%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top"></th>
+<th class="tableblock halign-left valign-top"><code>in-memory</code></th>
+<th class="tableblock halign-left valign-top"><code>flapdoodle</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Included</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Yes, with this module</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No, add <code>de.flapdoodle.embed:de.flapdoodle.embed.mongo</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Startup</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Milliseconds, inside this JVM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">About a second, after downloading a MongoDB binary once to <code>~/.embedmongo</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fidelity</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reimplements the wire protocol, so transactions, change streams, <code>$text</code> and some <code>$expr</code>
+operators are unsupported</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A real <code>mongod</code>, so everything behaves as it does in production</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Keeps data</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Yes, with <code>embedded.mongodb.database-dir</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reported version</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>5.0.0</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The version started, <code>8.0</code> by default</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><code>in-memory</code> is used unless flapdoodle is on the classpath, in which case flapdoodle is
+preferred, so adding the dependency is all that is needed to move to a real <code>mongod</code>.
+Set <code>embedded.mongodb.backend</code> to choose explicitly.</p>
+</div>
+<div class="paragraph">
+<p>Flapdoodle is not a dependency of this module because it requires <code>jgrapht</code>, which is
+offered under LGPL-2.1 or EPL-2.0 and so cannot be required by an Apache release. An
+application adds it in the same way it chooses a SQL driver:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">implementation <span class="string"><span class="delimiter">&quot;</span><span class="content">de.flapdoodle.embed:de.flapdoodle.embed.mongo:4.33.0</span><span class="delimiter">&quot;</span></span></code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_configuration">Configuration</h4>
+<div class="paragraph">
+<p>Whether to start a server, which port, and which database are all read from the URL. These
+configure the server behind it.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 66.6667%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Property</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>embedded.mongodb.backend</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>in-memory</code> or <code>flapdoodle</code>. Defaults to flapdoodle when it is on the classpath,
+otherwise <code>in-memory</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>embedded.mongodb.database-dir</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Where to keep the data so it outlives the server. Only the flapdoodle backend supports
+this; the <code>in-memory</code> backend reports an error rather than discarding the data silently.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>embedded.mongodb.version</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The MongoDB version for backends that can choose one, such as <code>V8_0</code> for flapdoodle.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>embedded.mongodb.replica-set</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The name of the replica set to run as, such as <code>rs0</code>. Unset, the server is standalone
+unless <code>grails.mongodb.transactional</code> is <code>true</code>, which asks for one implicitly.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>embedded.mongodb.property-names</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Comma separated properties that may name an embedded server. Defaults to
+<code>grails.mongodb.url</code>.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="_transactions">Transactions</h4>
+<div class="paragraph">
+<p>A multi-document transaction, a change stream and a causally consistent read are all refused
+by a standalone MongoDB server: every one of them needs a replica set. An application that
+asks GORM for transactions is therefore given one - a set of a single node, which is what a
+single machine has to offer, and enough for all three:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">mongodb</span>:
+        <span class="key">url</span>: <span class="string"><span class="content">mongodb://embedded/bookstore</span></span>
+        <span class="key">transactional</span>: <span class="string"><span class="content">true</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The server runs as the replica set <code>rs0</code> and is handed to the application only once it has
+elected itself primary, so the first query does not race the election. Name the set with
+<code>embedded.mongodb.replica-set</code> to call it something else, or to run one without asking GORM
+for transactions:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">embedded</span>:
+    <span class="key">mongodb</span>:
+        <span class="key">replica-set</span>: <span class="string"><span class="content">rs0</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Only the flapdoodle backend can do this, because only a real <code>mongod</code> has replication. The
+<code>in-memory</code> backend reimplements the wire protocol and refuses transactions whatever it is
+configured with.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+A replica set is initiated by a command a driver sends rather than by a setting, so
+<code>org.mongodb:mongodb-driver-sync</code> has to be on the classpath. Any application talking to
+MongoDB already has it; a standalone embedded server does not need it.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_production">Production</h4>
+<div class="paragraph">
+<p>A generated application names a real host in production, so nothing is started there.</p>
+</div>
+<div class="paragraph">
+<p>Where an embedded server in production is genuinely wanted, ask for one in that
+environment&#8217;s url and use flapdoodle with a directory, so the data survives a restart:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">environments</span>:
+    <span class="key">production</span>:
+        <span class="key">grails</span>:
+            <span class="key">mongodb</span>:
+                <span class="key">url</span>: <span class="string"><span class="content">mongodb://embedded/bookstore</span></span>
+        <span class="key">embedded</span>:
+            <span class="key">mongodb</span>:
+                <span class="key">backend</span>: <span class="string"><span class="content">flapdoodle</span></span>
+                <span class="key">database-dir</span>: <span class="string"><span class="content">./prodMongoDb</span></span></code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_restarts_and_ports">Restarts and ports</h4>
+<div class="paragraph">
+<p>A server started by this module runs until the JVM exits, so a Spring Boot DevTools
+restart reuses it instead of starting another. Only a server this module started is
+reused: if anything else is already holding the port, startup fails with an error naming
+the port rather than connecting to an unrelated service.</p>
+</div>
+<div class="paragraph">
+<p>A restart that carries a different setting - a backend, a database directory, a version, a
+replica set, or transactions being switched on - is given a server that matches it, which
+means the previous one is replaced and anything it held in memory goes with it. Data in a
+<code>database-dir</code> outlives the replacement, except across a change of <code>version</code>: MongoDB
+refuses to start against a directory written by a different release. To use a MongoDB started by hand,
+name its host in <code>grails.mongodb.url</code> as usual.</p>
+</div>
+<div class="paragraph">
+<p>Switching <code>backend</code> counts as much as the rest: an application handed the in-memory server
+after asking for flapdoodle would not fail at the switch but later, at the first transaction
+or <code>$text</code> query it ran. Naming a <code>backend</code> whose library is not on the classpath fails the
+restart rather than handing back the server already listening, which is what that
+configuration does when nothing is running yet.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_outside_grails">Outside Grails</h4>
+<div class="paragraph">
+<p>The module is plain Java and knows nothing about Grails beyond the default property name,
+so <code>embedded.mongodb.property-names</code> makes it usable from any Spring application:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">spring</span>:
+    <span class="key">data</span>:
+        <span class="key">mongodb</span>:
+            <span class="key">uri</span>: <span class="string"><span class="content">mongodb://embedded/bookstore</span></span>
+<span class="key">embedded</span>:
+    <span class="key">mongodb</span>:
+        <span class="key">property-names</span>: <span class="string"><span class="content">spring.data.mongodb.uri</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Spring Data MongoDB applications are usually better served by flapdoodle&#8217;s own
+<code>de.flapdoodle.embed.mongo.spring3x</code> auto configuration, which this module deliberately
+does not duplicate.</p>
 </div>
 </div>
 </div>
@@ -1212,7 +1830,7 @@ abstract class BookService {
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">compile("org.apache.grails:grails-data-mongodb-spring-boot:7.2.4")</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">compile("org.apache.grails:grails-data-mongodb-spring-boot:8.0.0-RC1")</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1269,7 +1887,7 @@ If your GORM entities are in a different package specify the package name as the
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.grails:grails-datastore-gorm-mongodb:7.2.4"</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.grails:grails-datastore-gorm-mongodb:8.0.0-RC1"</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1294,6 +1912,29 @@ println Person.count()</code></pre>
 </div>
 </div>
 <div class="paragraph">
+<p>You can also supply your own <code>com.mongodb.client.MongoClient</code> if you need to configure the driver directly:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">MongoClient mongoClient = MongoClients.create(<span class="string"><span class="delimiter">&quot;</span><span class="content">mongodb://localhost/mydb</span><span class="delimiter">&quot;</span></span>)
+<span class="keyword">def</span> datastore = <span class="keyword">new</span> MongoDatastore(mongoClient, Person)
+
+println Person.count()</code></pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+When you supply your own <code>MongoClient</code>, GORM does not close it when the datastore shuts down — the client is owned by whoever created it, so you are responsible for closing it. When GORM creates the client itself (for example <code>new MongoDatastore(Person)</code>), it closes it for you.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
 <p>For configuration you can either pass a map or an instance of the <code>org.springframework.core.env.PropertyResolver</code> interface:</p>
 </div>
 <div class="listingblock">
@@ -1313,6 +1954,107 @@ def initializer = <span class="keyword">new</span> MongoDbDataStoreSpringInitial
 initializer.configureForBeanDefinitionRegistry(myApplicationContext)
 
 println Person.count()</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="springDataInterop">Spring Data MongoDB Interoperability</h3>
+<div class="paragraph">
+<p>The optional <code>grails-data-mongodb-spring-data</code> module lets an application use GORM for MongoDB and <a href="https://spring.io/projects/spring-data-mongodb">Spring Data MongoDB</a> (its <code>MongoTemplate</code> and repositories) side by side, sharing one <code>MongoClient</code>, one database and one transaction. Add the dependency:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">implementation "org.apache.grails:grails-data-mongodb-spring-data:8.0.0-RC1"</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>When the module and Spring Data MongoDB are on the classpath of a Spring Boot application that already has a GORM <code>MongoDatastore</code>, it auto-configures, over GORM&#8217;s existing connection:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>a <code>MongoDatabaseFactory</code> bound to GORM&#8217;s <code>MongoClient</code> and default database (GORM keeps ownership of the client; the factory will not close it, and uses the replacement GORM builds after a <a href="#advancedConfig">CRaC restore</a>),</p>
+</li>
+<li>
+<p>a <code>MongoTemplate</code> (named <code>mongoTemplate</code>) and its <code>MappingMongoConverter</code>, sharing the driver-level codec registry,</p>
+</li>
+<li>
+<p>a primary <code>transactionManager</code> that lets GORM and Spring Data participate in a single MongoDB transaction.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Spring Data repositories are enabled the usual way, in a package separate from your GORM <code>@Entity</code> classes:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="annotation">@EnableMongoRepositories</span>(basePackages = <span class="string"><span class="delimiter">&quot;</span><span class="content">com.example.repositories</span><span class="delimiter">&quot;</span></span>)
+<span class="type">class</span> <span class="class">Application</span> {
+    <span class="directive">static</span> <span class="type">void</span> main(<span class="predefined-type">String</span><span class="type">[]</span> args) {
+        GrailsApp.run(Application, args)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_shared_transactions">Shared transactions</h4>
+<div class="paragraph">
+<p>With GORM multi-document transactions enabled (<code>grails.mongodb.transactional = true</code>, see <a href="#advancedConfig">Advanced Configuration</a>), a single transactional method commits or rolls back GORM writes and Spring Data writes together on one server-side <code>ClientSession</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="annotation">@Transactional</span>
+<span class="type">void</span> transfer(MongoTemplate mongoTemplate) {
+    <span class="keyword">new</span> Account(<span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">from</span><span class="delimiter">&quot;</span></span>).save()                 <span class="comment">// GORM</span>
+    mongoTemplate.insert(<span class="keyword">new</span> LedgerEntry(<span class="key">amount</span>: <span class="integer">10</span>)) <span class="comment">// Spring Data</span>
+    <span class="comment">// both commit together, or neither is applied if an exception is thrown</span>
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The unified manager is registered as the primary <code>transactionManager</code> (it has to be, to be chosen over GORM&#8217;s plain <code>mongoTransactionManager</code> for an unqualified <code>@Transactional</code>). It backs off automatically if the application already defines a bean named <code>transactionManager</code>. To run a block with GORM-only semantics, qualify the manager: <code>@Transactional("mongoTransactionManager")</code>.</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+Because it is primary, in an application that mixes this with another persistence stack (for example Hibernate/JPA), an unqualified <code>@Transactional</code> resolves to this MongoDB manager. If you run multiple persistence stacks, define your own primary <code>transactionManager</code> (or qualify every <code>@Transactional</code> explicitly) so each method targets the intended manager.
+</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+On the unified manager, <code>readOnly</code> only governs GORM&#8217;s flush. A GORM write queued inside a read-only transaction is not flushed (see <a href="#readOnlyTransactions">Read-Only Transactions</a>), but a Spring Data write such as <code>mongoTemplate.insert(...)</code> goes directly into the shared <code>ClientSession</code> and still commits. A read-only transaction does not prevent Spring Data writes.
+</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Like GORM&#8217;s own transaction manager, the unified manager supports a single flat transaction (<code>PROPAGATION_REQUIRED</code>). Spring-native suspension propagations such as <code>REQUIRES_NEW</code> and <code>NESTED</code> are not supported — a nested transactional call joins the surrounding transaction rather than starting an independent one.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_boundary">Boundary</h4>
+<div class="paragraph">
+<p>Only the connection, codecs and (within a transaction) the <code>ClientSession</code> are shared. The two object-mapping models remain separate: GORM maps its <code>@Entity</code> classes through its own mapping context, and Spring Data maps its own document classes through <code>MappingMongoConverter</code>. Do not point <code>@EnableMongoRepositories</code> at GORM <code>@Entity</code> packages, and do not register GORM entities with Spring Data&#8217;s mapping context. Two classes may map the same collection only if you keep their field mappings compatible.</p>
 </div>
 </div>
 </div>
@@ -1491,6 +2233,87 @@ new Person(<span class="key">friends</span>:[<span class="string"><span class="d
 <p>BSON <code>ObjectId</code> instances are generated in a similar fashion to <code>UUIDs</code>.</p>
 </div>
 <div class="sect3">
+<h4 id="_native_identity_types">Native Identity Types</h4>
+<div class="paragraph">
+<p>Declaring <code>String id</code> on every domain class ties that source to MongoDB: the same class compiled against
+Hibernate would need <code>Long id</code> instead. Where domain classes are shared, or an application is written to
+run against either store, the build can ask for the identity type of whichever GORM implementation each
+domain class is mapped with:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails {
+    gorm {
+        defaultIdType = <span class="string"><span class="delimiter">'</span><span class="content">native</span><span class="delimiter">'</span></span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A domain class mapped with MongoDB is then given a <code>String id</code> — holding the hexadecimal form of a
+generated <code>ObjectId</code>, exactly as if it had been declared — while one mapped with Hibernate keeps <code>Long</code>.
+Nothing in the domain class itself names a store.</p>
+</div>
+<div class="paragraph">
+<p>The default is <code>defaultIdType = 'long'</code>, which gives every domain class a <code>Long</code> id as earlier releases
+did. The type is resolved when the domain class is compiled, from its <code>mapWith</code> property and the GORM
+implementations on the compilation classpath, so an application using more than one implementation gets
+the right type for each domain class from the single setting. A domain class that declares an <code>id</code> of its
+own keeps the type it declares either way.</p>
+</div>
+<div class="paragraph">
+<p>Precompiled plugin domain classes cannot have their bytecode changed by the consuming application&#8217;s
+compiler. A plugin that wants to leave this choice to its consumer can declare a portable identity:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">Book</span> {
+    <span class="predefined-type">Serializable</span> id
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The consuming application uses the same build setting above for both cases. The Grails Gradle plugin
+packages its value as <code>grails.gorm.defaultIdType</code>, which is used at runtime for precompiled plugin
+domains. No duplicate application configuration is required, although normal external configuration
+can override the packaged value.</p>
+</div>
+<div class="paragraph">
+<p>MongoDB resolves the portable identity to <code>String</code> for <code>native</code> and <code>Long</code> for <code>long</code>. The result is
+stored in the entity mapping metadata, so normal persistence operations do not perform repeated type
+resolution. An explicitly declared concrete identity type still wins.</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+This changes the type of a field that already holds data. An existing MongoDB application whose
+domain classes rely on the default has sequence-generated <code>Long</code> <code>_id</code> values stored, and turning this on
+makes new documents use <code>ObjectId</code> hex strings instead. Choose it when an application is written, or
+migrate what has already been stored.
+</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The setting reaches the compiler through the Grails Gradle plugin, so it applies to Gradle builds.
+Compiling the same sources with an IDE configured to bypass Gradle produces <code>Long</code> ids.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect3">
 <h4 id="_assigned_identifiers">Assigned Identifiers</h4>
 <div class="paragraph">
 <p>Note that if you manually assign an identifier, then you will need to use the <code>insert</code> method instead of the <code>save</code> method, otherwise GORM can&#8217;t work out whether you are trying to achieve an insert or an update. Example:</p>
@@ -1513,10 +2336,10 @@ p.save()</code></pre>
 <div class="sect3">
 <h4 id="_decoupling_the_declared_type_from_the_storage_type">Decoupling the Declared Type from the Storage Type</h4>
 <div class="paragraph">
-<p>When a domain declares <code>String id</code>, GORM by default writes <code>_id</code> as a BSON <code>String</code>. This is convenient in application code — HTTP controllers return clean JSON, URLs embed ids directly, and you never need <code>new ObjectId(...)</code> at call sites — but it gives up the native <code>ObjectId</code> benefits at the storage layer (12-byte index entries vs. 24-byte hex strings, embedded creation timestamp, etc.).</p>
+<p>A domain that declares <code>String id</code> is convenient in application code — HTTP controllers return clean JSON, URLs embed ids directly, and you never need <code>new ObjectId(...)</code> at call sites. Writing <code>_id</code> as a BSON <code>String</code> to match would give up the native <code>ObjectId</code> benefits at the storage layer (12-byte index entries vs. 24-byte hex strings, embedded creation timestamp, etc.).</p>
 </div>
 <div class="paragraph">
-<p>You can get both using the <code>storedAs</code> mapping option. The domain sees a <code>String id</code> (hex form), but <code>_id</code> on disk is a BSON <code>ObjectId</code>:</p>
+<p>The <code>storedAs</code> mapping option decouples the two, so you get both: the domain sees a <code>String id</code> (hex form), while <code>_id</code> on disk is a BSON <code>ObjectId</code>. As of Grails 8.0.0 this is the default for any <code>String id</code> that declares no <code>storedAs</code> of its own — the mapping below is what that default applies for you, and is only needed to be explicit or to override a global <code>defaultStoredAs: string</code>:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -1556,18 +2379,33 @@ p.save()</code></pre>
 <div class="sect4">
 <h5 id="_global_default">Global Default</h5>
 <div class="paragraph">
-<p>You can opt in globally with an <code>application.yml</code> setting, which applies to every domain declaring <code>String id</code> that does not specify its own <code>storedAs</code>:</p>
+<p>As of Grails 8.0.0 this is the <strong>default</strong>: every domain declaring <code>String id</code> that does not specify its own <code>storedAs</code> stores <code>_id</code> as a BSON <code>ObjectId</code>. No configuration is required to get the behavior described above.</p>
+</div>
+<div class="paragraph">
+<p>To opt the whole application back out — for example an existing application whose data already holds BSON String <code>_id</code> values — pin the previous default in <code>application.yml</code>:</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
   <span class="key">mongodb</span>:
     <span class="key">stringIds</span>:
-      <span class="key">defaultStoredAs</span>: <span class="string"><span class="content">objectid</span></span></code></pre>
+      <span class="key">defaultStoredAs</span>: <span class="string"><span class="content">string</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Valid values are <code>string</code> (current default, BSON String) and <code>objectid</code> (BSON ObjectId). Unrecognized values fall back to the default with a warning logged at startup.</p>
+<p>Valid values are <code>objectid</code> (BSON ObjectId, the default) and <code>string</code> (BSON String, the pre-8.0.0 default). Unrecognized values fall back to the default with a warning logged at startup.</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+This default changed in 8.0.0. An application upgrading from 7.x with existing <code>String id</code> data is reading and writing BSON String <code>_id</code> values; on 8.0.0 those documents are no longer matched by id lookups unless you either migrate the stored <code>_id</code> values to <code>ObjectId</code> or set <code>defaultStoredAs: string</code> above.
+</td>
+</tr>
+</table>
 </div>
 <div class="paragraph">
 <p>Per-domain <code>storedAs</code> always wins over the global default. Domains using a natural string key (slug, email, UUID) should opt out explicitly:</p>
@@ -1625,8 +2463,45 @@ p.save()</code></pre>
 collection type.</p>
 </div>
 <div class="paragraph">
-<p>One of the implications of this is if you override the collection with a non-dirty checking aware type it can disable
-dirty checking and prevent the property from being updated.</p>
+<p>Assigning a new collection over a tracked one keeps dirty checking active: the generated setter wraps the
+replacement in the same dirty checking aware type, so a pattern such as re-initialising an empty collection
+(<code>if (!book.authors) book.authors = []</code>) followed by in-place mutation is tracked and persisted. This holds
+for basic collections and maps, embedded collections, and one-to-many and many-to-many associations alike. The wrappers
+also track iterator-based mutation — Groovy&#8217;s <code>removeAll(Closure)</code> / <code>retainAll(Closure)</code>, <code>removeIf</code>,
+<code>ListIterator</code> operations, <code>sort</code> / <code>replaceAll</code>, <code>addFirst</code> / <code>addLast</code> on a <code>List</code> property,
+<code>removeFirst</code> / <code>removeLast</code> on a <code>List</code> or <code>SortedSet</code> property, and the <code>subList</code>, <code>reversed</code>,
+<code>headSet</code>, <code>tailSet</code> and <code>subSet</code> views — and for <code>Map</code> properties the default
+methods (<code>putIfAbsent</code>, <code>merge</code>, <code>compute*</code>, <code>replace*</code>) and removals through the <code>entrySet()</code> / <code>keySet()</code> /
+<code>values()</code> views.</p>
+</div>
+<div class="paragraph">
+<p>Assigning a collection that belongs to <strong>another</strong> entity re-binds it to the entity being assigned to, so
+<code>bookA.tags = bookB.tags</code> followed by <code>bookA.tags.add('classic')</code> marks <code>bookA</code> dirty rather than <code>bookB</code>.
+The two properties go on sharing the same underlying collection afterwards, exactly as a plain Groovy
+assignment would. This applies to the properties GORM wraps in a dirty checking aware collection — basic
+collections and maps, and embedded collections. When <strong>borrowed from another entity</strong> a one-to-many or
+many-to-many behaves differently: it is held in a <code>PersistentCollection</code>, which is stored as-is and left to
+the store, as with the store-specific types below. Re-initialising such a property on its own entity is
+still tracked, as described above.</p>
+</div>
+<div class="paragraph">
+<p>A few paths remain outside automatic dirty checking and still require an explicit <code>markDirty(propertyName)</code>:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>a hand-written setter (one you define yourself rather than the generated one) stores the value it is given
+without re-wrapping, so a collection assigned through it loses tracking until the next load;</p>
+</li>
+<li>
+<p>mutating an entry&#8217;s value directly during map iteration (<code>Map.Entry.setValue</code>);</p>
+</li>
+<li>
+<p>replacing a collection wrapped by a store-specific type (for example the Neo4j collection wrappers) is
+deliberately left to that store&#8217;s persister, which re-wraps the raw replacement on save — that store&#8217;s
+behaviour is unchanged.</p>
+</li>
+</ul>
 </div>
 <div class="paragraph">
 <p>If any of your updates are not updating the properties that you anticipate you can force an update using the <a href="../api/org/grails/datastore/mapping/dirty/checking/DirtyCheckable.html#markDirty(java.lang.String)">markDirty()</a> method:</p>
@@ -1745,6 +2620,291 @@ dirty checking and prevent the property from being updated.</p>
 </div>
 <div class="paragraph">
 <p>As per the MongoDB docs 1 is for ascending and -1 is for descending.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_ttl_indexes">TTL Indexes</h4>
+<div class="paragraph">
+<p>MongoDB can automatically remove documents from a collection once they reach a certain age using a <a href="https://www.mongodb.com/docs/manual/core/index-ttl/">TTL index</a>. Declare one by adding <code>expireAfterSeconds</code> to the <code>indexAttributes</code> of a single date-valued property:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">LoginEvent</span> {
+    <span class="predefined-type">Date</span> dateCreated
+    <span class="directive">static</span> mapping = {
+        dateCreated <span class="key">index</span>:<span class="predefined-constant">true</span>, <span class="key">indexAttributes</span>: [<span class="key">expireAfterSeconds</span>: <span class="integer">3600</span>]
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>With the mapping above MongoDB expires each <code>LoginEvent</code> roughly one hour (3600 seconds) after the value stored in its <code>dateCreated</code> property. The indexed property must hold a <code>Date</code> (or an array of dates), and TTL is supported on single-field indexes only — MongoDB ignores <code>expireAfterSeconds</code> if it is applied to a <code>compoundIndex</code>.</p>
+</div>
+<div class="paragraph">
+<p>If you later change the declared <code>expireAfterSeconds</code>, GORM reconciles the existing index in place on startup (using MongoDB&#8217;s <a href="https://www.mongodb.com/docs/manual/reference/command/collMod/">collMod</a> command) so that the new expiry takes effect without dropping or rebuilding the index.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_text_indexes">Text Indexes</h4>
+<div class="paragraph">
+<p>In addition to declaring a text index with the <code>index</code> method (see <a href="#textSearch">Full Text Search</a>), you can declare one on a single property through <code>indexAttributes</code> using <code>type: 'text'</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">Product</span> {
+    <span class="predefined-type">String</span> title
+    <span class="directive">static</span> mapping = {
+        title <span class="key">index</span>:<span class="predefined-constant">true</span>, <span class="key">indexAttributes</span>: [<span class="key">type</span>: <span class="string"><span class="delimiter">'</span><span class="content">text</span><span class="delimiter">'</span></span>]
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The <code>type</code> attribute sets the index type for that field, so it can equally be used to declare other special index types such as <code>'2d'</code> or <code>'2dsphere'</code>. Note that MongoDB allows at most one text index per collection. See <a href="#textSearch">Full Text Search</a> for how to query a text index once it has been created.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_reconciling_index_option_changes">Reconciling Index Option Changes</h4>
+<div class="paragraph">
+<p>An index is created from its declared options the first time the collection is initialised. If you later change the options of an already-created index — for example marking it <code>unique</code> — MongoDB cannot alter most options in place and reports an <code>IndexOptionsConflict</code>. By default GORM logs this conflict and leaves the existing index untouched.</p>
+</div>
+<div class="paragraph">
+<p>To have GORM drop the existing index and recreate it with the newly declared options, add <code>recreateOnConflict: true</code> to the <code>indexAttributes</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">Person</span> {
+    <span class="predefined-type">String</span> name
+    <span class="directive">static</span> mapping = {
+        name <span class="key">index</span>:<span class="predefined-constant">true</span>, <span class="key">indexAttributes</span>: [<span class="key">unique</span>:<span class="predefined-constant">true</span>, <span class="key">recreateOnConflict</span>:<span class="predefined-constant">true</span>]
+    }
+}</code></pre>
+</div>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+Dropping and recreating an index rebuilds it from scratch, during which queries that rely on the index are not served by it. Enable <code>recreateOnConflict</code> deliberately, and prefer applying it during a maintenance window for large collections.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>A declared index whose <code>name</code> is already held by an index on different keys is the same kind of conflict, reported by MongoDB as an <code>IndexKeySpecsConflict</code>, and <code>recreateOnConflict</code> resolves it the same way:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">Person</span> {
+    <span class="predefined-type">String</span> name
+    <span class="directive">static</span> mapping = {
+        name <span class="key">index</span>:<span class="predefined-constant">true</span>, <span class="key">indexAttributes</span>: [<span class="key">name</span>:<span class="string"><span class="delimiter">'</span><span class="content">byName</span><span class="delimiter">'</span></span>, <span class="key">recreateOnConflict</span>:<span class="predefined-constant">true</span>]
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Without it, GORM says which name is taken, leaves the index that holds it alone, and counts the declaration as failed.</p>
+</div>
+<div class="paragraph">
+<p>A change to a TTL index&#8217;s <code>expireAfterSeconds</code> is handled automatically and does not require <code>recreateOnConflict</code>, because GORM updates the expiry in place rather than rebuilding the index.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_disabling_index_creation_on_startup">Disabling Index Creation on Startup</h4>
+<div class="paragraph">
+<p>By default GORM creates and reconciles every index declared in a mapping block when the datastore starts. Set <code>buildIndexes</code> to <code>false</code> in <code>grails-app/conf/application.yml</code> to switch that off:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">mongodb</span>:
+        <span class="key">buildIndexes</span>: <span class="string"><span class="content">false</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>or, in <code>application.groovy</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails {
+    mongodb {
+        buildIndexes = <span class="predefined-constant">false</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>With this setting GORM issues no <code>createIndex</code> or <code>collMod</code> command by itself, for any domain class, and the indexes already present on the server are left exactly as they are until the application builds them (see <a href="#buildIndexesOnDemand">Building Indexes on Demand</a> below). Queries are unaffected and continue to use whichever indexes exist. This is useful when deploying against live data whose indexes are managed separately — by a DBA or a migration step — so that a deployment does not build an index against a large production collection, and so an application running against an older index set does not have those indexes reconciled underneath it.</p>
+</div>
+<div class="paragraph">
+<p>It also suppresses index creation for domain classes registered after startup. Declared at the top level the setting applies to every connection, and each connection can override it:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">mongodb</span>:
+        <span class="key">buildIndexes</span>: <span class="string"><span class="content">false</span></span>
+        <span class="key">connections</span>:
+            <span class="key">reporting</span>:
+                <span class="key">url</span>: <span class="string"><span class="content">mongodb://localhost/reporting</span></span>
+                <span class="key">buildIndexes</span>: <span class="string"><span class="content">true</span></span></code></pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Because nothing is created at startup, a collection that has never been built with <code>buildIndexes</code> enabled, or by an explicit build, has no declared indexes at all. Turn the setting off only where the indexes are already in place or are applied by other means. The setting governs only the indexes GORM derives from the mapping blocks; an explicit <code>createIndex</code> call made by application code against a collection is unaffected.
+</td>
+</tr>
+</table>
+</div>
+<div class="sect4">
+<h5 id="buildIndexesOnDemand">Building Indexes on Demand</h5>
+<div class="paragraph">
+<p>Turning <code>buildIndexes</code> off stops GORM building indexes by itself. It does not stop the application building them when it chooses: once a deployment has been verified, from an administrative action, or on a schedule. Call <code>buildIndex()</code> on the <code>MongoDatastore</code> bean:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">org.grails.datastore.mapping.mongo.MongoDatastore</span>
+
+<span class="type">class</span> <span class="class">IndexMaintenanceService</span> {
+
+    MongoDatastore mongoDatastore
+
+    <span class="type">void</span> buildIndexes() {
+        mongoDatastore.buildIndex()
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This creates and reconciles the declared indexes exactly as the startup build would, and logs the same summary. It blocks the calling thread until MongoDB has built every index, unless <code>buildIndexesAsync</code> is enabled, in which case it returns at once and the build runs on the background thread. Each named connection builds its own domain classes, so build those through that connection&#8217;s datastore:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">mongoDatastore.getDatastoreForConnection(<span class="string"><span class="delimiter">'</span><span class="content">reporting</span><span class="delimiter">'</span></span>).buildIndex()</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A build requested after the datastore has been closed is not started, and one requested while it is stopped for a checkpoint runs when it is restarted.</p>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_building_indexes_in_the_background">Building Indexes in the Background</h4>
+<div class="paragraph">
+<p>MongoDB answers a <code>createIndex</code> command only once the index has been built, so by default the thread that creates the datastore — in an application, the startup thread — waits for every declared index before the application finishes starting. On an empty collection that is instant; on a large existing collection an index build can take minutes, and a deployment waits for all of them in turn.</p>
+</div>
+<div class="paragraph">
+<p>Set <code>buildIndexesAsync</code> to have index builds run on a background thread instead, both the one GORM runs at startup and any the application starts with <code>buildIndex()</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">mongodb</span>:
+        <span class="key">buildIndexesAsync</span>: <span class="string"><span class="content">true</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Startup then continues without waiting. The indexes are still built one at a time per connection, on a daemon thread named after its connection, such as <code>gorm-mongo-index-build-default-1</code>. Different connections can build indexes concurrently, including when they use the same MongoDB server. The thread is released after the build finishes and it has been idle for one second.</p>
+</div>
+<div class="paragraph">
+<p>Two consequences are worth planning for:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>A query issued before its index has been built is served without it — correctly, but with the performance of an unindexed query. The same applies to a <code>unique</code> index: it constrains nothing until the build finishes.</p>
+</li>
+<li>
+<p>Because startup no longer waits, a failure to build an index can no longer fail startup. It is logged at error level, and the application runs without that index. With the default synchronous build the exception propagates and the application does not start.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The setting also applies with <code>buildIndexes</code> set to <code>false</code>, to the builds the application starts with <code>buildIndex()</code>. A domain class registered after startup is indexed on the thread registering it.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+If the application shuts down while a background build is still running, GORM stops waiting for it, but the server carries on building the index it was asked for. A datastore stopped for a checkpoint and restored (with CRaC) runs a build it cut short again once it is restarted, on every connection, and logs that it is resuming it.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_what_the_index_build_reports">What the Index Build Reports</h4>
+<div class="paragraph">
+<p>An index build that finishes without error logs one summary line at <code>INFO</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>Index build for database [myDb] finished in 412ms: 2 created, 5 already present, from 3 domain class(es)</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The domain class count includes every class considered for indexing, including classes that declare no indexes. The created and already-present counts describe index declarations; declaring the same keys twice can report one created and one already present.</p>
+</div>
+<div class="paragraph">
+<p>The elapsed time is what the caller actually spent waiting — startup, or whoever called <code>buildIndex()</code>, with the default settings, or the background thread when <code>buildIndexesAsync</code> is enabled, where this line is also the only signal that the build has finished.</p>
+</div>
+<div class="paragraph">
+<p>The split between created and already present is what makes that time interpretable. MongoDB answers a <code>createIndex</code> for an index it already has immediately and without building anything, so a restart that changed no mappings reports everything as already present and costs milliseconds; a line reporting indexes created is the one that accounts for a slow start. An index that <code>recreateOnConflict</code> dropped and built again costs as much as a new one, and is counted apart as recreated:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>Index build for database [myDb] finished in 9315ms: 0 created, 1 recreated, 6 already present, from 3 domain class(es)</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If any declaration failed, the summary is logged at <code>WARN</code> instead and reports how many; the failures themselves are logged individually as they happen. A build that stops partway — a lost connection or a timeout — reports how far it got before stopping, also at <code>WARN</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>Index build for database [myDb] did not finish, stopping after 812ms at 1 of 3 domain class(es): 1 created, 0 already present</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Telling a created index from one that was already there takes one <code>listIndexes</code> command per collection that declares indexes. It is only issued when the summary will be logged, that is when <code>INFO</code> is enabled for <code>org.grails.datastore.mapping.mongo</code>.</p>
+</div>
+<div class="paragraph">
+<p>A collection whose indexes cannot be listed still has its declarations applied; only the split between created and already present is missing for it. The summary counts those declarations separately, and the other collections keep their split:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>Index build for database [myDb] finished in 412ms: 2 created, 5 already present, 3 applied without a listing, from 3 domain class(es)</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>When nothing could be classified — the logger is at <code>WARN</code>, so the build skips <code>listIndexes</code> and a summary is logged only for a build that failed or did not finish, or no collection&#8217;s indexes could be listed — the summary reports how many declarations were applied instead:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>Index build for database [myDb] finished in 412ms: 10 index declaration(s) applied, 1 failed, from 3 domain class(es)</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>To find which index is the slow one, enable <code>DEBUG</code> logging for <code>org.grails.datastore.mapping.mongo</code>, which adds a line per index with its own elapsed time:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">logging</span>:
+    <span class="key">level</span>:
+        <span class="key">org.grails.datastore.mapping.mongo</span>: <span class="string"><span class="content">DEBUG</span></span></code></pre>
+</div>
 </div>
 </div>
 <div class="sect3">
@@ -2121,6 +3281,72 @@ Document doc = Product.collection
 </div>
 <div class="paragraph">
 <p>If you need to run an operator query that GORM does not express, use the native <code>find</code> method with a <code>Bson</code> filter as shown above.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_bulk_updates">Bulk Updates</h3>
+<div class="paragraph">
+<p><code>updateAll</code> sets the given properties on every document the criteria match, in a single <code>updateMany</code>, without loading the entities:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">Ticket.where { status == <span class="string"><span class="delimiter">'</span><span class="content">open</span><span class="delimiter">'</span></span> }.updateAll(<span class="key">assignee</span>: user)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>An association value is written the way normal persistence writes it: the target&#8217;s identifier, in the type that target&#8217;s <code>_id</code> is stored as, and as a <code>DBRef</code> where the mapping declares <code>reference: true</code>. Either the associated instance or its identifier can be passed, so <code>updateAll(assignee: user)</code> and <code>updateAll(assignee: user.id)</code> write the same value.</p>
+</div>
+<div class="paragraph">
+<p>Whether an association can be bulk-updated depends on which document holds the reference:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 16.6666%;">
+<col style="width: 50.0001%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Association</th>
+<th class="tableblock halign-left valign-top">Supported</th>
+<th class="tableblock halign-left valign-top">Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">to-one reference</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Yes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The reference is a field on this document.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">unidirectional one-to-many, many-to-many</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Yes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The identifiers are stored as an array on this document.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">embedded, and collections of simple values such as <code>hasMany = [labels: String]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Yes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The value is written like any other property.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hasOne</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The foreign key is held by the associated document.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">bidirectional one-to-many</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The foreign key is held by each child.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The unsupported kinds throw <code>UnsupportedOperationException</code> rather than writing a field normal persistence never reads. Update the side that holds the foreign key instead. For a bidirectional one-to-many, that means updating the children:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">Child.where { id <span class="keyword">in</span> childIds }.updateAll(<span class="key">parent</span>: newParent)</code></pre>
 </div>
 </div>
 </div>
@@ -2555,7 +3781,10 @@ new Entry(<span class="key">shape</span>: <span class="predefined-type">Polygon<
 </div>
 </div>
 <div class="paragraph">
-<p>Any logic executed within the body of the closure will use the alternate connection. Once the close finishes execution GORM will switch back to the default connection automatically.</p>
+<p>Every operation on <code>Book</code> in the closure, on the thread that calls <code>withConnection</code>, uses the alternate connection: static methods called on the class, such as <code>Book.list()</code> or a dynamic finder, instance methods such as <code>book.save()</code>, and the methods the closure calls without naming the class. An operation that names its own connection, such as <code>Book.moreBooks.count()</code>, keeps it. For a multi-tenant domain class the block&#8217;s connection takes precedence over the current tenant, as a connection named explicitly does. Once the closure finishes, including by throwing an exception, GORM switches back to the default connection automatically.</p>
+</div>
+<div class="paragraph">
+<p>A session or transaction opened through a connection covers its block in the same way. Inside <code>Book.moreBooks.withTransaction { }</code> or <code>Book.moreBooks.withNewSession { }</code>, <code>Book.list()</code> and <code>book.save()</code> use <code>moreBooks</code>, whose session and transaction are the ones open. Other domain classes are not affected. A method annotated <code>@Transactional(connection = 'moreBooks')</code> routes in the same way, for every domain class that declares <code>moreBooks</code> in its <code>connections</code> mapping, <code>ALL</code> included, and leaves a multi-tenant class to its tenant. A class that declares no connection is reachable through <code>Book.moreBooks</code> but is not routed by the annotation.</p>
 </div>
 </div>
 <div class="sect2">
@@ -3120,7 +4349,7 @@ Person.collection.findOne(<span class="key">firstName</span>:<span class="string
 <h2 id="transactions">Transactions</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>MongoDB doesn&#8217;t support transactions directly, however GORM for MongoDB does batch up inserts and updates until the session is flushed. This makes it possible to support some rollback options.</p>
+<p>By default GORM for MongoDB does not use server-side transactions, however it does batch up inserts and updates until the session is flushed. This makes it possible to support some rollback options. To run transactions as real MongoDB multi-document transactions, see <a href="#advancedConfig">Multi-Document Transactions</a>.</p>
 </div>
 <div class="paragraph">
 <p>You can use either transactional services or the static <code>withTransaction</code> method. To mark a service as using the MongoDB transaction manager, use the static <code>transactional</code> property with the value <code>'mongo'</code>:</p>
@@ -3148,6 +4377,49 @@ Person.collection.findOne(<span class="key">firstName</span>:<span class="string
 <div class="paragraph">
 <p>Using the lower level API you can of course also take advantage of Mongo&#8217;s support for <a href="https://docs.mongodb.org/manual/tutorial/isolate-sequence-of-operations">Atomic operations</a>.</p>
 </div>
+<div class="sect2">
+<h3 id="readOnlyTransactions">Read-Only Transactions</h3>
+<div class="paragraph">
+<p>A read-only transaction, such as a service method annotated with <code>@ReadOnly</code> or <code>@Transactional(readOnly = true)</code>, commits without flushing the session. This holds whether or not multi-document transactions are enabled, and is how read-only transactions behave on GORM&#8217;s other datastores — on Hibernate, for instance, a read-only transaction puts the session into <code>MANUAL</code> flush mode.</p>
+</div>
+<div class="paragraph">
+<p>It matters for a write that is saved without <code>flush: true</code> and is still queued when read-only code runs in the same session:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">ReportService</span> {
+    <span class="annotation">@ReadOnly</span>
+    <span class="type">int</span> countPeople() {
+        Person.count()
+    }
+}
+
+<span class="keyword">new</span> Person(<span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Fred</span><span class="delimiter">&quot;</span></span>).save()   <span class="comment">// queued, not yet flushed</span>
+reportService.countPeople()       <span class="comment">// read-only: commits without flushing</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The read-only transaction does not persist <code>Fred</code>. The session is left in <code>COMMIT</code> flush mode, so later queries in the same session no longer flush ahead of running and do not see the queued insert, and the insert is discarded when the session closes.</p>
+</div>
+<div class="paragraph">
+<p>In earlier versions, committing a read-only transaction flushed the session, so a write like this was persisted as a side effect of the read. If your code relies on that, flush the write explicitly with <code>save(flush: true)</code>, or perform it inside a read-write transaction.</p>
+</div>
+<div class="paragraph">
+<p>To help find such code, a read-only transaction that commits while its session still holds queued inserts, updates or deletes logs a warning from <code>org.grails.datastore.mapping.transactions.DatastoreTransactionManager</code>. The warning names the session and reports that the transaction did not persist the queued operations; it does not say whether a later read-write transaction in the same session will.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+When GORM and Spring Data MongoDB share a transaction, <code>readOnly</code> only governs GORM&#8217;s flush. See <a href="#springDataInterop">Spring Data MongoDB Interoperability</a>.
+</td>
+</tr>
+</table>
+</div>
+</div>
 </div>
 </div>
 <div class="sect1">
@@ -3159,7 +4431,7 @@ Person.collection.findOne(<span class="key">firstName</span>:<span class="string
 <div class="paragraph">
 <p><code>MongoSpec</code> is an abstract class that will initialise GORM in the setup phase of the specification being executed. It
 uses by default a <code>MongoClient</code> instance that connects to a MongoDB instance as defined in your configuration
-(by default, <code>localhost</code> and port <code>27017</code>, see <a href="#gettingStarted">Getting Started</a> for more details):</p>
+(by default, <code>127.0.0.1</code> and port <code>27017</code>, see <a href="#gettingStarted">Getting Started</a> for more details):</p>
 </div>
 <div class="paragraph">
 <p>It is preferable to use testcontainers to automatically run MongoDB in a containerized environment and not have to run a MongoDB instance locally. The following examples use testcontainers:</p>
@@ -3213,7 +4485,6 @@ trait EmbeddedMongoClient {
 <span class="keyword">import</span> <span class="include">org.testcontainers.containers.MongoDBContainer</span>
 <span class="keyword">import</span> <span class="include">org.testcontainers.utility.DockerImageName</span>
 <span class="keyword">import</span> <span class="include">spock.lang.AutoCleanup</span>
-<span class="keyword">import</span> <span class="include">spock.lang.PendingFeature</span>
 <span class="keyword">import</span> <span class="include">spock.lang.Shared</span>
 
 <span class="type">class</span> <span class="class">LocalMongoUnitSpec</span> <span class="directive">extends</span> MongoSpec <span class="directive">implements</span> EmbeddedMongoClient {
@@ -3222,7 +4493,6 @@ trait EmbeddedMongoClient {
     <span class="annotation">@AutoCleanup</span>
     <span class="directive">final</span> MongoDBContainer mongoDBContainer = <span class="keyword">new</span> MongoDBContainer(AbstractMongoGrailsExtension.desiredMongoDockerName)
 
-    <span class="annotation">@PendingFeature</span>(reason = <span class="string"><span class="delimiter">'</span><span class="content">A ValidationException is not thrown</span><span class="delimiter">'</span></span>)
     <span class="type">void</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">test fail on error</span><span class="delimiter">&quot;</span></span>() {
 
         <span class="key">when</span>:
@@ -3863,7 +5133,7 @@ Hotel.findByLocationWithinCircle( Circle.valueOf( [[<span class="integer">40</sp
 </div>
 <div id="footer">
 <div id="footer-text">
-Version 7.2.4<br>
+Version 8.0.0-RC1<br>
 </div>
 </div>
 </body>
