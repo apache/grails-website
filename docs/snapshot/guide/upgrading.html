@@ -305,6 +305,29 @@ Remove the dependency once your configuration is clean.</p>
 </tr>
 </table>
 </div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p><strong>Let your coding agent work through this guide.</strong>
+Grails publishes the <code>grails-8-upgrade</code> agent skill, which turns this guide into a migration checklist for an AI coding agent.
+Extract it with the SkillsJars Gradle plugin, as <a href="gettingStarted.html#agentSkills">Agent Skills</a> describes.
+While the application is still on Grails 7, declare the skill with its version, since the Grails 7 BOM does not manage it:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">skill 'org.apache.grails.skills:grails-8-upgrade:8.0.0-SNAPSHOT'</code></pre>
+</div>
+</div>
+</td>
+</tr>
+</table>
+</div>
 <div class="sect3">
 <h4 id="_1_java_21_minimum_requirement">1. Java 21 Minimum Requirement</h4>
 <div class="paragraph">
@@ -312,9 +335,8 @@ Remove the dependency once your configuration is clean.</p>
 This is an increase from Grails 7, which required Java 17.
 Update your project&#8217;s toolchain, CI pipelines, and deployment environments to use JDK 21 or later.</p>
 </div>
-</div>
-<div class="sect3">
-<h4 id="_1_1_gradle_9_7_minimum_requirement">1.1 Gradle 9.7 Minimum Requirement</h4>
+<div class="sect4">
+<h5 id="_1_1_gradle_9_7_minimum_requirement">1.1 Gradle 9.7 Minimum Requirement</h5>
 <div class="paragraph">
 <p>The Grails 8 Gradle plugins require Gradle 9.7 or later.
 Grails 7 applications were generated with a Gradle 8.14.x wrapper, and a wrapper carried over from Grails 7 does not work with Grails 8.
@@ -333,6 +355,7 @@ On an older Gradle version <code>compileGroovy</code> fails with a <code>NoSuchM
 <p>Afterwards, check that the <code>distributionUrl</code> in <code>gradle/wrapper/gradle-wrapper.properties</code> points to the new version.
 Gradle 9 has breaking changes of its own that may affect your build scripts and other Gradle plugins you use; consult the <a href="https://docs.gradle.org/9.8.0/userguide/upgrading_major_version_9.html">Gradle 9 upgrade guide</a>.
 See also <a href="#groovy-compiler-config-scripts">Generated Groovy Compiler Configuration Scripts</a> if your build assigns a Groovy compiler configuration script itself.</p>
+</div>
 </div>
 </div>
 <div class="sect3">
@@ -654,7 +677,7 @@ response.status = HttpStatus.FOUND.value()</code></pre>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_7_micronaut_integration">7. Micronaut Integration</h4>
+<h4 id="micronaut-integration">7. Micronaut Integration</h4>
 <div class="paragraph">
 <p>The Grails Micronaut plugin and its BOMs are now maintained and released from the <a href="https://github.com/apache/grails-micronaut">Apache Grails Micronaut repository</a>.
 Applications using Grails Micronaut should follow that project&#8217;s upgrade and dependency-management documentation.</p>
@@ -981,7 +1004,10 @@ Longer term, consider migrating to the fluent <code>HttpSecurity</code> API for 
 <h4 id="_14_spring_dependency_management_plugin_replaced_by_gradle_platforms">14. Spring Dependency Management Plugin Replaced by Gradle Platforms</h4>
 <div class="paragraph">
 <p>Grails 8 standardizes on Gradle&#8217;s native <code>platform()</code> dependency management and <strong>no longer applies the <code>io.spring.dependency-management</code> plugin</strong>.
-The Grails Gradle Plugin now adds <code>grails-bom</code> as a Gradle <code>platform()</code> on every declarable project configuration, and a new bundled plugin (<code>org.apache.grails.gradle.bom-property-overrides</code>, applied automatically by the Grails Gradle Plugin) preserves the property-based version-override workflow that Spring DM provided.</p>
+The Grails Gradle Plugin now contributes <code>grails-bom</code> as a Gradle <code>platform()</code> to eligible declarable project configurations, and a new bundled plugin (<code>org.apache.grails.gradle.bom-property-overrides</code>, applied automatically by the Grails Gradle Plugin) preserves the property-based version-override workflow that Spring DM provided.
+The platform is contributed lazily, when a configuration&#8217;s dependencies are observed (through resolution, publication, or <code>incoming.dependencies</code>), so configurations populated on demand through <code>defaultDependencies</code>, such as the Grails <code>profile</code> configuration, keep their defaults.
+Dedicated tool and annotation-processor classpaths, including the <code>jacoco</code> plugin&#8217;s <code>jacocoAgent</code> and <code>jacocoAnt</code> configurations, are excluded from automatic platform application so the application BOM does not change their transitive dependency versions.
+Until dependencies are observed, the auto-applied platform is not visible in a configuration&#8217;s declared <code>dependencies</code> or <code>allDependencies</code>; build logic that looks for it should inspect <code>incoming.dependencies</code> or the resolution result instead.</p>
 </div>
 <div class="paragraph">
 <p><strong>No action is required for most applications.</strong>
@@ -1220,9 +1246,8 @@ If your test infrastructure registers it explicitly, remove the registration; Sp
 Update the import.
 A new <code>RestTestClient</code> and corresponding <code>@AutoConfigureRestTestClient</code> annotation are also available as a fluent alternative.</p>
 </div>
-</div>
-<div class="sect3">
-<h4 id="_17_1_test_helpers_moved_to_test_fixtures">17.1 Test Helpers Moved to Test Fixtures</h4>
+<div class="sect4">
+<h5 id="_17_1_test_helpers_moved_to_test_fixtures">17.1 Test Helpers Moved to Test Fixtures</h5>
 <div class="paragraph">
 <p>Several legacy Grails test helpers are no longer included in the production classpath.
 They are published as Gradle test fixtures instead, so applications and plugins that use them directly must request the fixture variant explicitly.</p>
@@ -1266,6 +1291,7 @@ They are published as Gradle test fixtures instead, so applications and plugins 
 <div class="paragraph">
 <p>Only add the fixture dependencies that provide helpers used by the project.
 Do not add them to <code>implementation</code>, because these artifacts contain test infrastructure and should not be part of the application runtime classpath.</p>
+</div>
 </div>
 </div>
 <div class="sect3">
@@ -3094,7 +3120,7 @@ auto-provisioning off and <code>grails-console</code> omitted, <code>console</co
 </tbody>
 </table>
 <div class="sect4">
-<h5 id="_35_1_backwards_compatibility_for_existing_command_plugins">35.1 Backwards Compatibility for Existing Command Plugins</h5>
+<h5 id="_37_1_backwards_compatibility_for_existing_command_plugins">37.1 Backwards Compatibility for Existing Command Plugins</h5>
 <div class="paragraph">
 <p>Grails 8 provides a deprecated, execution-only compatibility layer for already-published Grails 7 command
 plugins. Application commands created with <code>create-command</code> that implement
@@ -4516,7 +4542,7 @@ unqualified call from a controller to a method-declared tag changes.</p>
 something about a schedule is wrong; none of them require a change to a job class.</p>
 </div>
 <div class="sect4">
-<h5 id="_51_1_a_trigger_that_can_never_fire_no_longer_stops_startup">51.1 A trigger that can never fire no longer stops startup</h5>
+<h5 id="_52_1_a_trigger_that_can_never_fire_no_longer_stops_startup">52.1 A trigger that can never fire no longer stops startup</h5>
 <div class="paragraph">
 <p>A job whose trigger has no possible fire time — a cron expression whose last occurrence is in the past,
 or an end time that has already passed — used to make the application fail to start, because the
@@ -4544,7 +4570,7 @@ registered, so it can be triggered and rescheduled at runtime.</p>
 </div>
 </div>
 <div class="sect4">
-<h5 id="_51_2_an_application_only_removes_the_jobs_it_registered_itself">51.2 An application only removes the jobs it registered itself</h5>
+<h5 id="_52_2_an_application_only_removes_the_jobs_it_registered_itself">52.2 An application only removes the jobs it registered itself</h5>
 <div class="paragraph">
 <p>When an application starts, the plugin removes the jobs in the job store which are no longer enabled job
 artefacts of the application. It used to consider <strong>every</strong> job in the store, which with a persistent job
@@ -4574,7 +4600,7 @@ it with <code>jobManagerService.removeJob(group, name)</code> or from the Quartz
 </div>
 </div>
 <div class="sect4">
-<h5 id="_51_3_scheduling_methods_report_what_is_wrong_instead_of_failing_with_a_null_pointer">51.3 Scheduling methods report what is wrong instead of failing with a null pointer</h5>
+<h5 id="_52_3_scheduling_methods_report_what_is_wrong_instead_of_failing_with_a_null_pointer">52.3 Scheduling methods report what is wrong instead of failing with a null pointer</h5>
 <div class="paragraph">
 <p>The static scheduling methods every job class gets — <code>schedule</code>, <code>reschedule</code>, <code>unschedule</code>,
 <code>triggerNow</code>, <code>removeJob</code> — used to fail with a <code>NullPointerException</code> when called with a null argument,
@@ -5845,6 +5871,57 @@ existing header alone.</p>
 <pre class="CodeRay highlight"><code data-lang="groovy">render(<span class="key">file</span>: <span class="keyword">new</span> <span class="predefined-type">File</span>(absolutePath), <span class="key">fileName</span>: <span class="string"><span class="delimiter">'</span><span class="content">report.pdf</span><span class="delimiter">'</span></span>)
 render(<span class="key">file</span>: <span class="keyword">new</span> <span class="predefined-type">File</span>(absolutePath), <span class="key">inline</span>: <span class="predefined-constant">true</span>)</code></pre>
 </div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_76_a_list_of_objects_in_configuration_binds_to_its_declared_type">76. A List of Objects in Configuration Binds to Its Declared Type</h4>
+<div class="paragraph">
+<p>A list of objects in <code>application.yml</code> or <code>application.groovy</code>, such as:</p>
+</div>
+<div class="listingblock">
+<div class="title">application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">springdoc</span>:
+    <span class="key">group-configs</span>:
+        - <span class="string"><span class="content">group: sales</span></span>
+          <span class="key">paths-to-match</span>: <span class="string"><span class="content">/api/v1/**</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>is now presented to Spring element by element, under the indexed names Spring Boot binds a list from,
+such as <code>springdoc.group-configs[0].group</code>, the way Spring Boot&#8217;s own YAML loader presents it. A
+<code>@ConfigurationProperties</code> class declaring a <code>List</code> of objects is bound with instances of that type.
+Previously the whole list was also presented under its own name, so Spring Boot bound it as a list of
+maps, and code reading the declared type failed with a <code>ClassCastException</code>. springdoc failed that
+way on <code>springdoc.group-configs</code> before the application could start.</p>
+</div>
+<div class="paragraph">
+<p><code>Environment.getProperty('springdoc.group-configs')</code> now returns <code>null</code> and
+<code>Environment.containsProperty</code> returns <code>false</code>, as they do in a Spring Boot application, so a
+<code>@Value('${springdoc.group-configs}')</code> without a default fails to resolve, as does a <code>${&#8230;&#8203;}</code>
+placeholder naming the list anywhere else. Read such a list through <code>grailsApplication.config</code>,
+which is unchanged, or bind it. The same applies to a list holding lists of objects, such as
+<code>rows: [[{a: 1}], [{b: 2}]]</code>, whose objects are presented under names such as <code>rows[0][0].a</code>, and to
+a list mixing plain values and objects, such as <code>mixed: [a, {b: 1}]</code>, presented as <code>mixed[0]</code> and
+<code>mixed[1].b</code>. Within such a list, an empty object, an empty list or a <code>null</code> value is presented as an
+empty string under its own name, such as <code>empty[0]</code> for <code>empty: [{}]</code>, as Spring Boot presents it. A
+list of plain values only, such as <code>names: [a, b]</code>, is presented as before.</p>
+</div>
+<div class="paragraph">
+<p>What reads the names the configuration presents sees the change too:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The <code>config-report</code> command lists such a list as a row for each value, such as
+<code>springdoc.group-configs[0].group</code>, rather than one row for the list.</p>
+</li>
+<li>
+<p>GORM used outside a Grails application, given a <code>ConfigurableEnvironment</code> it copies the property
+names of, no longer finds the list under its own name. In a Grails application a datastore is
+given <code>grailsApplication.config</code>, and sees the list as before.</p>
+</li>
+</ul>
 </div>
 </div>
 </div>
