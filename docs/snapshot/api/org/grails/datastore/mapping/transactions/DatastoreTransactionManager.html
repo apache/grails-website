@@ -106,7 +106,19 @@ public class DatastoreTransactionManager
 extends <a href='https://docs.spring.io/spring-framework/docs/7.0.9/javadoc-api/org/springframework/transaction/support/AbstractPlatformTransactionManager.html' title='AbstractPlatformTransactionManager'>AbstractPlatformTransactionManager</a></pre>
 
     <p> A <a href='https://docs.spring.io/spring-framework/docs/7.0.9/javadoc-api/org/springframework/transaction/PlatformTransactionManager.html' title='PlatformTransactionManager'>PlatformTransactionManager</a> instance that
- works with the Spring datastore abstraction
+ works with the Spring datastore abstraction.
+
+ <p>A transaction started while another is in progress on the session the thread is using joins it
+ (<CODE>PROPAGATION_REQUIRED</CODE>, <CODE>SUPPORTS</CODE>, <CODE>MANDATORY</CODE>): the outer transaction commits
+ or rolls back everything once, and a joined transaction that fails marks the whole one
+ rollback-only. A session bound on top of it (<CODE>withNewSession</CODE>) runs transactions of its
+ own. <CODE>PROPAGATION_REQUIRES_NEW</CODE> suspends the outer transaction and runs in a session of its
+ own; <CODE>PROPAGATION_NESTED</CODE> is not supported. A read-write transaction started inside a read-only
+ one joins it and is read-only, as on Hibernate: the read-only commit does not flush, and warns when
+ that leaves writes unpersisted. Set <CODE>validateExistingTransaction</CODE> to refuse such a join
+ instead. Once a transaction has committed or rolled back it cannot be joined: transactional code
+ run from its <CODE>afterCommit</CODE> or <CODE>afterCompletion</CODE> callbacks begins a transaction of its
+ own.</p>
   <DL><DT><B>Authors:</B></DT><DD>Graeme Rocher</DD></DL><DL><DT><B>Since:</B></DT><DD>1.0</DD></DL></p>
 
           </li>
@@ -223,11 +235,17 @@ extends <a href='https://docs.spring.io/spring-framework/docs/7.0.9/javadoc-api/
                         
                         <tr class="rowColor">
                             <td class="colFirst"><code></code></td>
+                            <td class="colLast"><code>protected&nbsp;boolean</code></td>
+                            <td class="colLast"><code><strong><a href="#isExistingTransaction(java.lang.Object)">isExistingTransaction</a></strong>(java.lang.Object transaction)</code><br></td>
+                        </tr>
+                        
+                        <tr class="altColor">
+                            <td class="colFirst"><code></code></td>
                             <td class="colLast"><code>public&nbsp;void</code></td>
                             <td class="colLast"><code><strong><a href="#setDatastore(org.grails.datastore.mapping.core.Datastore)">setDatastore</a></strong>(<a href='../../../../../org/grails/datastore/mapping/core/Datastore.html'>Datastore</a> datastore)</code><br></td>
                         </tr>
                         
-                        <tr class="altColor">
+                        <tr class="rowColor">
                             <td class="colFirst"><code></code></td>
                             <td class="colLast"><code>public&nbsp;void</code></td>
                             <td class="colLast"><code><strong><a href="#setDatastoreManagedSession(boolean)">setDatastoreManagedSession</a></strong>(boolean datastoreManagedSession)</code><br></td>
@@ -351,6 +369,14 @@ extends <a href='https://docs.spring.io/spring-framework/docs/7.0.9/javadoc-api/
                         <ul class="blockListLast">
                             <li class="blockList">
                                 <h4>public&nbsp;<a href='../../../../../org/grails/datastore/mapping/core/Datastore.html'>Datastore</a> <strong>getDatastore</strong>()</h4>
+                                <p></p>
+                            </li>
+                        </ul>
+                    
+                        <a name="isExistingTransaction(java.lang.Object)"><!-- --></a>
+                        <ul class="blockListLast">
+                            <li class="blockList">
+                                <h4>@java.lang.Override<br>protected&nbsp;boolean <strong>isExistingTransaction</strong>(java.lang.Object transaction)</h4>
                                 <p></p>
                             </li>
                         </ul>

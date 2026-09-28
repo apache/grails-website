@@ -2025,6 +2025,17 @@ person.properties = [<span class="key">firstName</span>: <span class="string"><s
 </li>
 </ul>
 </div>
+<div class="paragraph">
+<p>A value in the ISO 8601 form of the target type, which is how Grails renders it in JSON, is bound
+first, before any of those formats are tried. A <code>Date</code> given a date and time with an offset, such as
+<code>2024-05-01T10:00:00Z</code> or <code>2024-05-01T10:00:00.5+02:00</code>, is bound to the instant it names, whatever
+the time zone of the server, and a <code>java.time</code> type is bound from its ISO 8601 form, such as
+<code>2024-05-01T10:00:00+02:00</code> for an <code>OffsetDateTime</code> or <code>2024-05-01T10:00:00.250</code> for a
+<code>LocalDateTime</code>. A format that reads all of a value is used before an earlier format that reads only
+the start of it, so the time of <code>2024-05-01 10:00</code> is kept where a format such as <code>yyyy-MM-dd HH:mm</code> is
+listed. A value that no format reads all of is bound by the first format that reads the start of it,
+as in earlier versions.</p>
+</div>
 </div>
 <div class="sect3">
 <h4 id="_custom_formatted_converters">Custom Formatted Converters</h4>
@@ -9826,10 +9837,94 @@ The trait cannot be defined in the same project as you are compilation as it nee
 </div>
 </div>
 <div class="sect1">
-<h2 id="_default_date_format">Default Date Format</h2>
+<h2 id="_date_and_time_rendering">Date and Time Rendering</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The default format for <code>java.util.Date</code> can be configured.</p>
+<p>JSON views render date and time values the same way as Spring Boot&#8217;s default Jackson <code>JsonMapper</code>:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 40%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Type</th>
+<th class="tableblock halign-left valign-top">Rendered as</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>java.util.Date</code>, <code>java.sql.Date</code>, <code>java.sql.Timestamp</code>, <code>Calendar</code>, <code>XMLGregorianCalendar</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">a UTC instant with millisecond precision, such as <code>"2025-10-08T07:48:46.407Z"</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>java.sql.Time</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">its wall-clock time in the JVM default time zone, such as <code>"01:48:46"</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Instant</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ISO-8601, such as <code>"2025-10-08T07:48:46.407254Z"</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LocalDate</code>, <code>LocalTime</code>, <code>LocalDateTime</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ISO-8601 without a time zone, such as <code>"2025-10-08"</code>, <code>"01:48:46.407254"</code>, <code>"2025-10-08T01:48:46.407254"</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OffsetDateTime</code>, <code>ZonedDateTime</code>, <code>OffsetTime</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ISO-8601 with the offset and without a zone ID, such as <code>"2025-10-08T01:48:46.407254-06:00"</code>, <code>"03:00:00-03:00"</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>YearMonth</code>, <code>MonthDay</code>, <code>Duration</code>, <code>Period</code>, <code>javax.xml.datatype.Duration</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ISO-8601, such as <code>"2026-09"</code>, <code>"--09-25"</code>, <code>"PT1H30M"</code>, <code>"P1Y2M3D"</code>, <code>"P1DT2H"</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Year</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">a number, such as <code>2026</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ZoneId</code>, <code>ZoneOffset</code>, <code>TimeZone</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the ID, such as <code>"America/Sao_Paulo"</code> or <code>"-03:00"</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>A <code>Month</code> renders by its name, such as <code>"SEPTEMBER"</code>, as every enum does, where Spring Boot writes its number; a
+<code>JsonGenerator.Converter</code> for <code>Month</code> that returns <code>month.value</code> renders its number. An <code>OffsetTime</code> keeps its seconds and
+writes a fraction of a second with only the digits it needs, where Spring Boot writes <code>"03:00-03:00"</code>. A map keyed by <code>Date</code>, <code>Calendar</code> or <code>ZonedDateTime</code> values renders its keys the same way as
+those values; other map keys render with their <code>toString()</code>. Values rendered with <code>g.render</code> are written the same way.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_time_zone">Time Zone</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The time zone that the date format writes <code>java.util.Date</code> and <code>Calendar</code> values in can be configured. The value here
+will be passed to <code>TimeZone.getTimeZone(&#8230;&#8203;)</code>. As with Spring Boot&#8217;s <code>spring.jackson.time-zone</code>, the default date format
+writes the date and time in that zone followed by its offset, such as <code>"2025-10-08T03:48:46.407-04:00"</code> for
+<code>America/New_York</code> or <code>"2025-10-08T13:18:46.407+05:30"</code> for <code>Asia/Kolkata</code>, or followed by <code>Z</code> in a zone with no offset,
+such as the default <code>GMT</code>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">views</span>:
+        <span class="key">json</span>:
+            <span class="key">generator</span>:
+                <span class="key">timeZone</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">America/New_York</span><span class="delimiter">&quot;</span></span></code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_date_format">Date Format</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The <code>java.text.SimpleDateFormat</code> pattern for <code>java.util.Date</code> and <code>Calendar</code> values (and map keys) can be configured.
+The pattern is applied in the configured time zone. The default, <code>yyyy-MM-dd&#8217;T&#8217;HH:mm:ss.SSSXXX</code>, writes dates as Spring
+Boot does, a UTC instant with millisecond precision in the default <code>GMT</code> time zone. As with Spring Boot&#8217;s
+<code>spring.jackson.date-format</code>, the pattern does not apply to <code>java.sql.Time</code> values, which are written as <code>"01:48:46"</code>.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -9841,7 +9936,7 @@ The trait cannot be defined in the same project as you are compilation as it nee
 </div>
 </div>
 <div class="paragraph">
-<p>In addition, the default locale can also be specified.</p>
+<p>In addition, the locale of the pattern can also be specified.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -9850,23 +9945,6 @@ The trait cannot be defined in the same project as you are compilation as it nee
         <span class="key">json</span>:
             <span class="key">generator</span>:
                 <span class="key">locale</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">en/US</span><span class="delimiter">&quot;</span></span></code></pre>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="_default_time_zone">Default Time Zone</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>The default time zone can be configured. The value here will be passed to <code>TimeZone.getTimeZone(&#8230;&#8203;)</code></p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
-    <span class="key">views</span>:
-        <span class="key">json</span>:
-            <span class="key">generator</span>:
-                <span class="key">timeZone</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">GMT</span><span class="delimiter">&quot;</span></span></code></pre>
 </div>
 </div>
 </div>
@@ -11229,6 +11307,18 @@ them it is necessary to add the parameter <code>keepParamsWhenRedirect: true</co
     }
 }</code></pre>
 </div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+A problem reaching the error handler does not replace the exception being handled. If the mapping for a status code cannot be resolved for a request, or an error-handling controller cannot be forwarded to because the request did not pass through the Grails filters - a Spring <code>MockMvc</code> test that leaves out the application&#8217;s filters, for example - the problem is logged and the <code>/error</code> view renders the original exception instead.
+</td>
+</tr>
+</table>
 </div>
 <div class="admonitionblock warning">
 <table>

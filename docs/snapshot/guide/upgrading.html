@@ -1413,10 +1413,48 @@ When a link, form action, pagination link, sortable column link, redirect, chain
 <p><strong>A read-only transaction no longer flushes the session.</strong>
 A read-only transaction (<code>@ReadOnly</code>, <code>@Transactional(readOnly = true)</code>) commits without flushing the session on every GORM datastore. Hibernate, Neo4j and the simple map datastore already behaved this way; GORM for MongoDB flushed the session when a read-only transaction committed, and no longer does.</p>
 <div class="paragraph">
-<p>So on MongoDB, a write saved without <code>flush: true</code> before read-only code ran in the same session used to be persisted as a side effect of the read. It is now left queued in a session whose flush mode is <code>COMMIT</code>: later queries in that session do not see it, and it is discarded when the session closes. Flush such writes explicitly with <code>save(flush: true)</code>, or perform them in a read-write transaction. To make this discoverable, a read-only transaction that commits while its session holds pending inserts, updates or deletes now logs a warning from <code>org.grails.datastore.mapping.transactions.DatastoreTransactionManager</code> naming the session. See <a href="../grails-data/mongodb/manual/index.html#readOnlyTransactions">Read-Only Transactions</a> in the GORM for MongoDB guide.</p>
+<p>So on MongoDB, a write saved without <code>flush: true</code> before read-only code ran in the same session used to be persisted as a side effect of the read. It is now left queued: the read-only transaction does not write it, and it is written by whatever flushes the session next (a read-write commit, <code>save(flush: true)</code>, the flush at the end of the request), or discarded when the session closes if nothing does. Flush such writes explicitly with <code>save(flush: true)</code>, or perform them in a read-write transaction. To make this discoverable, a read-only transaction that commits while its session holds pending inserts, updates or deletes now logs a warning from <code>org.grails.datastore.mapping.transactions.DatastoreTransactionManager</code> naming the session. See <a href="../grails-data/mongodb/manual/index.html#readOnlyTransactions">Read-Only Transactions</a> in the GORM for MongoDB guide.</p>
 </div>
 <div class="paragraph">
 <p>A GORM datastore implementation outside the Grails repository inherits this if it uses <code>SessionOnlyTransaction</code>; one that supplies its own <code>Transaction</code> can honour <code>readOnly</code> by overriding the new <code>AbstractSession.beginTransactionInternal(TransactionDefinition)</code>, which now receives the transaction definition instead of discarding it.</p>
+</div>
+</li>
+<li>
+<p><strong>A transaction started inside another joins it.</strong>
+On GORM for MongoDB, a transactional service method called from another, or <code>withTransaction</code> inside <code>withTransaction</code>, began a second transaction on the same session instead of joining the first. The inner one committed on its own and the outer one&#8217;s commit then did nothing: without a session bound for the request, the outer transaction&#8217;s writes after the call were never saved, and with one they were saved when the request ended, outside any transaction (not at all if a read-only call had left the session in <code>COMMIT</code> flush mode). With multi-document transactions enabled, beginning the inner transaction also discarded the writes the outer one had flushed before the call. Now the inner transaction joins the outer one, everything commits once when the outer one does, and a joined transaction that fails rolls the whole transaction back. Hibernate and Neo4j already joined. On Neo4j, though, a joined transaction that failed rolled the transaction back on the spot, so writes the outer code made after catching the failure ran outside any transaction and were committed as they ran; the transaction is now only marked rollback-only, and those writes roll back with it. The simple map datastore, which <code>DataTest</code> unit tests run on, joins now too, so a nested transaction&#8217;s writes are flushed at the outer commit instead of when it returns. Its sessions also share one identifier count now: an insert in one session could take the identifier of an insert another session had not yet flushed, or of an entry still present after a delete, and overwrite it. A write in <code>withNewSession</code> inside a transaction was lost that way.</p>
+<div class="paragraph">
+<p>These follow from the surrounding transaction now being recognized, on MongoDB and the simple map datastore:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>PROPAGATION_REQUIRES_NEW</code> suspends the surrounding transaction and runs in a session of its own (on Neo4j too), where it used to begin on the surrounding transaction&#8217;s session. The new session starts empty: an entity loaded in the surrounding transaction belongs to that session and should be loaded again inside, and settings made on the surrounding session, such as the database or collection chosen with <code>withDatabase</code> or <code>withCollection</code>, do not carry over.</p>
+</li>
+<li>
+<p><code>PROPAGATION_NOT_SUPPORTED</code> suspends the surrounding transaction, <code>PROPAGATION_MANDATORY</code> inside a transaction works where it always threw, and <code>PROPAGATION_NEVER</code> and <code>PROPAGATION_NESTED</code> inside a transaction throw.</p>
+</li>
+<li>
+<p>A read-write transaction started inside a read-only one joins it and is read-only, as on Hibernate, where it used to commit on its own. A write it leaves queued is not saved by the read-only commit, which logs a warning naming the session. Call such a method from read-write code, or give it <code>PROPAGATION_REQUIRES_NEW</code>. A write it flushes explicitly with <code>save(flush: true)</code> is saved, but outside any transaction, so a later failure cannot roll it back.</p>
+</li>
+<li>
+<p>Transactional code run from a transaction&#8217;s <code>afterCommit</code> or <code>afterCompletion</code> callbacks, such as an <code>@TransactionalEventListener</code>, begins a transaction of its own.</p>
+</li>
+<li>
+<p>A read-only transaction puts the session&#8217;s flush mode back when it completes (on Neo4j too). It used to leave the session in <code>COMMIT</code> mode, so a session bound for the whole request was not flushed when the request ended.</p>
+</li>
+<li>
+<p>Committing a transaction that is no longer active throws <code>IllegalTransactionStateException</code>, where the commit used to be skipped without a word.</p>
+<div class="paragraph">
+<p>Without multi-document transactions, GORM for MongoDB does not flush before a query while a transaction is in progress, so a write a joined transaction leaves queued is not visible to a query later in the same transaction. It used to be, because the inner transaction flushed it when it returned. Use <code>save(flush: true)</code> where a later query in the transaction must see the write. This includes integration tests annotated with <code>@Rollback</code>, whose service calls now join the test&#8217;s transaction. With multi-document transactions enabled, GORM for MongoDB flushes before a query inside the server-side transaction, as Hibernate does, so the query sees the write, and a rollback still takes it back.</p>
+</div>
+<div class="paragraph">
+<p>With multi-document transactions enabled on MongoDB, a read-only transaction no longer starts a server-side transaction, and beginning a transaction on a session whose server-side transaction is still active throws <code>IllegalTransactionStateException</code> instead of discarding it. See <a href="../grails-data/mongodb/manual/index.html#nestedTransactions">Nested Transactions</a> in the GORM for MongoDB guide.</p>
+</div>
+<div class="paragraph">
+<p>A GORM datastore implementation outside the Grails repository whose transaction manager replaces <code>doBegin</code> must handle a transaction object that holds no session: a <code>PROPAGATION_REQUIRES_NEW</code> transaction arrives that way once the surrounding one is suspended, and needs a session of its own.</p>
+</div>
+</li>
+</ul>
 </div>
 </li>
 <li>
@@ -5922,6 +5960,311 @@ names of, no longer finds the list under its own name. In a Grails application a
 given <code>grailsApplication.config</code>, and sees the list as before.</p>
 </li>
 </ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_77_json_rendering_of_dates_and_times_matches_spring_boot">77. JSON Rendering of Dates and Times Matches Spring Boot</h4>
+<div class="paragraph">
+<p>JSON rendered by <code>grails.converters.JSON</code> (<code>render &#8230;&#8203; as JSON</code>, and <code>respond</code> for a JSON request) and by JSON views,
+including <code>g.render</code>, writes date and time values the same way as Spring Boot&#8217;s default Jackson <code>JsonMapper</code>. The
+exceptions are listed in the notes at the end of this section.</p>
+</div>
+<div class="sect4">
+<h5 id="_77_1_what_8_0_0_restores_from_grails_7">77.1 What 8.0.0 Restores From Grails 7</h5>
+<div class="paragraph">
+<p>8.0.0-RC1 changed how <code>grails.converters.JSON</code> and <code>grails.converters.XML</code> render some dates. 8.0.0 renders them as
+Grails 7 did, so an application upgrading from Grails 7 needs no change for these:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Value</th>
+<th class="tableblock halign-left valign-top">8.0.0-RC1</th>
+<th class="tableblock halign-left valign-top">Grails 7 and 8.0.0</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A <code>Date</code>, <code>Calendar</code> or <code>java.sql.Timestamp</code> whose milliseconds are zero</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>"2026-09-25T03:00:00Z"</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>"2026-09-25T03:00:00.000Z"</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A <code>java.sql.Timestamp</code> with nanoseconds</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>"2025-10-08T07:48:46.407254Z"</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>"2025-10-08T07:48:46.407Z"</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A <code>java.sql.Date</code> with <code>grails.converters.JSON</code> or <code>grails.converters.XML</code>, and a <code>java.sql.Time</code> with
+<code>grails.converters.XML</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">a failure to render it</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">rendered as a <code>Date</code> is</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>See <a href="https://github.com/apache/grails-core/issues/16406">#16406</a>.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_77_2_values_that_render_differently_than_in_grails_7">77.2 Values That Render Differently Than in Grails 7</h5>
+<div class="paragraph">
+<p>Review these where an application or its clients read them:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Value</th>
+<th class="tableblock halign-left valign-top">Grails 7</th>
+<th class="tableblock halign-left valign-top">Grails 8</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>java.sql.Time</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>"2025-10-08T07:48:46.407Z"</code>, the UTC instant, which does not bind back to a <code>java.sql.Time</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>"01:48:46"</code>, from <code>Time#toString()</code> in the JVM default time zone, which binds back to the same time of day, to the
+second, as with Spring Boot</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A <code>Date</code>, <code>Calendar</code>, <code>java.sql</code> date type or <code>ZonedDateTime</code> map key</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the key&#8217;s <code>toString()</code>, such as <code>"Wed Oct 08 01:48:46 MDT 2025"</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">a <code>Date</code> (a <code>java.sql.Time</code> too) or <code>Calendar</code> key as a <code>Date</code> value is written, such as
+<code>"2025-10-08T07:48:46.407Z"</code>; a <code>ZonedDateTime</code> key as <code>"2026-09-25T00:00:00-03:00"</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A <code>Date</code> or <code>Calendar</code> before 1 AD or after 9999 (<code>grails.converters.JSON</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>"12345-01-01T00:00:00.000Z"</code>, <code>"0044-03-15T00:00:00.000Z"</code> (44 BC)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>"+12345-01-01T00:00:00.000Z"</code>, <code>"-0043-03-15T00:00:00.000Z"</code>, ISO 8601 expanded years</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A <code>Date</code> inside a collection that <code>g.render</code> writes element by element, such as a <code>List&lt;Object&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>"2025-10-08T07:48:46+0000"</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>"2025-10-08T07:48:46.407Z"</code>, as any other <code>Date</code> value</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A <code>Date</code> or <code>Calendar</code> in JSON views with a configured <code>grails.views.json.generator.timeZone</code> other than <code>GMT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the offset in hours only, such as <code>"2025-10-08T03:48:46.407-04"</code>, and <code>"2025-10-08T13:18:46.407+05"</code> for
+<code>Asia/Kolkata</code>, which names an instant 30 minutes off</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the offset in hours and minutes, such as <code>"2025-10-08T03:48:46.407-04:00"</code> and <code>"2025-10-08T13:18:46.407+05:30"</code>, as
+Spring Boot writes them; the default date format is now <code>yyyy-MM-dd&#8217;T&#8217;HH:mm:ss.SSSXXX</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A <code>Date</code> rendered by <code>grails.converters.XML</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>2025-10-08 01:48:46.407 MDT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>2025-10-08T01:48:46.407-06:00</code>, an ISO-8601 date and time with the offset of the JVM default time zone</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Data binding binds a <code>Month</code> from its number as well as its name, as Spring Boot reads it: <code>9</code>, <code>"9"</code> and <code>"SEPTEMBER"</code>
+bind to <code>SEPTEMBER</code>. Grails 7 bound a number through Spring&#8217;s conversion service by ordinal, so <code>9</code> bound to <code>OCTOBER</code>.</p>
+</div>
+<div class="paragraph">
+<p>JSON views write <code>Date</code> and <code>Calendar</code> map keys with <code>grails.views.json.generator.dateFormat</code>, in the configured
+<code>timeZone</code> and <code>locale</code>, as they write those values. As with Spring Boot&#8217;s <code>spring.jackson.date-format</code>, the date format
+no longer applies to <code>java.sql.Time</code> values, which are written as <code>"01:48:46"</code>.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_77_3_values_grails_7_did_not_render_as_values">77.3 Values Grails 7 Did Not Render as Values</h5>
+<div class="paragraph">
+<p>These rendered as an object of their properties, as <code>{}</code>, or not at all, and now render as values:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Type</th>
+<th class="tableblock halign-left valign-top">Grails 7</th>
+<th class="tableblock halign-left valign-top">Grails 8</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>java.time.LocalTime</code> (<code>grails.converters.JSON</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>{"hour":1,"minute":48,"nano":407254000,"second":46}</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>"01:48:46.407254"</code>, as JSON views already rendered it</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>java.time.OffsetTime</code> (<code>grails.converters.JSON</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">an object of its properties</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>"03:00:00-03:00"</code>, as JSON views already rendered it</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>java.time.Period</code> (<code>grails.converters.JSON</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">an object of its properties</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>"P1Y2M3D"</code>, as JSON views already rendered it</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>java.time.Year</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">an object of its properties, or <code>{}</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>2026</code>, a JSON number</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>java.time.YearMonth</code>, <code>java.time.MonthDay</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">an object of their properties, or <code>{}</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>"2026-09"</code>, <code>"--09-25"</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>java.time.Duration</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">an object of its properties, or <code>{}</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>"PT1H30M"</code>, from <code>Duration#toString()</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>java.time.ZoneId</code>, <code>java.time.ZoneOffset</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">an object of their properties, including the zone rules, or <code>{}</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>"America/Sao_Paulo"</code>, <code>"-03:00"</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>java.util.TimeZone</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">an object of its properties, or a failure to render it</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>"America/Sao_Paulo"</code>, its ID</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>javax.xml.datatype.XMLGregorianCalendar</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">an object of its properties</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">as a <code>Calendar</code> is, such as <code>"2025-10-08T07:48:46.407Z"</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>javax.xml.datatype.Duration</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">a failure to render it</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>"P1DT2H"</code>, from <code>Duration#toString()</code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect4">
+<h5 id="_77_4_keeping_the_grails_7_rendering">77.4 Keeping the Grails 7 Rendering</h5>
+<div class="paragraph">
+<p>To keep the Grails 7 rendering of a type, register an object marshaller for it with <code>grails.converters.JSON</code>, for
+example in <code>BootStrap.init</code>, and a <code>groovy.json.JsonGenerator.Converter</code> for it in JSON views, as described in
+section 24, Custom JSON View Converters:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">DateTimeFormatter utc = DateTimeFormatter.ofPattern(<span class="string"><span class="delimiter">&quot;</span><span class="content">yyyy-MM-dd'T'HH:mm:ss.SSS'Z'</span><span class="delimiter">&quot;</span></span>).withZone(ZoneOffset.UTC)
+JSON.registerObjectMarshaller(java.sql.Time) { java.sql.Time time -&gt;
+    utc.format(Instant.ofEpochMilli(time.time))
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A JSON views converter that returns <code>new Date(time.time)</code> for a <code>java.sql.Time</code> writes it with the configured
+<code>dateFormat</code>, as Grails 7 did. Map keys are not rendered by marshallers or converters: to keep the <code>toString()</code> of a date
+key, convert the keys to strings before rendering the map, for example with
+<code>map.collectEntries { key, value &#8594; [(key.toString()): value] }</code>.</p>
+</div>
+<div class="paragraph">
+<p>The default JSON marshallers have implicit priorities that follow their order (-1, -2, and so on), and the marshallers
+added in 8.0 shift those, so a marshaller registered with an explicit negative priority may now come before or after
+different defaults. Marshallers registered with the default priority of 0, or higher, still take precedence over all
+of the defaults. A marshaller registered for <code>Date</code> or <code>Calendar</code>, like <code>grails.converters.json.date</code> set to
+<code>javascript</code>, changes how those values render with <code>grails.converters.JSON</code>, but not map keys of those types, which
+keep the form in the table above. JSON views format date map keys with <code>dateFormat</code>, as described above.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Enums render by <code>name()</code>, as described in section 8, Enum Serialization Default Changed, while Jackson 3 writes an
+enum&#8217;s <code>toString()</code>, and a <code>java.time.Month</code> as its number. The two differ for <code>Month</code> (<code>"SEPTEMBER"</code> in Grails, <code>9</code> in
+Spring Boot) and for enums that override <code>toString()</code>, such as <code>java.time.temporal.ChronoUnit</code> (<code>"SECONDS"</code> in Grails,
+<code>"Seconds"</code> in Spring Boot). To render a <code>Month</code> as its number, register
+<code>JSON.registerObjectMarshaller(Month) { Month month &#8594; month.value }</code> and a JSON views converter that returns
+<code>month.value</code>.
+</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+An <code>OffsetTime</code> keeps its seconds and writes a fraction of a second with only the digits it needs, such as
+<code>"03:00:00-03:00"</code>, as JSON views have written it since Grails 7, where Spring Boot writes <code>"03:00-03:00"</code>. JSON views
+write a year before 1 AD or after 9999 as Grails 7 did.
+</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The HAL renderer, <code>grails.rest.render.hal.HalJsonRenderer</code> for <code>application/hal+json</code>, writes values with Groovy&#8217;s
+default JSON generator and is not changed.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_78_a_date_with_an_offset_is_bound_to_the_instant_it_names">78. A Date With an Offset Is Bound to the Instant It Names</h4>
+<div class="paragraph">
+<p>When controllers, command objects and <code>bindData</code> bind a request, a date and time in its ISO 8601
+form, with a <code>T</code> between the date and the time, which is how Grails renders a date in JSON, is now
+read first, before the formats that <code>grails.databinding.dateFormats</code> lists are tried. Previously:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>2024-05-01T10:00:00Z</code>, which 8.0.0-RC1 renders for a <code>Date</code> or a <code>Calendar</code> whose milliseconds are
+zero, and which a client may send for any date, was read by the <code>yyyy-MM-dd&#8217;T&#8217;HH:mm:ss&#8217;Z'</code> format
+as a time in the zone of the server, so it was bound off by the offset of that zone.</p>
+</li>
+<li>
+<p><code>2024-05-01T10:00:00+02:00</code> was read by <code>yyyy-MM-dd&#8217;T&#8217;HH:mm:ss</code>, which left the offset unread,
+and was bound as a time in the zone of the server.</p>
+</li>
+<li>
+<p>A fraction of a second of fewer than three digits, such as the <code>.5</code> of <code>10:00:00.5Z</code>, was read as
+milliseconds, so as 5 rather than 500.</p>
+</li>
+<li>
+<p>An <code>OffsetDateTime</code> or a <code>ZonedDateTime</code> could not be bound from <code>2024-05-01T10:00:00Z</code> or
+<code>2024-05-01T10:00:00+02:00</code>, which is how Grails renders them, and a <code>LocalDateTime</code> or a
+<code>LocalTime</code> could not be bound from a value with a fraction of a second.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Each is now bound to what it names. A server running in UTC saw the first two bound correctly
+before, and sees no change.</p>
+</div>
+<div class="paragraph">
+<p>The formats in <code>grails.databinding.dateFormats</code> are then tried in order, and a format that reads all
+of the value is now used before an earlier one that reads only the start of it. A value that no format
+reads all of is bound as before, by the first format that reads the start of it: <code>2024-05-01 10:00</code>
+is still bound as midnight by <code>yyyy-MM-dd</code>, losing the time. Add a format that reads the whole value,
+such as <code>yyyy-MM-dd HH:mm</code>, to keep the time.</p>
+</div>
+<div class="paragraph">
+<p>The date scalars of GraphQL, which read <code>grails.databinding.dateFormats</code> too, are not changed.</p>
 </div>
 </div>
 </div>

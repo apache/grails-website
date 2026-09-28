@@ -3116,6 +3116,82 @@ render book <span class="keyword">as</span> XML
 <p>Why the separation between converters and renderers? Well a renderer has more flexibility to use whatever rendering technology you chose. When implementing a custom renderer you could use <a href="https://github.com/FasterXML/jackson/">Jackson</a>, <a href="https://github.com/google/gson">Google Gson</a> or any Java library to implement the renderer. Converters on the other hand are very much tied to Grails' own marshalling implementation.</p>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_date_and_time_rendering">Date and Time Rendering</h4>
+<div class="paragraph">
+<p>The JSON converter renders date and time values the same way as Spring Boot&#8217;s default Jackson <code>JsonMapper</code>, so a Grails
+application and a Spring Boot application return the same JSON for the same values:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 40%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Type</th>
+<th class="tableblock halign-left valign-top">Rendered as</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>java.util.Date</code>, <code>java.sql.Date</code>, <code>java.sql.Timestamp</code>, <code>Calendar</code>, <code>XMLGregorianCalendar</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">a UTC instant with millisecond precision, such as <code>"2025-10-08T07:48:46.407Z"</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>java.sql.Time</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">its wall-clock time in the JVM default time zone, such as <code>"01:48:46"</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Instant</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ISO-8601, such as <code>"2025-10-08T07:48:46.407254Z"</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LocalDate</code>, <code>LocalTime</code>, <code>LocalDateTime</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ISO-8601 without a time zone, such as <code>"2025-10-08"</code>, <code>"01:48:46.407254"</code>, <code>"2025-10-08T01:48:46.407254"</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OffsetDateTime</code>, <code>ZonedDateTime</code>, <code>OffsetTime</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ISO-8601 with the offset and without a zone ID, such as <code>"2025-10-08T01:48:46.407254-06:00"</code>, <code>"03:00:00-03:00"</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>YearMonth</code>, <code>MonthDay</code>, <code>Duration</code>, <code>Period</code>, <code>javax.xml.datatype.Duration</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ISO-8601, such as <code>"2026-09"</code>, <code>"--09-25"</code>, <code>"PT1H30M"</code>, <code>"P1Y2M3D"</code>, <code>"P1DT2H"</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Year</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">a number, such as <code>2026</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ZoneId</code>, <code>ZoneOffset</code>, <code>TimeZone</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the ID, such as <code>"America/Sao_Paulo"</code> or <code>"-03:00"</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>An <code>OffsetTime</code> keeps its seconds and writes a fraction of a second with only the digits it needs, as JSON views render
+it, where Spring Boot writes <code>"03:00-03:00"</code>. A map keyed by <code>Date</code>, <code>Calendar</code> or <code>ZonedDateTime</code> values renders its
+keys as those values render by default, such as
+<code>"2025-10-08T07:48:46.407Z"</code>, also where <code>grails.converters.json.date</code> or a registered marshaller changes how the values
+render; other map keys render with their <code>toString()</code>. JSON views render dates and times the same way.</p>
+</div>
+<div class="paragraph">
+<p>A <code>Month</code> renders by its name, such as <code>"SEPTEMBER"</code>, as every enum does, where Spring Boot writes its number. Data binding
+binds a <code>Month</code> from either.</p>
+</div>
+<div class="paragraph">
+<p>Setting <code>grails.converters.json.date</code> to <code>javascript</code> renders <code>java.util.Date</code> values as JavaScript <code>new Date(&#8230;&#8203;)</code>
+constructors instead. To render a type differently, register an object marshaller for it, for example in <code>BootStrap.init</code>.
+This one renders a <code>Month</code> as its number, as Spring Boot does:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">JSON.registerObjectMarshaller(Month) { Month month -&gt;
+    month.value
+}</code></pre>
+</div>
+</div>
+</div>
 
 
 <h2 id="customRenderers">10.10.2 Implementing a Custom Renderer</h2>
