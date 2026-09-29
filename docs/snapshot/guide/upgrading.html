@@ -1067,6 +1067,40 @@ If you require Spring DM&#8217;s "BOM wins always" behaviour for the default man
 Overriding a property that selects an imported BOM&#8217;s version (for example <code>spring-boot.version</code>) re-imports that BOM at the overridden version and applies its updated managed set.</p>
 </div>
 <div class="paragraph">
+<p><strong>Grails BOMs now follow the upstream BOM property names.</strong>
+Where a Grails BOM overrides a version that an upstream BOM also manages - <code>spring-boot-dependencies</code>, or a BOM Spring Boot imports - it declares the override under the upstream BOM&#8217;s own property name.
+One property therefore sets the version in both BOMs, and the property names in the Spring Boot documentation work unchanged in a Grails build.
+For a module Spring Boot manages through an imported BOM, that is the property Spring Boot imports the BOM with: <code>jackson-bom.version</code> moves every Jackson 3 module, whether <code>grails-bom</code> pins it or not.</p>
+</div>
+<div class="paragraph">
+<p>An override under a property name no BOM declares is silently ignored, so rename any Grails-specific property your build sets in <code>gradle.properties</code> or <code>ext['…']</code>, along with a Jackson 2 version set under Spring Boot 3&#8217;s property name:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 66.6667%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Grails 7 property</th>
+<th class="tableblock halign-left valign-top">Grails 8 property</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jackson.version</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jackson-2-bom.version</code> for Jackson 2 (<code>com.fasterxml.jackson.<strong></code>). Jackson 3 (<code>tools.jackson.</strong></code>), the new default, is set by <code>jackson-bom.version</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jackson-bom.version</code> (Spring Boot 3&#8217;s name for Jackson 2)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jackson-2-bom.version</code>. In Grails 8, <code>jackson-bom.version</code> sets Jackson 3, so a Jackson 2 version there makes dependency resolution fail.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Builds that adopted a Grails 8 milestone or release candidate should rename <code>jackson2.version</code> to <code>jackson-2-bom.version</code>, <code>jackson3.version</code> to <code>jackson-bom.version</code>, and, with <code>grails-neo4j-bom</code>, <code>neo4j-driver.version</code> to <code>neo4j-java-driver.version</code>.</p>
+</div>
+<div class="paragraph">
 <p><strong>Selecting or opting out of the auto-applied BOM.</strong>
 The Grails Gradle plugin applies a single Grails BOM automatically, selected by the <code>grails.bom</code> property. Its value is the BOM artifact name within the <code>org.apache.grails</code> group, which the plugin resolves as <code>org.apache.grails:$bom:$grailsVersion</code>.
 It defaults to <code>grails-bom</code>, which preserves the Grails 7 behaviour and is the right choice for the vast majority of applications.
@@ -2369,7 +2403,8 @@ params[<span class="string"><span class="delimiter">'</span><span class="content
 </table>
 <div class="paragraph">
 <p>The same change applies to the <code>attrs</code> map passed to a GSP tag, whose internal implementation renames <code>isGspTagSyntaxCall()</code> to <code>gspTagSyntaxCall()</code>.
-Its setter is retained, so assigning <code>attrs.gspTagSyntaxCall</code> still invokes that setter rather than storing an attribute - as in Grails 7. Store an attribute of that name with <code>attrs.put('gspTagSyntaxCall', value)</code>.</p>
+Its setter is retained, so assigning <code>attrs.gspTagSyntaxCall</code> still invokes that setter rather than storing an attribute - as in Grails 7.
+Subscript assignment, <code>attrs['gspTagSyntaxCall'] = value</code>, now stores an attribute of that name, as <code>attrs.put('gspTagSyntaxCall', value)</code> does; in Grails 7 it invoked the setter.</p>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -6325,6 +6360,72 @@ The <code>includes</code> and <code>excludes</code> patterns of the <code>assets
 </td>
 </tr>
 </table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_80_stricter_closure_typing_for_gorm_criteria_closures">80. Stricter Closure Typing for GORM Criteria Closures</h4>
+<div class="paragraph">
+<p>GORM&#8217;s criteria closure methods (<code>where</code>, <code>whereLazy</code>, <code>build</code>, <code>buildLazy</code>, <code>projections</code>,
+<code>and</code>, <code>or</code>, <code>not</code>, <code>find</code>, <code>get</code>, <code>list</code>, <code>count</code>, <code>asBoolean</code> and the closure subquery forms
+of <code>in</code>, <code>inList</code>, <code>notIn</code>, <code>eqAll</code>, <code>gtAll</code>, <code>ltAll</code>, <code>geAll</code>, <code>leAll</code>, <code>gtSome</code>, <code>geSome</code>,
+<code>ltSome</code> and <code>leSome</code>) now declare
+<code>strategy = Closure.DELEGATE_FIRST</code> in their <code>@DelegatesTo</code> annotations. This matches the
+resolve strategy GORM already applies at runtime and fixes a <code>@CompileStatic</code> bug where the
+restrictions of a criteria closure nested inside another criteria closure were added to the
+enclosing criteria instead of the new one. Projection blocks resolved against the enclosing
+criteria for the same reason, silently dropping their projections. See
+<a href="https://github.com/apache/grails-core/issues/16425">Issue #16425</a>.</p>
+</div>
+<div class="paragraph">
+<p>Statically compiled applications can be affected in two ways.</p>
+</div>
+<div class="paragraph">
+<p><strong>Forwarding a <code>Closure</code> parameter to one of these methods no longer compiles.</strong> A method
+<code>Closure</code> parameter with the default <code>OWNER_FIRST</code> strategy cannot be passed to a
+<code>DELEGATE_FIRST</code> parameter:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="annotation">@CompileStatic</span>
+<span class="directive">static</span> DetachedCriteria&lt;<span class="predefined-type">Book</span>&gt; withExtra(Closure extra) {
+    <span class="keyword">new</span> DetachedCriteria&lt;<span class="predefined-type">Book</span>&gt;(<span class="predefined-type">Book</span>).where(extra)
+    <span class="comment">// [Static type checking] - Closure parameter with resolve strategy OWNER_FIRST</span>
+    <span class="comment">// passed to method with resolve strategy DELEGATE_FIRST</span>
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Declare the same strategy on your parameter, or cast the argument:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="directive">static</span> DetachedCriteria&lt;<span class="predefined-type">Book</span>&gt; withExtra(
+        <span class="annotation">@DelegatesTo</span>(value = DetachedCriteria, strategy = Closure.DELEGATE_FIRST) Closure extra) {
+    <span class="keyword">new</span> DetachedCriteria&lt;<span class="predefined-type">Book</span>&gt;(<span class="predefined-type">Book</span>).where(extra)
+}
+
+<span class="comment">// or</span>
+<span class="keyword">new</span> DetachedCriteria&lt;<span class="predefined-type">Book</span>&gt;(<span class="predefined-type">Book</span>).where((Closure) extra)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><strong>Name resolution inside a criteria closure now prefers the criteria delegate</strong>, which is
+what dynamic code already did. A property or method that exists both on the enclosing class
+and on the criteria now resolves to the criteria:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">BookQueries</span> {
+    <span class="predefined-type">List</span>&lt;Order&gt; getOrders() { ... }
+
+    DetachedCriteria&lt;<span class="predefined-type">Book</span>&gt; query() {
+        <span class="keyword">new</span> DetachedCriteria&lt;<span class="predefined-type">Book</span>&gt;(<span class="predefined-type">Book</span>).where {
+            inList <span class="string"><span class="delimiter">'</span><span class="content">name</span><span class="delimiter">'</span></span>, orders    <span class="comment">// now reads the criteria's orders, not getOrders()</span>
+        }
+    }
+}</code></pre>
+</div>
 </div>
 </div>
 </div>
