@@ -10908,6 +10908,117 @@ rejected when the mappings are evaluated.
 <p>This will automatically produce the correct link (in this case "/books/1" for an id of "1").</p>
 </div>
 <div class="paragraph">
+<p>When the <code>resource</code> attribute is given a domain instance, the link targets the most specific controller
+that serves its domain class. A controller serves a domain class when it is named after it, or when it
+extends <code>RestfulController</code> parameterised on it, directly, through a base class such as
+<code>RestfulServiceController</code>, or through <code>@Scaffold</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">PeopleController</span> <span class="directive">extends</span> RestfulController&lt;Person&gt; {
+    PeopleController() { <span class="local-variable">super</span>(Person) }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">&lt;<span class="key">g</span>:link resource=<span class="string"><span class="delimiter">&quot;</span><span class="inline"><span class="inline-delimiter">${</span>person<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>&gt;My Link&lt;<span class="regexp"><span class="delimiter">/</span><span class="content">g:link&gt;     &lt;%-- </span><span class="delimiter">/</span></span>people/<span class="integer">1</span> --%&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Either way the controller must also define the action the link targets: the <code>action</code> given, or else the
+one its HTTP method maps to, a link naming neither being taken as a <code>GET</code>, so <code>show</code> for an instance, and a
+controller is therefore not sent links to actions it does not have. A controller parameterised on the domain
+class in any other way, such as a report controller built on a generic base class or trait, does not serve
+it, even when it has an action of the same name. Nor does one extending <code>RestfulController</code> without a type
+argument, passing the domain class only to its constructor; it is found only when it is named after the
+domain class. A controller named after the domain class that extends <code>RestfulController</code> parameterised on
+another class with the same simple name, such as a <code>com.example.community.User</code> beside a <code>com.example.User</code>,
+serves that other class only.</p>
+</div>
+<div class="paragraph">
+<p>Candidates are tried from the nearest scope to the furthest, the same rule that resolves a <code>controller</code>
+name to a namespace (see <a href="theWebLayer.html#namespacedControllers">Namespaced Controllers</a>):</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>the controller handling the current request, if it serves the domain class and is in the namespace
+the link targets</p>
+</li>
+<li>
+<p>the controller serving the domain class in that namespace</p>
+</li>
+<li>
+<p>the controller serving it in the default namespace</p>
+</li>
+<li>
+<p>the controller serving it in any namespace</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Where one scope holds more than one controller serving the domain class, the one named after it is
+chosen; otherwise the scope is ambiguous and the next one is tried. The namespace a link targets is its
+<code>namespace</code> attribute when one is given, and otherwise the namespace of the current request; for a
+redirect it is the namespace of the controller issuing it, and outside a request it is the default
+namespace. When no scope settles on a single controller, or no controller serving the domain class defines
+the action, the controller named after the domain class is assumed, and when controllers serving it tied, a
+warning naming them is logged once, so pass the <code>controller</code> attribute to choose one.</p>
+</div>
+<div class="paragraph">
+<p>A link, or the redirect after a save, therefore stays in the controller the user is working in. Given
+an <code>AssessmentController</code> and a <code>ManageAssessmentController</code> in the <code>manage</code> namespace, both serving
+<code>Assessment</code>:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Link to an Assessment rendered by</th>
+<th class="tableblock halign-left valign-top">Targets</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AssessmentController</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AssessmentController</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ManageAssessmentController</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ManageAssessmentController</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">another controller in the <code>manage</code> namespace</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ManageAssessmentController</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">any other controller or no request</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AssessmentController</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Pass the <code>controller</code> attribute to link to a different controller explicitly, for example from an
+administration page to the public one.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+This applies when <code>resource</code> is given a domain instance or domain class and GORM is configured.
+Passing a controller name, as in <code>&lt;g:link resource="book"&gt;</code>, is unchanged.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
 <p>The case of nested resources is a little different as they typically required two identifiers (the id of the resource and the one it is nested within). For example given the nested resources:</p>
 </div>
 <div class="listingblock">
@@ -11807,10 +11918,32 @@ controller, the <code>namespace</code> variable needs to be part of the URL mapp
 <p>Most links do not need a <code>namespace</code> attribute. When a link, redirect, chain, form action, pagination link, sortable column link, or include targets a controller and omits <code>namespace</code>, Grails resolves the namespace for the target controller automatically.</p>
 </div>
 <div class="paragraph">
-<p>If the target is the controller currently handling the request, Grails uses the current request namespace. If exactly one controller has the target name, Grails uses that controller&#8217;s namespace, whether the controller is namespaced or not. In the normal case, <code>controller</code> and <code>action</code> are enough to generate the correct URL.</p>
+<p>If the target is the controller currently handling the request, Grails uses the current request namespace. Otherwise it resolves the controller name the way code resolves a name, nearest scope first, the same rule that resolves a <code>resource</code> link to a controller (see <a href="theWebLayer.html#restfulMappings">Mapping to REST resources</a>):</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>the current request namespace, if it defines a controller with that name</p>
+</li>
+<li>
+<p>the default, non-namespaced controller, if there is one</p>
+</li>
+<li>
+<p>the namespace of the only controller with that name</p>
+</li>
+</ol>
 </div>
 <div class="paragraph">
-<p>Ambiguity only occurs when the same controller name is defined by multiple controllers in different namespaces. That architecture is discouraged and should be avoided. When it does happen, Grails prefers a non-namespaced controller if one exists, otherwise a controller in the current request namespace. Any remaining ambiguity must be resolved by specifying <code>namespace</code> explicitly.</p>
+<p>So <code>controller</code> and <code>action</code> are enough to generate the correct URL. When the same controller name is defined in several namespaces, as it is for an administration area or for versioned APIs, a link stays in the namespace it is rendered from. From the <code>admin</code> namespace, <code>&lt;g:link controller="user"&gt;</code> targets the <code>admin</code> <code>UserController</code>; from anywhere else, it targets the non-namespaced one.</p>
+</div>
+<div class="paragraph">
+<p>A name defined only in namespaces other than the default one and the current request&#8217;s, such as <code>v1</code> and <code>v2</code> from a page outside both, is ambiguous. Grails infers no namespace, logs a warning the first time, and the link must specify <code>namespace</code> explicitly.</p>
+</div>
+<div class="paragraph">
+<p>A name no registered controller has stays in the namespace the link is made from, as a relative reference resolves against where it is made.</p>
+</div>
+<div class="paragraph">
+<p>A <code>redirect</code> naming no <code>namespace</code> is resolved exactly as a link is, starting from the namespace of the controller issuing it, so it reaches a controller defined in another namespace rather than being forced into its own.</p>
 </div>
 <div class="paragraph">
 <p>An explicit <code>namespace</code> always wins. Use <code>namespace="reports"</code> in GSP markup, or <code>namespace: 'reports'</code> in Groovy code, to target a specific namespace. Use <code>namespace=""</code> in GSP markup, or <code>namespace: null</code> in Groovy code, to target a non-namespaced controller.</p>
