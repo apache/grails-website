@@ -371,6 +371,34 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
 <pre class="CodeRay highlight"><code data-lang="groovy">grails.mail.overrideAddress = <span class="string"><span class="delimiter">'</span><span class="content">test@address.com</span><span class="delimiter">'</span></span></code></pre>
 </div>
 </div>
+<div class="paragraph">
+<p>When <code>overrideAddress</code> is set, every <code>to</code>, <code>cc</code> and <code>bcc</code> address and the sender are replaced by this value. That includes a <code>from</code> set in the <code>sendMail</code> closure. <code>replyTo</code> and <code>envelopeFrom</code> are not changed.</p>
+</div>
+<div class="paragraph">
+<p>To override only the recipients or only the sender, use <code>overrideToAddress</code> or <code>overrideFromAddress</code>:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>grails.mail.overrideToAddress</code> replaces every <code>to</code>, <code>cc</code> and <code>bcc</code> address. It&#8217;s also used as the <code>to</code> address when the <code>sendMail</code> closure doesn&#8217;t set one.</p>
+</li>
+<li>
+<p><code>grails.mail.overrideFromAddress</code> replaces the sender, including a <code>from</code> set in the <code>sendMail</code> closure. It&#8217;s also used as the <code>from</code> address when the closure doesn&#8217;t set one.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>When <code>overrideAddress</code> is set as well, <code>overrideToAddress</code> and <code>overrideFromAddress</code> take precedence over it.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">// Redirect all outgoing mail to a test inbox, but keep the real sender address</span>
+grails.mail.overrideToAddress = <span class="string"><span class="delimiter">'</span><span class="content">test-inbox@example.com</span><span class="delimiter">'</span></span>
+
+<span class="comment">// Force a fixed sender address without redirecting recipients</span>
+grails.mail.overrideFromAddress = <span class="string"><span class="delimiter">'</span><span class="content">noreply@example.com</span><span class="delimiter">'</span></span></code></pre>
+</div>
+</div>
 </div>
 
 
@@ -718,15 +746,62 @@ inline(<span class="predefined-type">String</span> fileName, <span class="predef
 <div class="sect3">
 <h4 id="_using_an_override_address">Using an Override Address</h4>
 <div class="paragraph">
-<p>You can <em>override</em> any and all recipient email addresses in <code>sendMail()</code> calls to force messages to be delivered to a certain mailbox:</p>
+<p>You can <em>override</em> recipient and/or sender email addresses in <code>sendMail()</code> calls to force messages to be delivered to a certain mailbox or sent from a fixed address.</p>
+</div>
+<div class="sect4">
+<h5 id="_overriding_all_addresses">Overriding All Addresses</h5>
+<div class="paragraph">
+<p><code>grails.mail.overrideAddress</code> redirects both the sender and all recipients to a single address:</p>
 </div>
 <div class="listingblock">
+<div class="title">application-test.yml</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">grails.mail.overrideAddress = <span class="string"><span class="delimiter">'</span><span class="content">test@myorg.com</span><span class="delimiter">'</span></span></code></pre>
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">mail</span>:
+        <span class="key">overrideAddress</span>: <span class="string"><span class="content">test@myorg.com</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>All <code>to</code>, <code>cc</code> and <code>bcc</code> addresses will be replaced by this value if set. The advantage of this mechanism is that it allows you to test using a real SMTP server. The disadvantage is that it requires a real SMTP server and makes it difficult to test address determination logic.</p>
+<p>All <code>to</code>, <code>cc</code>, and <code>bcc</code> addresses are replaced by this value, and the <code>from</code> address is also replaced.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_overriding_recipients_and_sender_independently">Overriding Recipients and Sender Independently</h5>
+<div class="paragraph">
+<p>Two properties give fine-grained control over address overriding:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>grails.mail.overrideToAddress</code> replaces every <code>to</code>, <code>cc</code> and <code>bcc</code> address. It&#8217;s also used as the <code>to</code> address when the <code>sendMail</code> closure doesn&#8217;t set one.</p>
+</li>
+<li>
+<p><code>grails.mail.overrideFromAddress</code> replaces the sender, including a <code>from</code> set in the <code>sendMail</code> closure. It&#8217;s also used as the <code>from</code> address when the closure doesn&#8217;t set one.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>See <a href="#mailConfiguration">Mail Configuration</a> for how the three properties interact.</p>
+</div>
+<div class="listingblock">
+<div class="title">application-test.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">mail</span>:
+        <span class="key">overrideToAddress</span>: <span class="string"><span class="content">test-inbox@myorg.com</span></span>    <span class="comment"># redirect recipients only</span></code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">application-test.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">mail</span>:
+        <span class="key">overrideFromAddress</span>: <span class="string"><span class="content">noreply@myorg.com</span></span>     <span class="comment"># fix the sender only</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The advantage of this mechanism is that it allows you to test using a real SMTP server. The disadvantage is that it requires a real SMTP server and makes it difficult to test address determination logic.</p>
+</div>
 </div>
 </div>
 <div class="sect3">

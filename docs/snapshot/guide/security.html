@@ -522,19 +522,37 @@ If an application, another filter, or Spring Security has already set one of the
 </table>
 </div>
 <div class="paragraph">
-<p>This is dangerous precisely because it can&#8217;t be caught at runtime: once a <code>GString</code> is flattened to a <code>String</code>, there is nothing left to distinguish it from HQL text that was always safe. Grails detects this pattern at <strong>compile time</strong> instead, and fails the build with an error identifying the call site. To fix it, keep the value as a <code>GString</code> (recommended) or pass named/positional parameters explicitly, as shown above.</p>
+<p>This is dangerous precisely because it can&#8217;t be caught at runtime: once a <code>GString</code> is flattened to a <code>String</code>, there is nothing left to distinguish it from HQL text that was always safe. Grails detects this pattern at <strong>compile time</strong> instead, and fails the build with an error identifying the call site. To fix it, keep the value as a <code>GString</code> (recommended) or pass named/positional parameters explicitly, as shown above. Both fixes apply when the interpolated expressions are <strong>values</strong>; query text assembled from HQL fragments is a different case, covered in <a href="#queryTextFragments">Building query text from fragments</a> below.</p>
 </div>
 <div class="paragraph">
-<p>If a flagged call site has been reviewed and is genuinely safe, suppress the check on the enclosing method:</p>
+<p>If a flagged call site has been reviewed and is genuinely safe, suppress the check on the declaration of the variable that holds the query text, or on the enclosing method:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="annotation">@SuppressWarnings</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">GormUnsafeQueryString</span><span class="delimiter">&quot;</span></span>)
-<span class="keyword">def</span> <span class="function">reviewedAndSafe</span>() {
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> <span class="function">reviewedAndSafe</span>() {
+    <span class="annotation">@SuppressWarnings</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">GormUnsafeQueryString</span><span class="delimiter">&quot;</span></span>)
+    <span class="predefined-type">String</span> query = <span class="string"><span class="delimiter">&quot;</span><span class="content">from Book as b where b.title = </span><span class="inline"><span class="inline-delimiter">${</span>params.title<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>  <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="keyword">def</span> books = <span class="predefined-type">Book</span>.executeQuery(query)
+}
+
+<span class="annotation">@SuppressWarnings</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">GormUnsafeQueryString</span><span class="delimiter">&quot;</span></span>)                            <i class="conum" data-value="2"></i><b>(2)</b>
+<span class="keyword">def</span> <span class="function">reviewedAndSafeToo</span>() {
     <span class="predefined-type">String</span> query = <span class="string"><span class="delimiter">&quot;</span><span class="content">from Book as b where b.title = </span><span class="inline"><span class="inline-delimiter">${</span>params.title<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>
     <span class="keyword">def</span> books = <span class="predefined-type">Book</span>.executeQuery(query)
 }</code></pre>
 </div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The declaration-level form marks this one variable (or, on a field declaration, that field) as reviewed for the rest of the method, whatever it is later assigned, and leaves every other variable checked. Prefer it.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The method-level form silences the check for every query in the method.</td>
+</tr>
+</table>
 </div>
 <div class="paragraph">
 <p>This check runs automatically against every Grails application that has <code>grails-datamapping-core</code> on its compile classpath — no configuration is required, and it covers every GORM implementation whose query methods follow this convention (Hibernate and Neo4j today).</p>
@@ -548,7 +566,79 @@ If an application, another filter, or Spring Security has already set one of the
 </div>
 </div>
 <div class="paragraph">
-<p>This is a global kill switch of last resort, not a substitute for <code>@SuppressWarnings("GormUnsafeQueryString")</code> on the specific method that needs it.</p>
+<p>This is a global kill switch of last resort, not a substitute for <code>@SuppressWarnings("GormUnsafeQueryString")</code> on the specific declaration or method that needs it.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="queryTextFragments">Building query text from fragments</h5>
+<div class="paragraph">
+<p>A <code>GString</code> is the right tool for <strong>values</strong>, not for query text. GORM turns every interpolation into a bound parameter, so interpolating an HQL fragment into a <code>GString</code> that is passed directly to a query method produces a broken query rather than an unsafe one:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="predefined-type">String</span> restriction = <span class="string"><span class="delimiter">&quot;</span><span class="content"> and b.title = :title</span><span class="delimiter">&quot;</span></span>
+<span class="predefined-type">Book</span>.executeQuery(<span class="string"><span class="delimiter">&quot;</span><span class="content">from Book b where 1 = 1 </span><span class="inline"><span class="inline-delimiter">${</span>restriction<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>, [<span class="key">title</span>: params.title])
+<span class="comment">// runs as:  from Book b where 1 = 1 :p0   -- the fragment is bound as a value</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The check tells query text and values apart. An interpolation that is <strong>constant text</strong> cannot carry user input, so it is not flagged even when the <code>GString</code> is coerced to a <code>String</code>. Constant text is a string literal, a <code>static final</code> field initialized from constant text, a ternary or Elvis expression choosing between constant text, a <code>+</code> concatenation or <code>GString</code> made only of constant text, and a local variable that only ever held constant text on every path leading to the query, whichever <code>if</code>/<code>else</code>, <code>switch</code>, <code>try</code>/<code>catch</code>, loop or closure those paths run through. This is what lets restrictions be chosen at runtime while the values stay bound:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> <span class="function">search</span>() {
+    <span class="predefined-type">Map</span> queryParams = [:]
+    <span class="predefined-type">String</span> restriction = <span class="string"><span class="delimiter">&quot;</span><span class="delimiter">&quot;</span></span>
+    <span class="keyword">if</span> (params.title) {
+        restriction = <span class="string"><span class="delimiter">&quot;</span><span class="content"> and b.title = :title</span><span class="delimiter">&quot;</span></span>                <i class="conum" data-value="1"></i><b>(1)</b>
+        queryParams.title = params.title                     <i class="conum" data-value="2"></i><b>(2)</b>
+    }
+    <span class="predefined-type">String</span> query = <span class="string"><span class="delimiter">&quot;</span><span class="content">from Book b where 1 = 1 </span><span class="inline"><span class="inline-delimiter">${</span>restriction<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>  <i class="conum" data-value="3"></i><b>(3)</b>
+    <span class="predefined-type">Book</span>.executeQuery(query, queryParams)
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Constant text chosen at runtime. Assigning <code>restriction</code> from a request parameter, a method call, or any other non-constant expression on <strong>any</strong> path would make the interpolation a build error again.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The value is bound through the parameter map, never interpolated.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>Allowed: every interpolation is constant text.</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Appending with <code>+=</code> is tracked the same way, so the more common idiom compiles without errors or warnings too:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="predefined-type">String</span> query = <span class="string"><span class="delimiter">&quot;</span><span class="content">from Book b where 1 = 1</span><span class="delimiter">&quot;</span></span>
+<span class="keyword">if</span> (params.title) {
+    query += <span class="string"><span class="delimiter">&quot;</span><span class="content"> and b.title = :title</span><span class="delimiter">&quot;</span></span>
+    queryParams.title = params.title
+}
+<span class="predefined-type">Book</span>.executeQuery(query, queryParams)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Query text assembled in a way the check cannot follow — fragments collected in a <code>List</code> and joined, or returned from a helper method — is reported as the lower-confidence concatenation warning described below, or as the build-breaking error when a <code>GString</code> is involved. After review, suppress such a call site on the declaration of the variable that holds the trusted text rather than on the whole method. The annotation may go on the assembled query or on the fragment it is built from; an annotated variable is treated as constant text wherever it is interpolated or concatenated:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> <span class="function">search</span>() {
+    <span class="annotation">@SuppressWarnings</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">GormUnsafeQueryString</span><span class="delimiter">&quot;</span></span>)
+    <span class="predefined-type">String</span> restriction = restrictionsFor(params)                 <span class="comment">// reviewed: trusted query text</span>
+    <span class="predefined-type">String</span> query = <span class="string"><span class="delimiter">&quot;</span><span class="content">from Book b where 1 = 1 </span><span class="inline"><span class="inline-delimiter">${</span>restriction<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>      <span class="comment">// no longer flagged</span>
+    <span class="predefined-type">Book</span>.executeQuery(query, queryParams)
+}</code></pre>
+</div>
 </div>
 </div>
 <div class="sect4">
@@ -585,12 +675,12 @@ If an application, another filter, or Spring Security has already set one of the
 </tr>
 <tr>
 <td><i class="conum" data-value="3"></i><b>3</b></td>
-<td>Query text built with <code>+</code> from a non-constant value and no <code>GString</code> involved at all. This is a real injection shape, but string concatenation is common enough for benign, non-query purposes that a hard build failure would be too blunt an instrument.</td>
+<td>Query text built with <code>+</code> from a non-constant value and no <code>GString</code> involved at all. This is a real injection shape, but string concatenation is common enough for benign, non-query purposes that a hard build failure would be too blunt an instrument. Concatenating only constant text, as defined above, is not flagged at all.</td>
 </tr>
 </table>
 </div>
 <div class="paragraph">
-<p>Both warnings identify the call site and suppress the same way as the error above, with <code>@SuppressWarnings("GormUnsafeQueryString")</code> on the enclosing method. Concatenating a <code>GString</code> with additional text (e.g. <code>"&#8230;&#8203;${title}&#8230;&#8203;" + " order by title"</code>) is <strong>not</strong> one of these warnings — Groovy&#8217;s <code>GString.plus</code> returns a plain <code>String</code>, so this flattens the interpolation immediately and is reported as the build-breaking error instead.</p>
+<p>Both warnings identify the call site and suppress the same way as the error above, with <code>@SuppressWarnings("GormUnsafeQueryString")</code> on the declaration or on the enclosing method. Concatenating a <code>GString</code> with additional text (e.g. <code>"&#8230;&#8203;${title}&#8230;&#8203;" + " order by title"</code>), or appending to a <code>GString</code> or to an already-flattened <code>String</code> with <code>` or `=</code>, is <strong>not</strong> one of these warnings — Groovy&#8217;s <code>GString.plus</code> returns a plain <code>String</code>, so this flattens the interpolation immediately and is reported as the build-breaking error instead.</p>
 </div>
 </div>
 </div>
@@ -757,7 +847,6 @@ Although Grails plays it safe by default, that is no guarantee that your applica
     <span class="key">views</span>:
         <span class="key">gsp</span>:
             <span class="key">encoding</span>: UTF-<span class="integer">8</span>
-            <span class="key">htmlcodec</span>: xml <span class="error">#</span> use xml escaping instead of HTML4 escaping
             <span class="key">codecs</span>:
                 <span class="key">expression</span>: html <span class="error">#</span> escapes values inside <span class="error">$</span>{}
                 <span class="key">scriptlets</span>: html <span class="error">#</span> escapes output from scriptlets <span class="keyword">in</span> GSPs
@@ -1022,27 +1111,15 @@ Although Grails plays it safe by default, that is no guarantee that your applica
 <pre class="CodeRay highlight"><code data-lang="groovy">&lt;input name=<span class="string"><span class="delimiter">&quot;</span><span class="content">comment.message</span><span class="delimiter">&quot;</span></span> value=<span class="string"><span class="delimiter">&quot;</span><span class="inline"><span class="inline-delimiter">${</span>comment.message.encodeAsHTML()<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>/&gt;</code></pre>
 </div>
 </div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-Note that the HTML encoding does not re-encode apostrophe/single quote so you must use double quotes on attribute values to avoid text with apostrophes affecting your page.
-</td>
-</tr>
-</table>
+<div class="paragraph">
+<p>HTMLCodec escapes <code>&amp;</code>, <code>&lt;</code>, <code>&gt;</code>, <code>"</code> and <code>'</code>, so values are safe in both double- and single-quoted attribute values. It also escapes <code>@</code>, the backslash, the backtick, the non breaking space (U+00A0), the line separator (U+2028) and the paragraph separator (U+2029), and drops control characters other than tab, line feed and carriage return. Other characters, such as non-ASCII letters, are written as they are, so the page must be served in a character set that can represent them. GSP pages use UTF-8 by default (<code>grails.views.gsp.encoding</code>).</p>
 </div>
 <div class="paragraph">
-<p>HTMLCodec defaults to HTML4 style escaping (legacy HTMLCodec implementation in Grails versions before 2.3.0) which escapes non-ascii characters.</p>
-</div>
-<div class="paragraph">
-<p>You can use plain XML escaping instead of HTML4 escaping by setting this config property in <code>application.groovy</code>:</p>
+<p>Before Grails 8, HTMLCodec defaulted to HTML4 style escaping (the HTMLCodec implementation in Grails versions before 2.3.0), which converts non-ASCII characters to named entities such as <code>&eacute;</code> and leaves <code>@</code>, the backslash, the backtick and the line and paragraph separators unescaped. To keep using it, for example in an application that serves pages in a character set such as ISO-8859-1 and relies on the entities for characters outside it, set this config property in <code>application.groovy</code>:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">grails.views.gsp.htmlcodec = <span class="string"><span class="delimiter">'</span><span class="content">xml</span><span class="delimiter">'</span></span></code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">grails.views.gsp.htmlcodec = <span class="string"><span class="delimiter">'</span><span class="content">html4</span><span class="delimiter">'</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1053,8 +1130,11 @@ Note that the HTML encoding does not re-encode apostrophe/single quote so you mu
 <pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
     <span class="key">views</span>:
         <span class="key">gsp</span>:
-            <span class="key">htmlcodec</span>: <span class="string"><span class="content">'xml'</span></span></code></pre>
+            <span class="key">htmlcodec</span>: <span class="string"><span class="content">html4</span></span></code></pre>
 </div>
+</div>
+<div class="paragraph">
+<p>The value <code>html</code> also selects HTML4 style escaping. Any other value, such as <code>xml</code>, which applications generated by earlier Grails versions set, selects the default escaping. Use <code>encodeAsHTML4()</code> to apply HTML4 style escaping to a single value.</p>
 </div>
 <div class="paragraph">
 <p><strong>XMLCodec</strong></p>

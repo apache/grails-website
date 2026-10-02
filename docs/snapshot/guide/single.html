@@ -1216,7 +1216,7 @@ Use <code>namespace=""</code> in GSP markup, or <code>namespace: null</code> in 
 </div>
 </div>
 <div class="paragraph">
-<p>All three options are disabled by default and independent, or <code>compileStatic { all = true }</code> can be used as a shortcut to enable all of them. Any class that declares its own <code>@CompileDynamic</code> (or <code>@GrailsCompileStatic</code>/<code>@CompileStatic</code>/<code>@GrailsTypeChecked</code>/<code>@TypeChecked</code>) annotation keeps that setting, so the opt-in never overrides an explicit per-class choice. Tag libraries that still declare tags as closure fields (the deprecated form) are skipped automatically by the <code>tagLibs</code> opt-in and left dynamically compiled with a build warning, so define tags as methods to opt them in. See the <a href="#staticTypeCheckingAndCompilation/grailsCompileStatic">GrailsCompileStatic</a> section for details.</p>
+<p>All three options are disabled by default and independent, or <code>compileStatic { all = true }</code> can be used as a shortcut to enable all of them. Any class that declares its own <code>@CompileDynamic</code> (or <code>@GrailsCompileStatic</code>/<code>@CompileStatic</code>/<code>@GrailsTypeChecked</code>/<code>@TypeChecked</code>) annotation keeps that setting, so the opt-in never overrides an explicit per-class choice. Tag libraries that still declare tags as closure fields (the deprecated form) are skipped automatically by the <code>tagLibs</code> opt-in and left dynamically compiled with a build warning, so define tags as methods to opt them in. See the <a href="#grailsCompileStatic">GrailsCompileStatic</a> section for details.</p>
 </div>
 </div>
 <div class="sect3">
@@ -1477,7 +1477,7 @@ requests randomly take longer. Slower responses widen the window in which timing
 flaky functional tests — assertions that race a navigation, missing waits, ordering assumptions — into deterministic
 failures. The module is inert until <code>grails.testing.latency.enabled</code> is set to <code>true</code>, and the delay range, the
 fraction of requests affected, and the url patterns are all configurable. See the
-<a href="#testing/functionalTesting">Functional Testing</a> section for details.</p>
+<a href="#functionalTesting">Functional Testing</a> section for details.</p>
 </div>
 </div>
 <div class="sect3">
@@ -1584,7 +1584,7 @@ build-time generated initializer. Reachability metadata for the application&#821
 written from the build output, and <code>traceNativeMetadata</code> records what the framework reflects on along a request path.</p>
 </div>
 <div class="paragraph">
-<p>See the <a href="#deployment/deploymentAot">Ahead-of-Time Processing</a> section for what it changes at runtime and what it
+<p>See the <a href="#deploymentAot">Ahead-of-Time Processing</a> section for what it changes at runtime and what it
 does not yet cover.</p>
 </div>
 </div>
@@ -1606,7 +1606,7 @@ the classes it loaded and linked and the methods it ran, so the next start reads
 </div>
 </div>
 <div class="paragraph">
-<p>See the <a href="#deployment/deploymentAotCache">Ahead-of-Time Caching</a> section, which includes measured figures and the
+<p>See the <a href="#deploymentAotCache">Ahead-of-Time Caching</a> section, which includes measured figures and the
 conditions under which a JVM will decline a cache.</p>
 </div>
 </div>
@@ -1623,7 +1623,7 @@ underneath: a version shown by default that cannot be determined is left out rat
 an application without Spring Security says nothing about it instead of saying it does not know. One asked for
 by name still reads <code>unknown</code>, because saying nothing about what was asked for reads as the option having been
 ignored. See
-<a href="#conf/applicationClass/customizing">Customizing the Application Class</a> for the full set of banner options, and the
+<a href="#customizing">Customizing the Application Class</a> for the full set of banner options, and the
 <a href="upgrading.html#upgrading80x">upgrade guide</a> for how to restore the previous output.</p>
 </div>
 </div>
@@ -1759,6 +1759,29 @@ parameters work as they do for a named resource, and the mapping can be placed i
 mapping. Because the controller is not known until a request is matched, the URL must capture it and
 child resources cannot be nested within the mapping. See
 <a href="theWebLayer.html#restfulMappings">Mapping to REST resources</a>.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_separate_recipient_and_sender_overrides_for_mail">Separate Recipient and Sender Overrides for Mail</h4>
+<div class="paragraph">
+<p>The Mail plugin can now override the recipients and the sender of outgoing mail separately.
+<code>grails.mail.overrideToAddress</code> replaces every <code>to</code>, <code>cc</code> and <code>bcc</code> address and keeps the sender the
+application sets, and <code>grails.mail.overrideFromAddress</code> replaces the sender without redirecting the
+recipients:</p>
+</div>
+<div class="listingblock">
+<div class="title">application-test.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">mail</span>:
+        <span class="key">overrideToAddress</span>: <span class="string"><span class="content">test-inbox@example.com</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>grails.mail.overrideAddress</code> still replaces both, and the two new properties take precedence over it when
+both are set. It now also replaces a <code>from</code> set in the <code>sendMail</code> closure. See
+<a href="mail.html#mailConfiguration">Mail Configuration</a>, and the <a href="upgrading.html#upgrading80x">upgrade guide</a>
+for what this means for an application that sets <code>overrideAddress</code>.</p>
 </div>
 </div>
 </div>
@@ -5369,6 +5392,36 @@ Declaring all three names prevents the naming strategy from changing the mapping
 <p>Separately, the element column of a <strong>basic (non-enum) collection</strong> (e.g. <code>static hasMany = [items: String]</code>) is now resolved through the naming strategy&#8217;s <strong>column</strong> naming rules instead of its <strong>table</strong> naming rules for the property-name prefix, producing a <code>&lt;property&gt;_&lt;element-type identifier&gt;</code> column name. An enum collection is unaffected: its element column has no property-name prefix and already used the column naming rules before this change. Most naming strategies apply the same transformation to both, so this only matters if your custom <code>PhysicalNamingStrategy</code> implements <code>toPhysicalColumnName</code> and <code>toPhysicalTableName</code> differently.</p>
 </div>
 </div>
+<div class="sect4">
+<h5 id="_26_10_table_per_hierarchy_discriminator_defaults">26.10 Table-per-Hierarchy Discriminator Defaults</h5>
+<div class="paragraph">
+<p>A table-per-hierarchy tree with no discriminator mapping uses the same defaults as Grails 7: a column named <code>class</code> that stores the fully qualified name of each class. Tables created by Grails 7 need no change.</p>
+</div>
+<div class="paragraph">
+<p>8.0.0-RC1 and 8.0.0-RC2 named the column <code>DTYPE</code> and stored the simple name of each subclass, for example <code>com.example.Vehicle</code>, <code>Car</code> and <code>SportsCar</code>. A table created by either release candidate now fails <code>dbCreate: 'validate'</code> with <code>missing column [class]</code>, and its subclass rows no longer match. To keep that layout without migrating the data, map the column on the root class and the simple name on each subclass:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">Vehicle</span> {
+    <span class="directive">static</span> mapping = {
+        discriminator <span class="key">column</span>: <span class="string"><span class="delimiter">'</span><span class="content">DTYPE</span><span class="delimiter">'</span></span>    <span class="comment">// the root value stays the fully qualified class name</span>
+    }
+}
+
+<span class="type">class</span> <span class="class">Car</span> <span class="directive">extends</span> Vehicle {
+    <span class="directive">static</span> mapping = {
+        discriminator <span class="string"><span class="delimiter">'</span><span class="content">Car</span><span class="delimiter">'</span></span>
+    }
+}
+
+<span class="type">class</span> <span class="class">SportsCar</span> <span class="directive">extends</span> Car {
+    <span class="directive">static</span> mapping = {
+        discriminator <span class="string"><span class="delimiter">'</span><span class="content">SportsCar</span><span class="delimiter">'</span></span>
+    }
+}</code></pre>
+</div>
+</div>
+</div>
 </div>
 <div class="sect3">
 <h4 id="_27_gorm_properties_are_nullable_by_default">27. GORM Properties Are Nullable by Default</h4>
@@ -5421,6 +5474,22 @@ schema migration or diff tools.</p>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">grails.gorm.default.constraints = {
     <span class="string"><span class="delimiter">'</span><span class="content">*</span><span class="delimiter">'</span></span>(<span class="key">nullable</span>: <span class="predefined-constant">false</span>)
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Domains mocked with <code>DataTest</code> or <code>DomainUnitTest</code> use the same settings as the running application.
+They are read from <code>application.yml</code> or <code>application.groovy</code>.
+A specification can also set them in <code>doWithConfig</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">BookSpec</span> <span class="directive">extends</span> Specification <span class="directive">implements</span> DomainUnitTest&lt;<span class="predefined-type">Book</span>&gt; {
+
+    <span class="annotation">@Override</span>
+    Closure doWithConfig() {{ config -&gt;
+        config.grails.gorm.default.nullable = <span class="predefined-constant">false</span>
+    }}
 }</code></pre>
 </div>
 </div>
@@ -5927,13 +5996,13 @@ Alternatively, declare the beans themselves — in <code>resources.groovy</code>
 <p>This is flagged because passing the <code>GString</code> <strong>directly</strong> to <code>executeQuery</code> is safe — GORM binds the interpolated value as a query parameter — but assigning it to a <code>String</code>-typed local first causes Groovy to coerce it to a plain <code>String</code> at that point, silently discarding the safe binding; the interpolated value is then embedded as raw, unescaped query text. See <a href="#sqlInjection">SQL injection</a> for the full explanation and examples.</p>
 </div>
 <div class="paragraph">
-<p>If your application has this pattern, fix it by keeping the query a <code>GString</code> all the way to the call, or by using named/positional parameters instead. For a call site that has been reviewed and is genuinely safe, add <code>@SuppressWarnings("GormUnsafeQueryString")</code> to the enclosing method rather than restructuring the code.</p>
+<p>If the interpolated expressions are values, fix it by keeping the query a <code>GString</code> all the way to the call, or by using named/positional parameters instead. If they are HQL fragments — restrictions or an <code>order by</code> clause chosen at runtime — do <strong>not</strong> switch to a <code>GString</code>: GORM would bind the fragment as a parameter value and the query would no longer work. Interpolating or appending <strong>constant</strong> text (string literals, <code>static final</code> constants, ternaries over them, and locals that only ever hold such text) is recognized as safe and is not flagged, so the usual dynamic-restriction idioms, including <code>query += " and &#8230;&#8203;"</code>, compile unchanged. For a call site that has been reviewed and is genuinely safe, add <code>@SuppressWarnings("GormUnsafeQueryString")</code> to the declaration of the variable that holds the query text, or to the enclosing method, rather than restructuring the code. See <a href="#sqlInjection">SQL injection</a> for the details of what counts as constant text.</p>
 </div>
 <div class="paragraph">
-<p>This check runs automatically wherever <code>grails-datamapping-core</code> is on the compile classpath, with no opt-in configuration required. If it produces a false positive with no workaround, the whole check can be disabled by setting the <code>protectSqlInjectionAttacks</code> system property to <code>false</code> (it defaults to <code>true</code>) — this is a last-resort, build-wide kill switch, not a substitute for the per-call-site <code>@SuppressWarnings</code> above.</p>
+<p>This check runs automatically wherever <code>grails-datamapping-core</code> is on the compile classpath, with no opt-in configuration required. If it produces a false positive with no workaround, the whole check can be disabled by setting the <code>protectSqlInjectionAttacks</code> system property to <code>false</code> (it defaults to <code>true</code>) — this is a last-resort, build-wide kill switch, not a substitute for the per-declaration or per-method <code>@SuppressWarnings</code> above.</p>
 </div>
 <div class="paragraph">
-<p>The same check also emits (non-build-breaking) <strong>compile-time warnings</strong>, not errors, for two related but lower-confidence patterns: a <code>String</code>-typed field assigned an interpolated <code>GString</code> and later read through <code>this.field</code> in a query call, and query text built with <code>+</code> concatenation from a non-constant value with no <code>GString</code> involved. Neither of these fails the build, but both are worth reviewing — see <a href="#sqlInjection">SQL injection</a> for examples of both.</p>
+<p>The same check also emits (non-build-breaking) <strong>compile-time warnings</strong>, not errors, for two related but lower-confidence patterns: a <code>String</code>-typed field assigned an interpolated <code>GString</code> and later read through <code>this.field</code> in a query call, and query text built with <code>+</code> concatenation from a non-constant value (constant text is never flagged) with no <code>GString</code> involved. Neither of these fails the build, but both are worth reviewing — see <a href="#sqlInjection">SQL injection</a> for examples of both.</p>
 </div>
 <div class="paragraph">
 <p><strong>Most applications and plugins need no action.</strong> Behavior only changes where a plugin bean and a conditional Boot bean competed for the same name or type — the plugin bean now wins, which is almost always the intended outcome.</p>
@@ -9540,6 +9609,130 @@ and on the criteria now resolves to the criteria:</p>
     }
 }</code></pre>
 </div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_81_xml_safe_html_escaping_is_the_default">81. XML-Safe HTML Escaping Is the Default</h4>
+<div class="paragraph">
+<p>When <code>grails.views.gsp.htmlcodec</code> is not set, the HTML codec, which GSP uses to escape <code>${}</code> expressions and
+which <code>encodeAsHTML()</code> applies, now uses the XML-safe escaping that applications generated by <code>create-app</code>
+and Grails Forge have selected with <code>htmlcodec: xml</code> since Grails 2.3. Before, it used HTML4 style escaping.
+New applications no longer have the setting, since it is now the default.</p>
+</div>
+<div class="paragraph">
+<p>Applications that set <code>htmlcodec: xml</code> are not affected, and can keep or remove the setting. Applications
+without the setting now get different escaped output:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Non-ASCII characters are written as they are instead of as named entities: <code>Gösta</code> is no longer escaped
+as <code>G&ouml;sta</code>.</p>
+</li>
+<li>
+<p><code>@</code>, the backslash and the backtick are escaped as <code>&#64;</code>, <code>&#92;</code> and <code>&#96;</code>, the non breaking space and
+the line and paragraph separators as numeric character references, and control characters other than tab,
+line feed and carriage return are dropped.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Tests that compare escaped markup exactly may need to be updated. An application that serves pages in a
+character set that cannot represent every character, such as ISO-8859-1, and relies on the named entities,
+can restore HTML4 style escaping:</p>
+</div>
+<div class="listingblock">
+<div class="title">application.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">views</span>:
+        <span class="key">gsp</span>:
+            <span class="key">htmlcodec</span>: <span class="string"><span class="content">html4</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>See <a href="security.html#codecs">Encoding and Decoding Objects</a>.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_82_mail_plugin_overrideaddress_also_replaces_an_explicit_sender">82. Mail Plugin: <code>overrideAddress</code> Also Replaces an Explicit Sender</h4>
+<div class="paragraph">
+<p><code>grails.mail.overrideAddress</code> now also replaces a <code>from</code> set in the <code>sendMail</code> closure. In Grails 7, it replaced every <code>to</code>, <code>cc</code> and <code>bcc</code> address and the default sender, and an explicit <code>from</code> was kept.</p>
+</div>
+<div class="paragraph">
+<p>To keep the sender your application sets, while still redirecting every recipient, use the new <code>grails.mail.overrideToAddress</code> in place of <code>overrideAddress</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">application-development.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">mail</span>:
+        <span class="key">overrideToAddress</span>: <span class="string"><span class="content">test-inbox@example.com</span></span>   <span class="comment"># redirect all recipients (to, cc, bcc) only</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>To set a fixed sender without redirecting recipients, use the new <code>grails.mail.overrideFromAddress</code>. See <a href="mail.html#mailConfiguration">Mail Configuration</a> for how the three properties interact.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_83_gorm_dynamic_finder_classes_replaced">83. GORM Dynamic Finder Classes Replaced</h4>
+<div class="paragraph">
+<p>The dynamic finder implementations in the <code>org.grails.datastore.gorm.finders</code> package no longer form an inheritance hierarchy. The following public classes have been removed:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>AbstractFinder</code></p>
+</li>
+<li>
+<p><code>AbstractFindByFinder</code></p>
+</li>
+<li>
+<p><code>FindByFinder</code></p>
+</li>
+<li>
+<p><code>FindByBooleanFinder</code></p>
+</li>
+<li>
+<p><code>FindAllByFinder</code></p>
+</li>
+<li>
+<p><code>FindAllByBooleanFinder</code></p>
+</li>
+<li>
+<p><code>FindOrCreateByFinder</code></p>
+</li>
+<li>
+<p><code>FindOrSaveByFinder</code></p>
+</li>
+<li>
+<p><code>CountByFinder</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><code>DynamicFinder</code> is now a concrete class that only parses a finder method name and builds its query criteria. It no longer implements <code>FinderMethod</code>, has no <code>invoke</code> or <code>doInvokeInternal</code> methods, and its constructor takes a method pattern, the junction operators, a <code>MappingContext</code> and a boolean-clause flag. Finder execution lives in three classes that compose a <code>DynamicFinder</code> instead of extending it and are created through static factory methods:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">org.grails.datastore.gorm.finders.CountFinder</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.gorm.finders.ListResultFinder</span>
+<span class="keyword">import</span> <span class="include">org.grails.datastore.gorm.finders.SingleResultFinder</span>
+
+SingleResultFinder.findBy(datastoreResolver, mappingContext)          <span class="comment">// findBy*</span>
+SingleResultFinder.findByBoolean(datastoreResolver, mappingContext)   <span class="comment">// find&lt;Boolean&gt;By*</span>
+SingleResultFinder.findOrCreateBy(datastoreResolver, mappingContext)  <span class="comment">// findOrCreateBy*</span>
+SingleResultFinder.findOrSaveBy(datastoreResolver, mappingContext)    <span class="comment">// findOrSaveBy*</span>
+ListResultFinder.findAllBy(datastoreResolver, mappingContext)         <span class="comment">// findAllBy*</span>
+ListResultFinder.findAllByBoolean(datastoreResolver, mappingContext)  <span class="comment">// findAll&lt;Boolean&gt;By*</span>
+CountFinder.countBy(datastoreResolver, mappingContext)                <span class="comment">// countBy*</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Each factory also accepts a <code>Datastore</code>, or only a <code>MappingContext</code> for a finder that parses method names without executing queries. <code>ListOrderByFinder</code> keeps its constructors but no longer extends <code>AbstractFinder</code>, and the list of finders a <code>DetachedCriteria</code> consults is now typed as <code>List&lt;FinderMethod&gt;</code>.</p>
+</div>
+<div class="paragraph">
+<p>Applications are unaffected: dynamic finders such as <code>Book.findByTitle('The Stand')</code> behave as before. A GORM datastore implementation or plugin outside the Grails repository that extends one of the removed classes, or that calls <code>new FindByFinder(&#8230;&#8203;)</code> and its siblings when building its finder list, must switch to the factory methods above. Code that only holds finders as <code>FinderMethod</code> compiles unchanged.</p>
 </div>
 </div>
 </div>
@@ -41401,6 +41594,21 @@ trait in order to mock the related domain classes.</p>
 }</code></pre>
 </div>
 </div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+A domain class may be mocked whatever its identifier generator is, including a generator class
+name such as <code>id generator: 'com.example.CustomIdGenerator'</code>. The mocked datastore generates identifiers
+itself and never runs or validates that generator, so a misspelled generator name still passes a unit
+test. Verify the generator itself with an integration test against the real datastore.
+</td>
+</tr>
+</table>
+</div>
 
 
 <h2 id="unitTestingServices">15.3.5 Unit Testing Services</h2>
@@ -44792,19 +45000,37 @@ If an application, another filter, or Spring Security has already set one of the
 </table>
 </div>
 <div class="paragraph">
-<p>This is dangerous precisely because it can&#8217;t be caught at runtime: once a <code>GString</code> is flattened to a <code>String</code>, there is nothing left to distinguish it from HQL text that was always safe. Grails detects this pattern at <strong>compile time</strong> instead, and fails the build with an error identifying the call site. To fix it, keep the value as a <code>GString</code> (recommended) or pass named/positional parameters explicitly, as shown above.</p>
+<p>This is dangerous precisely because it can&#8217;t be caught at runtime: once a <code>GString</code> is flattened to a <code>String</code>, there is nothing left to distinguish it from HQL text that was always safe. Grails detects this pattern at <strong>compile time</strong> instead, and fails the build with an error identifying the call site. To fix it, keep the value as a <code>GString</code> (recommended) or pass named/positional parameters explicitly, as shown above. Both fixes apply when the interpolated expressions are <strong>values</strong>; query text assembled from HQL fragments is a different case, covered in <a href="#queryTextFragments">Building query text from fragments</a> below.</p>
 </div>
 <div class="paragraph">
-<p>If a flagged call site has been reviewed and is genuinely safe, suppress the check on the enclosing method:</p>
+<p>If a flagged call site has been reviewed and is genuinely safe, suppress the check on the declaration of the variable that holds the query text, or on the enclosing method:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="annotation">@SuppressWarnings</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">GormUnsafeQueryString</span><span class="delimiter">&quot;</span></span>)
-<span class="keyword">def</span> <span class="function">reviewedAndSafe</span>() {
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> <span class="function">reviewedAndSafe</span>() {
+    <span class="annotation">@SuppressWarnings</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">GormUnsafeQueryString</span><span class="delimiter">&quot;</span></span>)
+    <span class="predefined-type">String</span> query = <span class="string"><span class="delimiter">&quot;</span><span class="content">from Book as b where b.title = </span><span class="inline"><span class="inline-delimiter">${</span>params.title<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>  <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="keyword">def</span> books = <span class="predefined-type">Book</span>.executeQuery(query)
+}
+
+<span class="annotation">@SuppressWarnings</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">GormUnsafeQueryString</span><span class="delimiter">&quot;</span></span>)                            <i class="conum" data-value="2"></i><b>(2)</b>
+<span class="keyword">def</span> <span class="function">reviewedAndSafeToo</span>() {
     <span class="predefined-type">String</span> query = <span class="string"><span class="delimiter">&quot;</span><span class="content">from Book as b where b.title = </span><span class="inline"><span class="inline-delimiter">${</span>params.title<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>
     <span class="keyword">def</span> books = <span class="predefined-type">Book</span>.executeQuery(query)
 }</code></pre>
 </div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The declaration-level form marks this one variable (or, on a field declaration, that field) as reviewed for the rest of the method, whatever it is later assigned, and leaves every other variable checked. Prefer it.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The method-level form silences the check for every query in the method.</td>
+</tr>
+</table>
 </div>
 <div class="paragraph">
 <p>This check runs automatically against every Grails application that has <code>grails-datamapping-core</code> on its compile classpath — no configuration is required, and it covers every GORM implementation whose query methods follow this convention (Hibernate and Neo4j today).</p>
@@ -44818,7 +45044,79 @@ If an application, another filter, or Spring Security has already set one of the
 </div>
 </div>
 <div class="paragraph">
-<p>This is a global kill switch of last resort, not a substitute for <code>@SuppressWarnings("GormUnsafeQueryString")</code> on the specific method that needs it.</p>
+<p>This is a global kill switch of last resort, not a substitute for <code>@SuppressWarnings("GormUnsafeQueryString")</code> on the specific declaration or method that needs it.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="queryTextFragments">Building query text from fragments</h5>
+<div class="paragraph">
+<p>A <code>GString</code> is the right tool for <strong>values</strong>, not for query text. GORM turns every interpolation into a bound parameter, so interpolating an HQL fragment into a <code>GString</code> that is passed directly to a query method produces a broken query rather than an unsafe one:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="predefined-type">String</span> restriction = <span class="string"><span class="delimiter">&quot;</span><span class="content"> and b.title = :title</span><span class="delimiter">&quot;</span></span>
+<span class="predefined-type">Book</span>.executeQuery(<span class="string"><span class="delimiter">&quot;</span><span class="content">from Book b where 1 = 1 </span><span class="inline"><span class="inline-delimiter">${</span>restriction<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>, [<span class="key">title</span>: params.title])
+<span class="comment">// runs as:  from Book b where 1 = 1 :p0   -- the fragment is bound as a value</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The check tells query text and values apart. An interpolation that is <strong>constant text</strong> cannot carry user input, so it is not flagged even when the <code>GString</code> is coerced to a <code>String</code>. Constant text is a string literal, a <code>static final</code> field initialized from constant text, a ternary or Elvis expression choosing between constant text, a <code>+</code> concatenation or <code>GString</code> made only of constant text, and a local variable that only ever held constant text on every path leading to the query, whichever <code>if</code>/<code>else</code>, <code>switch</code>, <code>try</code>/<code>catch</code>, loop or closure those paths run through. This is what lets restrictions be chosen at runtime while the values stay bound:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> <span class="function">search</span>() {
+    <span class="predefined-type">Map</span> queryParams = [:]
+    <span class="predefined-type">String</span> restriction = <span class="string"><span class="delimiter">&quot;</span><span class="delimiter">&quot;</span></span>
+    <span class="keyword">if</span> (params.title) {
+        restriction = <span class="string"><span class="delimiter">&quot;</span><span class="content"> and b.title = :title</span><span class="delimiter">&quot;</span></span>                <i class="conum" data-value="1"></i><b>(1)</b>
+        queryParams.title = params.title                     <i class="conum" data-value="2"></i><b>(2)</b>
+    }
+    <span class="predefined-type">String</span> query = <span class="string"><span class="delimiter">&quot;</span><span class="content">from Book b where 1 = 1 </span><span class="inline"><span class="inline-delimiter">${</span>restriction<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>  <i class="conum" data-value="3"></i><b>(3)</b>
+    <span class="predefined-type">Book</span>.executeQuery(query, queryParams)
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Constant text chosen at runtime. Assigning <code>restriction</code> from a request parameter, a method call, or any other non-constant expression on <strong>any</strong> path would make the interpolation a build error again.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The value is bound through the parameter map, never interpolated.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>Allowed: every interpolation is constant text.</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Appending with <code>+=</code> is tracked the same way, so the more common idiom compiles without errors or warnings too:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="predefined-type">String</span> query = <span class="string"><span class="delimiter">&quot;</span><span class="content">from Book b where 1 = 1</span><span class="delimiter">&quot;</span></span>
+<span class="keyword">if</span> (params.title) {
+    query += <span class="string"><span class="delimiter">&quot;</span><span class="content"> and b.title = :title</span><span class="delimiter">&quot;</span></span>
+    queryParams.title = params.title
+}
+<span class="predefined-type">Book</span>.executeQuery(query, queryParams)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Query text assembled in a way the check cannot follow — fragments collected in a <code>List</code> and joined, or returned from a helper method — is reported as the lower-confidence concatenation warning described below, or as the build-breaking error when a <code>GString</code> is involved. After review, suppress such a call site on the declaration of the variable that holds the trusted text rather than on the whole method. The annotation may go on the assembled query or on the fragment it is built from; an annotated variable is treated as constant text wherever it is interpolated or concatenated:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> <span class="function">search</span>() {
+    <span class="annotation">@SuppressWarnings</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">GormUnsafeQueryString</span><span class="delimiter">&quot;</span></span>)
+    <span class="predefined-type">String</span> restriction = restrictionsFor(params)                 <span class="comment">// reviewed: trusted query text</span>
+    <span class="predefined-type">String</span> query = <span class="string"><span class="delimiter">&quot;</span><span class="content">from Book b where 1 = 1 </span><span class="inline"><span class="inline-delimiter">${</span>restriction<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>      <span class="comment">// no longer flagged</span>
+    <span class="predefined-type">Book</span>.executeQuery(query, queryParams)
+}</code></pre>
+</div>
 </div>
 </div>
 <div class="sect4">
@@ -44855,12 +45153,12 @@ If an application, another filter, or Spring Security has already set one of the
 </tr>
 <tr>
 <td><i class="conum" data-value="3"></i><b>3</b></td>
-<td>Query text built with <code>+</code> from a non-constant value and no <code>GString</code> involved at all. This is a real injection shape, but string concatenation is common enough for benign, non-query purposes that a hard build failure would be too blunt an instrument.</td>
+<td>Query text built with <code>+</code> from a non-constant value and no <code>GString</code> involved at all. This is a real injection shape, but string concatenation is common enough for benign, non-query purposes that a hard build failure would be too blunt an instrument. Concatenating only constant text, as defined above, is not flagged at all.</td>
 </tr>
 </table>
 </div>
 <div class="paragraph">
-<p>Both warnings identify the call site and suppress the same way as the error above, with <code>@SuppressWarnings("GormUnsafeQueryString")</code> on the enclosing method. Concatenating a <code>GString</code> with additional text (e.g. <code>"&#8230;&#8203;${title}&#8230;&#8203;" + " order by title"</code>) is <strong>not</strong> one of these warnings — Groovy&#8217;s <code>GString.plus</code> returns a plain <code>String</code>, so this flattens the interpolation immediately and is reported as the build-breaking error instead.</p>
+<p>Both warnings identify the call site and suppress the same way as the error above, with <code>@SuppressWarnings("GormUnsafeQueryString")</code> on the declaration or on the enclosing method. Concatenating a <code>GString</code> with additional text (e.g. <code>"&#8230;&#8203;${title}&#8230;&#8203;" + " order by title"</code>), or appending to a <code>GString</code> or to an already-flattened <code>String</code> with <code>` or `=</code>, is <strong>not</strong> one of these warnings — Groovy&#8217;s <code>GString.plus</code> returns a plain <code>String</code>, so this flattens the interpolation immediately and is reported as the build-breaking error instead.</p>
 </div>
 </div>
 </div>
@@ -45027,7 +45325,6 @@ Although Grails plays it safe by default, that is no guarantee that your applica
     <span class="key">views</span>:
         <span class="key">gsp</span>:
             <span class="key">encoding</span>: UTF-<span class="integer">8</span>
-            <span class="key">htmlcodec</span>: xml <span class="error">#</span> use xml escaping instead of HTML4 escaping
             <span class="key">codecs</span>:
                 <span class="key">expression</span>: html <span class="error">#</span> escapes values inside <span class="error">$</span>{}
                 <span class="key">scriptlets</span>: html <span class="error">#</span> escapes output from scriptlets <span class="keyword">in</span> GSPs
@@ -45292,27 +45589,15 @@ Although Grails plays it safe by default, that is no guarantee that your applica
 <pre class="CodeRay highlight"><code data-lang="groovy">&lt;input name=<span class="string"><span class="delimiter">&quot;</span><span class="content">comment.message</span><span class="delimiter">&quot;</span></span> value=<span class="string"><span class="delimiter">&quot;</span><span class="inline"><span class="inline-delimiter">${</span>comment.message.encodeAsHTML()<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>/&gt;</code></pre>
 </div>
 </div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-Note that the HTML encoding does not re-encode apostrophe/single quote so you must use double quotes on attribute values to avoid text with apostrophes affecting your page.
-</td>
-</tr>
-</table>
+<div class="paragraph">
+<p>HTMLCodec escapes <code>&amp;</code>, <code>&lt;</code>, <code>&gt;</code>, <code>"</code> and <code>'</code>, so values are safe in both double- and single-quoted attribute values. It also escapes <code>@</code>, the backslash, the backtick, the non breaking space (U+00A0), the line separator (U+2028) and the paragraph separator (U+2029), and drops control characters other than tab, line feed and carriage return. Other characters, such as non-ASCII letters, are written as they are, so the page must be served in a character set that can represent them. GSP pages use UTF-8 by default (<code>grails.views.gsp.encoding</code>).</p>
 </div>
 <div class="paragraph">
-<p>HTMLCodec defaults to HTML4 style escaping (legacy HTMLCodec implementation in Grails versions before 2.3.0) which escapes non-ascii characters.</p>
-</div>
-<div class="paragraph">
-<p>You can use plain XML escaping instead of HTML4 escaping by setting this config property in <code>application.groovy</code>:</p>
+<p>Before Grails 8, HTMLCodec defaulted to HTML4 style escaping (the HTMLCodec implementation in Grails versions before 2.3.0), which converts non-ASCII characters to named entities such as <code>&eacute;</code> and leaves <code>@</code>, the backslash, the backtick and the line and paragraph separators unescaped. To keep using it, for example in an application that serves pages in a character set such as ISO-8859-1 and relies on the entities for characters outside it, set this config property in <code>application.groovy</code>:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">grails.views.gsp.htmlcodec = <span class="string"><span class="delimiter">'</span><span class="content">xml</span><span class="delimiter">'</span></span></code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">grails.views.gsp.htmlcodec = <span class="string"><span class="delimiter">'</span><span class="content">html4</span><span class="delimiter">'</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -45323,8 +45608,11 @@ Note that the HTML encoding does not re-encode apostrophe/single quote so you mu
 <pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
     <span class="key">views</span>:
         <span class="key">gsp</span>:
-            <span class="key">htmlcodec</span>: <span class="string"><span class="content">'xml'</span></span></code></pre>
+            <span class="key">htmlcodec</span>: <span class="string"><span class="content">html4</span></span></code></pre>
 </div>
+</div>
+<div class="paragraph">
+<p>The value <code>html</code> also selects HTML4 style escaping. Any other value, such as <code>xml</code>, which applications generated by earlier Grails versions set, selects the default escaping. Use <code>encodeAsHTML4()</code> to apply HTML4 style escaping to a single value.</p>
 </div>
 <div class="paragraph">
 <p><strong>XMLCodec</strong></p>
@@ -60210,6 +60498,34 @@ The second service is a listener service which ensures that anytime an answer is
 <pre class="CodeRay highlight"><code data-lang="groovy">grails.mail.overrideAddress = <span class="string"><span class="delimiter">'</span><span class="content">test@address.com</span><span class="delimiter">'</span></span></code></pre>
 </div>
 </div>
+<div class="paragraph">
+<p>When <code>overrideAddress</code> is set, every <code>to</code>, <code>cc</code> and <code>bcc</code> address and the sender are replaced by this value. That includes a <code>from</code> set in the <code>sendMail</code> closure. <code>replyTo</code> and <code>envelopeFrom</code> are not changed.</p>
+</div>
+<div class="paragraph">
+<p>To override only the recipients or only the sender, use <code>overrideToAddress</code> or <code>overrideFromAddress</code>:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>grails.mail.overrideToAddress</code> replaces every <code>to</code>, <code>cc</code> and <code>bcc</code> address. It&#8217;s also used as the <code>to</code> address when the <code>sendMail</code> closure doesn&#8217;t set one.</p>
+</li>
+<li>
+<p><code>grails.mail.overrideFromAddress</code> replaces the sender, including a <code>from</code> set in the <code>sendMail</code> closure. It&#8217;s also used as the <code>from</code> address when the closure doesn&#8217;t set one.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>When <code>overrideAddress</code> is set as well, <code>overrideToAddress</code> and <code>overrideFromAddress</code> take precedence over it.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">// Redirect all outgoing mail to a test inbox, but keep the real sender address</span>
+grails.mail.overrideToAddress = <span class="string"><span class="delimiter">'</span><span class="content">test-inbox@example.com</span><span class="delimiter">'</span></span>
+
+<span class="comment">// Force a fixed sender address without redirecting recipients</span>
+grails.mail.overrideFromAddress = <span class="string"><span class="delimiter">'</span><span class="content">noreply@example.com</span><span class="delimiter">'</span></span></code></pre>
+</div>
+</div>
 </div>
 
 
@@ -60557,15 +60873,62 @@ inline(<span class="predefined-type">String</span> fileName, <span class="predef
 <div class="sect3">
 <h4 id="_using_an_override_address">Using an Override Address</h4>
 <div class="paragraph">
-<p>You can <em>override</em> any and all recipient email addresses in <code>sendMail()</code> calls to force messages to be delivered to a certain mailbox:</p>
+<p>You can <em>override</em> recipient and/or sender email addresses in <code>sendMail()</code> calls to force messages to be delivered to a certain mailbox or sent from a fixed address.</p>
+</div>
+<div class="sect4">
+<h5 id="_overriding_all_addresses">Overriding All Addresses</h5>
+<div class="paragraph">
+<p><code>grails.mail.overrideAddress</code> redirects both the sender and all recipients to a single address:</p>
 </div>
 <div class="listingblock">
+<div class="title">application-test.yml</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">grails.mail.overrideAddress = <span class="string"><span class="delimiter">'</span><span class="content">test@myorg.com</span><span class="delimiter">'</span></span></code></pre>
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">mail</span>:
+        <span class="key">overrideAddress</span>: <span class="string"><span class="content">test@myorg.com</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>All <code>to</code>, <code>cc</code> and <code>bcc</code> addresses will be replaced by this value if set. The advantage of this mechanism is that it allows you to test using a real SMTP server. The disadvantage is that it requires a real SMTP server and makes it difficult to test address determination logic.</p>
+<p>All <code>to</code>, <code>cc</code>, and <code>bcc</code> addresses are replaced by this value, and the <code>from</code> address is also replaced.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_overriding_recipients_and_sender_independently">Overriding Recipients and Sender Independently</h5>
+<div class="paragraph">
+<p>Two properties give fine-grained control over address overriding:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>grails.mail.overrideToAddress</code> replaces every <code>to</code>, <code>cc</code> and <code>bcc</code> address. It&#8217;s also used as the <code>to</code> address when the <code>sendMail</code> closure doesn&#8217;t set one.</p>
+</li>
+<li>
+<p><code>grails.mail.overrideFromAddress</code> replaces the sender, including a <code>from</code> set in the <code>sendMail</code> closure. It&#8217;s also used as the <code>from</code> address when the closure doesn&#8217;t set one.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>See <a href="#mailConfiguration">Mail Configuration</a> for how the three properties interact.</p>
+</div>
+<div class="listingblock">
+<div class="title">application-test.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">mail</span>:
+        <span class="key">overrideToAddress</span>: <span class="string"><span class="content">test-inbox@myorg.com</span></span>    <span class="comment"># redirect recipients only</span></code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">application-test.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">mail</span>:
+        <span class="key">overrideFromAddress</span>: <span class="string"><span class="content">noreply@myorg.com</span></span>     <span class="comment"># fix the sender only</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The advantage of this mechanism is that it allows you to test using a real SMTP server. The disadvantage is that it requires a real SMTP server and makes it difficult to test address determination logic.</p>
+</div>
 </div>
 </div>
 <div class="sect3">
@@ -63898,7 +64261,7 @@ If you have created a Grails plugin and want it to be listed on the <a href="htt
 </div>
 <div class="paragraph">
 <p>When the plugin also applies <code>org.apache.grails.gradle.grails-plugin-cli</code> (see
-<a href="#Ship plugin commands as a companion -cli artifact">[Ship plugin commands as a companion -cli artifact]</a> below), files under <code>src/main/scripts</code>
+<a href="#pluginCliArtifact">Ship plugin commands as a companion <code>-cli</code> artifact</a> below), files under <code>src/main/scripts</code>
 (including <code><strong>.groovy</code>, <code></strong>.yml</code>, and <code>*.json</code> multi-step commands) are packaged into the companion
 <code>-cli</code> jar as <code>META-INF/commands</code> and are <strong>not</strong> copied into the runtime plugin jar. That keeps
 command-only resources off <code>runtimeClasspath</code>, <code>bootJar</code>, and <code>bootWar</code> while still making them
@@ -63934,7 +64297,7 @@ Grails 7 plugins remain discoverable under <code>legacyCommandSupport</code>.</p
 <p>An <code>ApplicationCommand</code> has access to the <code>GrailsApplication</code> instance and is subject to autowiring like any other Spring bean.</p>
 </div>
 <div class="sect4">
-<h5 id="_ship_plugin_commands_as_a_companion_cli_artifact">Ship plugin commands as a companion <code>-cli</code> artifact</h5>
+<h5 id="pluginCliArtifact">Ship plugin commands as a companion <code>-cli</code> artifact</h5>
 <div class="paragraph">
 <p>Commands are only ever executed by the CLI, so a plugin should keep them off the application
 runtime classpath. Publish them as a companion artifact under the plugin&#8217;s coordinate with a <code>-cli</code>

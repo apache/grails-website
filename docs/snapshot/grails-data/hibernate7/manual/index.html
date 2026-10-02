@@ -2908,7 +2908,7 @@ Embedded components are always persisted as part of the owning entity. There is 
 </div>
 </div>
 <div class="paragraph">
-<p>By default all three classes are stored in a single <code>content</code> table (table-per-hierarchy). GORM uses a <code>class</code> discriminator column to distinguish rows.</p>
+<p>By default all three classes are stored in a single <code>content</code> table (table-per-hierarchy). GORM uses a <code>class</code> discriminator column that stores the fully qualified class name of each row to distinguish rows.</p>
 </div>
 </div>
 <div class="sect2">
@@ -6884,6 +6884,19 @@ Only use the query cache for queries whose results change infrequently. Cached q
 <div class="paragraph">
 <p>The single table will contain columns for all properties of all subclasses, with nullable columns for subclass-specific fields.</p>
 </div>
+<div class="paragraph">
+<p>By default the discriminator column is named <code>class</code> and each row stores the fully qualified name of its class, for example <code>com.example.Content</code> or <code>com.example.BlogPost</code>. This is the same default as <code>grails-data-hibernate5</code>, so existing table-per-hierarchy tables can be used without a mapping change. Any class that does not set a discriminator value keeps its fully qualified class name, including when the root class maps only the discriminator column:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">Content</span> {
+    <span class="predefined-type">String</span> title
+    <span class="directive">static</span> mapping = {
+        discriminator <span class="key">column</span>: <span class="string"><span class="delimiter">'</span><span class="content">content_type</span><span class="delimiter">'</span></span>    <span class="comment">// values remain the fully qualified class names</span>
+    }
+}</code></pre>
+</div>
+</div>
 <div class="sect3">
 <h4 id="_customising_the_discriminator">38.1.1. Customising the Discriminator</h4>
 <div class="listingblock">
@@ -6917,7 +6930,7 @@ Only use the query cache for queries whose results change infrequently. Cached q
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="directive">static</span> mapping = {
     discriminator {
-        column <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">dtype</span><span class="delimiter">'</span></span>, <span class="key">sqlType</span>: <span class="string"><span class="delimiter">'</span><span class="content">varchar(30)</span><span class="delimiter">'</span></span>
+        column <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">content_type</span><span class="delimiter">'</span></span>, <span class="key">sqlType</span>: <span class="string"><span class="delimiter">'</span><span class="content">varchar(30)</span><span class="delimiter">'</span></span>
         value  <span class="string"><span class="delimiter">'</span><span class="content">blog</span><span class="delimiter">'</span></span>
         insert <span class="predefined-constant">false</span>
     }
