@@ -2,7 +2,7 @@
                       "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
 <head>
-    <title>18 Security 8.1.0-SNAPSHOT</title>
+    <title>18 Security 9.0.0-SNAPSHOT</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
     <link rel="stylesheet" href="../css/pdf.css" type="text/css" media="print" title="PDF" charset="utf-8"/>
@@ -181,7 +181,7 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
                 <div class="project">
                     <h1>18 Security</h1>
 
-                    <p><strong>Version:</strong> 8.1.0-SNAPSHOT</p>
+                    <p><strong>Version:</strong> 9.0.0-SNAPSHOT</p>
                 </div>
 
                 
@@ -235,7 +235,7 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
 <h1 id="security">18 Security</h1>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.1.x/grails-doc/src/en/guide/security.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/9.0.x/grails-doc/src/en/guide/security.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -446,7 +446,7 @@ If an application, another filter, or Spring Security has already set one of the
 <h2 id="securingAgainstAttacks">18.1 Securing Against Attacks</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.1.x/grails-doc/src/en/guide/security/securingAgainstAttacks.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/9.0.x/grails-doc/src/en/guide/security/securingAgainstAttacks.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -550,12 +550,12 @@ If an application, another filter, or Spring Security has already set one of the
 </tr>
 <tr>
 <td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>The method-level form silences the check for every query in the method.</td>
+<td>The method-level form silences the check for every query in the method, including those in closures and anonymous inner classes inside it.</td>
 </tr>
 </table>
 </div>
 <div class="paragraph">
-<p>This check runs automatically against every Grails application that has <code>grails-datamapping-core</code> on its compile classpath — no configuration is required, and it covers every GORM implementation whose query methods follow this convention (Hibernate and Neo4j today).</p>
+<p>This check runs automatically against every Grails application that has <code>grails-datamapping-core</code> on its compile classpath — no configuration is required, and it covers every GORM implementation whose query methods follow this convention (Hibernate and Neo4j today). It checks query methods called on a domain class, and those called on <code>this</code>, or with no receiver, anywhere inside a domain class, including the classes nested in it, since Groovy passes those calls on to the domain class.</p>
 </div>
 <div class="paragraph">
 <p>Because the check is intraprocedural, it cannot follow every possible way query text can be assembled. If a build hits a false positive with no reasonable per-call-site fix, disable the check for the whole compilation unit by setting the <code>protectSqlInjectionAttacks</code> system property to <code>false</code> (it defaults to <code>true</code>), for example via <code>gradle.properties</code>:</p>
@@ -582,7 +582,7 @@ If an application, another filter, or Spring Security has already set one of the
 </div>
 </div>
 <div class="paragraph">
-<p>The check tells query text and values apart. An interpolation that is <strong>constant text</strong> cannot carry user input, so it is not flagged even when the <code>GString</code> is coerced to a <code>String</code>. Constant text is a string literal, a <code>static final</code> field initialized from constant text, a ternary or Elvis expression choosing between constant text, a <code>+</code> concatenation or <code>GString</code> made only of constant text, and a local variable that only ever held constant text on every path leading to the query, whichever <code>if</code>/<code>else</code>, <code>switch</code>, <code>try</code>/<code>catch</code>, loop or closure those paths run through. This is what lets restrictions be chosen at runtime while the values stay bound:</p>
+<p>The check tells query text and values apart. An interpolation that is <strong>constant text</strong> cannot carry user input, so it is not flagged even when the <code>GString</code> is coerced to a <code>String</code>. Constant text is a string literal, a <code>static final</code> field initialized from constant text, a ternary, Elvis or <code>switch</code> expression choosing between constant text, a <code>+</code> concatenation or <code>GString</code> made only of constant text, and a local variable that only ever held constant text on every path leading to the query, whichever <code>if</code>/<code>else</code>, <code>switch</code>, <code>try</code>/<code>catch</code> or loop those paths run through. A closure, or a method of an anonymous inner class, can run at any point after it is defined, and an assignment inside another expression — a ternary or Elvis branch, an <code>&amp;&amp;</code> or <code>||</code> operand, a method argument or a loop condition — or a multiple assignment may or may not run. So a local declared outside a closure or an anonymous inner class that its code reads or assigns, and a local assigned in one of those ways, is judged by every assignment to it in the method: it counts as constant text only if every assignment is constant text, and as a flattened query if any assignment flattens a <code>GString</code> into it. This is what lets restrictions be chosen at runtime while the values stay bound:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -628,7 +628,7 @@ If an application, another filter, or Spring Security has already set one of the
 </div>
 </div>
 <div class="paragraph">
-<p>Query text assembled in a way the check cannot follow — fragments collected in a <code>List</code> and joined, or returned from a helper method — is reported as the lower-confidence concatenation warning described below, or as the build-breaking error when a <code>GString</code> is involved. After review, suppress such a call site on the declaration of the variable that holds the trusted text rather than on the whole method. The annotation may go on the assembled query or on the fragment it is built from; an annotated variable is treated as constant text wherever it is interpolated or concatenated:</p>
+<p>The check cannot follow query text assembled in other ways — fragments collected in a <code>List</code> and joined, built with a <code>StringBuilder</code>, or returned from a helper method — so it treats that text as data. Interpolated into a <code>GString</code> that is coerced to a <code>String</code>, it is the build-breaking error; concatenated with <code>+</code>, it is the lower-confidence warning described below. Assigned on its own and passed straight to a query method, it is not reported at all, so review such code by hand. After review, suppress a reported call site on the declaration of the variable that holds the trusted text rather than on the whole method. The annotation may go on the assembled query or on the fragment it is built from; an annotated variable is treated as constant text wherever it is interpolated or concatenated:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -753,7 +753,7 @@ If an application, another filter, or Spring Security has already set one of the
 <h2 id="xssPrevention">18.2 Cross Site Scripting (XSS) Prevention</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.1.x/grails-doc/src/en/guide/security/xssPrevention.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/9.0.x/grails-doc/src/en/guide/security/xssPrevention.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -1031,7 +1031,7 @@ Although Grails plays it safe by default, that is no guarantee that your applica
 <h2 id="codecs">18.3 Encoding and Decoding Objects</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.1.x/grails-doc/src/en/guide/security/codecs.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/9.0.x/grails-doc/src/en/guide/security/codecs.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -1302,14 +1302,14 @@ Repeat last search
 <h2 id="authentication">18.4 Authentication</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.1.x/grails-doc/src/en/guide/security/authentication.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/9.0.x/grails-doc/src/en/guide/security/authentication.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
 
 
 <div class="paragraph">
-<p>Grails has no default mechanism for authentication as it is possible to implement authentication in many different ways. It is however, easy to implement a simple authentication mechanism using <a href="#interceptors">interceptors</a>. This is sufficient for simple use cases but it&#8217;s highly preferable to use an established security framework, for example by using the <a href="#springSecurity">Spring Security</a> plugin.</p>
+<p>Grails has no default mechanism for authentication as it is possible to implement authentication in many different ways. It is however, easy to implement a simple authentication mechanism using <a href="theWebLayer.html#interceptors">interceptors</a>. This is sufficient for simple use cases but it&#8217;s highly preferable to use an established security framework, for example by using the <a href="#springSecurity">Spring Security</a> plugin.</p>
 </div>
 <div class="paragraph">
 <p>Interceptors let you apply authentication across all controllers or across a URI space. For example you can create a new set of filters in a class called <code>grails-app/controllers/SecurityInterceptor.groovy</code> by running:</p>
@@ -1376,7 +1376,7 @@ Repeat last search
 <h2 id="securityPlugins">18.5 Security Plugins</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.1.x/grails-doc/src/en/guide/security/securityPlugins.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/9.0.x/grails-doc/src/en/guide/security/securityPlugins.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -1390,7 +1390,7 @@ Repeat last search
 <h2 id="springSecurity">18.5.1 Spring Security</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.1.x/grails-doc/src/en/guide/security/securityPlugins/springSecurity.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/9.0.x/grails-doc/src/en/guide/security/securityPlugins/springSecurity.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -1447,7 +1447,7 @@ These plugins were previously developed and released independently from the <a h
 <h2 id="springSecurityCore">18.5.1.1 Core Plugin</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.1.x/grails-doc/src/en/guide/security/securityPlugins/springSecurity/springSecurityCore.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/9.0.x/grails-doc/src/en/guide/security/securityPlugins/springSecurity/springSecurityCore.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -1518,7 +1518,7 @@ These plugins were previously developed and released independently from the <a h
 </div>
 </li>
 <li>
-<p>The Spring Security Core Plugin 8.1.0-SNAPSHOT is now installed and integrated into your Grails project.</p>
+<p>The Spring Security Core Plugin 9.0.0-SNAPSHOT is now installed and integrated into your Grails project.</p>
 </li>
 <li>
 <p>You can start using the plugin&#8217;s features and commands in your application.</p>
@@ -2836,7 +2836,7 @@ springSecurityService.clearCachedRequestmaps()</code></pre>
 <div class="sect3">
 <h4 id="_urls_and_authorities">URLs and Authorities</h4>
 <div class="paragraph">
-<p>In each approach you configure a mapping for a URL pattern to the role(s) that are required to access those URLs, for example, <code>/admin/user/**</code> requires <code>ROLE_ADMIN</code>. In addition, you can combine the role(s) with SpEL expressions and/or tokens such as IS_AUTHENTICATED_ANONYMOUSLY, IS_AUTHENTICATED_REMEMBERED, and IS_AUTHENTICATED_FULLY. One or more voters (<a href="#voters">[voters]</a>) will process any tokens and enforce a rule based on them:</p>
+<p>In each approach you configure a mapping for a URL pattern to the role(s) that are required to access those URLs, for example, <code>/admin/user/**</code> requires <code>ROLE_ADMIN</code>. In addition, you can combine the role(s) with SpEL expressions and/or tokens such as IS_AUTHENTICATED_ANONYMOUSLY, IS_AUTHENTICATED_REMEMBERED, and IS_AUTHENTICATED_FULLY. One or more voters (<a href="#core-voters">Voters</a>) will process any tokens and enforce a rule based on them:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -4949,7 +4949,7 @@ grails.plugin.springsecurity.digest.realmName = <span class="string"><span class
 <div class="sect3">
 <h4 id="core-ajax">Ajax Authentication</h4>
 <div class="paragraph">
-<p>The typical pattern of using web site authentication to access restricted pages involves intercepting access requests for secure pages, redirecting to a login page (possibly off-site, for example when using a Single Sign-on implementation such as <a href="springSecurityCas.html#springSecurityCas">CAS</a>), and redirecting back to the originally-requested page after a successful login. Each page can also have a login link to allow explicit logins at any time.</p>
+<p>The typical pattern of using web site authentication to access restricted pages involves intercepting access requests for secure pages, redirecting to a login page (possibly off-site, for example when using a Single Sign-on implementation such as <a href="#springSecurityCas">CAS</a>), and redirecting back to the originally-requested page after a successful login. Each page can also have a login link to allow explicit logins at any time.</p>
 </div>
 <div class="paragraph">
 <p>Another option is to also have a login link on each page and to use JavaScript to present a login form within the current page in a popup. The JavaScript code submits the authentication request and displays success or error messages as appropriate.</p>
@@ -7246,7 +7246,7 @@ beans = {
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">voterNames</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>['authenticatedVoter', 'roleVoter', 'closureVoter']</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Bean names of voters. See <a href="#voters">[voters]</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bean names of voters. See <a href="#core-voters">Voters</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">providerNames</p></td>
@@ -7316,7 +7316,7 @@ beans = {
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">excludeSpringSecurityAutoConfiguration</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Whether to automatically exclude Spring Boot security auto-configuration classes that conflict with the plugin. Set to <code>false</code> to allow Spring Boot&#8217;s security auto-configurations to load alongside the plugin. See <a href="#installation">[installation]</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Whether to automatically exclude Spring Boot security auto-configuration classes that conflict with the plugin. Set to <code>false</code> to allow Spring Boot&#8217;s security auto-configurations to load alongside the plugin. See <a href="#core-installation">Installation</a></p></td>
 </tr>
 </tbody>
 </table>
@@ -8402,7 +8402,7 @@ logger <span class="string"><span class="delimiter">'</span><span class="content
 <h2 id="springSecurityAcl">18.5.1.2 ACL Plugin</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.1.x/grails-doc/src/en/guide/security/securityPlugins/springSecurity/springSecurityAcl.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/9.0.x/grails-doc/src/en/guide/security/securityPlugins/springSecurity/springSecurityAcl.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -8411,7 +8411,7 @@ logger <span class="string"><span class="delimiter">'</span><span class="content
 <div class="sect2">
 <h3 id="acl-introduction">Introduction to the Spring Security ACL Plugin</h3>
 <div class="paragraph">
-<p>The ACL plugin adds Domain Object Security support to a Grails application that uses Spring Security. It depends on the <a href="springSecurityCore.html#springSecurityCore">Spring Security Core plugin</a>.</p>
+<p>The ACL plugin adds Domain Object Security support to a Grails application that uses Spring Security. It depends on the <a href="#springSecurityCore">Spring Security Core plugin</a>.</p>
 </div>
 <div class="paragraph">
 <p>The core plugin and other extension plugins support restricting access to URLs via rules that include checking a user&#8217;s authentication status, roles, etc. and the ACL plugin extends this by adding support for restricting access to individual domain class instances. The access can be very fine-grained and can define which actions can be taken on an object - these typically include Read, Create, Write, Delete, and Administer but you&#8217;re free to define whatever actions you like.</p>
@@ -9148,7 +9148,7 @@ $ cd acltest</pre>
 </div>
 </div>
 <div class="paragraph">
-<p>This will transitively install the <a href="springSecurityCore.html#springSecurityCore">Spring Security Core</a> plugin, so you&#8217;ll need to configure that by running the <code>s2-quickstart</code> script:</p>
+<p>This will transitively install the <a href="#springSecurityCore">Spring Security Core</a> plugin, so you&#8217;ll need to configure that by running the <code>s2-quickstart</code> script:</p>
 </div>
 <div class="literalblock">
 <div class="content">
@@ -10243,7 +10243,7 @@ the body content
 <h2 id="springSecurityCas">18.5.1.3 CAS Plugin</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.1.x/grails-doc/src/en/guide/security/securityPlugins/springSecurity/springSecurityCas.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/9.0.x/grails-doc/src/en/guide/security/securityPlugins/springSecurity/springSecurityCas.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -10252,7 +10252,7 @@ the body content
 <div class="sect2">
 <h3 id="cas-introduction">Introduction to the Spring Security CAS Plugin</h3>
 <div class="paragraph">
-<p>The CAS plugin adds <a href="https://apereo.github.io/cas">CAS</a> single sign-on support to a Grails application that uses Spring Security. It depends on the <a href="springSecurityCore.html#springSecurityCore">Spring Security Core plugin</a>.</p>
+<p>The CAS plugin adds <a href="https://apereo.github.io/cas">CAS</a> single sign-on support to a Grails application that uses Spring Security. It depends on the <a href="#springSecurityCore">Spring Security Core plugin</a>.</p>
 </div>
 <div class="paragraph">
 <p>Once you have configured a CAS server and have configured your Grails application(s) as clients, you can authenticate to any application that is a client of the CAS server and be automatically authenticated to all other clients.</p>
@@ -10292,7 +10292,7 @@ the body content
 </div>
 </div>
 <div class="paragraph">
-<p>then configure any required parameters and whatever optional parameters you want in application.yml or application.groovy. These are described in detail in the <a href="#configuration">[configuration]</a> section but typically you only need to set these properties:</p>
+<p>then configure any required parameters and whatever optional parameters you want in application.yml or application.groovy. These are described in detail in the <a href="#cas-configuration">Configuration</a> section but typically you only need to set these properties:</p>
 </div>
 <div class="listingblock">
 <div class="title">grails-app/conf/application.yml</div>
@@ -10510,7 +10510,7 @@ a warning at startup so the trade-off is visible:</p>
 <h2 id="springSecurityLdap">18.5.1.4 LDAP Plugin</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.1.x/grails-doc/src/en/guide/security/securityPlugins/springSecurity/springSecurityLdap.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/9.0.x/grails-doc/src/en/guide/security/securityPlugins/springSecurity/springSecurityLdap.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -10519,7 +10519,7 @@ a warning at startup so the trade-off is visible:</p>
 <div class="sect2">
 <h3 id="ldap-introduction">Introduction to the Spring Security LDAP Plugin</h3>
 <div class="paragraph">
-<p>The LDAP plugin adds support for LDAP and Active Directory authentication to a Grails application that uses Spring Security. It depends on the <a href="springSecurityCore.html#springSecurityCore">Spring Security Core plugin</a>.</p>
+<p>The LDAP plugin adds support for LDAP and Active Directory authentication to a Grails application that uses Spring Security. It depends on the <a href="#springSecurityCore">Spring Security Core plugin</a>.</p>
 </div>
 <div class="paragraph">
 <p>Once you have configured your Grails application as an LDAP client you can delegate authentication to LDAP and not have to manage users' authentication information in your application. By default, roles are inferred from LDAP group membership and you can store additional application-specific roles in your database.</p>
@@ -10555,7 +10555,7 @@ a warning at startup so the trade-off is visible:</p>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
    ...
-   implementation 'org.apache.grails:grails-spring-security-ldap:8.1.0-SNAPSHOT'
+   implementation 'org.apache.grails:grails-spring-security-ldap:9.0.0-SNAPSHOT'
 }</code></pre>
 </div>
 </div>
@@ -10566,8 +10566,8 @@ a warning at startup so the trade-off is visible:</p>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
     ...
-    implementation "org.apache.grails:grails-spring-security:8.1.0-SNAPSHOT"
-    implementation "org.apache.grails:grails-spring-security-ldap:8.1.0-SNAPSHOT"
+    implementation "org.apache.grails:grails-spring-security:9.0.0-SNAPSHOT"
+    implementation "org.apache.grails:grails-spring-security-ldap:9.0.0-SNAPSHOT"
 }</code></pre>
 </div>
 </div>
@@ -10575,7 +10575,7 @@ a warning at startup so the trade-off is visible:</p>
 <div class="sect4">
 <h5 id="_configure_parameters">Configure parameters</h5>
 <div class="paragraph">
-<p>Configure any required parameters and any optional parameters you want in application.yml or application.groovy. These are described in detail in the <a href="#configuration">[configuration]</a> section, but typically you only need to set these properties:</p>
+<p>Configure any required parameters and any optional parameters you want in application.yml or application.groovy. These are described in detail in the <a href="#ldap-configuration">Configuration</a> section, but typically you only need to set these properties:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -11158,7 +11158,7 @@ beans = {
 <h2 id="springSecurityOauth2">18.5.1.5 OAuth2 Plugin</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.1.x/grails-doc/src/en/guide/security/securityPlugins/springSecurity/springSecurityOauth2.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/9.0.x/grails-doc/src/en/guide/security/securityPlugins/springSecurity/springSecurityOauth2.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -11167,7 +11167,7 @@ beans = {
 <div class="sect2">
 <h3 id="oauth2-introduction">Introduction to the Spring Security OAuth2 Plugin</h3>
 <div class="paragraph">
-<p>The OAuth2 Plugin adds oAuth v2 sign-on support to Grails applications that use Spring Security. It depends on the <a href="springSecurityCore.html#springSecurityCore">Spring Security Core plugin</a>.</p>
+<p>The OAuth2 Plugin adds oAuth v2 sign-on support to Grails applications that use Spring Security. It depends on the <a href="#springSecurityCore">Spring Security Core plugin</a>.</p>
 </div>
 <div class="paragraph">
 <p>It comes with a number of preconfigured OAuth2 providers, but you can implement any provider you like, that is extending the <a href="https://github.com/scribejava/scribejava/blob/master/scribejava-core/src/main/java/com/github/scribejava/core/builder/api/DefaultApi20.java">Scribejava DefaultApi20</a></p>
@@ -11540,7 +11540,7 @@ it prevents people from using tokens from other providers to try to grain access
 <h2 id="springSecurityRest">18.5.1.6 REST Plugin</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.1.x/grails-doc/src/en/guide/security/securityPlugins/springSecurity/springSecurityRest.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/9.0.x/grails-doc/src/en/guide/security/securityPlugins/springSecurity/springSecurityRest.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -11754,7 +11754,7 @@ been reduced from 429 KB in version 1.5.3 to 194K in 2.0.x!</p>
 </ul>
 </div>
 <div class="paragraph">
-<p>The version is the same in all modules. For more details, check the <a href="#configuration">[configuration]</a> section.</p>
+<p>The version is the same in all modules. For more details, check the <a href="#rest-configuration">configuration</a> section.</p>
 </div>
 <div class="paragraph">
 <p>As a consequence, configuration properties like <code>grails.plugin.springsecurity.rest.token.storage.useMemcached</code> are no
@@ -11935,7 +11935,7 @@ look at the [new chapter in the documentation|guide:tokenValidation].</p>
 
     <span class="comment">//Other dependencies</span>
 
-    implementation <span class="string"><span class="delimiter">&quot;</span><span class="content">org.apache.grails:grails-spring-security-rest:8.1.0-SNAPSHOT</span><span class="delimiter">&quot;</span></span>
+    implementation <span class="string"><span class="delimiter">&quot;</span><span class="content">org.apache.grails:grails-spring-security-rest:9.0.0-SNAPSHOT</span><span class="delimiter">&quot;</span></span>
 
 }</code></pre>
 </div>
@@ -11947,7 +11947,7 @@ artifact. For instance, for Memcached:</p>
 <div class="listingblock">
 <div class="title"><code>build.gradle</code></div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">ext.springSecurityRestVersion = <span class="string"><span class="delimiter">'</span><span class="content">8.1.0-SNAPSHOT</span><span class="delimiter">'</span></span>
+<pre class="CodeRay highlight"><code data-lang="groovy">ext.springSecurityRestVersion = <span class="string"><span class="delimiter">'</span><span class="content">9.0.0-SNAPSHOT</span><span class="delimiter">'</span></span>
 
 dependencies {
 
@@ -14088,7 +14088,7 @@ way of using HTTP sessions. So not acceptable.</p>
 <h2 id="springSecurityUi">18.5.1.7 UI Plugin</h2>
 
 <div class='contribute-btn'>
-    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.1.x/grails-doc/src/en/guide/security/securityPlugins/springSecurity/springSecurityUi.adoc"'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/9.0.x/grails-doc/src/en/guide/security/securityPlugins/springSecurity/springSecurityUi.adoc"'>
         <i class='fa fa-pencil-square-o'></i> Improve this doc
     </button>
 </div>
@@ -14111,7 +14111,7 @@ in forms. For more details, refer to the
 <div class="ulist">
 <ul>
 <li>
-<p>ACL Controllers and Views, which are enabled if the <a href="springSecurityAcl.html#springSecurityAcl">ACL Plugin</a> is installed.</p>
+<p>ACL Controllers and Views, which are enabled if the <a href="#springSecurityAcl">ACL Plugin</a> is installed.</p>
 </li>
 <li>
 <p>Requestmaps support, which is available if <code>grails.plugin.springsecurity.securityConfigType</code> is set to <code>"Requestmap"</code> or <code>SecurityConfigType.Requestmap</code> in <code>application.groovy</code>.</p>
@@ -14726,7 +14726,7 @@ grails.plugin.springsecurity.ui.forgotPassword.emailSubject = <span class="strin
 <p>ACL management should be done using the API exposed by <code>AclService</code> and <code>AclUtilService</code>. Both services have a much more intuitive and convenient high-level approach to managing ACLs, ACEs, etc. The functionality in this plugin is to provide a CRUD interface for fine-grained ACL management.</p>
 </div>
 <div class="paragraph">
-<p>The ACL menu is only available if the <a href="springSecurityAcl.html#springSecurityAcl">ACL plugin</a> is installed.</p>
+<p>The ACL menu is only available if the <a href="#springSecurityAcl">ACL plugin</a> is installed.</p>
 </div>
 <div class="sect3">
 <h4 id="ui-aclClass">AclClass Management</h4>
