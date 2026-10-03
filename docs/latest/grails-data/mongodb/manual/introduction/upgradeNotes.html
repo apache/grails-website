@@ -497,6 +497,27 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </div>
 </div>
 <div class="sect3">
+<h4 id="_a_transaction_started_inside_another_joins_it">A Transaction Started Inside Another Joins It</h4>
+<div class="paragraph">
+<p>A transactional service method called from another, or <code>withTransaction</code> inside <code>withTransaction</code>, used to begin a second transaction on the same session: it committed on its own, and the surrounding transaction&#8217;s commit then did nothing, so the surrounding transaction&#8217;s later writes could be lost. It now joins the surrounding transaction, and everything commits once when that one does, as on Hibernate.</p>
+</div>
+<div class="paragraph">
+<p>The effect most applications will notice: without multi-document transactions, GORM for MongoDB does not flush before a query while a transaction is in progress, so a write a joined call leaves queued is not visible to a later query in the same transaction. It used to be, because the inner transaction flushed it when it returned:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">@Transactional
+void placeOrder(Order order) {
+    orderService.save(order)                // @Transactional: now joins placeOrder's transaction, unflushed
+    Order.countByCustomer(order.customer)   // does not see the order yet
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Save with <code>flush: true</code> where a later query in the same transaction must see the write. This includes integration tests annotated with <code>@Rollback</code>, whose service calls now join the test&#8217;s transaction. With <a href="#advancedConfig">multi-document transactions</a> enabled (<code>grails.mongodb.transactional</code>), GORM flushes before a query inside the server-side transaction, so the query sees the order, and the write is still rolled back if the transaction fails. See <a href="#nestedTransactions">Nested Transactions</a> for the other propagation changes.</p>
+</div>
+</div>
+<div class="sect3">
 <h4 id="_dependency_upgrades">Dependency Upgrades</h4>
 <div class="paragraph">
 <p>GORM 7.1 supports Apache Groovy 3, Java 14, MongoDB Driver 4.3 and Spring 5.3.x.</p>
@@ -612,7 +633,7 @@ mongoClient.close()  // close the client you created</code></pre>
 </div>
 <div id="footer">
 <div id="footer-text">
-Version 8.0.0-RC1<br>
+Version 8.0.0-RC2<br>
 </div>
 </div>
 </body>

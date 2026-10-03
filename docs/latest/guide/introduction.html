@@ -2,7 +2,7 @@
                       "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
 <head>
-    <title>1 Introduction 8.0.0-RC1</title>
+    <title>1 Introduction 8.0.0-RC2</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
     <link rel="stylesheet" href="../css/pdf.css" type="text/css" media="print" title="PDF" charset="utf-8"/>
@@ -179,7 +179,7 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
                 <div class="project">
                     <h1>1 Introduction</h1>
 
-                    <p><strong>Version:</strong> 8.0.0-RC1</p>
+                    <p><strong>Version:</strong> 8.0.0-RC2</p>
                 </div>
 
                 
@@ -318,7 +318,7 @@ Notable new features are included below.</p>
 <div class="sect3">
 <h4 id="_platform_baseline">Platform Baseline</h4>
 <div class="paragraph">
-<p>Grails 8 raises the standard build and runtime baseline to Java 21 and uses Gradle 9.7.1.
+<p>Grails 8 raises the standard build and runtime baseline to Java 21 and uses Gradle 9.8.0.
 The standard Grails BOM uses Groovy 5.1.3 and Spock 2.4-groovy-5.0.</p>
 </div>
 </div>
@@ -336,6 +336,18 @@ This brings the Spring Boot 4 modular artifact layout, Spring Framework 7 API re
 </div>
 <div class="paragraph">
 <p>The Grails 8 upgrade guide calls out the major application-impacting changes and links to the Spring Boot 4.0 migration guide, Spring Boot 4.1 release notes and Spring Framework 7.0 release notes.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_json_dates_and_times_render_as_spring_boot_renders_them">JSON Dates and Times Render as Spring Boot Renders Them</h4>
+<div class="paragraph">
+<p><code>render &#8230;&#8203; as JSON</code>, <code>respond</code> and JSON views now write <code>Date</code>, <code>Calendar</code>, <code>TimeZone</code>, the <code>java.sql</code> date types,
+the <code>java.time</code> date, time, duration and zone types and <code>XMLGregorianCalendar</code> the same way as Spring Boot&#8217;s default
+Jackson <code>JsonMapper</code>, so a Grails application and a Spring Boot application return the same JSON for the same values:
+<code>java.sql.Time</code> as <code>"01:48:46"</code>, <code>LocalTime</code> as <code>"01:48:46.407254"</code>, <code>Duration</code> as <code>"PT1H30M"</code>, <code>Year</code> as a number,
+<code>ZoneId</code> and <code>TimeZone</code> as their IDs, and <code>Date</code>, <code>Calendar</code> and <code>ZonedDateTime</code> map keys as their values
+render. See the Date and Time Rendering sections of the REST and JSON Views guides, and the upgrade guide for the
+types that render differently than in Grails 7.</p>
 </div>
 </div>
 <div class="sect3">
@@ -401,6 +413,10 @@ A plugin bean now takes precedence over a Spring Boot default guarded by <code>@
 <p><code>beanRegistrar()</code> replaces the <code>doWithSpring</code> bean builder DSL, which is deprecated in Grails 8.
 The DSL continues to work for now, but you are strongly urged to migrate.
 See the <a href="upgrading.html#upgrading80x">upgrade guide</a> for details.</p>
+</div>
+<div class="paragraph">
+<p>Unit tests get the same hooks: a test declares its beans in a <code>beans</code> block, as an application or plugin does, or overrides <code>beanRegistrar()</code>, or declares a static nested <code>@Configuration</code> class — and <code>doWithSpring()</code> on the testing traits is deprecated to match.
+See <a href="#unitTesting">Unit Testing</a>.</p>
 </div>
 </div>
 <div class="sect3">
@@ -772,6 +788,34 @@ Reloading discards unflushed changes to the instance, exactly as <code>refresh(l
 </div>
 </div>
 <div class="sect3">
+<h4 id="_default_security_response_headers">Default Security Response Headers</h4>
+<div class="paragraph">
+<p>Servlet web applications now send a baseline set of browser hardening headers on every response:
+<code>X-Content-Type-Options: nosniff</code>, <code>X-Frame-Options: SAMEORIGIN</code>, <code>Referrer-Policy: strict-origin-when-cross-origin</code>
+and <code>X-XSS-Protection: 0</code>. HSTS and Content Security Policy can be turned on alongside them but are off by default,
+because their right values depend on the deployment. Behind a TLS-terminating proxy, HSTS honors the scheme the proxy
+forwards in <code>X-Forwarded-Proto</code> or <code>Forwarded</code>.</p>
+</div>
+<div class="paragraph">
+<p>The headers are written when the response commits, and only if nothing else has set them, so a controller, an
+interceptor, another filter or Spring Security&#8217;s own header writers at Spring Boot&#8217;s default filter order win.
+Redirects, error pages, streamed bodies and responses served by other Grails filters, such as asset-pipeline assets,
+are covered too.</p>
+</div>
+<div class="paragraph">
+<p>Everything is configurable under <code>grails.security.headers.*</code>: the whole filter, each header, and its value. A
+deployment whose reverse proxy already sends these headers can set <code>grails.security.headers.defaults: auto</code> to send
+only explicitly configured headers on proxied requests. See the <a href="#security">Security</a> section of the user guide and
+the <a href="upgrading.html#upgrading80x">upgrade guide</a> for details.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_agent_skills_published_with_grails">Agent Skills Published with Grails</h4>
+<div class="paragraph">
+<p>Grails now publishes its app-facing <a href="https://agentskills.io">Agent Skills</a> with every release: <code>org.apache.grails.skills:grails-developer</code>, for building Grails applications, and <code>org.apache.grails.skills:grails-8-upgrade</code>, for upgrading an application from Grails 7. The jars use the <a href="https://www.skillsjars.com">SkillsJars</a> layout and the Grails BOM manages them, so an application applies the SkillsJars Gradle plugin, declares the skills without a version, and runs <code>./gradlew extractSkillsJars</code> to write the skills for its Grails version to the directory its AI coding agent reads. See <a href="gettingStarted.html#agentSkills">Agent Skills</a>.</p>
+</div>
+</div>
+<div class="sect3">
 <h4 id="_test_http_client_form_requests">Test HTTP Client Form Requests</h4>
 <div class="paragraph">
 <p>Integration tests that implement <code>HttpClientSupport</code> can now use <code>httpPostForm(&#8230;&#8203;)</code> to send <code>application/x-www-form-urlencoded</code>
@@ -1084,7 +1128,7 @@ child resources cannot be nested within the mapping. See
 
 
 <div class="paragraph">
-<p>Grails 8.0.0-RC1 ships with the following foundational dependency versions:</p>
+<p>Grails 8.0.0-RC2 ships with the following foundational dependency versions:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -1101,7 +1145,7 @@ child resources cannot be nested within the mapping. See
 <p>Spring Boot 4.1.1</p>
 </li>
 <li>
-<p>Gradle 9.7.1</p>
+<p>Gradle 9.8.0</p>
 </li>
 <li>
 <p>Spock 2.4-groovy-5.0</p>
