@@ -1546,6 +1546,20 @@ guide for details.</p>
 </div>
 </div>
 <div class="sect3">
+<h4 id="_gorm_for_mongodb_checkpoint_and_restore_with_crac">GORM for MongoDB: Checkpoint and Restore with CRaC</h4>
+<div class="paragraph">
+<p>An application using GORM for MongoDB can be checkpointed with <a href="https://openjdk.org/projects/crac/">CRaC</a> and restored,
+both while it is running and as its application context refreshes (<code>-Dspring.context.checkpoint=onRefresh</code>). GORM opens
+no connection to MongoDB until the application context starts its datastore, which is also when the declared indexes are
+built, and around a checkpoint it stops the client of every connection and starts it again after the restore. The
+<code>MongoClient</code> it hands out, the <code>mongo</code> bean among them, stays the same object throughout, so code holding it keeps
+working after a restore. In a Spring Boot application GORM now declares the <code>MongoClient</code> bean itself, built from Spring
+Boot&#8217;s settings the way Spring Boot builds its own, so that client takes part as well. An embedded MongoDB is started
+with the application context when the process is checkpointed as the context refreshes. See the <a href="../grails-data/mongodb/manual/index.html#advancedConfig">Advanced Configuration</a>
+section of the GORM for MongoDB guide.</p>
+</div>
+</div>
+<div class="sect3">
 <h4 id="_read_only_transactions_do_not_flush_the_session">Read-Only Transactions Do Not Flush the Session</h4>
 <div class="paragraph">
 <p><code>@ReadOnly</code> and <code>@Transactional(readOnly = true)</code> now mean the same thing on every GORM datastore: a read-only
@@ -4692,6 +4706,10 @@ On GORM for MongoDB, a transactional service method called from another, or <cod
 <li>
 <p><strong><code>bindData</code> can clear omitted included fields.</strong>
 <code>bindData(target, source, [include: [&#8230;&#8203;], clearMissing: true])</code> now clears included properties that are absent from the binding source. The behavior is opt-in, requires an <code>include</code> list, and does not apply globally. Existing <code>bindData</code> calls without <code>clearMissing: true</code> keep omitted fields unchanged.</p>
+</li>
+<li>
+<p><strong>GORM for MongoDB builds its indexes when the datastore starts, not when it is created.</strong>
+Creating a <code>MongoDatastore</code> no longer connects to MongoDB or builds the declared indexes, whichever constructor creates it, including one given an application&#8217;s own <code>MongoClient</code>. In an application Spring starts the datastore before <code>BootStrap</code> runs, so nothing changes there; code that creates a <code>MongoDatastore</code> itself and expects its indexes once the constructor returns has to call <code>start()</code>, although the first GORM query or save on a datastore nothing has started also starts it. See <a href="../grails-data/mongodb/manual/index.html#upgradeNotes">Upgrade Notes</a> in the GORM for MongoDB guide.</p>
 </li>
 <li>
 <p><strong>GORM for MongoDB rejects Map criterion values that contain <code>$</code> keys.</strong>

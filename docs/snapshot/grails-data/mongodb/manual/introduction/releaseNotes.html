@@ -469,7 +469,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <p>Index creation on startup can be switched off with <code>grails.mongodb.buildIndexes = false</code>, and run on demand with <code>MongoDatastore.buildIndex()</code>, or moved off the startup thread with <code>grails.mongodb.buildIndexesAsync = true</code></p>
 </li>
 <li>
-<p><code>grails.gorm</code> and <code>grails.mongodb</code> settings are now applied when GORM is given an existing <code>MongoClient</code>, such as the one contributed by Spring Boot. Configuration that was previously ignored on this path — <code>failOnError</code>, the default mapping and constraints, flush behaviour and multi-tenancy — now takes effect. See <a href="#upgradeNotes">Upgrade Notes</a> before upgrading an application that supplies its own client.</p>
+<p><code>grails.gorm</code> and <code>grails.mongodb</code> settings are now applied when GORM is given an existing <code>MongoClient</code>, such as a <code>MongoClient</code> bean the application declares. Configuration that was previously ignored on this path — <code>failOnError</code>, the default mapping and constraints, flush behaviour and multi-tenancy — now takes effect. See <a href="#upgradeNotes">Upgrade Notes</a> before upgrading an application that supplies its own client.</p>
 </li>
 <li>
 <p>The index build reports what it created, what was already present and how long it took, in one summary line per build</p>
@@ -505,7 +505,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <p>The same holds inside a session or transaction opened through a connection, such as <code>Book.moreBooks.withTransaction { }</code>, and inside a method annotated <code>@Transactional(connection = 'moreBooks')</code>: <code>book.save()</code> in it was written to the default connection</p>
 </li>
 <li>
-<p>An application can be checkpointed and restored with CRaC: GORM closes every <code>MongoClient</code> it created, on every connection and including the one built from Spring Boot&#8217;s settings, before the checkpoint and builds replacements after the restore. See <a href="#advancedConfig">Advanced Configuration</a>.</p>
+<p>An application can be checkpointed and restored with CRaC, including as its context refreshes (<code>spring.context.checkpoint=onRefresh</code>). GORM opens no connection until the datastore starts, and around a checkpoint it stops and starts the <code>MongoClient</code> of every connection it created. In a Spring Boot application GORM now declares the <code>MongoClient</code> bean itself, built from Spring Boot&#8217;s settings, so that client is one of them. The client stays the same object, so the <code>mongo</code> bean keeps working after a restore. See <a href="#advancedConfig">Advanced Configuration</a>.</p>
 </li>
 </ul>
 </div>

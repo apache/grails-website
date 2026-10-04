@@ -1508,6 +1508,10 @@ On GORM for MongoDB, a transactional service method called from another, or <cod
 <code>bindData(target, source, [include: [&#8230;&#8203;], clearMissing: true])</code> now clears included properties that are absent from the binding source. The behavior is opt-in, requires an <code>include</code> list, and does not apply globally. Existing <code>bindData</code> calls without <code>clearMissing: true</code> keep omitted fields unchanged.</p>
 </li>
 <li>
+<p><strong>GORM for MongoDB builds its indexes when the datastore starts, not when it is created.</strong>
+Creating a <code>MongoDatastore</code> no longer connects to MongoDB or builds the declared indexes, whichever constructor creates it, including one given an application&#8217;s own <code>MongoClient</code>. In an application Spring starts the datastore before <code>BootStrap</code> runs, so nothing changes there; code that creates a <code>MongoDatastore</code> itself and expects its indexes once the constructor returns has to call <code>start()</code>, although the first GORM query or save on a datastore nothing has started also starts it. See <a href="../grails-data/mongodb/manual/index.html#upgradeNotes">Upgrade Notes</a> in the GORM for MongoDB guide.</p>
+</li>
+<li>
 <p><strong>GORM for MongoDB rejects Map criterion values that contain <code>$</code> keys.</strong>
 <code>findWhere</code>, <code>findAllWhere</code>, criteria queries, the <code>where</code> DSL and dynamic finders now throw <code>InvalidDataAccessResourceUsageException</code> when a <code>Map</code> passed as a criterion value contains a key starting with <code>$</code> at any level, on any property type including enums. MongoDB interprets such a value document as an operator expression rather than as a value. Maps without such keys are still sent as literal subdocument comparisons, so exact matches on <code>Map</code> properties, dotted paths and array elements are unchanged, and geospatial criteria are exempt. Code that deliberately passed an operator document through a criteria value should use the native <code>find(Bson)</code> API instead.</p>
 </li>

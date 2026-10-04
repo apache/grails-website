@@ -730,7 +730,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <p>Index creation on startup can be switched off with <code>grails.mongodb.buildIndexes = false</code>, and run on demand with <code>MongoDatastore.buildIndex()</code>, or moved off the startup thread with <code>grails.mongodb.buildIndexesAsync = true</code></p>
 </li>
 <li>
-<p><code>grails.gorm</code> and <code>grails.mongodb</code> settings are now applied when GORM is given an existing <code>MongoClient</code>, such as the one contributed by Spring Boot. Configuration that was previously ignored on this path — <code>failOnError</code>, the default mapping and constraints, flush behaviour and multi-tenancy — now takes effect. See <a href="#upgradeNotes">Upgrade Notes</a> before upgrading an application that supplies its own client.</p>
+<p><code>grails.gorm</code> and <code>grails.mongodb</code> settings are now applied when GORM is given an existing <code>MongoClient</code>, such as a <code>MongoClient</code> bean the application declares. Configuration that was previously ignored on this path — <code>failOnError</code>, the default mapping and constraints, flush behaviour and multi-tenancy — now takes effect. See <a href="#upgradeNotes">Upgrade Notes</a> before upgrading an application that supplies its own client.</p>
 </li>
 <li>
 <p>The index build reports what it created, what was already present and how long it took, in one summary line per build</p>
@@ -766,7 +766,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <p>The same holds inside a session or transaction opened through a connection, such as <code>Book.moreBooks.withTransaction { }</code>, and inside a method annotated <code>@Transactional(connection = 'moreBooks')</code>: <code>book.save()</code> in it was written to the default connection</p>
 </li>
 <li>
-<p>An application can be checkpointed and restored with CRaC: GORM closes every <code>MongoClient</code> it created, on every connection and including the one built from Spring Boot&#8217;s settings, before the checkpoint and builds replacements after the restore. See <a href="#advancedConfig">Advanced Configuration</a>.</p>
+<p>An application can be checkpointed and restored with CRaC, including as its context refreshes (<code>spring.context.checkpoint=onRefresh</code>). GORM opens no connection until the datastore starts, and around a checkpoint it stops and starts the <code>MongoClient</code> of every connection it created. In a Spring Boot application GORM now declares the <code>MongoClient</code> bean itself, built from Spring Boot&#8217;s settings, so that client is one of them. The client stays the same object, so the <code>mongo</code> bean keeps working after a restore. See <a href="#advancedConfig">Advanced Configuration</a>.</p>
 </li>
 </ul>
 </div>
@@ -1086,9 +1086,39 @@ abstract class BookService {
 </div>
 </div>
 <div class="sect3">
+<h4 id="_indexes_are_built_when_the_datastore_starts_not_when_it_is_created">Indexes Are Built When the Datastore Starts, Not When It Is Created</h4>
+<div class="paragraph">
+<p>Creating a <code>MongoDatastore</code> no longer connects to MongoDB or builds the indexes the domain classes declare, whichever constructor creates it, including one handed a <code>MongoClient</code> the application created itself. The datastore connects and builds them when it is started. In an application, Spring starts it with the other lifecycle beans, after every bean has been created and before <code>BootStrap</code> runs or the web server accepts a request, so the indexes are in place where they were before.</p>
+</div>
+<div class="paragraph">
+<p>Code that creates a <code>MongoDatastore</code> itself and relies on the indexes existing once the constructor returns has to start it first:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">MongoDatastore datastore = <span class="keyword">new</span> MongoDatastore(configuration, Person)
+datastore.start()      <span class="comment">// connects, and builds the indexes Person declares</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A datastore that nothing has started starts itself the first time a session is opened on it, which any GORM query, save or <code>withTransaction</code> does, so code that goes through GORM finds the indexes as before. What needs the explicit <code>start()</code> is code that inspects the indexes, or reaches MongoDB through the <code>MongoClient</code> directly, straight after creating the datastore. A datastore stopped with <code>stop()</code> is started again only by <code>start()</code>; using it in between is refused.</p>
+</div>
+<div class="paragraph">
+<p>Code that queries MongoDB while the application&#8217;s beans are still being created, rather than in <code>BootStrap</code> or later, starts the datastore early. It still works, but the process can then no longer be checkpointed with CRaC as its context refreshes; see <a href="#advancedConfig">Checkpoint and Restore</a>.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_gorm_declares_the_mongoclient_in_a_spring_boot_application">GORM Declares the MongoClient in a Spring Boot Application</h4>
+<div class="paragraph">
+<p>In a Spring Boot application, <code>grails-data-mongodb-spring-boot</code> now declares the <code>MongoClient</code> bean itself, ahead of Spring Boot&#8217;s MongoDB auto-configuration, which then declares none. GORM builds it the way Spring Boot builds its own, from the <code>spring.mongodb.*</code> properties, Spring Boot&#8217;s <code>MongoClientSettings</code> and every Spring Boot <code>MongoClientSettingsBuilderCustomizer</code> bean, so it connects to the same server with the same options. Spring Data, health checks, metrics and anything else that injects a <code>MongoClient</code> are given GORM&#8217;s. GORM owns that client: it connects it when the datastore starts, closes it when the application shuts down, and stops and starts it around a CRaC checkpoint. Before, GORM&#8217;s auto-configuration ran after Spring Boot&#8217;s and was handed Spring Boot&#8217;s client, which GORM then left alone, so it was not stopped for a checkpoint.</p>
+</div>
+<div class="paragraph">
+<p>An application that declares a <code>MongoClient</code> bean of its own keeps it, and GORM uses it as before.</p>
+</div>
+</div>
+<div class="sect3">
 <h4 id="_configuration_is_now_applied_to_an_externally_supplied_client">Configuration Is Now Applied to an Externally-Supplied Client</h4>
 <div class="paragraph">
-<p>When GORM is handed a <code>MongoClient</code> that it did not create — which is what happens whenever a <code>MongoClient</code> bean is already present, as with Spring Boot&#8217;s MongoDB auto-configuration — it built its settings from the defaults and applied only the database name. Everything else configured under <code>grails.gorm</code> and <code>grails.mongodb</code> was silently ignored on that path. Those settings are now applied, exactly as they always were when GORM creates the client itself.</p>
+<p>When GORM is handed a <code>MongoClient</code> that it did not create — which is what happens whenever the application declares a <code>MongoClient</code> bean of its own — it built its settings from the defaults and applied only the database name. Everything else configured under <code>grails.gorm</code> and <code>grails.mongodb</code> was silently ignored on that path. Those settings are now applied, exactly as they always were when GORM creates the client itself.</p>
 </div>
 <div class="paragraph">
 <p>Nothing in your configuration changes. What changes is that configuration you already have starts taking effect:</p>
@@ -1483,19 +1513,35 @@ These settings are read by name, so write them exactly as they are documented. U
 <div class="sect3">
 <h4 id="_index_creation_on_startup">Index Creation on Startup</h4>
 <div class="paragraph">
-<p>GORM creates and reconciles the indexes declared in your mapping blocks each time the datastore starts, and startup waits for MongoDB to finish building them. Set <code>grails.mongodb.buildIndexes = false</code> to leave the indexes on the server untouched instead, and build them with <code>MongoDatastore.buildIndex()</code> when you choose, or <code>grails.mongodb.buildIndexesAsync = true</code> to keep building them but on a background thread — see <a href="#queryIndexes">Querying Indexing</a> for details and when to use each.</p>
+<p>GORM creates and reconciles the indexes declared in your mapping blocks each time the datastore starts, and startup waits for MongoDB to finish building them. In an application the datastore starts when Spring starts its lifecycle beans, after every bean has been created and before <code>BootStrap</code> runs or the web server accepts a request. A datastore created outside an application context starts the first time a session is opened on it. Set <code>grails.mongodb.buildIndexes = false</code> to leave the indexes on the server untouched instead, and build them with <code>MongoDatastore.buildIndex()</code> when you choose, or <code>grails.mongodb.buildIndexesAsync = true</code> to keep building them but on a background thread — see <a href="#queryIndexes">Querying Indexing</a> for details and when to use each.</p>
 </div>
 </div>
 <div class="sect3">
 <h4 id="_checkpoint_and_restore_crac">Checkpoint and Restore (CRaC)</h4>
 <div class="paragraph">
-<p>GORM takes part in the Spring lifecycle, so an application can be checkpointed with <a href="https://openjdk.org/projects/crac/">CRaC</a> and restored. CRaC refuses to checkpoint a process holding open sockets, and a connected <code>MongoClient</code> holds several, so before the checkpoint GORM closes the client of every connection: the default one, each one under <code>grails.mongodb.connections</code>, and any added at runtime. When the application is restored, GORM builds a replacement for each from the same settings. An <a href="#embeddedMongo">embedded MongoDB</a> is stopped after the clients and started again before them.</p>
+<p>GORM takes part in the Spring lifecycle, so an application can be checkpointed with <a href="https://openjdk.org/projects/crac/">CRaC</a> and restored, whether the checkpoint is taken while the application is running or as its context refreshes (<code>-Dspring.context.checkpoint=onRefresh</code>). CRaC refuses to checkpoint a process holding open sockets, and a connected <code>MongoClient</code> holds several:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>GORM opens no connection to MongoDB until the datastore starts. The clients it creates connect when the datastore is started, and the declared indexes are built then rather than while the datastore is being created. A checkpoint taken as the context refreshes, which Spring takes after every bean has been created and before it starts any lifecycle bean, therefore finds nothing to refuse, and the datastore connects once the process is restored.</p>
+</li>
+<li>
+<p>Before a checkpoint of a running application, GORM stops the client of every connection: the default one, each one under <code>grails.mongodb.connections</code>, and any added at runtime. When the application is restored, GORM starts each of them again with the same settings. Nothing connects in between: a connection added, or a domain class registered, while the application is stopped is connected and has its indexes built when it is restored.</p>
+</li>
+</ul>
 </div>
 <div class="paragraph">
-<p>Everything that reaches MongoDB through GORM uses the replacements, including multi-tenancy and the <a href="#springDataInterop">Spring Data MongoDB integration</a>. A <code>MongoClient</code> that application code obtained before the checkpoint, for example from <code>MongoDatastore.getMongoClient()</code>, is one of the closed ones: obtain it again after the restore rather than keeping it.</p>
+<p>An <a href="#embeddedMongo">embedded MongoDB</a> is stopped after the clients and started again before them.</p>
 </div>
 <div class="paragraph">
-<p>A client the application supplied to GORM is neither closed nor replaced. It belongs to whoever created it, and that code has to close it before the checkpoint for the checkpoint to succeed. The client that Spring Boot&#8217;s settings produce, which GORM builds itself when the application declares no <code>MongoClient</code> bean of its own, is GORM&#8217;s and is closed and built again like the rest.</p>
+<p>The <code>MongoClient</code> GORM hands out stays the same object across a checkpoint: stopping it closes the driver&#8217;s client inside it, and starting it builds a new one. The <code>mongo</code> bean, a client obtained from <code>MongoDatastore.getMongoClient()</code>, multi-tenancy and the <a href="#springDataInterop">Spring Data MongoDB integration</a> all go on working after the restore. A <code>MongoDatabase</code>, <code>MongoCollection</code> or <code>ClientSession</code> obtained from the client belongs to the driver&#8217;s client it came from, so obtain it again after a restore rather than keeping it.</p>
+</div>
+<div class="paragraph">
+<p>A client the application supplied to GORM is neither started, stopped nor replaced. It belongs to whoever created it, and that code has to close it before the checkpoint for the checkpoint to succeed, and, for a checkpoint taken as the context refreshes, must not have connected it by then. In a Spring Boot application GORM declares the <code>MongoClient</code> bean itself, built from Spring Boot&#8217;s settings (see <a href="#springBoot">Using GORM in Spring Boot</a>), so unless the application declares one of its own, that client is GORM&#8217;s and is handled like the rest.</p>
+</div>
+<div class="paragraph">
+<p>A checkpoint taken as the context refreshes also needs the application itself to leave MongoDB alone until then: code that queries it while beans are still being created, rather than in <code>BootStrap</code> or later, connects the datastore early, and so does reading the connections themselves from MongoDB with <a href="../api/org/grails/datastore/mapping/mongo/connections/MongoConnectionSources.html">MongoConnectionSources</a>, which reads them as the datastore is created.</p>
 </div>
 </div>
 <div class="sect3">
@@ -1864,6 +1910,20 @@ configuration does when nothing is running yet.</p>
 </div>
 </div>
 <div class="sect3">
+<h4 id="_checkpointing_as_the_context_refreshes">Checkpointing as the context refreshes</h4>
+<div class="paragraph">
+<p>The server is normally started as soon as the application context is initialized, so that
+anything talking to MongoDB while beans are still being created finds it listening. An
+application checkpointed with CRaC as its context refreshes (<code>-Dspring.context.checkpoint=onRefresh</code>),
+or one that exits there (<code>-Dspring.context.exit=onRefresh</code>, as a run that trains a class data
+sharing archive does), has its URL published all the same, but its server is started with the
+application context&#8217;s lifecycle beans, ahead of the datastore. A checkpoint cannot contain the
+server&#8217;s listening socket, and a JVM halted as its context refreshes would leave a flapdoodle
+<code>mongod</code> running. A URL that asks for port <code>0</code> is given a free port when it is published,
+since the server binds later.</p>
+</div>
+</div>
+<div class="sect3">
 <h4 id="_outside_grails">Outside Grails</h4>
 <div class="paragraph">
 <p>The module is plain Java and knows nothing about Grails beyond the default property name,
@@ -1928,6 +1988,9 @@ If your GORM entities are in a different package specify the package name as the
 </td>
 </tr>
 </table>
+</div>
+<div class="paragraph">
+<p>GORM declares the application&#8217;s <code>MongoClient</code> bean, ahead of Spring Boot&#8217;s MongoDB auto-configuration, which then declares none. It is built the way Spring Boot builds its own: from the <code>spring.mongodb.*</code> properties, Spring Boot&#8217;s <code>MongoClientSettings</code> and every Spring Boot <code>MongoClientSettingsBuilderCustomizer</code> bean, so a <code>@ServiceConnection</code>, an SSL bundle or a metrics customizer applies to it as it would to Spring Boot&#8217;s. Spring Data, health checks and anything else that injects a <code>MongoClient</code> share GORM&#8217;s. GORM owns the client: it connects when the datastore starts, is closed when the application shuts down, and can be checkpointed with CRaC (see <a href="#advancedConfig">Checkpoint and Restore</a>). An application that declares a <code>MongoClient</code> bean of its own keeps it, and GORM uses that client instead and leaves closing it to the application.</p>
 </div>
 <div class="paragraph">
 <p>Finally create your GORM entities and ensure they are annotated with <code>grails.persistence.Entity</code>:</p>
@@ -2037,7 +2100,7 @@ println Person.count()</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p>a <code>MongoDatabaseFactory</code> bound to GORM&#8217;s <code>MongoClient</code> and default database (GORM keeps ownership of the client; the factory will not close it, and uses the replacement GORM builds after a <a href="#advancedConfig">CRaC restore</a>),</p>
+<p>a <code>MongoDatabaseFactory</code> bound to GORM&#8217;s <code>MongoClient</code> and default database (GORM keeps ownership of the client; the factory will not close it, and it goes on working across a <a href="#advancedConfig">CRaC checkpoint and restore</a>),</p>
 </li>
 <li>
 <p>a <code>MongoTemplate</code> (named <code>mongoTemplate</code>) and its <code>MappingMongoConverter</code>, sharing the driver-level codec registry,</p>
@@ -2903,7 +2966,7 @@ println <span class="string"><span class="delimiter">&quot;</span><span class="i
 <div class="sect3">
 <h4 id="_building_indexes_in_the_background">Building Indexes in the Background</h4>
 <div class="paragraph">
-<p>MongoDB answers a <code>createIndex</code> command only once the index has been built, so by default the thread that creates the datastore — in an application, the startup thread — waits for every declared index before the application finishes starting. On an empty collection that is instant; on a large existing collection an index build can take minutes, and a deployment waits for all of them in turn.</p>
+<p>MongoDB answers a <code>createIndex</code> command only once the index has been built, so by default the thread that starts the datastore — in an application, the thread starting the application context — waits for every declared index before the application finishes starting. On an empty collection that is instant; on a large existing collection an index build can take minutes, and a deployment waits for all of them in turn.</p>
 </div>
 <div class="paragraph">
 <p>Set <code>buildIndexesAsync</code> to have index builds run on a background thread instead, both the one GORM runs at startup and any the application starts with <code>buildIndex()</code>:</p>
@@ -2932,7 +2995,7 @@ println <span class="string"><span class="delimiter">&quot;</span><span class="i
 </ul>
 </div>
 <div class="paragraph">
-<p>The setting also applies with <code>buildIndexes</code> set to <code>false</code>, to the builds the application starts with <code>buildIndex()</code>. A domain class registered after startup is indexed on the thread registering it, once any build running on the connection has finished, and only when it is mapped to the default connection.</p>
+<p>The setting also applies with <code>buildIndexes</code> set to <code>false</code>, to the builds the application starts with <code>buildIndex()</code>. A domain class registered after startup is indexed on the thread registering it, once any build running on the connection has finished, and only when it is mapped to the default connection; if the datastore is stopped for a checkpoint at the time, it is indexed when the datastore is started again.</p>
 </div>
 <div class="admonitionblock note">
 <table>

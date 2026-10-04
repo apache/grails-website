@@ -310,7 +310,8 @@ implements <a href='../../../../../MappingContextListener.html'>MappingContextLi
                         <tr class="rowColor">
                             <td class="colFirst"><code><strong>protected&nbsp;com.mongodb.client.MongoClient</strong></code>&nbsp;</td>
                             <td class="colLast"><code><a href="#mongo">mongo</a></code></td>
-                            <td class="colLast">Not final because <a href='#start()'>start()</a> replaces it after a CRaC restore. </td>
+                            <td class="colLast">Not final because <a href='#start()'>start()</a> replaces it after a CRaC restore when it is not a
+ <a href='../../../../../org/grails/datastore/mapping/mongo/connections/RestartableMongoClient.html' title='RestartableMongoClient'>RestartableMongoClient</a>, which is restarted in place instead. </td>
                         </tr>
                         
                         <tr class="altColor">
@@ -403,8 +404,8 @@ implements <a href='../../../../../MappingContextListener.html'>MappingContextLi
                         <tr class="altColor">
                             <td class="colFirst">
                                 <code><strong><a href="#MongoDatastore(Supplier, org.springframework.core.env.PropertyResolver, org.grails.datastore.gorm.events.ConfigurableApplicationEventPublisher, java.lang.Package)">MongoDatastore</a></strong>(java.util.function.Supplier&lt;com.mongodb.client.MongoClient&gt; clientSupplier, org.springframework.core.env.PropertyResolver configuration, org.grails.datastore.gorm.events.ConfigurableApplicationEventPublisher eventPublisher, java.lang.Package packages)</code><br>Configures a new <a href='../../../../../org/grails/datastore/mapping/mongo/MongoDatastore.html' title='MongoDatastore'>MongoDatastore</a> around the clients a supplier builds, which GORM owns: it builds one
- now, closes it when the datastore is stopped for a checkpoint, and builds the replacement the restore needs
- from the same supplier. </td>
+ the first time the client is needed, closes it when the datastore is stopped for a checkpoint, and builds the
+ one the restore needs from the same supplier. </td>
                         </tr>
                         
                         <tr class="rowColor">
@@ -895,14 +896,13 @@ implements <a href='../../../../../MappingContextListener.html'>MappingContextLi
                         <tr class="rowColor">
                             <td class="colFirst"><code></code></td>
                             <td class="colLast"><code>public&nbsp;void</code></td>
-                            <td class="colLast"><code><strong><a href="#start()">start</a></strong>()</code><br>Builds a replacement for each com.mongodb.client.MongoClient that <a href='#stop()'>stop()</a> closed, using the
- same factory the original was built with, so settings applied at startup still apply. </td>
+                            <td class="colLast"><code><strong><a href="#start()">start</a></strong>()</code><br>Connects the datastore, which is the first point at which it opens a socket.</td>
                         </tr>
                         
                         <tr class="altColor">
                             <td class="colFirst"><code></code></td>
                             <td class="colLast"><code>public&nbsp;void</code></td>
-                            <td class="colLast"><code><strong><a href="#stop()">stop</a></strong>()</code><br>Closes the com.mongodb.client.MongoClient of every connection, so the process can be checkpointed.</td>
+                            <td class="colLast"><code><strong><a href="#stop()">stop</a></strong>()</code><br>Stops the com.mongodb.client.MongoClient of every connection, so the process can be checkpointed.</td>
                         </tr>
                         
                         <tr class="rowColor">
@@ -1186,9 +1186,10 @@ implements <a href='../../../../../MappingContextListener.html'>MappingContextLi
                         <ul class="blockListLast">
                             <li class="blockList">
                                 <h4>protected&nbsp;com.mongodb.client.MongoClient <strong>mongo</strong></h4>
-                                <p> Not final because <a href='#start()'>start()</a> replaces it after a CRaC restore. Everything other
- than construction reaches it through <a href='#getMongoClient()'>getMongoClient()</a>, so a replacement is
- picked up without anything else having to be told.
+                                <p> Not final because <a href='#start()'>start()</a> replaces it after a CRaC restore when it is not a
+ <a href='../../../../../org/grails/datastore/mapping/mongo/connections/RestartableMongoClient.html' title='RestartableMongoClient'>RestartableMongoClient</a>, which is restarted in place instead. Everything other than
+ construction reaches it through <a href='#getMongoClient()'>getMongoClient()</a>, so a replacement is picked up
+ without anything else having to be told.
      </p>
                             </li>
                         </ul>
@@ -1306,9 +1307,9 @@ implements <a href='../../../../../MappingContextListener.html'>MappingContextLi
                             <li class="blockList">
                                 <h4>public&nbsp;<strong>MongoDatastore</strong>(java.util.function.Supplier&lt;com.mongodb.client.MongoClient&gt; clientSupplier, org.springframework.core.env.PropertyResolver configuration, org.grails.datastore.gorm.events.ConfigurableApplicationEventPublisher eventPublisher, java.lang.Package packages)</h4>
                                 <p> Configures a new <a href='../../../../../org/grails/datastore/mapping/mongo/MongoDatastore.html' title='MongoDatastore'>MongoDatastore</a> around the clients a supplier builds, which GORM owns: it builds one
- now, closes it when the datastore is stopped for a checkpoint, and builds the replacement the restore needs
- from the same supplier. Use this where the client cannot be rebuilt from <CODE>grails.mongodb</CODE> settings,
- such as one built from Spring Boot's own <CODE>MongoClientSettings</CODE>.
+ the first time the client is needed, closes it when the datastore is stopped for a checkpoint, and builds the
+ one the restore needs from the same supplier. Use this where the client cannot be rebuilt from
+ <CODE>grails.mongodb</CODE> settings, such as one built from Spring Boot's own <CODE>MongoClientSettings</CODE>.
       <DL><DT><B>Parameters:</B></DT><DD><code>clientSupplier</code> -  Builds a com.mongodb.client.MongoClient, whenever the datastore needs one</DD><DD><code>configuration</code> -  The configuration</DD><DD><code>eventPublisher</code> -  The Spring ApplicationContext</DD><DD><code>packages</code> -  The packages to scan</DD></DL><DL><DT><B>Since:</B></DT><DD>8.0</DD></DL></p>
                             </li>
                         </ul>
@@ -2098,13 +2099,30 @@ implements <a href='../../../../../MappingContextListener.html'>MappingContextLi
                         <ul class="blockListLast">
                             <li class="blockList">
                                 <h4>@java.lang.Override<br>public&nbsp;void <strong>start</strong>()</h4>
-                                <p> Builds a replacement for each com.mongodb.client.MongoClient that <a href='#stop()'>stop()</a> closed, using the
- same factory the original was built with, so settings applied at startup still apply. The
- replacement is handed out by the connection's org.grails.datastore.mapping.core.connections.ConnectionSource as well as by this
- datastore, when that is the <a href='../../../../../org/grails/datastore/mapping/mongo/connections/MongoConnectionSource.html' title='MongoConnectionSource'>MongoConnectionSource</a> the factory creates.
+                                <p> Connects the datastore, which is the first point at which it opens a socket.
 
- <p>A background index build that <a href='#stop()'>stop()</a> cut short, or that was requested while stopped,
- runs again on a fresh executor, on every connection.
+ <p>The first start connects the client of every connection GORM owns and builds the indexes the domain
+ classes declare, unless <CODE>grails.mongodb.buildIndexes</CODE> is <CODE>false</CODE>. Nothing before it connects: the
+ clients GORM creates are <a href='../../../../../org/grails/datastore/mapping/mongo/connections/RestartableMongoClient.html' title='RestartableMongoClient'>RestartableMongoClient</a>s, which connect when first used, and building the
+ datastore builds no index. So a datastore created while an application context refreshes holds no socket
+ until Spring starts it in <a href='#LIFECYCLE_PHASE'>LIFECYCLE_PHASE</a>, which is what lets the process be checkpointed with CRaC as
+ the context refreshes (<CODE>spring.context.checkpoint=onRefresh</CODE>). Spring starts it before it publishes
+ <CODE>ContextRefreshedEvent</CODE>, so the indexes are in place before <CODE>BootStrap</CODE> runs and before the web
+ server accepts a request. A datastore that nothing starts - one built outside an application context - starts
+ itself the first time a session is opened on it.
+
+ <p>Starting after <a href='#stop()'>stop()</a> brings back each com.mongodb.client.MongoClient it stopped: a
+ <a href='../../../../../org/grails/datastore/mapping/mongo/connections/RestartableMongoClient.html' title='RestartableMongoClient'>RestartableMongoClient</a> builds a new driver client and stays the one handed out, and any other client is
+ replaced by one built by the same factory the original was built with, so settings applied at startup still
+ apply. A replacement is handed out by the connection's org.grails.datastore.mapping.core.connections.ConnectionSource as well as by this datastore,
+ when that is a <a href='../../../../../org/grails/datastore/mapping/mongo/connections/MongoConnectionSource.html' title='MongoConnectionSource'>MongoConnectionSource</a>. The indexes are not built again, since they outlive a checkpoint
+ on the server, but a background index build that <a href='#stop()'>stop()</a> cut short, or that was requested while
+ stopped, runs again on a fresh executor, on every connection. A connection added while the datastore was
+ stopped is connected and has its indexes built here.
+
+ <p>A connection registered while this runs is not left out. One registered by another thread waits for it to
+ finish and is then connected and built as the running datastore's connections are; one registered by this
+ thread, from an index build hook, is taken up by another pass before this returns.
      </p>
                             </li>
                         </ul>
@@ -2113,14 +2131,23 @@ implements <a href='../../../../../MappingContextListener.html'>MappingContextLi
                         <ul class="blockListLast">
                             <li class="blockList">
                                 <h4>@java.lang.Override<br>public&nbsp;void <strong>stop</strong>()</h4>
-                                <p> Closes the com.mongodb.client.MongoClient of every connection, so the process can be checkpointed.
+                                <p> Stops the com.mongodb.client.MongoClient of every connection, so the process can be checkpointed.
 
  <p>CRaC refuses to checkpoint a process holding open sockets, and a connected driver
- holds one per pooled connection plus its server monitors. Closing the client shuts the
- monitor threads down and releases every socket, which nothing else in the driver
+ holds one per pooled connection plus its server monitors. Closing the driver client shuts
+ the monitor threads down and releases every socket, which nothing else in the driver
  offers: draining the pool leaves the monitors connected. Each connection declared under
  <CODE>grails.mongodb.connections</CODE>, or added at runtime, has a client of its own, and
- each is closed.
+ each is stopped.
+
+ <p>A <a href='../../../../../org/grails/datastore/mapping/mongo/connections/RestartableMongoClient.html' title='RestartableMongoClient'>RestartableMongoClient</a>, which is what GORM creates, closes its driver client and
+ stays the client the datastore hands out, so whatever holds it - the <CODE>mongo</CODE> bean among
+ them - works again once <a href='#start()'>start()</a> has restarted it. Any other client GORM owns is
+ closed, and <a href='#start()'>start()</a> builds a replacement.
+
+ <p>Every client is stopped whether or not the datastore has started: one used before it was started, or
+ connected by a <a href='#start()'>start()</a> that then failed, holds sockets as much as one the datastore started. Until
+ <a href='#start()'>start()</a> is called again the clients refuse to be used, and using the datastore does not start it.
 
  <p>A client the application supplied is left alone. Its lifecycle belongs to whoever
  created it, and <a href='#start()'>start()</a> does not replace it. A datastore that owns none of its
