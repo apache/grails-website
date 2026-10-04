@@ -7719,13 +7719,16 @@ Use <code>all-delete-orphan</code> when the child entity has no meaning outside 
 <div class="sect2">
 <h3 id="_global_user_type_mapping">45.3. Global User Type Mapping</h3>
 <div class="paragraph">
-<p>Register a user type for a given Java class globally so it applies to all properties of that type without explicit per-property configuration:</p>
+<p>Use <code>user-type</code> to register a user type for a Java type, so that every property of that type uses it without a per-property <code>type</code>. Registered in a domain class&#8217;s <code>mapping</code> block, it applies to the properties of that class:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">MyDomainClass</span> {
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">Account</span> {
+    <span class="predefined-type">Boolean</span> active
+    <span class="predefined-type">Boolean</span> locked
+
     <span class="directive">static</span> mapping = {
-        userTypes <span class="key">Money</span>: MoneyUserType      <i class="conum" data-value="1"></i><b>(1)</b>
+        <span class="string"><span class="delimiter">'</span><span class="content">user-type</span><span class="delimiter">'</span></span>(<span class="key">type</span>: YesNoBooleanType, <span class="type">class</span>: <span class="class">Boolean</span>)    <i class="conum" data-value="1"></i><b>(1)</b>
     }
 }</code></pre>
 </div>
@@ -7734,9 +7737,23 @@ Use <code>all-delete-orphan</code> when the child entity has no meaning outside 
 <table>
 <tr>
 <td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>Any property of type <code>Money</code> in this class will use <code>MoneyUserType</code>.</td>
+<td><code>YesNoBooleanType</code> implements <code>org.hibernate.usertype.UserType&lt;Boolean&gt;</code> and stores booleans as <code>Y</code> or <code>N</code>. Both <code>active</code> and <code>locked</code> use it. The <code>type</code> can be the user type&#8217;s <code>Class</code> or its fully qualified class name.</td>
 </tr>
 </table>
+</div>
+<div class="paragraph">
+<p>To apply it to every domain class, register it in the <a href="#_the_default_mapping_constraints">default mapping</a>:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/application.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails.gorm.default.mapping = {
+    <span class="string"><span class="delimiter">'</span><span class="content">user-type</span><span class="delimiter">'</span></span>(<span class="key">type</span>: YesNoBooleanType, <span class="type">class</span>: <span class="class">Boolean</span>)
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A <code>type</code> set on an individual property takes precedence over a registered user type.</p>
 </div>
 <div class="admonitionblock tip">
 <table>
@@ -7745,7 +7762,7 @@ Use <code>all-delete-orphan</code> when the child entity has no meaning outside 
 <i class="fa icon-tip" title="Tip"></i>
 </td>
 <td class="content">
-Implementing <code>org.hibernate.usertype.UserType</code> requires handling <code>sqlTypes()</code>, <code>nullSafeGet()</code>, <code>nullSafeSet()</code>, <code>deepCopy()</code>, and <code>equals()</code>. Prefer Hibernate&#8217;s <code>CompositeUserType</code> for multi-column mappings.
+A Hibernate 7 <code>UserType</code> must implement <code>getSqlType()</code>, <code>returnedClass()</code>, <code>deepCopy()</code>, and <code>isMutable()</code>, and usually overrides <code>nullSafeGet()</code> and <code>nullSafeSet()</code> to convert between the column value and the Java type. Prefer Hibernate&#8217;s <code>CompositeUserType</code> for multi-column mappings.
 </td>
 </tr>
 </table>
