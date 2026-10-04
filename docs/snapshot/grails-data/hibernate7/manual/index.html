@@ -4928,7 +4928,7 @@ def numberOfBranches = c.get {
 <div class="sect3">
 <h4 id="_sql_restrictions">30.5.5. SQL Restrictions</h4>
 <div class="paragraph">
-<p>You can access Hibernate&#8217;s SQL Restrictions capabilities.</p>
+<p>You can restrict the results with a native SQL condition, which is added to the <code>where</code> clause of the query as written, in parentheses.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -4962,6 +4962,30 @@ Note that the parameter there is SQL. The <code>first_name</code> attribute refe
 </td>
 </tr>
 </table>
+</div>
+<div class="paragraph">
+<p>Each <code>?</code> in the SQL is bound to the value at the same position in the list, so the number of <code>?</code> placeholders must match the number of values, and a value must not be <code>null</code>. A <code>?</code> in a string literal, such as <code>'%?'</code>, in a quoted identifier or in a comment is not a placeholder.</p>
+</div>
+<div class="paragraph">
+<p>When the query joins other tables, qualify the columns with <code>{alias}</code>, which stands for the table alias of the queried class, so that a column a joined table also has is not ambiguous:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="java">def c = Person.createCriteria()
+
+def peopleWithShortFirstNames = c.list {
+    pets {
+        eq <span class="string"><span class="delimiter">'</span><span class="content">name</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Lucky</span><span class="delimiter">'</span></span>
+    }
+    sqlRestriction <span class="string"><span class="delimiter">&quot;</span><span class="content">char_length({alias}.first_name) &lt;= ?</span><span class="delimiter">&quot;</span></span>, [<span class="integer">4</span>]
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Inside an association block, such as <code>pets { ... }</code>, the condition restricts the association, as the other criteria in the block do, and <code>{alias}</code> stands for the table alias of the association instead. This includes an association block inside an <code>and</code>, <code>or</code> or <code>not</code> block.</p>
+</div>
+<div class="paragraph">
+<p>A <a href="#querying-detachedCriteria">detached criteria</a> accepts <code>sqlRestriction</code> too.</p>
 </div>
 </div>
 <div class="sect3">
@@ -5226,6 +5250,16 @@ def criteria = <span class="keyword">new</span> DetachedCriteria(Person)</code><
 }</code></pre>
 </div>
 </div>
+<div class="paragraph">
+<p>A detached criteria also accepts <code>sqlRestriction</code>, which restricts the results with a native SQL condition as in a <a href="#querying-criteria">criteria</a> query. <code>{alias}</code> stands for the table alias of the class of the detached criteria, also when the detached criteria is used as a subquery:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> criteria = <span class="keyword">new</span> DetachedCriteria(Person).build {
+    sqlRestriction <span class="string"><span class="delimiter">&quot;</span><span class="content">char_length({alias}.first_name) &lt;= ?</span><span class="delimiter">&quot;</span></span>, [<span class="integer">4</span>]
+}</code></pre>
+</div>
+</div>
 </div>
 <div class="sect3">
 <h4 id="_executing_detached_criteria_queries">30.7.2. Executing Detached Criteria Queries</h4>
@@ -5441,7 +5475,7 @@ criteria.each {
 <i class="fa icon-note" title="Note"></i>
 </td>
 <td class="content">
-Note that one limitation with regards to batch operations is that join queries (queries that query associations) are not allowed within the <code>DetachedCriteria</code> instance.
+Note that one limitation with regards to batch operations is that join queries (queries that query associations) are not allowed within the <code>DetachedCriteria</code> instance. Neither is <code>sqlRestriction</code>: a batch operation on a detached criteria with a SQL restriction throws an exception.
 </td>
 </tr>
 </table>
