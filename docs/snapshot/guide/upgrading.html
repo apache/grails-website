@@ -1511,6 +1511,14 @@ On GORM for MongoDB, a transactional service method called from another, or <cod
 <p><strong>GORM for MongoDB rejects Map criterion values that contain <code>$</code> keys.</strong>
 <code>findWhere</code>, <code>findAllWhere</code>, criteria queries, the <code>where</code> DSL and dynamic finders now throw <code>InvalidDataAccessResourceUsageException</code> when a <code>Map</code> passed as a criterion value contains a key starting with <code>$</code> at any level, on any property type including enums. MongoDB interprets such a value document as an operator expression rather than as a value. Maps without such keys are still sent as literal subdocument comparisons, so exact matches on <code>Map</code> properties, dotted paths and array elements are unchanged, and geospatial criteria are exempt. Code that deliberately passed an operator document through a criteria value should use the native <code>find(Bson)</code> API instead.</p>
 </li>
+<li>
+<p><strong>GORM for MongoDB no longer ends the index build on a <code>unique</code> index over duplicate values.</strong>
+A declared <code>unique</code> index that could not be built because documents already shared a value ended the index build with a <code>DuplicateKeyException</code>: the indexes declared after it were not built, and with the default synchronous build the application did not start. It is now counted as a failed declaration like any other index the server refuses, logged at <code>ERROR</code>, and the build goes on; the application starts without that index. Remove the duplicates and build the index again to create it. See <a href="../grails-data/mongodb/manual/index.html#upgradeNotes">Upgrade Notes</a> in the GORM for MongoDB guide.</p>
+</li>
+<li>
+<p><strong>GORM for MongoDB builds only the indexes of the domain classes mapped to each connection.</strong>
+The index build of a named connection also created the indexes of classes mapped only to another connection, in its own database. Each connection now builds the indexes of the classes mapped to it, including those mapped to <code>ConnectionSource.ALL</code>. Indexes already created elsewhere are left in place. See <a href="../grails-data/mongodb/manual/index.html#upgradeNotes">Upgrade Notes</a> in the GORM for MongoDB guide.</p>
+</li>
 </ul>
 </div>
 </div>

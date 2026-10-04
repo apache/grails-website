@@ -629,6 +629,21 @@ mongoClient.close()  // close the client you created</code></pre>
 <p>No change is required when GORM creates the client itself — for example <code>new MongoDatastore(Person)</code>, or configuration-driven setups where GORM builds the client from <code>grails.mongodb.*</code> settings — because GORM continues to own and close those clients. A <code>MongoClient</code> registered as a Spring bean likewise continues to be closed by the <code>ApplicationContext</code>.</p>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_a_unique_index_over_duplicate_values_no_longer_stops_the_index_build">A Unique Index Over Duplicate Values No Longer Stops the Index Build</h4>
+<div class="paragraph">
+<p>A declared <code>unique</code> index that cannot be built because documents in the collection already share a value used to end the index build with a <code>DuplicateKeyException</code>: the indexes declared after it were not built, and with the default synchronous build the application did not start. It is now handled like any other index the server refuses: logged at <code>ERROR</code> with the domain class and the duplicate key, counted as a failure in the build summary, which is logged at <code>WARN</code>, and the build goes on with the remaining declarations. The application starts without that index.</p>
+</div>
+<div class="paragraph">
+<p>Remove the duplicates and build the index again, with <code>buildIndex()</code> or by restarting, to have it created. To keep refusing to run without it, check the result of <code>buildIndexAsync()</code> (see <a href="#buildIndexesOnDemand">Building Indexes on Demand</a>) and stop when <code>failures()</code> is not zero.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_a_connection_builds_only_the_indexes_of_the_classes_mapped_to_it">A Connection Builds Only the Indexes of the Classes Mapped to It</h4>
+<div class="paragraph">
+<p>The index build of each connection created the indexes declared by every domain class, including classes mapped only to another connection, so a class mapped to the default connection also had its collection and indexes created in the database of every named connection. Each connection now builds the indexes of the classes mapped to it: those that name it with <code>connection</code> or <code>connections</code>, those mapped to <code>ConnectionSource.ALL</code>, and, on the default connection, those that name none. The indexes already created elsewhere stay where they are; <code>findUndeclaredIndexes()</code> on that connection does not report them, since no class is mapped to their collection there.</p>
+</div>
+</div>
 </div>
 </div>
 <div id="footer">

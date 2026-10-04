@@ -1506,6 +1506,15 @@ automatically removes each document once it reaches the configured age:</p>
 logging a conflict. A changed TTL is applied in place with MongoDB&#8217;s <code>collMod</code> command — no drop, no rebuild — while any
 other option change is applied by declaring <code>indexAttributes: [recreateOnConflict: true]</code>.</p>
 </div>
+<div class="paragraph">
+<p>GORM still never drops an index by itself. <code>MongoDatastore.findUndeclaredIndexes()</code> lists the indexes on mapped
+collections whose keys no domain class declares any longer, and <code>dropUndeclaredIndexes()</code> drops them, as a deliberate
+step once every instance runs the release that declares the indexes to keep. See the
+<a href="../grails-data/mongodb/manual/index.html#undeclaredIndexes">Finding and Dropping Undeclared Indexes</a> section of the GORM for MongoDB
+guide. <code>findMissingIndexes()</code> lists the declared indexes their collections do not have, which shows when a build has
+been forgotten with <code>buildIndexes</code> off, and <code>buildIndexAsync()</code> runs the index build in the background and returns a
+<code>CompletableFuture</code> of its result, for a caller that needs to know when the build finished and what it applied.</p>
+</div>
 </div>
 <div class="sect3">
 <h4 id="_gorm_for_mongodb_and_spring_data_mongodb_interoperability">GORM for MongoDB and Spring Data MongoDB Interoperability</h4>
@@ -4687,6 +4696,14 @@ On GORM for MongoDB, a transactional service method called from another, or <cod
 <li>
 <p><strong>GORM for MongoDB rejects Map criterion values that contain <code>$</code> keys.</strong>
 <code>findWhere</code>, <code>findAllWhere</code>, criteria queries, the <code>where</code> DSL and dynamic finders now throw <code>InvalidDataAccessResourceUsageException</code> when a <code>Map</code> passed as a criterion value contains a key starting with <code>$</code> at any level, on any property type including enums. MongoDB interprets such a value document as an operator expression rather than as a value. Maps without such keys are still sent as literal subdocument comparisons, so exact matches on <code>Map</code> properties, dotted paths and array elements are unchanged, and geospatial criteria are exempt. Code that deliberately passed an operator document through a criteria value should use the native <code>find(Bson)</code> API instead.</p>
+</li>
+<li>
+<p><strong>GORM for MongoDB no longer ends the index build on a <code>unique</code> index over duplicate values.</strong>
+A declared <code>unique</code> index that could not be built because documents already shared a value ended the index build with a <code>DuplicateKeyException</code>: the indexes declared after it were not built, and with the default synchronous build the application did not start. It is now counted as a failed declaration like any other index the server refuses, logged at <code>ERROR</code>, and the build goes on; the application starts without that index. Remove the duplicates and build the index again to create it. See <a href="../grails-data/mongodb/manual/index.html#upgradeNotes">Upgrade Notes</a> in the GORM for MongoDB guide.</p>
+</li>
+<li>
+<p><strong>GORM for MongoDB builds only the indexes of the domain classes mapped to each connection.</strong>
+The index build of a named connection also created the indexes of classes mapped only to another connection, in its own database. Each connection now builds the indexes of the classes mapped to it, including those mapped to <code>ConnectionSource.ALL</code>. Indexes already created elsewhere are left in place. See <a href="../grails-data/mongodb/manual/index.html#upgradeNotes">Upgrade Notes</a> in the GORM for MongoDB guide.</p>
 </li>
 </ul>
 </div>

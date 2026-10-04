@@ -475,6 +475,30 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <p>The index build reports what it created, what was already present and how long it took, in one summary line per build</p>
 </li>
 <li>
+<p><code>MongoDatastore.buildIndexAsync()</code> runs the index build in the background whatever <code>buildIndexesAsync</code> says, and returns a <code>CompletableFuture&lt;IndexBuildResult&gt;</code> with the counts the summary line reports</p>
+</li>
+<li>
+<p><code>MongoDatastore.findMissingIndexes()</code> lists the indexes the domain classes declare that their collections do not have</p>
+</li>
+<li>
+<p><code>MongoDatastore.findUndeclaredIndexes()</code> lists the indexes on mapped collections that no domain class declares, and <code>MongoDatastore.dropUndeclaredIndexes()</code> drops them</p>
+</li>
+<li>
+<p>A <code>unique</code> index that cannot be built over existing duplicate values is counted as a failed declaration and the index build goes on, instead of ending the build and, when it is synchronous, startup. See <a href="#upgradeNotes">Upgrade Notes</a></p>
+</li>
+<li>
+<p>Each connection builds the indexes of the domain classes mapped to it. Previously a named connection also created the indexes, and the collection, of every class mapped only to another connection in its database. See <a href="#upgradeNotes">Upgrade Notes</a></p>
+</li>
+<li>
+<p>A domain class registered after startup is indexed on the collection and in the database its mapping names, and only when it is mapped to the default connection. Previously its indexes were built on the collection named after the class, in the default database, whatever its mapping and connection</p>
+</li>
+<li>
+<p>A property declared <code>index: true</code> in the mapping and also named in the constraints is indexed when the default constraints configure every property with <code>'*'</code>. Previously the constraints entry replaced the mapping&#8217;s, and the index was never created</p>
+</li>
+<li>
+<p>A property configured after a <code>'*'</code> entry in a <code>MappingBuilder.document { }</code> mapping keeps its configuration, such as <code>index: true</code>. Previously each such property was configured on a copy of the <code>'*'</code> entry that was never kept, so the configuration was lost</p>
+</li>
+<li>
 <p>Inside a <code>withConnection</code> block, static methods called on the class and instance methods such as <code>save()</code> now use the block&#8217;s connection, as documented; previously only the methods called without naming the class did</p>
 </li>
 <li>
