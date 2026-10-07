@@ -530,7 +530,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <div id="header">
 <h1>GORM for Hibernate 7</h1>
 <div class="details">
-<span id="revnumber">version 8.0.0-RC2</span>
+<span id="revnumber">version 8.0.0</span>
 </div>
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
@@ -1201,12 +1201,12 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <h2 id="gettingStarted">5. Getting Started</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>To use GORM 8.0.0-RC2 for Hibernate in Grails 8 you can specify the following configuration in <code>build.gradle</code>:</p>
+<p>To use GORM 8.0.0 for Hibernate in Grails 8 you can specify the following configuration in <code>build.gradle</code>:</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
-    implementation "org.grails.plugins:hibernate7:8.0.0-RC2"
+    implementation "org.grails.plugins:hibernate7:8.0.0"
     runtimeOnly 'org.hibernate:hibernate-ehcache:7.0.Final', {
     // exclude javax variant of hibernate-core
     exclude group: 'org.hibernate', module: 'hibernate-core'
@@ -1222,7 +1222,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="properties">gormVersion=8.0.0-RC2</code></pre>
+<pre class="CodeRay highlight"><code data-lang="properties">gormVersion=8.0.0</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1235,7 +1235,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
     resolutionStrategy.eachDependency { DependencyResolveDetails details ->
         if( details.requested.group == 'org.grails' &&
             details.requested.name.startsWith('grails-datastore')) {
-            details.useVersion("8.0.0-RC2")
+            details.useVersion("8.0.0")
         }
     }
 }
@@ -1459,7 +1459,7 @@ dependencies {
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">implementation 'org.grails:gorm-hibernate7-spring-boot:8.0.0-RC2'</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">implementation 'org.grails:gorm-hibernate7-spring-boot:8.0.0'</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1578,7 +1578,7 @@ If your GORM entities are in a different package, specify the package name as th
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">implementation platform("org.apache.grails:grails-bom:8.0.0-RC2")
+<pre class="CodeRay highlight"><code data-lang="groovy">implementation platform("org.apache.grails:grails-bom:8.0.0")
 implementation "org.apache.grails.data:grails-data-hibernate7-core"
 runtimeOnly "com.h2database"
 runtimeOnly "org.apache.tomcat:tomcat-jdbc"
@@ -2908,7 +2908,7 @@ Embedded components are always persisted as part of the owning entity. There is 
 </div>
 </div>
 <div class="paragraph">
-<p>By default all three classes are stored in a single <code>content</code> table (table-per-hierarchy). GORM uses a <code>class</code> discriminator column to distinguish rows.</p>
+<p>By default all three classes are stored in a single <code>content</code> table (table-per-hierarchy). GORM uses a <code>class</code> discriminator column that stores the fully qualified class name of each row to distinguish rows.</p>
 </div>
 </div>
 <div class="sect2">
@@ -4928,7 +4928,7 @@ def numberOfBranches = c.get {
 <div class="sect3">
 <h4 id="_sql_restrictions">30.5.5. SQL Restrictions</h4>
 <div class="paragraph">
-<p>You can access Hibernate&#8217;s SQL Restrictions capabilities.</p>
+<p>You can restrict the results with a native SQL condition, which is added to the <code>where</code> clause of the query as written, in parentheses.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -4962,6 +4962,30 @@ Note that the parameter there is SQL. The <code>first_name</code> attribute refe
 </td>
 </tr>
 </table>
+</div>
+<div class="paragraph">
+<p>Each <code>?</code> in the SQL is bound to the value at the same position in the list, so the number of <code>?</code> placeholders must match the number of values, and a value must not be <code>null</code>. A <code>?</code> in a string literal, such as <code>'%?'</code>, in a quoted identifier or in a comment is not a placeholder.</p>
+</div>
+<div class="paragraph">
+<p>When the query joins other tables, qualify the columns with <code>{alias}</code>, which stands for the table alias of the queried class, so that a column a joined table also has is not ambiguous:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="java">def c = Person.createCriteria()
+
+def peopleWithShortFirstNames = c.list {
+    pets {
+        eq <span class="string"><span class="delimiter">'</span><span class="content">name</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">Lucky</span><span class="delimiter">'</span></span>
+    }
+    sqlRestriction <span class="string"><span class="delimiter">&quot;</span><span class="content">char_length({alias}.first_name) &lt;= ?</span><span class="delimiter">&quot;</span></span>, [<span class="integer">4</span>]
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Inside an association block, such as <code>pets { ... }</code>, the condition restricts the association, as the other criteria in the block do, and <code>{alias}</code> stands for the table alias of the association instead. This includes an association block inside an <code>and</code>, <code>or</code> or <code>not</code> block.</p>
+</div>
+<div class="paragraph">
+<p>A <a href="#querying-detachedCriteria">detached criteria</a> accepts <code>sqlRestriction</code> too.</p>
 </div>
 </div>
 <div class="sect3">
@@ -5226,6 +5250,16 @@ def criteria = <span class="keyword">new</span> DetachedCriteria(Person)</code><
 }</code></pre>
 </div>
 </div>
+<div class="paragraph">
+<p>A detached criteria also accepts <code>sqlRestriction</code>, which restricts the results with a native SQL condition as in a <a href="#querying-criteria">criteria</a> query. <code>{alias}</code> stands for the table alias of the class of the detached criteria, also when the detached criteria is used as a subquery:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> criteria = <span class="keyword">new</span> DetachedCriteria(Person).build {
+    sqlRestriction <span class="string"><span class="delimiter">&quot;</span><span class="content">char_length({alias}.first_name) &lt;= ?</span><span class="delimiter">&quot;</span></span>, [<span class="integer">4</span>]
+}</code></pre>
+</div>
+</div>
 </div>
 <div class="sect3">
 <h4 id="_executing_detached_criteria_queries">30.7.2. Executing Detached Criteria Queries</h4>
@@ -5441,7 +5475,7 @@ criteria.each {
 <i class="fa icon-note" title="Note"></i>
 </td>
 <td class="content">
-Note that one limitation with regards to batch operations is that join queries (queries that query associations) are not allowed within the <code>DetachedCriteria</code> instance.
+Note that one limitation with regards to batch operations is that join queries (queries that query associations) are not allowed within the <code>DetachedCriteria</code> instance. Neither is <code>sqlRestriction</code>: a batch operation on a detached criteria with a SQL restriction throws an exception.
 </td>
 </tr>
 </table>
@@ -6884,6 +6918,19 @@ Only use the query cache for queries whose results change infrequently. Cached q
 <div class="paragraph">
 <p>The single table will contain columns for all properties of all subclasses, with nullable columns for subclass-specific fields.</p>
 </div>
+<div class="paragraph">
+<p>By default the discriminator column is named <code>class</code> and each row stores the fully qualified name of its class, for example <code>com.example.Content</code> or <code>com.example.BlogPost</code>. This is the same default as <code>grails-data-hibernate5</code>, so existing table-per-hierarchy tables can be used without a mapping change. Any class that does not set a discriminator value keeps its fully qualified class name, including when the root class maps only the discriminator column:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">Content</span> {
+    <span class="predefined-type">String</span> title
+    <span class="directive">static</span> mapping = {
+        discriminator <span class="key">column</span>: <span class="string"><span class="delimiter">'</span><span class="content">content_type</span><span class="delimiter">'</span></span>    <span class="comment">// values remain the fully qualified class names</span>
+    }
+}</code></pre>
+</div>
+</div>
 <div class="sect3">
 <h4 id="_customising_the_discriminator">38.1.1. Customising the Discriminator</h4>
 <div class="listingblock">
@@ -6917,7 +6964,7 @@ Only use the query cache for queries whose results change infrequently. Cached q
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="directive">static</span> mapping = {
     discriminator {
-        column <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">dtype</span><span class="delimiter">'</span></span>, <span class="key">sqlType</span>: <span class="string"><span class="delimiter">'</span><span class="content">varchar(30)</span><span class="delimiter">'</span></span>
+        column <span class="key">name</span>: <span class="string"><span class="delimiter">'</span><span class="content">content_type</span><span class="delimiter">'</span></span>, <span class="key">sqlType</span>: <span class="string"><span class="delimiter">'</span><span class="content">varchar(30)</span><span class="delimiter">'</span></span>
         value  <span class="string"><span class="delimiter">'</span><span class="content">blog</span><span class="delimiter">'</span></span>
         insert <span class="predefined-constant">false</span>
     }
@@ -7706,13 +7753,16 @@ Use <code>all-delete-orphan</code> when the child entity has no meaning outside 
 <div class="sect2">
 <h3 id="_global_user_type_mapping">45.3. Global User Type Mapping</h3>
 <div class="paragraph">
-<p>Register a user type for a given Java class globally so it applies to all properties of that type without explicit per-property configuration:</p>
+<p>Use <code>user-type</code> to register a user type for a Java type, so that every property of that type uses it without a per-property <code>type</code>. Registered in a domain class&#8217;s <code>mapping</code> block, it applies to the properties of that class:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">MyDomainClass</span> {
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">Account</span> {
+    <span class="predefined-type">Boolean</span> active
+    <span class="predefined-type">Boolean</span> locked
+
     <span class="directive">static</span> mapping = {
-        userTypes <span class="key">Money</span>: MoneyUserType      <i class="conum" data-value="1"></i><b>(1)</b>
+        <span class="string"><span class="delimiter">'</span><span class="content">user-type</span><span class="delimiter">'</span></span>(<span class="key">type</span>: YesNoBooleanType, <span class="type">class</span>: <span class="class">Boolean</span>)    <i class="conum" data-value="1"></i><b>(1)</b>
     }
 }</code></pre>
 </div>
@@ -7721,9 +7771,23 @@ Use <code>all-delete-orphan</code> when the child entity has no meaning outside 
 <table>
 <tr>
 <td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>Any property of type <code>Money</code> in this class will use <code>MoneyUserType</code>.</td>
+<td><code>YesNoBooleanType</code> implements <code>org.hibernate.usertype.UserType&lt;Boolean&gt;</code> and stores booleans as <code>Y</code> or <code>N</code>. Both <code>active</code> and <code>locked</code> use it. The <code>type</code> can be the user type&#8217;s <code>Class</code> or its fully qualified class name.</td>
 </tr>
 </table>
+</div>
+<div class="paragraph">
+<p>To apply it to every domain class, register it in the <a href="#_the_default_mapping_constraints">default mapping</a>:</p>
+</div>
+<div class="listingblock">
+<div class="title">grails-app/conf/application.groovy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails.gorm.default.mapping = {
+    <span class="string"><span class="delimiter">'</span><span class="content">user-type</span><span class="delimiter">'</span></span>(<span class="key">type</span>: YesNoBooleanType, <span class="type">class</span>: <span class="class">Boolean</span>)
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A <code>type</code> set on an individual property takes precedence over a registered user type.</p>
 </div>
 <div class="admonitionblock tip">
 <table>
@@ -7732,7 +7796,7 @@ Use <code>all-delete-orphan</code> when the child entity has no meaning outside 
 <i class="fa icon-tip" title="Tip"></i>
 </td>
 <td class="content">
-Implementing <code>org.hibernate.usertype.UserType</code> requires handling <code>sqlTypes()</code>, <code>nullSafeGet()</code>, <code>nullSafeSet()</code>, <code>deepCopy()</code>, and <code>equals()</code>. Prefer Hibernate&#8217;s <code>CompositeUserType</code> for multi-column mappings.
+A Hibernate 7 <code>UserType</code> must implement <code>getSqlType()</code>, <code>returnedClass()</code>, <code>deepCopy()</code>, and <code>isMutable()</code>, and usually overrides <code>nullSafeGet()</code> and <code>nullSafeSet()</code> to convert between the column value and the Java type. Prefer Hibernate&#8217;s <code>CompositeUserType</code> for multi-column mappings.
 </td>
 </tr>
 </table>
@@ -9119,7 +9183,7 @@ RxJava 2.x support is planned for a future release
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.grails:grails-datastore-gorm-rx:8.0.0-RC2"</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.grails:grails-datastore-gorm-rx:8.0.0"</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -9624,7 +9688,7 @@ SessionFactory sessionFactory = hibernateDatastore
 <i class="fa icon-tip" title="Tip"></i>
 </td>
 <td class="content">
-If you are interested in more examples, an <a href="https://github.com/apache/grails-core/blob/8.0.0-RC2/grails-data-mongodb/core/src/main/groovy/org/grails/datastore/mapping/mongo/connections/MongoConnectionSources.groovy">implementation exists for MongoDB</a> that reads connection sources from a MongoDB collection. However, it doesn&#8217;t implement support for provision MongoDB instances at runtime.
+If you are interested in more examples, an <a href="https://github.com/apache/grails-core/blob/8.0.0/grails-data-mongodb/core/src/main/groovy/org/grails/datastore/mapping/mongo/connections/MongoConnectionSources.groovy">implementation exists for MongoDB</a> that reads connection sources from a MongoDB collection. However, it doesn&#8217;t implement support for provision MongoDB instances at runtime.
 </td>
 </tr>
 </table>
@@ -9898,7 +9962,7 @@ sessionFactory.openSession()</code></pre>
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.grails:grails-datastore-web:8.0.0-RC2"</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.grails:grails-datastore-web:8.0.0"</code></pre>
 </div>
 </div>
 </div>
@@ -10704,13 +10768,13 @@ JUnit doesn&#8217;t have anything like Spock&#8217;s <code>AutoCleanup</code> so
 <pre class="CodeRay highlight"><code data-lang="groovy">buildscript {
    dependencies {
       ...
-      classpath 'org.apache.grails:grails-data-hibernate7-dbmigration:8.0.0-RC2'
+      classpath 'org.apache.grails:grails-data-hibernate7-dbmigration:8.0.0'
    }
 }
 
 dependencies {
    ...
-     implementation 'org.apache.grails:grails-data-hibernate7-dbmigration:8.0.0-RC2'
+     implementation 'org.apache.grails:grails-data-hibernate7-dbmigration:8.0.0'
 }</code></pre>
 </div>
 </div>
@@ -13855,7 +13919,7 @@ For the <code>dataSource</code> parameter, if the data source is configured as <
 </div>
 <div id="footer">
 <div id="footer-text">
-Version 8.0.0-RC2<br>
+Version 8.0.0<br>
 </div>
 </div>
 </body>

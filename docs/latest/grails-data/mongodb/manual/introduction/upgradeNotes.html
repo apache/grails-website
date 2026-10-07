@@ -558,9 +558,39 @@ abstract class BookService {
 </div>
 </div>
 <div class="sect3">
+<h4 id="_indexes_are_built_when_the_datastore_starts_not_when_it_is_created">Indexes Are Built When the Datastore Starts, Not When It Is Created</h4>
+<div class="paragraph">
+<p>Creating a <code>MongoDatastore</code> no longer connects to MongoDB or builds the indexes the domain classes declare, whichever constructor creates it, including one handed a <code>MongoClient</code> the application created itself. The datastore connects and builds them when it is started. In an application, Spring starts it with the other lifecycle beans, after every bean has been created and before <code>BootStrap</code> runs or the web server accepts a request, so the indexes are in place where they were before.</p>
+</div>
+<div class="paragraph">
+<p>Code that creates a <code>MongoDatastore</code> itself and relies on the indexes existing once the constructor returns has to start it first:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">MongoDatastore datastore = new MongoDatastore(configuration, Person)
+datastore.start()      // connects, and builds the indexes Person declares</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A datastore that nothing has started starts itself the first time a session is opened on it, which any GORM query, save or <code>withTransaction</code> does, so code that goes through GORM finds the indexes as before. What needs the explicit <code>start()</code> is code that inspects the indexes, or reaches MongoDB through the <code>MongoClient</code> directly, straight after creating the datastore. A datastore stopped with <code>stop()</code> is started again only by <code>start()</code>; using it in between is refused.</p>
+</div>
+<div class="paragraph">
+<p>Code that queries MongoDB while the application&#8217;s beans are still being created, rather than in <code>BootStrap</code> or later, starts the datastore early. It still works, but the process can then no longer be checkpointed with CRaC as its context refreshes; see <a href="#advancedConfig">Checkpoint and Restore</a>.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_gorm_declares_the_mongoclient_in_a_spring_boot_application">GORM Declares the MongoClient in a Spring Boot Application</h4>
+<div class="paragraph">
+<p>In a Spring Boot application, <code>grails-data-mongodb-spring-boot</code> now declares the <code>MongoClient</code> bean itself, ahead of Spring Boot&#8217;s MongoDB auto-configuration, which then declares none. GORM builds it the way Spring Boot builds its own, from the <code>spring.mongodb.*</code> properties, Spring Boot&#8217;s <code>MongoClientSettings</code> and every Spring Boot <code>MongoClientSettingsBuilderCustomizer</code> bean, so it connects to the same server with the same options. Spring Data, health checks, metrics and anything else that injects a <code>MongoClient</code> are given GORM&#8217;s. GORM owns that client: it connects it when the datastore starts, closes it when the application shuts down, and stops and starts it around a CRaC checkpoint. Before, GORM&#8217;s auto-configuration ran after Spring Boot&#8217;s and was handed Spring Boot&#8217;s client, which GORM then left alone, so it was not stopped for a checkpoint.</p>
+</div>
+<div class="paragraph">
+<p>An application that declares a <code>MongoClient</code> bean of its own keeps it, and GORM uses it as before.</p>
+</div>
+</div>
+<div class="sect3">
 <h4 id="_configuration_is_now_applied_to_an_externally_supplied_client">Configuration Is Now Applied to an Externally-Supplied Client</h4>
 <div class="paragraph">
-<p>When GORM is handed a <code>MongoClient</code> that it did not create — which is what happens whenever a <code>MongoClient</code> bean is already present, as with Spring Boot&#8217;s MongoDB auto-configuration — it built its settings from the defaults and applied only the database name. Everything else configured under <code>grails.gorm</code> and <code>grails.mongodb</code> was silently ignored on that path. Those settings are now applied, exactly as they always were when GORM creates the client itself.</p>
+<p>When GORM is handed a <code>MongoClient</code> that it did not create — which is what happens whenever the application declares a <code>MongoClient</code> bean of its own — it built its settings from the defaults and applied only the database name. Everything else configured under <code>grails.gorm</code> and <code>grails.mongodb</code> was silently ignored on that path. Those settings are now applied, exactly as they always were when GORM creates the client itself.</p>
 </div>
 <div class="paragraph">
 <p>Nothing in your configuration changes. What changes is that configuration you already have starts taking effect:</p>
@@ -629,11 +659,26 @@ mongoClient.close()  // close the client you created</code></pre>
 <p>No change is required when GORM creates the client itself — for example <code>new MongoDatastore(Person)</code>, or configuration-driven setups where GORM builds the client from <code>grails.mongodb.*</code> settings — because GORM continues to own and close those clients. A <code>MongoClient</code> registered as a Spring bean likewise continues to be closed by the <code>ApplicationContext</code>.</p>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_a_unique_index_over_duplicate_values_no_longer_stops_the_index_build">A Unique Index Over Duplicate Values No Longer Stops the Index Build</h4>
+<div class="paragraph">
+<p>A declared <code>unique</code> index that cannot be built because documents in the collection already share a value used to end the index build with a <code>DuplicateKeyException</code>: the indexes declared after it were not built, and with the default synchronous build the application did not start. It is now handled like any other index the server refuses: logged at <code>ERROR</code> with the domain class and the duplicate key, counted as a failure in the build summary, which is logged at <code>WARN</code>, and the build goes on with the remaining declarations. The application starts without that index.</p>
+</div>
+<div class="paragraph">
+<p>Remove the duplicates and build the index again, with <code>buildIndex()</code> or by restarting, to have it created. To keep refusing to run without it, check the result of <code>buildIndexAsync()</code> (see <a href="#buildIndexesOnDemand">Building Indexes on Demand</a>) and stop when <code>failures()</code> is not zero.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_a_connection_builds_only_the_indexes_of_the_classes_mapped_to_it">A Connection Builds Only the Indexes of the Classes Mapped to It</h4>
+<div class="paragraph">
+<p>The index build of each connection created the indexes declared by every domain class, including classes mapped only to another connection, so a class mapped to the default connection also had its collection and indexes created in the database of every named connection. Each connection now builds the indexes of the classes mapped to it: those that name it with <code>connection</code> or <code>connections</code>, those mapped to <code>ConnectionSource.ALL</code>, and, on the default connection, those that name none. The indexes already created elsewhere stay where they are; <code>findUndeclaredIndexes()</code> on that connection does not report them, since no class is mapped to their collection there.</p>
+</div>
+</div>
 </div>
 </div>
 <div id="footer">
 <div id="footer-text">
-Version 8.0.0-RC2<br>
+Version 8.0.0<br>
 </div>
 </div>
 </body>

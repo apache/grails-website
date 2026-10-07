@@ -2,7 +2,7 @@
                       "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
 <head>
-    <title>4 Configuration 8.0.0-RC2</title>
+    <title>4 Configuration 8.0.0</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
     <link rel="stylesheet" href="../css/pdf.css" type="text/css" media="print" title="PDF" charset="utf-8"/>
@@ -181,7 +181,7 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
                 <div class="project">
                     <h1>4 Configuration</h1>
 
-                    <p><strong>Version:</strong> 8.0.0-RC2</p>
+                    <p><strong>Version:</strong> 8.0.0</p>
                 </div>
 
                 
@@ -435,6 +435,14 @@ startup failed:script14738267015581837265078.groovy: 13: unable to resolve class
 and value hints. The Grails configuration report command and the
 <a href="../ref/Configuration/Application%20Properties.html">Application Properties reference</a> use its property and group
 entries.</p>
+</div>
+<div class="paragraph">
+<p>The configuration report includes the properties of the Grails namespaces, <code>grails.</code>, <code>dataSource.</code> and <code>hibernate.</code>,
+from all metadata on the classpath. A Grails plugin can publish metadata for its own namespace in the same way, and the
+report includes all of the properties a plugin documents, each group in its own section. This also applies to a plugin
+that is on the classpath as the output directories of its Gradle build instead of a JAR, such as a plugin project that
+runs the report itself, as long as it uses the default output directories for its classes and resources. The metadata
+of other libraries, such as Spring Boot, is left out of the report.</p>
 </div>
 <div class="paragraph">
 <p>For configuration classes written in Groovy, Grails collects metadata with a compiler AST transformation. The
@@ -1612,6 +1620,31 @@ $ java -jar build/libs/myapp-0.1.war</code></pre>
 <div class="paragraph">
 <p>This is useful if you plan to deploy your application using a container-less approach.</p>
 </div>
+<div class="sect2">
+<h3 id="application-builder">Building the Application</h3>
+<div class="paragraph">
+<p><code>GrailsApp.run(Application, args)</code> is the shortest way to start a Grails application. When the application needs configuring before it starts&#8201;&#8212;&#8201;additional profiles, default properties, or a parent/child context hierarchy&#8201;&#8212;&#8201;use <a href="../api/grails/boot/GrailsAppBuilder.html">GrailsAppBuilder</a>, the Grails counterpart of Spring Boot&#8217;s <a href="https://docs.spring.io/spring-boot/4.1.1/api/java/org/springframework/boot/builder/SpringApplicationBuilder.html">SpringApplicationBuilder</a>. Every method of the Spring Boot builder is available and returns the <code>GrailsAppBuilder</code>, and the application it runs is a <code>GrailsApp</code>, so the Grails startup defaults apply:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.boot.GrailsAppBuilder</span>
+<span class="keyword">import</span> <span class="include">grails.boot.config.GrailsAutoConfiguration</span>
+
+<span class="type">class</span> <span class="class">Application</span> <span class="directive">extends</span> GrailsAutoConfiguration {
+
+    <span class="directive">static</span> <span class="type">void</span> main(<span class="predefined-type">String</span><span class="type">[]</span> args) {
+        <span class="keyword">new</span> GrailsAppBuilder(Application)
+                .profiles(<span class="string"><span class="delimiter">'</span><span class="content">metrics</span><span class="delimiter">'</span></span>)
+                .properties(<span class="string"><span class="delimiter">'</span><span class="content">server.port=8081</span><span class="delimiter">'</span></span>)
+                .run(args)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The builder&#8217;s <code>child()</code>, <code>parent()</code> and <code>sibling()</code> methods arrange contexts in a hierarchy as Spring Boot&#8217;s do, and every context of the hierarchy is started by a <code>GrailsApp</code>. Exactly one of them is the Grails application: the one whose sources include the <code>Application</code> class, a <code>GrailsAutoConfiguration</code> subclass. The plugin lifecycle runs there only, and the other contexts are plain Spring contexts that reach the Grails beans through their parent; a hierarchy member whose sources hold no application class logs at <code>INFO</code> that it starts as a plain Spring context, where a standalone <code>GrailsApp</code> with the same sources would run the lifecycle. As in Spring Boot, the parent cannot host an embedded web server, so a web application is the child of a parent holding the shared configuration, and a Grails application that serves no web requests can be the parent of plain Spring children. Keep the parent to plain <code>@Configuration</code> classes and leave auto-configuration to the Grails application.</p>
+</div>
+</div>
 
 
 <h2 id="customizing">4.2.2 Customizing the Application Class</h2>
@@ -2154,7 +2187,7 @@ switch (Environment.current) {
 <p><code>properties</code> - Extra properties to set on the DataSource bean. See the <a href="https://tomcat.apache.org/tomcat-7.0-doc/jdbc-pool.html#Common_Attributes">Tomcat Pool</a> documentation. There is also a Javadoc format <a href="https://tomcat.apache.org/tomcat-7.0-doc/api/org/apache/tomcat/jdbc/pool/PoolConfiguration.html">documentation of the properties</a>.</p>
 </li>
 <li>
-<p><code>jmxExport</code> - If <code>false</code>, will disable registration of JMX MBeans for all DataSources. By default JMX MBeans are added for DataSources with <code>jmxEnabled = true</code> in properties.</p>
+<p><code>jmxExport</code> - If <code>true</code>, registers JMX MBeans for the Tomcat JDBC pool DataSources that have <code>jmxEnabled = true</code> in their properties (defaults to false)</p>
 </li>
 <li>
 <p><code>type</code> - The connection pool class if you want to force Grails to use it when there are more than one available.</p>
@@ -2195,6 +2228,19 @@ switch (Environment.current) {
        defaultTransactionIsolation = java.sql.Connection.TRANSACTION_READ_COMMITTED
     }
 }</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>When GORM for Hibernate is applied, it always creates a default data source, and that data source is available as the <code>dataSource</code> bean, to inject by name or by type, even when the application has no <code>dataSource</code> block. Without a <code>dataSource</code> block, it connects to the in-memory H2 database <code>jdbc:h2:mem:grailsDB</code>, which requires the H2 driver on the classpath.</p>
+</div>
+<div class="paragraph">
+<p>To run without this default data source, exclude GORM for Hibernate by its plugin name, <code>hibernate</code>, with the <code>grails.plugin.excludes</code> setting. None of its beans, such as <code>hibernateDatastore</code>, <code>sessionFactory</code> and <code>transactionManager</code>, are registered then, and the application has a <code>dataSource</code> bean only when it has a <code>dataSource</code> block:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">plugin</span>:
+        <span class="key">excludes</span>: <span class="string"><span class="content">hibernate</span></span></code></pre>
 </div>
 </div>
 <div class="admonitionblock warning">
@@ -2407,7 +2453,7 @@ environments {
 </ul>
 </div>
 <div class="paragraph">
-<p>In <a href="#environments">development</a> mode <code>dbCreate</code> is by default set to "create-drop", but at some point in development (and certainly once you go to production) you&#8217;ll need to stop dropping and re-creating the database every time you start up your server.</p>
+<p>When <code>dbCreate</code> is not set, it defaults to <code>none</code> in every environment, so no tables are generated. A newly created application sets it to "create-drop" for the <a href="#environments">development</a> environment in <code>application.yml</code>, but at some point in development (and certainly once you go to production) you&#8217;ll need to stop dropping and re-creating the database every time you start up your server.</p>
 </div>
 <div class="paragraph">
 <p>It&#8217;s tempting to switch to <code>update</code> so you retain existing data and only update the schema when your code changes, but Hibernate&#8217;s update support is very conservative. It won&#8217;t make any changes that could result in data loss, and doesn&#8217;t detect renamed columns or tables, so you&#8217;ll be left with the old one and will also have the new one.</p>

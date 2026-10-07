@@ -2,7 +2,7 @@
                       "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
 <head>
-    <title>The Grails Framework 8.0.0-RC2</title>
+    <title>The Grails Framework 8.0.0</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <link rel="stylesheet" href="../../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
     <link rel="stylesheet" href="../../css/pdf.css" type="text/css" media="print" title="PDF" charset="utf-8"/>
@@ -188,7 +188,13 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
 <div class="sect2">
 <h3 id="_purpose">Purpose</h3>
 <div class="paragraph">
-<p>Returns the value of the identity property of the domain class regardless of the name of the identity property itself</p>
+<p>Returns the value of the mapped identity property of the domain class, regardless of its name. For example, when the mapping uses <code>id name: 'code'</code>, <code>ident()</code> returns the value of <code>code</code>. A generated identifier remains <code>null</code> until it has been assigned.</p>
+</div>
+<div class="paragraph">
+<p>For a composite identity, <code>ident()</code> returns a separate serializable instance of the domain class with the mapped key properties copied into it, including any associations that form part of the key. Other properties retain their new-instance defaults. Pass the returned identifier to <code>get()</code> or <code>load()</code> to retrieve the entity.</p>
+</div>
+<div class="paragraph">
+<p>An uninitialized proxy, such as one returned by <code>load()</code>, is the exception: <code>ident()</code> returns the identifier the proxy was created with and does not load the entity. For a composite identity, that is the object passed to <code>load()</code>, including any non-key properties set on it, rather than a new copy.</p>
 </div>
 </div>
 <div class="sect2">
@@ -199,6 +205,23 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
 b.save()
 
 println b.ident()</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>For a <code>BookEdition</code> mapped with <code>id composite: ['isbn', 'edition']</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> bookEdition = <span class="keyword">new</span> BookEdition(<span class="key">isbn</span>: <span class="string"><span class="delimiter">'</span><span class="content">9780307743657</span><span class="delimiter">'</span></span>, <span class="key">edition</span>: <span class="integer">1</span>, <span class="key">title</span>: <span class="string"><span class="delimiter">'</span><span class="content">The Shining</span><span class="delimiter">'</span></span>)
+bookEdition.save(<span class="key">flush</span>: <span class="predefined-constant">true</span>, <span class="key">failOnError</span>: <span class="predefined-constant">true</span>)
+
+<span class="keyword">def</span> identifier = bookEdition.ident()
+<span class="keyword">assert</span> identifier.isbn == bookEdition.isbn
+<span class="keyword">assert</span> identifier.edition == bookEdition.edition
+<span class="keyword">assert</span> !identifier.is(bookEdition)
+
+<span class="keyword">def</span> reloaded = BookEdition.get(identifier)
+<span class="keyword">def</span> reference = BookEdition.load(identifier)</code></pre>
 </div>
 </div>
 </div>
