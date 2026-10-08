@@ -1,4 +1,430 @@
-<?xml version="1.0" encoding="UTF-8"?><rss xmlns:content="http://purl.org/rss/1.0/modules/content/" version="2.0"><channel><title>Blog | Grails Framework</title><link>https://grails.apache.org</link><description>A powerful Groovy-based web application framework for the JVM built on top of Spring Boot</description><pubDate>Thu, 08 Oct 2026 18:36:10 GMT</pubDate><item><title>Søren Glasius Named 2026 Grails® Lifetime Contributor</title><link>https://grails.apache.org/blog/2026-07-28-soren-glasius-lifetime-contributor-award.html</link><description><![CDATA[</p>
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:content="http://purl.org/rss/1.0/modules/content/" version="2.0"><channel><title>Blog | Grails Framework</title><link>https://grails.apache.org</link><description>A powerful Groovy-based web application framework for the JVM built on top of Spring Boot</description><pubDate>Thu, 08 Oct 2026 19:17:09 GMT</pubDate><item><title>Apache Grails [%version] - Release Announcement</title><link>https://grails.apache.org/blog/2026-10-08-introducing-grails-8.html</link><description><![CDATA[</p>
+<p>The Apache Grails community is excited to announce the 8.0.0 release of the Apache Grails Framework!</p>
+<p>Grails 8 is the first major release planned and delivered entirely as an Apache Top-Level Project. Since the 8.0.x branch opened in November 2025, more than 4,000 commits across 400 pull requests have landed through six milestones and two release candidates. Grails 8 moves the platform to Java 21, Apache Groovy 5, Spring Boot 4.1 and Spring Framework 7, adds a GORM implementation for Hibernate 7, publishes GORM for Neo4j again, and changes plugin registration, CLI packaging, and GSP compilation.</p>
+<p>The Grails documentation is in the best shape it has ever been in. At the Grails 8 launch, <a href="/guides/versions/8.html">22 Grails guides</a> have been updated to Grails 8.</p>
+<p>This post walks through what changed, grouped by area. If you are upgrading, read <em>Behavior Changes to Review Before Upgrading</em> later in this post before you change <code>grailsVersion</code>. The <a href="https://grails.apache.org/docs/8.0.0/guide/introduction.html#whatsNew">What's New in Grails 8</a> section of the guide covers the headline features, and the <a href="https://grails.apache.org/docs/8.0.0/guide/upgrading.html#upgrading80x">Grails 8 upgrade guide</a> documents every behavior change in detail.</p>
+<p>Thousands of volunteer hours went into this release. Thank you to everyone who contributed code, reviews, documentation, issue reports, and testing.</p>
+<h2>Why use Grails?</h2>
+<ul>
+<li>Rapid application development with high developer productivity</li>
+<li>Full-stack web framework with everything included</li>
+<li>DRY &amp; Convention-Over-Configuration: Less boilerplate, sensible defaults</li>
+<li>Gentle learning curve with Apache Groovy for productivity</li>
+<li>&quot;Framework of frameworks&quot; built on Apache Groovy, Spring Boot, Spring Framework, Jakarta EE, and Hibernate for enterprise foundations</li>
+</ul>
+<h2>Download Source Code and Binary Distributions</h2>
+<p><a href="/download.html">Apache Grails Downloads</a></p>
+<h2>Grails 8 at a Glance</h2>
+<ul>
+<li><strong>Modern platform</strong>: Java 21, Gradle 9.8, Apache Groovy 5.1, Spock 2.4, Spring Boot 4.1, Spring Framework 7.0, Spring Security 7.1, Jackson 3, Tomcat 11, Jakarta Servlet 6.1</li>
+<li><strong>GORM for Hibernate 7</strong>, alongside Hibernate 5 (still the default), with database migration support and a dedicated BOM</li>
+<li><strong>GORM for Neo4j is back</strong>, rebuilt for Spring Boot 4 and published again</li>
+<li><strong>Plugin beans register before Spring Boot auto-configuration</strong>, a new <code>beanRegistrar()</code> hook, and a compile-time <code>@GrailsBeans</code> DSL that produces <code>@AutoConfiguration</code> classes</li>
+<li><strong>Static compilation options</strong> for tag libraries and GSP pages, plus a build setting to opt controllers, services and tag libraries into <code>@GrailsCompileStatic</code></li>
+<li><strong>Ahead-of-time support</strong>: Spring AOT processing, GraalVM native image metadata, and JDK AOT cache training</li>
+<li><strong>OpenAPI</strong> from URL mappings, controllers and constraints, with optional Swagger UI</li>
+<li><strong>Command-line tooling moves to companion <code>-cli</code> artifacts</strong>, keeping CLI dependencies out of your packaged application</li>
+<li><strong>Embedded MongoDB, MongoDB multi-document transactions, and Spring Data MongoDB interoperability</strong></li>
+<li><strong>Security hardening</strong>, including opt-in deny-by-default data binding, compile-time GORM query safety checks, XML DOCTYPE rejection, default security response headers, canonicalized interceptor matching, and a published threat model</li>
+<li><strong>Undertow support returns</strong>, alongside Tomcat and Jetty</li>
+<li><strong>Observability</strong>: Micrometer spans for controllers, interceptors, data binding, and GSP rendering, with correct <code>uri</code> tags for Grails-mapped requests</li>
+</ul>
+<h2>What's New in Grails 8</h2>
+<h3>Platform Baseline and Foundations</h3>
+<p>Grails 8 requires <strong>Java 21</strong> and <strong>Gradle 9.7</strong> or later. Java 21 is the minimum so the runtime stays on a JVM that is supported through the Grails 8 maintenance window on the <a href="/support-schedule.html">support schedule</a>, currently July 2027. Dates on that page can change. A Grails 7 wrapper will not work: the Grails Gradle plugin uses <code>groovyOptions.configurationScriptFile</code>, which Gradle added in 9.7. New applications, and this release, ship the <strong>Gradle 9.8.0</strong> wrapper. The standard BOM ships <strong>Apache Groovy 5.1.3</strong> and <strong>Spock 2.4-groovy-5.0</strong>. Groovy compilation keeps invokedynamic off, as it has since Grails 7. Turning it on by default is left for a later major release. Under <code>@GrailsCompileStatic</code>, assigning a static field from a static closure such as <code>constraints</code> or <code>mapping</code> now needs the class name. Indexing a <code>ConfigObject</code> for a missing key creates an empty entry instead of reading back as missing.</p>
+<p>The framework is built on <strong>Spring Boot 4.1.1</strong> and <strong>Spring Framework 7.0</strong>. That crosses the Spring Boot 4 boundary and brings the modular auto-configuration layout, Spring Framework 7 API removals, <strong>Jackson 3.1.6</strong> as the default JSON library (Jackson 2.22.2 remains BOM-managed for libraries that still require it; a plugin that only brings Jackson 2 Smile, CBOR or YAML can still fail at startup with <code>NoClassDefFoundError</code> unless you add an explicit BOM-managed Jackson 2 databind runtime dependency), <strong>Tomcat 11</strong>, <strong>Jakarta Servlet 6.1</strong>, and Spring Boot 4.1 dependency management for Spring Security 7.1, Spring Data 2026.0 and Micrometer 1.17. The BOM also pins Logback at 1.6.3 and the MongoDB driver at 5.12.0, ahead of the versions Spring Boot 4.1.1 manages, for published CVEs.</p>
+<p>The <strong>Spring Dependency Management plugin is gone</strong>. The Grails Gradle plugin adds <code>grails-bom</code> as a native Gradle <code>platform()</code> on application classpaths. Dedicated tool and annotation-processor configurations are left alone. A bundled <code>org.apache.grails.gradle.bom-property-overrides</code> plugin keeps the <code>gradle.properties</code> / <code>ext['slf4j.version']</code> override workflow. Some keys were renamed, including the Jackson override properties, so a key left under the old name is ignored. <code>grails { bom = null }</code> opts out entirely, and <code>enforcedPlatform(&quot;org.apache.grails:grails-bom:$grailsVersion&quot;)</code> restores &quot;BOM always wins&quot; semantics. Without an enforced platform, Gradle's highest-version-wins resolution applies. <code>grails-bom</code> now inherits the versions Spring Boot already manages instead of re-pinning them, and the BOM family grows two members: <code>grails-hibernate7-bom</code> and <code>grails-neo4j-bom</code>.</p>
+<p>Grails Micronaut is no longer part of grails-core. It is developed and released from <a href="https://github.com/apache/grails-micronaut">apache/grails-micronaut</a> because its Apache Groovy line, Java version and dependencies are not the same as the framework's. The Maven coordinates are unchanged (<code>org.apache.grails:grails-micronaut</code> and the Micronaut BOMs). The integration requires <strong>JDK 25</strong> or later and an enforced Micronaut BOM, and it builds against published Grails Core artifacts. It ships together with Grails 8.0.0; after that it can move on its own cadence. A Grails application that does not use Micronaut still runs on Java 21.</p>
+<p>Finally, Grails 8 removes a large body of long-deprecated API: <code>grails.web.JSONBuilder</code>, the JSON/XML <code>EnumMarshaller</code> classes, the plugin filter family, the legacy events API and <code>grails-events-compat</code>, <code>Mixin</code>, <code>NamedCriteriaProxy</code>, <code>AetherGrapeEngine</code>, and more. The upgrade guide includes API compatibility notes derived from a japicmp pass over 47 modules, plus a section on known Grails 7 plugin incompatibilities and how to work around them.</p>
+<h3>GSP, Tag Libraries and Static Compilation</h3>
+<p><strong>Compiled tag resolution.</strong> Tag libraries are now described when they are compiled, and that description resolves tag calls in pages, tag libraries and controllers compiled afterwards. A call whose namespace and tag are known compiles into a direct invocation instead of a metaclass dispatch, and no tag methods are installed onto tag library, page or dispatcher metaclasses any more. The tag is still selected by name at runtime, so overrides and registration order behave exactly as before. In the framework's own measurements this removed about two-thirds of the per-call cost in a statically compiled page and a third in a tag library. Applications whose tag libraries are all described can ask for build errors instead of runtime failures:</p>
+<pre><code class="language-groovy">grails {
+    compileStatic {
+        strictTags = true
+        dynamicTagNamespaces = ['legacy']   // registered while the application runs
+    }
+}
+</code></pre>
+<p>Defining a tag as a <code>Closure</code> field still works but is deprecated and now warns at compile time. Method-based tags gained more predictable named-attribute binding, exclude inherited framework and <code>Object</code> methods from dispatch, and preserve real namespace property getters; the Gradle extension defaults <code>preserveParameterNames</code> to <code>true</code> so parameter names are available to typed tag methods.</p>
+<p><strong>Application-wide GSP static compilation.</strong> Grails 7.2 could compile a page statically with a page directive. Grails 8 makes that something an application can switch on everywhere:</p>
+<pre><code class="language-groovy">grails {
+    compileStatic {
+        gsp = true
+        strictGsp = true   // optional: report any undeclared name
+    }
+}
+</code></pre>
+<p>Framework-bound names such as <code>params</code>, <code>flash</code>, <code>request</code>, <code>response</code>, <code>session</code>, <code>servletContext</code>, <code>webRequest</code>, <code>controllerName</code> and <code>actionName</code> are typed and checked without declaring them; a page that declares no <code>model</code> reads its model dynamically instead of failing; names introduced by <code>var</code>/<code>status</code> attributes need no declaration; and <code>&lt;g:set type=&quot;int&quot; var=&quot;total&quot; .../&gt;</code> gives a variable a type so operators can be applied. Any page can still opt out with <code>&lt;%@ page compileStatic=&quot;false&quot; %&gt;</code>. In the framework's own in-process measurements a statically compiled page rendered roughly 1.4 to 1.7 times faster.</p>
+<p><strong>Opt every controller, service and tag library into <code>@GrailsCompileStatic</code></strong> from the build, without annotating each class, and controllers annotated with <code>@GrailsCompileStatic</code> can now call tag library methods (<code>link(...)</code>, <code>my.customTag(...)</code>) without compile-time errors:</p>
+<pre><code class="language-groovy">grails {
+    compileStatic {
+        controllers = true
+        services = true
+        tagLibs = true   // or: all = true
+    }
+}
+</code></pre>
+<p>A new application can start out this way: Grails Forge's <code>grails-compile-static</code> feature generates the block above, adding <code>gsp = true</code> when the application uses GSP.</p>
+<pre><code class="language-shell">grails -t forge create-app --features=grails-compile-static com.example.demo
+</code></pre>
+<p><strong>GSP in a plain Spring Boot application.</strong> <code>org.apache.grails.views:grails-gsp-spring-boot</code> is now published and documented. A Spring Boot application with no <code>grails-app</code> directory, no plugins and Spring MVC routing can render GSP views from <code>src/main/resources/templates</code>, precompile them with <code>compileGroovyPages</code>, and ship without the <code>.gsp</code> sources.</p>
+<p><strong>SiteMesh 3 is the default layout engine.</strong> New applications use <code>org.apache.grails:grails-sitemesh3</code> on SiteMesh 3.3.0 for Spring Boot 4. Decoration is applied at the bean-definition level, which fixes layouts silently disappearing when Boot's content-negotiating view resolver wraps the view resolver first, and both SiteMesh 3 tag libraries are method-based. The SiteMesh 2 based <code>grails-layout</code> remains available as an opt-in (<code>--features=grails-layout</code> in Forge).</p>
+<p><strong>Reproducible precompiled GSPs.</strong> Generated page classes record a source checksum instead of a file modification time, so identical sources compile to identical bytes on every checkout and Gradle's build cache actually hits. Reloading is also more accurate: an edit is caught however close two saves fall, and touching a file no longer recompiles it. <code>compileGroovyPages</code> now forks the JVM the project's Java toolchain asks for, rather than whatever JVM ran Gradle.</p>
+<p><strong>Smaller GSP improvements:</strong> <code>\${...}</code> renders a literal <code>${...}</code> (handy for JavaScript template literals), links, forms, pagination, redirects and includes resolve the target controller's namespace automatically when it is unambiguous, and scaffolded views are now expanded and compiled at build time so packaged applications and native images do not generate them on the first request.</p>
+<h3>Controllers, Requests and Content Negotiation</h3>
+<p><strong>Every controller as a REST resource.</strong> <code>&quot;/$controller&quot;(resources: '*')</code> applies a <code>resources</code> mapping to every controller at once, resolving the controller from the request rather than from the mapping; <code>includes</code>, <code>excludes</code> and <code>group</code> work as they do for a named resource.</p>
+<p><strong>Modern content negotiation.</strong> The framework now supplies built-in MIME defaults (<code>all</code>, <code>atom</code>, <code>css</code>, <code>csv</code>, <code>form</code>, <code>html</code>, <code>js</code>, <code>json</code>, <code>multipartForm</code>, <code>pdf</code>, <code>rss</code>, <code>text</code>, <code>hal</code>, <code>xml</code>), so new applications no longer carry a <code>grails.mime.types</code> block, and <code>grails.mime.mergeDefaults: true</code> layers a declared block over them. The <code>Accept</code> header is honored for every client: the Firefox 2-era user-agent exclusion list defaults to unset, so a browser <code>fetch()</code> asking for <code>application/json</code> gets JSON.</p>
+<p><strong><code>@EnableWebMvc</code> is no longer added to your Application class.</strong> Spring Boot's <code>WebMvcAutoConfiguration</code> is now active, so <code>spring.mvc.*</code> and <code>spring.web.*</code> properties work, <code>PUT</code>/<code>PATCH</code>/<code>DELETE</code> form bodies are parsed into <code>params</code>, and locale resolution is configurable through <code>grails.i18n.localeResolver</code> (<code>session</code>, <code>cookie</code>, <code>acceptHeader</code> or <code>fixed</code>). Grails removes Boot's catch-all view resolver, static-resource handler and welcome-page mapping automatically so <code>UrlMappings</code> still owns <code>/</code>.</p>
+<p><strong>Typed reads of request, session, flash and servlet-context attributes.</strong> All four gain the same null-safe converters <code>params</code> has had for years: <code>request.int('page', 1)</code>, <code>session.string('timeZone', 'UTC')</code>, <code>flash.string('notice')</code>, <code>servletContext.int('maxUploads', 10)</code>. <code>session</code>, <code>request</code> and <code>servletContext</code> also get a typed, non-coercing <code>getAttribute(name, Class)</code> that needs no cast under <code>@GrailsCompileStatic</code>.</p>
+<p><strong>Observability.</strong> Grails dispatches through URL mappings rather than MVC handler methods, so Micrometer and OpenTelemetry used to record every request as <code>uri=UNKNOWN</code>. Grails 8 tags <code>http.server.requests</code> with <code>/&lt;controller&gt;/&lt;action&gt;</code> and emits inline observations for <code>grails.controller</code>, <code>grails.interceptor</code>, <code>grails.databinding</code>, <code>grails.convert</code> and <code>grails.render</code>, plus <code>gsp.view</code>, <code>gsp.template</code>, <code>gsp.layout</code> and <code>gsp.compile</code> spans. Everything is a no-op when observations are disabled.</p>
+<p><strong>A leaner request path.</strong> Per-context collaborators are cached, request parameters are built once per request rather than once per candidate mapping, the <code>LocaleContext</code> is restored rather than cleared, and Spring's API-versioning <code>Deprecation</code>/<code>Sunset</code>/<code>Link</code> headers are now emitted for Grails-mapped requests. URL mapping tokens such as <code>$action</code> are now filled from the URI only, never from a request parameter.</p>
+<p><strong>The hidden HTTP method filter is off by default.</strong> The filter that rewrote <code>POST</code> into <code>PUT</code>/<code>PATCH</code>/<code>DELETE</code> from <code>_method</code> (or the <code>X-HTTP-Method-Override</code> header) ran ahead of Spring Security and forced multipart bodies to be parsed before routing. <code>_method</code> is now resolved inside the dispatcher for <code>PUT</code>, <code>PATCH</code> and <code>DELETE</code> only, the header is no longer honored, and a <code>resources</code> mapping additionally accepts <code>POST /books/$id</code> as <code>update</code>. Set <code>grails.web.hiddenmethod.filter.enabled: true</code> to restore the previous behavior.</p>
+<p><strong>File uploads use Spring Boot's multipart configuration.</strong> <code>grails.controllers.upload.*</code> is removed in favor of <code>spring.servlet.multipart.*</code> (Boot's defaults are 1 MB per file and 10 MB per request). <code>request</code> is always the outermost servlet request rather than a <code>MultipartHttpServletRequest</code> (<code>request.getFile(...)</code> and friends still work). An oversized upload is a <code>413</code> you can map (<code>&quot;413&quot;(controller: 'errors', action: 'tooLarge')</code>) instead of a container error page. Undertow can return an empty 413 without invoking that mapping.</p>
+<p><strong>File responses download by default.</strong> <code>render(file: ...)</code> sets <code>Content-Disposition: attachment</code> and escapes the filename. Pass <code>inline: true</code>, or set the header yourself, to display the file in the browser.</p>
+<p><strong>OpenAPI.</strong> <code>grails-openapi</code> builds an OpenAPI document from URL mappings, controllers and constraints, and can export it at build time. Swagger UI is optional through springdoc 3.1. Grails Forge has a feature for it. The module does not require springdoc unless you want the UI.</p>
+<p><strong>JSON dates and times follow Spring Boot.</strong> <code>render ... as JSON</code>, <code>respond</code> and JSON views write date and time values the way Spring Boot's Jackson <code>JsonMapper</code> does. <code>java.sql.Time</code> is a time of day such as <code>&quot;01:48:46&quot;</code> rather than a UTC instant, <code>LocalTime</code>, <code>Period</code>, <code>Duration</code> and zone types render as values rather than objects of their properties, and a <code>Month</code> binds from its number (<code>9</code> is <code>SEPTEMBER</code>, where Grails 7 bound that number to <code>OCTOBER</code>). An ISO-8601 date with an offset binds to the instant it names, including values a client sends back from JSON. To keep a Grails 7 format, register a JSON object marshaller for converter-based rendering (<code>render ... as JSON</code> and <code>respond</code>). JSON views need a <code>groovy.json.JsonGenerator.Converter</code> instead; <code>JSON.registerObjectMarshaller</code> does not apply to them. The <a href="https://grails.apache.org/docs/8.0.0/guide/upgrading.html#upgrading80x">upgrade guide</a> covers both. 8.0.0-RC1 dropped the milliseconds of some <code>Date</code> values; 8.0.0 restores the Grails 7 form for those.</p>
+<h3>Data Binding and Security Hardening</h3>
+<p><strong>Opt-in deny-by-default data binding.</strong> Binding stays permissive by default. Setting <code>grails.databinding.denyByDefault: true</code> switches to an allowlist: only properties marked <code>bindable: true</code>, an explicit <code>include:</code> list, or a <code>@BindAllowed(['firstName', 'lastName'])</code> command-object parameter are bound, enforced through nested associations, collections and maps. In either mode an explicit <code>bindable: false</code> is never mass-assigned any more. <code>bindData(book, params, [include: ['title', 'description'], clearMissing: true])</code> clears included properties that are absent from the binding source.</p>
+<p><strong>Compile-time GORM query safety check.</strong> A <code>String</code> flattened from an interpolated <code>GString</code> and passed to <code>find</code>, <code>findAll</code>, <code>executeQuery</code>, <code>executeUpdate</code>, <code>findAllWithSql</code> or Neo4j <code>cypherStatic</code> is the one case GORM's runtime parameter binding cannot see, and it now fails the build. Passing the <code>GString</code> directly remains safe and is never flagged. <code>@SuppressWarnings(&quot;GormUnsafeQueryString&quot;)</code> suppresses a single site; the <code>protectSqlInjectionAttacks=false</code> system property disables the check build-wide.</p>
+<p><strong>XML-safe HTML escaping by default.</strong> When <code>grails.views.gsp.htmlcodec</code> is not set, the HTML codec used by GSP <code>${}</code> expressions and <code>encodeAsHTML()</code> now applies the XML-safe escaping that generated applications have selected with <code>htmlcodec: xml</code> since Grails 2.3, instead of HTML4-style escaping. Applications that already set <code>htmlcodec: xml</code> see no difference, and <code>htmlcodec: html4</code> restores the old output.</p>
+<p><strong>XML request bodies.</strong> The SAX hardening features Grails sets had been registered under unrecognized <code>https://</code> identifiers since an HTTPS link sweep in 2024, silently leaving parser defaults in place. Grails 8 uses the registered identifiers, disables XInclude, external entities and DTD loading, and refuses any XML request body that declares a <code>DOCTYPE</code>.</p>
+<p><strong>Interceptor and security matcher paths are canonicalized like dispatch.</strong> <code>match(uri:)</code>, <code>excludes(uri:)</code>, the Spring Security compatibility request matcher and the IP address filter previously matched the raw request URI, so <code>/%61dmin/users</code> or <code>/admin;x=1/users</code> reached <code>AdminController</code> without triggering an interceptor for <code>/admin/**</code>. All three now match what the dispatcher has always matched.</p>
+<p><strong>Validated query arguments.</strong> <code>sort</code>, <code>order</code> and (on Hibernate 7) <code>fetch</code> arguments are validated before a query is built rather than interpolated into HQL, on <code>list()</code>, dynamic finders, criteria, where queries and <code>listOrderBy*</code>. Invalid values throw <code>IllegalArgumentException</code> without echoing the value; <code>order: 'descending'</code> no longer silently sorts ascending.</p>
+<p><strong>Default security response headers.</strong> Responses include <code>X-Content-Type-Options: nosniff</code>, <code>X-Frame-Options: SAMEORIGIN</code>, a referrer policy and <code>X-XSS-Protection: 0</code>. Content-Security-Policy and HSTS stay off unless you enable them. Grails preserves headers written by Spring Security or application code and fills missing headers at response commit. Configure <code>grails.security.headers.*</code> to disable or customize the Grails defaults. Disabling a header in Spring Security alone does not remove the Grails default.</p>
+<p><strong>Also hardened:</strong> <code>withForm</code> tokens are consumed atomically and bounded per session; Grails Wrapper and Forge repository overrides must be HTTPS at every hop; FuseSource Jansi (CVE-2026-8484) is gone from the classpath entirely; and the repository now publishes a <a href="https://github.com/apache/grails-core/blob/8.0.x/THREAT_MODEL.md">THREAT_MODEL.md</a> following the ASF security threat-model rubric.</p>
+<h3>Internationalization and the Generated UI</h3>
+<p><strong>Message bundles are resolved by Spring Boot.</strong> Grails' custom message source, and the <code>classpath*:*.properties</code> scan it performed at startup, are gone. Base names are recorded at build time per application and per plugin, so the whole <code>spring.messages.*</code> surface (<code>cache-duration</code>, <code>use-code-as-default-message</code>, ...) works as it does in any Boot application, and GraalVM resource hints for bundles are registered automatically. Plugin bundles must now be namespaced on the plugin name (<code>spring-security-core.properties</code> rather than <code>messages.properties</code>).</p>
+<p><strong>Available-locale discovery and a real language selector.</strong> Grails now knows which locales an application is actually translated into, and <code>&lt;g:localeSelect available=&quot;true&quot; pinDefault=&quot;true&quot; type=&quot;dropdown&quot;/&gt;</code> renders a complete Bootstrap navbar language menu from them (or <code>type=&quot;links&quot;</code>, or a body form exposing <code>loc.autonym</code>, <code>loc.menuName</code> and friends) instead of listing ~150 JVM locales.</p>
+<p><strong>A new welcome page and layout.</strong> The generated application's welcome page and layout are internationalized in 18 bundled locales, gain a light/dark/auto theme selector, and replace the static controller list with switchable artefact cards (controllers, domains, services, tag libraries) and a runtime-internals card showing the effective servlet filter pipeline, Spring Security filter chains, MIME types and actuators. The jQuery webjar moves to 4.0.0 and Bootstrap to 5.3.8.</p>
+<h3>Async, Virtual Threads and Performance</h3>
+<p><strong>Promises run on Spring Boot's task executor.</strong> The default <code>PromiseFactory</code> is now <code>CompletableFuturePromiseFactory</code>, and in an application promises and the default event bus execute on Boot's <code>applicationTaskExecutor</code>, so <code>spring.task.execution.*</code>, graceful shutdown, <code>TaskDecorator</code> beans and <code>spring.threads.virtual.enabled=true</code> all apply without code changes. Grails propagates the <code>GrailsWebRequest</code> into <code>task { }</code> blocks, every promise is a JDK <code>CompletionStage</code>, and async controller responses honor <code>spring.mvc.async.request-timeout</code> (rendering a <code>503</code> you can map). A <code>grails.async.promiseFactory=virtual-thread</code> opt-in provides a dedicated virtual-thread factory.</p>
+<p><strong>Virtual-thread friendliness on the hot path.</strong> <code>GrailsHttpSession</code> replaces <code>synchronized</code> with a <code>ReentrantLock</code> to avoid carrier pinning, the codec extension helpers are statically compiled, codec registration no longer re-adds identical <code>encodeAs*</code> methods to the <code>String</code> metaclass on every reload, and thread-locals are cleared instead of retained across pooled threads.</p>
+<p><strong>GORM startup now scales as O(entities + connections).</strong> <code>GormEnhancer</code> used to eagerly build static, instance and validation APIs for every entity x connection/tenant pair; a new <code>GormRegistry</code> builds them lazily on first use, which matters most for applications with many domain classes or schema/database multi-tenancy.</p>
+<p>A JMH benchmark suite now runs on every pull request labeled <code>performance</code>, comparing URL mappings, data binding, GSP rendering, interceptors and views against the base branch.</p>
+<h3>Plugins and Spring Integration</h3>
+<p><strong>Plugin beans register before Spring Boot auto-configuration.</strong> A bean a plugin contributes now takes precedence over a Spring Boot default guarded by <code>@ConditionalOnMissingBean</code>, so Boot backs off with no need to override or remove it afterwards. Plugins register beans through the new <code>beanRegistrar()</code> hook, which returns a Spring Framework <code>BeanRegistrar</code>; the <code>doWithSpring</code> bean builder DSL is deprecated but continues to work, and a statically compilable <code>doWithSpring(BeanBuilder)</code> method form is available as a stepping stone.</p>
+<pre><code class="language-groovy">class MyGrailsPlugin extends Plugin {
+    @Override
+    BeanRegistrar beanRegistrar() {
+        { BeanRegistry registry, Environment environment -&gt;
+            registry.registerBean('myService', MyServiceImpl)
+        } as BeanRegistrar
+    }
+}
+</code></pre>
+<p><strong><code>@GrailsBeans</code>: a bean-wiring DSL compiled into real auto-configuration.</strong> A <code>beans = { ... }</code> block on the <code>Application</code> class or on a <code>*GrailsPlugin</code> descriptor is rewritten at compile time into <code>@Bean</code> factory methods on an <code>@AutoConfiguration</code> class. Nothing DSL-shaped survives in bytecode, the methods are statically compiled, and Boot's own conditional pipeline applies:</p>
+<pre><code class="language-groovy">class Application extends GrailsAutoConfiguration {
+    def beans = {
+        bean(MyService)
+
+        bean('mailSender', JavaMailSenderImpl).conditionalOnMissingBean(JavaMailSender) {
+            new JavaMailSenderImpl(host: 'localhost')
+        }
+    }
+}
+</code></pre>
+<p>Qualifiers such as <code>.conditionalOnMissingBean(...)</code>, <code>.conditionalOnProperty('app.offline', havingValue: 'false')</code>, <code>.conditionalOnClass(...)</code>, <code>.conditionalOnGrailsEnv('development')</code>, <code>.primary()</code>, <code>.lazy()</code> and <code>.scope(...)</code> chain onto a declaration, <code>@AutoConfiguration(before=/after=)</code> ordering and nested conditional <code>group(...)</code> blocks are supported, the <code>AutoConfiguration.imports</code> entry is written for you, and eight of the framework's own auto-configurations are now authored this way.</p>
+<p><strong>More framework beans are cleanly overridable</strong> (<code>localeResolver</code>, <code>messageSource</code>, <code>grailsCorsFilter</code>, <code>exceptionHandler</code>, <code>grailsCacheManager</code> and others are <code>@ConditionalOnMissingBean</code>), <code>spring.main.allow-bean-definition-overriding</code> and <code>allow-circular-references</code> are configurable instead of hardcoded, <code>grails.spring.bean.packages</code> scanning works from any working directory, the Grails plugin lifecycle runs only for a Grails application, and unresolved plugin dependencies are reported with the exact cause instead of a bare failure.</p>
+<p><strong>Configuration metadata.</strong> Every Grails module jar now ships a standard <code>META-INF/spring-configuration-metadata.json</code>, generated at build time from Groovy <code>@ConfigurationProperties</code> classes, Java classes and Groovy configuration DSL scripts. IDEs get completion, types and defaults for <code>grails.*</code> keys in <code>application.yml</code>, and the guide gains a generated Application Properties reference.</p>
+<h3>Grails Data (GORM)</h3>
+<p><strong>GORM for Hibernate 7.</strong> Grails 8 does not ship a Hibernate 6 line. It keeps Hibernate 5 as the default and adds a complete GORM implementation for Hibernate ORM 7.4, so applications are not asked to migrate through an intermediate major. The version-agnostic GORM test suite runs natively against both, so every contract is verified on both lines. Switching an application means replacing the Hibernate 5 plugin with the Hibernate 7 one and using the Hibernate 7 BOM in place of <code>grails-bom</code>:</p>
+<pre><code class="language-groovy">dependencies {
+    implementation enforcedPlatform(&quot;org.apache.grails:grails-hibernate7-bom:8.0.0&quot;)
+    implementation &quot;org.apache.grails:grails-data-hibernate7&quot;   // replaces grails-data-hibernate5
+}
+</code></pre>
+<p>Apply the same BOM to the buildscript classpath and to <code>buildSrc</code>, if you have one; leaving the default <code>grails-bom</code> there alongside the Hibernate 7 BOM produces dependency conflicts. The <a href="https://grails.apache.org/docs/8.0.0/guide/upgrading.html#_hibernate_5_to_hibernate_7_migration">upgrade guide</a> lists every Hibernate 5 to 7 change that can affect application code. Hibernate 7 criteria queries also support <code>sqlRestriction</code>, as Hibernate 5 does.</p>
+<p>Database migration ships for Hibernate 7 as <code>grails-data-hibernate7-dbmigration</code> (with its <code>dbm-*</code> commands in a companion <code>-cli</code> artifact), and Grails Forge generates Hibernate 7 applications directly with <code>--data=hibernate7</code>. Because Spring Framework 7 removed <code>org.springframework.orm.hibernate5</code> entirely, Grails vendors that support code for both Hibernate lines. On Hibernate 7, GORM now tracks changes from persist rather than insert (a new entity with a pre-insert identifier starts at <code>version</code> 0 with a single <code>INSERT</code>), persistence listeners receive <code>Persist</code> and <code>Merge</code> events, and <code>id generator: 'sequence'</code> derives its sequence name from the table. Hibernate 5 gains an in-tree ByteBuddy proxy factory that replaces a third-party dependency, and reading a proxy's identifier never initializes it on either line.</p>
+<p><strong>Locking.</strong> <code>book.refresh(lock: true)</code> reloads an entity's state under a pessimistic write lock, <code>Book.lock(id, refresh: true)</code> reloads an already-managed instance under the lock, and both accept <code>type:</code>/<code>lock:</code> with any <code>jakarta.persistence.LockModeType</code> on Hibernate 5 and 7. <code>entity.mutex { }</code> now reloads under an exclusive lock, so it waits for a competing writer instead of failing with an optimistic locking exception. The reload discards unflushed changes. The instance must already be attached, and a transaction must be active.</p>
+<p><strong>The default <code>dataSource</code> bean is always registered.</strong> With GORM for Hibernate, an application without a <code>dataSource</code> block now gets a <code>dataSource</code> bean for the default (<code>jdbc:h2:mem:grailsDB</code>) data source the datastore already used, on Hibernate 5 and 7.</p>
+<p><strong>Domain properties are nullable by default</strong>, aligning GORM with JPA, Spring Data and Bean Validation; declare <code>nullable: false</code> for required properties, or restore the old default with <code>grails.gorm.default.nullable: false</code>. <strong><code>count()</code> returns <code>Long</code></strong> instead of silently narrowing to <code>Integer</code>.</p>
+<p><strong>Datastore-native identity types.</strong> <code>grails { gorm { defaultIdType = 'native' } }</code> lets a domain class that declares no <code>id</code> take the identity type of the GORM implementation it is mapped with (<code>String</code> for MongoDB, <code>Long</code> for Hibernate), resolved at compile time from <code>mapWith</code>, so the same source works against either datastore.</p>
+<p><strong>Also new:</strong> collection properties stay dirty-checked after reassignment and iterator-based removals are tracked on interception-based stores; a static <code>Book.deleteAll()</code> removes every instance; calls on a class inside <code>Book.secondary.withTransaction { }</code> route to that connection across Hibernate, MongoDB and Neo4j; auto-timestamp suppression is thread-safe; a new Multi-Tenancy chapter documents <code>Tenants.withId</code>, <code>withTenant</code> and <code>eachTenant</code>; and GORM entities stay on the DevTools restart class loader, ending the <code>Not an entity</code> errors after a restart. Criteria closures declare <code>Closure.DELEGATE_FIRST</code>, which matches the runtime and stops a nested criteria closure under <code>@CompileStatic</code> from adding its restrictions to the outer criteria. A transaction started inside another joins it, on MongoDB and in <code>DataTest</code> as well as on Hibernate and Neo4j.</p>
+<h3>GORM for MongoDB</h3>
+<ul>
+<li><strong>Multi-document transactions.</strong> <code>grails.mongodb.transactional = true</code> makes <code>withTransaction { }</code> and <code>@Transactional</code> drive a server-side transaction over a <code>ClientSession</code>, so every read and write commits or rolls back atomically (replica set or sharded cluster required). A nested <code>REQUIRED</code> transaction joins the outer one instead of committing early. <code>REQUIRES_NEW</code> stays isolated, and the same rollback propagation is fixed on Neo4j.</li>
+<li><strong>Spring Data MongoDB interoperability.</strong> The optional <code>grails-data-mongodb-spring-data</code> module auto-configures a <code>MongoTemplate</code>, <code>MongoDatabaseFactory</code> and transaction manager over GORM's existing <code>MongoClient</code>, so GORM and Spring Data repositories share one connection and one transaction inside a single <code>@Transactional</code> method.</li>
+<li><strong>Embedded MongoDB.</strong> <code>org.apache.grails:grails-data-mongodb-embedded</code> starts a server when the connection URL names the host <code>embedded</code> (<code>mongodb://embedded/bookstore</code>), with an in-memory backend for millisecond startup or a real <code>mongod</code> via Flapdoodle, single-node replica sets for transaction tests, and DevTools restart reuse. Forge wires it in by default for MongoDB applications, so a generated application runs without MongoDB or Docker installed.</li>
+<li><strong>TTL, text and reconciled indexes.</strong> <code>indexAttributes: [expireAfterSeconds: 3600]</code> declares a TTL index, <code>indexAttributes: [type: 'text']</code> a text index, changed TTLs are applied in place with <code>collMod</code>, and <code>grails.mongodb.buildIndexes: false</code> / <code>buildIndexesAsync: true</code> take index creation off the startup path.</li>
+<li><strong>Index cleanup.</strong> GORM still never drops an index on its own. <code>MongoDatastore.findUndeclaredIndexes()</code> lists indexes on mapped collections that no domain class declares any more, and <code>dropUndeclaredIndexes()</code> drops them as a deliberate step; <code>findMissingIndexes()</code> reports declared indexes a collection lacks. Index mappings combined with a <code>'*'</code> default in <code>grails.gorm.default.constraints</code> or <code>grails.gorm.default.mapping</code> are no longer silently discarded.</li>
+<li><strong><code>String</code> ids are stored as <code>ObjectId</code> by default.</strong> Code still sees the 24-character hex string; applications with existing BSON-string <code>_id</code> values should pin <code>grails.mongodb.stringIds.defaultStoredAs: string</code>. Association and <code>IN</code> criteria coerce correctly, <code>updateAll</code> is supported, and the pre-GORM-6 <code>mapping</code> engine is deprecated.</li>
+<li><strong>Read-only transactions no longer flush</strong>, matching every other GORM datastore; a <code>MongoClientSettingsBuilderCustomizer</code> bean customizes the driver; an externally supplied <code>MongoClient</code> is no longer closed by GORM, and <code>grails.mongodb.*</code> settings are honored when one is supplied.</li>
+<li><strong>CRaC checkpoint/restore readiness.</strong> An application using GORM for MongoDB can be checkpointed while running or as its context refreshes (<code>-Dspring.context.checkpoint=onRefresh</code>). GORM stops every client before a checkpoint and restarts it on restore, and the <code>MongoClient</code> it hands out stays the same object throughout. In the framework's measurement on Azul Zulu 25 with CRaC, restore took 54 ms compared with 3.4 s to start cold.</li>
+</ul>
+<h3>GORM for Neo4j</h3>
+<p>GORM for Neo4j was never built or published for the Grails 7 line. Grails 8 brings it back, migrated to Groovy 5, Jakarta and Spring Boot 4, on the new <code>GormRegistry</code>, and published as <code>org.apache.grails:grails-data-neo4j</code>, <code>org.apache.grails:grails-data-neo4j-spring-boot</code>, <code>org.apache.grails.data:grails-data-neo4j-core</code> and <code>org.apache.grails:grails-neo4j-bom</code>. Grails Forge generates a Neo4j application with <code>--data=neo4j</code>, named connections start and route correctly, and Cypher query strings participate in the compile-time query safety check.</p>
+<h3>Build, CLI and Developer Tooling</h3>
+<p><strong>Commands move to companion <code>-cli</code> artifacts.</strong> <code>ApplicationCommand</code> implementations (the <code>dbm-*</code> migration commands, the scaffolding <code>generate-*</code> commands, <code>url-mappings-report</code>, <code>schema-export</code>, the Spring Security <code>s2-*</code> commands) no longer ship inside runtime plugin jars. Each command-bearing module publishes a companion artifact with a <code>-cli</code> suffix, applications consume them through a new <code>grailsCli</code> Gradle configuration that never reaches <code>runtimeClasspath</code>, <code>bootJar</code> or <code>bootWar</code>, and the Grails Gradle plugin discovers every companion advertised by your dependency graph automatically. Plugin authors get the whole publishing side from the new <code>org.apache.grails.gradle.grails-plugin-cli</code> plugin, and <code>grails { legacyCommandSupport = true }</code> keeps unchanged Grails 7 command plugins working through a deprecated bridge.</p>
+<p><strong>Developer tooling leaves the application classpath.</strong> Jansi, <code>grails-console</code>, the Groovy console and shell, and JLine no longer reach <code>runtimeClasspath</code>; ANSI output is controlled by Spring Boot's <code>spring.output.ansi.enabled</code>, and a <code>validateProductionClasspath</code> check keeps it that way.</p>
+<p><strong>A faster, project-aware CLI.</strong> A release CLI never re-checks remote <code>maven-metadata.xml</code>, dependency resolution runs in parallel (<code>-Dgrails.dependency.resolution.threads=N</code>), <code>grails --help</code> inside a project lists the application's own commands, Grails tasks appear in the <code>Grails</code> Gradle task group, and the start scripts grant native access so JLine produces no JEP 472 warnings on JDK 24+.</p>
+<p><strong>No generated <code>logback-spring.xml</code>.</strong> New applications rely on Spring Boot's Logback defaults (<code>logging.level.*</code>, <code>logging.pattern.console</code>, <code>logging.file.name</code>); <code>--features=logback-config</code> generates an editable starter file for those who want one. <code>grails.logging.stackTraceFiltererClass</code> and <code>grails.exceptionresolver.logFullStackTraceOnFilter</code> now govern every stack-trace sanitizer, not only the exception resolver.</p>
+<p><strong>Gradle plugin changes.</strong> The vestigial <code>gspCompile</code> configuration is removed (GSPs compile against <code>compileClasspath</code>), the combined Groovy compiler configuration script is produced by a proper <code>generateCompileGroovyGrailsCompilerConfig</code> task, and the <code>grails { }</code> extension gains <code>bom</code>, <code>cliAutoProvision</code>, <code>legacyCommandSupport</code>, <code>preserveParameterNames</code>, <code>compileStatic { }</code>, <code>gorm { }</code>, <code>i18n { }</code>, <code>aotCache { }</code> and <code>nativeMetadata { }</code> blocks. <code>importJavaTime</code> is removed: Groovy 5 already imports <code>java.time</code>, and a build that still sets the flag fails until the line is deleted.</p>
+<p><strong>Asset-pipeline 5.2.</strong> A <code>%</code> or <code>*</code> in an asset path stands for one directory, in development and in a packaged application. Grails 7 let a single <code>%</code> stand for several directories inside a jar, so <code>webjars/%/dist/jquery.js</code> found <code>webjars/jquery/3.7.1/dist/jquery.js</code> and now finds nothing. Write one <code>%</code> per directory, or <code>%%</code> for zero or more. When several directories match, the highest version wins. A path that no longer resolves is logged by <code>assetCompile</code> and left out of the build.</p>
+<p><strong>DevTools.</strong> On macOS, Grails' directory watcher no longer silently falls back to one-second polling whenever JNA is on the classpath (add <code>io.methvin:directory-watcher</code> for native FSEvents); Spring Boot 4 turns LiveReload off by default (Forge enables it in <code>application-development.yml</code>); and the restart class loader is resolved through Tomcat's web-app loader so GORM entities are found after a restart.</p>
+<p><strong>Test fixtures.</strong> <code>JsonViewTest</code>, <code>GraphQLSchemaSpec</code>, <code>GrailsWebMockUtil</code> and the <code>Mock*</code> resource-loader helpers are no longer on production classpaths; request them with <code>testImplementation testFixtures('org.apache.grails:grails-core')</code> and friends.</p>
+<h3>Deployment and Runtime</h3>
+<p><strong>Ahead-of-time processing.</strong> Applying Spring Boot's AOT plugin adds a <code>processAot</code> task that generates bean definitions as source at build time, so a start with <code>-Dspring.aot.enabled=true</code> skips classpath scanning and annotation processing. The Grails Gradle plugin sets <code>grails.env</code> to <code>production</code> on <code>processAot</code> automatically, and the guide documents what AOT changes at runtime and what it does not yet cover (beans contributed through a plugin's <code>beanRegistrar()</code> are re-registered at runtime).</p>
+<p><strong>GraalVM native image metadata.</strong> <code>generateNativeMetadata</code> writes reachability metadata for your artefacts and compiled pages from the build output, and <code>traceNativeMetadata</code> runs the application under GraalVM's tracing agent along the paths and forms you list (<code>grails { nativeMetadata { paths = ['/', '/book']; forms = ['/login?username=admin&amp;password=secret'] } }</code>), carrying the login session so pages behind authentication are traced.</p>
+<p><strong>JDK AOT cache training (Project Leyden).</strong> On JDK 25 or later, <code>grails.aotCache</code> trains a JDK AOT cache by running the packaged application once over the paths you list and recording the classes it loaded and linked and the methods it ran:</p>
+<pre><code class="language-groovy">grails {
+    aotCache {
+        enabled = true
+        paths = ['/', '/login', '/book/index']
+    }
+}
+</code></pre>
+<p>Enabling it adds an <code>extractAotCacheApplication</code> task and a <code>trainAotCache</code> task, which you run explicitly. Training unpacks the executable jar into <code>build/aot-cache/application</code>, runs it over the listed paths, and writes the cache beside it.</p>
+<p><strong>Warning:</strong> training is a real run of the application, in the <code>production</code> environment by default. It executes bootstrap code, connects to whatever the configuration points at, and writes whatever that code writes. Point it at a build-time or throwaway database, never at production.</p>
+<pre><code class="language-shell">./gradlew trainAotCache
+java -XX:AOTCache=build/aot-cache/myapp.aot -Dspring.aot.enabled=true -jar build/aot-cache/application/myapp.jar
+</code></pre>
+<p>Training is POSIX-only; running with a trained cache is not. In the framework's measurement of a GORM/Hibernate application with Spring Security and the asset pipeline, startup fell from 2.594 s to 0.933 s, and a generated <code>aot-cache.properties</code> records the JDK build, archive checksum and training arguments so a deployment can tell whether the cache still applies.</p>
+<p><strong>Undertow is back.</strong> Spring Boot 4 dropped its Undertow starter before Undertow had Jakarta Servlet 6.1 support; Grails 8 restores it as <code>org.apache.grails:grails-undertow</code> (Undertow 2.4.3 with the <code>io.undertow.ee</code> servlet and websocket modules). Tomcat 11, Jetty 12 and Undertow are all supported, Forge's <code>--servlet=undertow</code> works again, and the startup banner names the container in use. <code>server.undertow.max-http-post-size</code> now defaults to 2 MB; set it to <code>-1</code> to restore the previous unlimited size.</p>
+<p><strong>The startup banner</strong> is colored, reports the servlet container and Spring Security version by default, and shows how the application was started (<code>NATIVE</code>, <code>AOT CACHE</code> or <code>AOT</code>) when that is worth saying. For WAR deployment to an external container, <code>providedRuntime 'org.springframework.boot:spring-boot-starter-tomcat-runtime'</code> replaces the old Tomcat starter.</p>
+<h3>Testing</h3>
+<ul>
+<li><strong>Latency testing.</strong> <code>grails-testing-support-latency</code> injects random artificial latency into the application under test (<code>grails.testing.latency.enabled</code>, <code>min-delay</code>, <code>max-delay</code>, <code>probability</code>, <code>url-patterns</code>, <code>seed</code>). A fixed <code>seed</code> makes a run reproducible.</li>
+<li><strong>Unit tests can declare beans the way the application does.</strong> <code>beans</code> blocks, <code>beanRegistrar()</code> and nested configuration classes work in unit tests. Testing <code>doWithSpring()</code> is deprecated.</li>
+<li><strong><code>httpPostForm(...)</code></strong> on <code>HttpClientSupport</code> sends <code>application/x-www-form-urlencoded</code> bodies with UTF-8 encoding and repeated keys for collection values.</li>
+<li><strong>Tag library tests clean up automatically.</strong> <code>purgeTagLibMetaClass</code> is gone; mocked tag libraries are cleared and rebuilt between feature methods.</li>
+<li><strong>Continuous test mode is documented.</strong> <code>grails&gt; test-app -continuous</code> reruns the selected tests whenever a source file changes, without leaving the interactive CLI.</li>
+<li><strong>Embedded MongoDB</strong> and single-node replica sets make MongoDB and transaction specs run without Docker.</li>
+<li>Spring Boot 4's test changes apply: <code>@MockBean</code>/<code>@SpyBean</code> become <code>@MockitoBean</code>/<code>@MockitoSpyBean</code>, and <code>@SpringBootTest</code> no longer auto-configures <code>MockMvc</code> or <code>TestRestTemplate</code> without the corresponding <code>@AutoConfigure*</code> annotation. <code>GrailsUnitTest</code>, <code>GrailsWebUnitTest</code> and <code>@Integration</code> users are unaffected.</li>
+</ul>
+<h3>Grails Forge</h3>
+<p>Grails Forge is now a Micronaut 4 application built with Gradle 9.8, and it generates Grails 8 applications with:</p>
+<ul>
+<li>A new <code>-d, --data</code> option (<code>hibernate5</code>, <code>hibernate7</code>, <code>mongodb</code>, <code>neo4j</code>; <code>-g/--gorm</code> and <code>hibernate</code> remain as legacy aliases) that applies the matching BOM consistently across application dependencies, the buildscript classpath and <code>buildSrc</code>.</li>
+<li>New features: <code>gorm-hibernate7</code>, <code>gorm-neo4j</code>, <code>gorm-async</code>, <code>grails-compile-static</code>, <code>grails-undertow</code>, <code>grails-layout</code>, <code>logback-config</code>, and three security options: <code>grails-spring-security</code> (User/Role/UserRole domain classes, a scaffolded user controller, static rules and a seeded admin), <code>grails-spring-security-ui</code> (adds user/role management, registration and forgot-password flows), and <code>spring-boot-starter-security</code> (plain Spring Security wired through the new beans DSL on the <code>Application</code> class).</li>
+<li>Embedded MongoDB wired in by default for MongoDB applications, Testcontainers 2.x artifact names, the internationalized welcome page with a theme selector, no generated Logback file, and a <code>/favicon.ico</code> mapping so the browser's icon fetch can no longer bounce through <code>/login</code>.</li>
+</ul>
+<h3>Spring Security, Quartz and Other Plugins</h3>
+<p>Spring Security, Quartz, Redis and Mail are maintained in the <a href="https://github.com/apache/grails-core">grails-core</a> repository and released with the framework, rather than as separately versioned plugin lines.</p>
+<p><strong>Grails Spring Security 8.0.0</strong> runs on Spring Security 7.1. A new <code>grails-spring-security-compat</code> module reimplements the access-decision types Spring Security 7 removed (<code>ConfigAttribute</code>, <code>AccessDecisionManager</code>, <code>RoleVoter</code>, <code>AbstractSecurityInterceptor</code>, ...), so the plugin's voter and interceptor model, and application code built on it, keeps compiling and running. The <strong>UI plugin is rewritten on Bootstrap 5 and jQuery 4</strong>: all 44 screens render through the host application's layout (<code>grails.plugin.springsecurity.ui.gsp.parentLayout</code>), inheriting theme, locale selector and branding, with jQuery UI, DataTables, jGrowl and the bundled CSS gone. The core plugin's login and denied pages are plain Bootstrap 5, eight locales were added to its message bundle, and CAS single sign-out is now opt-in (<code>useSingleSignout</code>, default <code>false</code>), verified against an Apereo CAS Testcontainer.</p>
+<p><strong>Grails Quartz 8.0.0</strong> no longer lets one broken schedule take an application with it: a trigger that can never fire is logged and left unscheduled (<code>quartz.failOnNeverFiringTriggers: true</code> restores the old behavior), jobs are stamped with the registering application so two applications can share a JDBC job store, the scheduling methods report what is wrong instead of throwing <code>NullPointerException</code>, and a new Long-Running Jobs chapter covers concurrency, misfire handling and interrupting a job.</p>
+<p>The <strong>Cache</strong>, <strong>Mail</strong> and <strong>Redis</strong> plugins are wired through <code>beanRegistrar()</code> and the beans DSL, and <code>grails.cache.enabled=yes|on|1</code> no longer fails startup. The <strong>Mail</strong> plugin can now override recipients and sender separately: <code>grails.mail.overrideToAddress</code> redirects every <code>to</code>, <code>cc</code> and <code>bcc</code> while keeping the application's sender, and <code>grails.mail.overrideFromAddress</code> sets a fixed sender. <code>grails.mail.overrideAddress</code> still replaces both and now also replaces a <code>from</code> set in the <code>sendMail</code> closure.</p>
+<h3>Documentation and AI-Assisted Development</h3>
+<p>The guide gains chapters on Ahead-of-Time Processing, Ahead-of-Time Caching, GSP Static Compilation, GSP in a Spring Boot Application, Compiled Tag Resolution, Multi-Tenancy and Long-Running Quartz Jobs, plus sections on Spring Boot structured logging, Spring HTTP interface clients, continuous testing, the <code>PATCH</code> mapping generated by <code>resources</code>, and a complete Hibernate 7 manual.</p>
+<p>Grails 8 also ships agent skills for AI coding assistants. A <strong><a href="https://github.com/apache/grails-core/tree/8.0.x/grails-skills/upgrade-guide-8/skills/grails-8-upgrade"><code>grails-8-upgrade</code></a></strong> skill, built from the upgrade guide and refined by upgrading real applications, and a <strong><a href="https://github.com/apache/grails-core/tree/8.0.x/grails-skills/developer/skills/grails-developer"><code>grails-developer</code></a></strong> skill are published as BOM-managed jars (<code>org.apache.grails.skills:grails-8-upgrade</code> and <code>org.apache.grails.skills:grails-developer</code>), so loading them does not require a Grails checkout. The repository's <code>.agents/skills/</code> directory holds the skills the maintainers use on the framework itself: <code>groovy-developer</code>, <code>java-developer</code>, <code>gradle-developer</code>, <code>hibernate-developer</code>, <code>test-fixer</code>, <code>violation-fixer</code> and <code>mono-repo-integration</code>.</p>
+<h2>Behavior Changes to Review Before Upgrading</h2>
+<p>The <a href="https://grails.apache.org/docs/8.0.0/guide/upgrading.html#upgrading80x">upgrade guide</a> covers each of these in depth. The ones most likely to touch an existing application:</p>
+<p><strong>Platform and build</strong></p>
+<ul>
+<li>Java 21 and Gradle 9.7 minimums; the Spring Boot 4 starter renames (<code>spring-boot-starter-web</code> to <code>spring-boot-starter-webmvc</code>) and auto-configuration package relocations</li>
+<li>The Spring Dependency Management plugin is no longer applied; <code>dependencyManagement { }</code> blocks must be replaced</li>
+<li>Jackson 3.1.6 is the default JSON library; <code>jackson.version</code> now sets Jackson 2 only under the name <code>jackson-2-bom.version</code>, and <code>jackson-bom.version</code> sets Jackson 3</li>
+<li>Commands live in <code>-cli</code> artifacts; Jansi is removed; no <code>logback-spring.xml</code> is generated; <code>importJavaTime</code> is gone</li>
+<li>Asset-pipeline wildcards match one directory; a single <code>%</code> no longer spans <code>webjars/jquery/3.7.1</code></li>
+<li>Spring theme resolution is removed with Spring Framework 7; <code>spring-retry</code> is no longer managed by Spring Boot</li>
+<li><code>org.apache.grails.data:grails-datamapping-async</code> moved to <code>org.apache.grails:grails-datamapping-async</code></li>
+</ul>
+<p><strong>Web layer and views</strong></p>
+<ul>
+<li>The hidden HTTP method filter is off by default; <code>grails.controllers.upload.*</code> is replaced by <code>spring.servlet.multipart.*</code></li>
+<li><code>render(file: ...)</code> downloads the file unless you pass <code>inline: true</code></li>
+<li>The <code>Accept</code> header is honored for browsers; framework MIME defaults replace the generated <code>grails.mime.types</code> block</li>
+<li>Enums serialize as their name; JSON dates and times follow Spring Boot, and an ISO-8601 value with an offset binds to the instant it names</li>
+<li>Without a <code>grails.views.gsp.htmlcodec</code> setting, HTML escaping is XML-safe rather than HTML4-style; <code>htmlcodec: html4</code> restores the old output</li>
+<li>Plugin message bundles must be namespaced; <code>spring.messages.*</code> is the configuration surface</li>
+</ul>
+<p><strong>Plugins and Spring</strong></p>
+<ul>
+<li><code>doWithSpring</code> is deprecated in favor of <code>beanRegistrar()</code>; <code>@Configuration</code> classes declared in <code>resources.groovy</code> are no longer processed</li>
+<li><code>grails.mail.overrideAddress</code> now also replaces an explicit <code>from</code>; use <code>grails.mail.overrideToAddress</code> to redirect recipients only</li>
+</ul>
+<p><strong>GORM</strong></p>
+<ul>
+<li>GORM properties are nullable by default; <code>count()</code> returns <code>Long</code></li>
+<li>Criteria closures declare <code>Closure.DELEGATE_FIRST</code>; under <code>@CompileStatic</code>, forwarding a plain <code>Closure</code> parameter into <code>where</code>, <code>and</code>, <code>or</code> and friends no longer compiles without a matching <code>@DelegatesTo</code> or a cast</li>
+<li>The dynamic finder classes in <code>org.grails.datastore.gorm.finders</code> no longer form an inheritance hierarchy; <code>AbstractFinder</code>, <code>AbstractFindByFinder</code>, <code>FindByFinder</code> and <code>FindByBooleanFinder</code> are removed</li>
+<li>MongoDB <code>String</code> ids are stored as <code>ObjectId</code> by default; read-only transactions no longer flush, and a nested transaction joins the outer one</li>
+<li>Hibernate 7 applications: <code>id generator: 'sequence'</code> derives its name from the table, and new entities start at version 0</li>
+</ul>
+<p>Add <code>runtimeOnly 'org.springframework.boot:spring-boot-properties-migrator'</code> for the duration of the migration to have deprecated and relocated configuration properties reported at startup.</p>
+<h2>Dependency Upgrades</h2>
+<p>Grails 8.0.0 ships with the following foundational dependency versions:</p>
+<table>
+<thead>
+<tr><th>Component</th><th>Grails 7.2</th><th>Grails 8.0</th></tr>
+</thead>
+<tbody>
+<tr><td>Java (minimum)</td><td>17</td><td>21</td></tr>
+<tr><td>Gradle</td><td>8.14</td><td>9.8 (9.7 minimum)</td></tr>
+<tr><td>Apache Groovy</td><td>4.0.x</td><td>5.1.3</td></tr>
+<tr><td>Spock</td><td>2.4-groovy-4.0</td><td>2.4-groovy-5.0</td></tr>
+<tr><td>Spring Boot</td><td>3.5.x</td><td>4.1.1</td></tr>
+<tr><td>Spring Framework</td><td>6.2.x</td><td>7.0.x</td></tr>
+<tr><td>Spring Security</td><td>6.5.x</td><td>7.1.x</td></tr>
+<tr><td>Jackson</td><td>2.x</td><td>3.1.6 (Jackson 2.22.2 BOM-managed)</td></tr>
+<tr><td>Apache Tomcat</td><td>10.1</td><td>11.0</td></tr>
+<tr><td>Jakarta Servlet</td><td>6.0</td><td>6.1</td></tr>
+<tr><td>Hibernate ORM</td><td>5.6</td><td>5.6.15 (default) or 7.4.10</td></tr>
+<tr><td>SiteMesh 3</td><td>3.2</td><td>3.3.0</td></tr>
+<tr><td>Asset Pipeline</td><td>5.0</td><td>5.2.0</td></tr>
+<tr><td>Undertow</td><td>-</td><td>2.4.3</td></tr>
+<tr><td>MongoDB driver</td><td>5.9</td><td>5.12.0</td></tr>
+<tr><td>jQuery webjar</td><td>3.7</td><td>4.0.0</td></tr>
+<tr><td>Bootstrap webjar</td><td>5.3.3</td><td>5.3.8</td></tr>
+</tbody>
+</table>
+<p>See all managed versions in the <a href="https://grails.apache.org/docs/8.0.0/ref/Versions/Grails%20BOM.html">grails-bom</a>, including the Hibernate 7 and Neo4j BOM variants.</p>
+<h2>Release Notes</h2>
+<p>For the changes as they landed in each milestone, release candidate and the final release, see the GitHub release notes:</p>
+<ul>
+<li><a href="https://github.com/apache/grails-core/releases/tag/v8.0.0-M1">Grails 8.0.0-M1</a></li>
+<li><a href="https://github.com/apache/grails-core/releases/tag/v8.0.0-M2">Grails 8.0.0-M2</a></li>
+<li><a href="https://github.com/apache/grails-core/releases/tag/v8.0.0-M3">Grails 8.0.0-M3</a></li>
+<li><a href="https://github.com/apache/grails-core/releases/tag/v8.0.0-M4">Grails 8.0.0-M4</a></li>
+<li><a href="https://github.com/apache/grails-core/releases/tag/v8.0.0-M5">Grails 8.0.0-M5</a></li>
+<li><a href="https://github.com/apache/grails-core/releases/tag/v8.0.0-M6">Grails 8.0.0-M6</a></li>
+<li><a href="https://github.com/apache/grails-core/releases/tag/v8.0.0-RC1">Grails 8.0.0-RC1</a></li>
+<li><a href="https://github.com/apache/grails-core/releases/tag/v8.0.0-RC2">Grails 8.0.0-RC2</a></li>
+<li><a href="https://github.com/apache/grails-core/releases/tag/v8.0.0">Grails 8.0.0</a></li>
+</ul>
+<h2>Generating a new Grails 8.0.0 application with Grails Forge</h2>
+<p>Try out Grails today by visiting our online application generator <a href="https://start.grails.org">Grails Forge</a>. This is the quickest and the recommended way to get started with Grails.</p>
+<p>After installing JetBrains' IntelliJ IDEA and the <a href="https://plugins.jetbrains.com/plugin/18504-grails">Grails Plugin</a>, the Grails Application Forge will also be available under New Project in IntelliJ IDEA.</p>
+<p>From the command line, the Forge CLI generates a Grails 8 application with the GORM implementation of your choice:</p>
+<pre><code class="language-shell">grails -t forge create-app --data=hibernate7 com.example.demo
+</code></pre>
+<p>Within your newly generated project you can access the Grails CLIs with the Grails Wrapper.</p>
+<p>See the <a href="https://grails.apache.org/docs/8.0.0/guide/gettingStarted.html#_types_of_command_line_interface_cli">Types of CLI</a> section in the documentation for details on each CLI.</p>
+<p>grails-shell-cli</p>
+<pre><code class="language-shell">grailsw
+</code></pre>
+<p>grails-forge-cli</p>
+<pre><code class="language-shell">grailsw -t forge
+</code></pre>
+<h2>Installing Grails CLIs 8.0.0 with SDKMan</h2>
+<p>Alternatively, you can quickly install Grails 8.0.0 CLIs (grails-shell-cli and grails-forge-cli) using <a href="https://sdkman.io">SDKMan</a>.</p>
+<p>See the <a href="https://grails.apache.org/docs/8.0.0/guide/gettingStarted.html#_types_of_command_line_interface_cli">Types of CLI</a> section in the documentation for details on each CLI.</p>
+<ol>
+<li>
+<p>If you don't have SDKMan installed, follow the instructions at <a href="https://sdkman.io/install">SDKMan Installation Guide</a> to set it up.</p>
+</li>
+<li>
+<p>Once SDKMan is installed, open your terminal and run the following command to install Grails 8.0.0:</p>
+<pre><code class="language-shell">sdk install grails 8.0.0
+</code></pre>
+</li>
+<li>
+<p>You're all set! To verify the installation, run:</p>
+<pre><code class="language-shell">grails --version
+</code></pre>
+</li>
+</ol>
+<p>The Grails Shell CLI can be accessed as:</p>
+<pre><code class="language-shell">grails
+</code></pre>
+<p>or</p>
+<pre><code class="language-shell">grails-shell-cli
+</code></pre>
+<p>The Grails Forge CLI can be accessed as:</p>
+<pre><code class="language-shell">grails -t forge
+</code></pre>
+<p>or</p>
+<pre><code class="language-shell">grails-forge-cli
+</code></pre>
+<h2>Upgrading Your Existing Applications to Grails 8.0.0</h2>
+<p>If you already have a Grails 7 application and want to upgrade to Grails 8.0.0, follow these steps:</p>
+<ol>
+<li>
+<p>Install JDK 21 or later and update your toolchain, CI pipelines and deployment environments.</p>
+</li>
+<li>
+<p>Update the Gradle wrapper; a Grails 7 wrapper does not work with the Grails 8 Gradle plugins:</p>
+<pre><code class="language-shell">./gradlew wrapper --gradle-version 9.8.0
+</code></pre>
+</li>
+<li>
+<p>Update your application's <code>gradle.properties</code> file to specify Grails 8.0.0 as the desired version.</p>
+<pre><code class="language-properties">grailsVersion=8.0.0
+</code></pre>
+</li>
+<li>
+<p>Add the Spring Boot properties migrator for the duration of the migration so deprecated and relocated configuration properties are reported at startup:</p>
+<pre><code class="language-groovy">runtimeOnly 'org.springframework.boot:spring-boot-properties-migrator'
+</code></pre>
+</li>
+<li>
+<p>Make any necessary adjustments to your application code, configuration, and dependencies to ensure compatibility with the new version. <a href="https://grails.apache.org/docs/8.0.0/guide/upgrading.html#upgrading80x">See Upgrade Guide</a>. If you use an AI coding assistant, point it at the <a href="https://github.com/apache/grails-core/tree/8.0.x/grails-skills/upgrade-guide-8/skills/grails-8-upgrade"><code>grails-8-upgrade</code> skill</a>.</p>
+</li>
+</ol>
+<p>Normally, Grails Core dependencies are automatically updated using the Grails Bill of Materials (BOM). However, if you have specific versions defined in your build configuration, you may need to manually update them to align with Grails 8.0.0. Grails 8 no longer applies the Spring Dependency Management plugin, so a <code>dependencyManagement { }</code> block in your build must be replaced with plain dependency declarations or <code>resolutionStrategy.force</code>. An override in <code>gradle.properties</code> still wins, but it has to use a property name the BOM declares. Rename <code>jackson.version</code> to <code>jackson-2-bom.version</code> for Jackson 2, and set Jackson 3 with <code>jackson-bom.version</code>. A key left under the old name is ignored.</p>
+<h3>Exploring Alternative Approaches</h3>
+<p>If manual dependency updates seem daunting, or you want a more streamlined approach, consider the following alternatives:</p>
+<h4>1. Use Grails Forge Website</h4>
+<p>Visit <a href="https://start.grails.org">Grails Forge</a> and generate a new Grails application with Grails 8.0.0. Compare the versions in the newly generated application with your existing one to identify any discrepancies. This can serve as a reference point for your update.</p>
+<h4>2. Automated Dependency Update Bots</h4>
+<p>Configure automated dependency update bots like <a href="https://docs.renovatebot.com">Renovate</a> or <a href="https://dependabot.com">Dependabot</a> with your source control platform (e.g., GitHub). These bots can automatically detect and update outdated dependencies in your project, including Grails dependencies, saving you time and effort in manual updates.</p>
+<p>With these steps and alternative approaches, you should be well on your way to enjoying the exciting features and improvements in Grails 8.0.0.</p>
+<h2>Why should you try out Grails 8.0.0?</h2>
+<ul>
+<li><strong>Leverage cutting-edge foundations</strong>: Built on Java 21, Apache Groovy 5.1, Spring Framework 7.0, Spring Boot 4.1, Jakarta Servlet 6.1 and your choice of Hibernate 5 or Hibernate 7.</li>
+<li><strong>Start faster and run leaner</strong>: Spring AOT processing, JDK AOT cache training, native image metadata, a leaner request path, virtual-thread-friendly internals, and a GORM startup that scales with the size of your domain model.</li>
+<li><strong>Compile more of your application statically</strong>: compiled tag resolution, application-wide GSP static compilation, and a single build setting to opt every controller, service and tag library into <code>@GrailsCompileStatic</code>.</li>
+<li><strong>Ship a smaller, safer application</strong>: CLI dependencies out of your jar, opt-in deny-by-default binding, compile-time query safety, hardened XML and URI handling, and a published threat model.</li>
+<li><strong>Invest in the future</strong>: This version drives ongoing innovation, backed by an active Grails community ensuring support, updates, and evolving capabilities tailored to your needs.</li>
+</ul>
+<h2>Grails Release Schedule</h2>
+<ul>
+<li><strong>Grails 8.0.0 Release</strong>: Officially released on <span class="date">October 8, 2026</span>.</li>
+<li><strong>Grails 8.0.x Patch Releases</strong>: Issued when a fix or a dependency update calls for one, including updates on the Spring Boot 4.1 line. There is no fixed monthly cadence.</li>
+<li><strong>Grails 8 Support</strong>: Grails 8.0.x stays on Spring Boot 4.1, which Spring supports through July 2027. The <a href="/support-schedule.html">support schedule</a> lists maintenance support for Grails 8 through July 2027.</li>
+<li><strong>Grails 9</strong>: The next release is planned as Grails 9.0, targeted for the end of November 2026. It is a lighter major release that moves to Apache Groovy 6 with invokedynamic turned on, catching Grails up with Groovy. The work planned for an 8.1 release goes into 9.0 instead, so there will be no 8.1.</li>
+<li><strong>Grails 10</strong>: Planned for Q1 2027 on Apache Groovy 6 and Spring Boot 4.2, aiming to follow Spring Boot 4.2 within about a month. As a major release, it can carry the breaking changes needed to move the framework forward.</li>
+<li><strong>Grails 7 Support</strong>: Final releases of Grails 7.0.x (7.0.18) and 7.1.x (7.1.8) are due in October 2026, after which both lines reach end of support. Grails 7.2.x on Spring Boot 3.5 gets a 7.2.5 release at the same time and is maintained until December 2026. The <a href="/support.html">support page</a> lists extended support options.</li>
+</ul>
+<p>These plans and future dates are subject to change.</p>
+<h2>Apache Grails Mailing Lists</h2>
+<h3>Users Mailing List</h3>
+<p>The users mailing list will be a General purpose list for questions and discussion about Grails.<br />
+<strong>Web Archive:</strong> <a href="https://lists.apache.org/list.html?users@grails.apache.org">https://lists.apache.org/list.html?users@grails.apache.org</a> <br />
+<strong>Subscribe:</strong> Send a blank email to <a href="mailto:users-subscribe@grails.apache.org">users-subscribe@grails.apache.org</a></p>
+<h3>Dev Mailing List</h3>
+<p>The dev mailing list is focused on the framework implementation and its evolution. <br />
+<strong>Web Archive:</strong> <a href="https://lists.apache.org/list.html?dev@grails.apache.org">https://lists.apache.org/list.html?dev@grails.apache.org</a> <br />
+<strong>Subscribe:</strong> Send a blank email to <a href="mailto:dev-subscribe@grails.apache.org">dev-subscribe@grails.apache.org</a></p>
+<p>When participating in mailing lists, you should never include any personally identifiable information (PII) like
+your address, phone number or email address, as all messages sent to these lists are publicly accessible and archived,
+meaning anyone can view your information. Make sure your email client does not add your signature with these items.</p>
+<h2>Thank you!</h2>
+<p>A huge thank you to our amazing community for supporting the Grails Framework over the past 20 years! We're excited for
+the future and grateful for the opportunity to continue innovating and pushing Grails forward together.</p>
+<h2>Contributors</h2>
+<p>We would like to extend our heartfelt thanks to all the contributors who made Grails 8.0.0 possible. <br />
+Special thanks to:</p>
+<ul>
+<li><a href="https://github.com/jamesfredley">James Fredley</a></li>
+<li><a href="https://github.com/codeconsole">Scott Murphy</a></li>
+<li><a href="https://github.com/matrei">Mattias Reichel</a></li>
+<li><a href="https://github.com/jdaugherty">James Daugherty</a></li>
+<li><a href="https://github.com/borinquenkid">Walter B Duque de Estrada</a></li>
+<li><a href="https://github.com/sbglasius">Søren Berg Glasius</a></li>
+<li><a href="https://github.com/paulk-asert">Paul King</a></li>
+<li><a href="https://github.com/gsartori">Gianluca Sartori</a></li>
+<li><a href="https://github.com/davydotcom">David Estes</a></li>
+<li><a href="https://github.com/rahulshishodia">Rahul Shishodia</a></li>
+<li><a href="https://github.com/dauer">Thomas Rasmussen</a></li>
+<li><a href="https://github.com/maczikasz">Szava Maczika</a></li>
+<li><a href="https://github.com/potiuk">Jarek Potiuk</a></li>
+<li><a href="https://github.com/MartinJesusDev">Martín Jesús Mañas Rivas</a></li>
+<li><a href="https://github.com/sanjana2505006">Sanjana</a></li>
+<li><a href="https://github.com/ruthst00">Steve Rutherford</a></li>
+</ul>
+<p>Recent Contributors by Project:</p>
+<ul>
+<li><a href="https://github.com/apache/grails-core/graphs/contributors?from=April+8%2C+2026&amp;to=October+8%2C+2026">grails-core</a></li>
+<li><a href="https://github.com/apache/grails-micronaut/graphs/contributors?from=April+8%2C+2026&amp;to=October+8%2C+2026">grails-micronaut</a></li>
+<li><a href="https://github.com/apache/grails-static-website/graphs/contributors?from=April+8%2C+2026&amp;to=October+8%2C+2026">grails-static-website</a></li>
+<li><a href="https://github.com/apache/grails-forge-ui/graphs/contributors?from=April+8%2C+2026&amp;to=October+8%2C+2026">grails-forge-ui</a></li>
+<li><a href="https://github.com/apache/grails-gradle-publish/graphs/contributors?from=April+8%2C+2026&amp;to=October+8%2C+2026">grails-gradle-publish</a></li>
+<li><a href="https://github.com/apache/grails-github-actions/graphs/contributors?from=April+8%2C+2026&amp;to=October+8%2C+2026">grails-github-actions</a></li>
+</ul>
+<p><a href="https://github.com/search?q=repo%3Aapache%2Fgrails-core+repo%3Aapache%2Fgrails-micronaut+repo%3Aapache%2Fgrails-static-website+repo%3Aapache%2Fgrails-forge-ui+repo%3Aapache%2Fgrails-gradle-publish+repo%3Aapache%2Fgrails-github-actions+is%3Apublic&amp;type=commits&amp;s=committer-date&amp;o=desc">Combined Commit List</a></p>
+<p>Their dedication and hard work have significantly contributed to the release of Grails 8.0.0.</p>
+<p>Join the <a href="https://grails.slack.com">Grails Slack Community</a>, share your feedback, and contribute to making Grails Framework even better in
+the future. Happy coding!</p>]]></description><author>James Daugherty</author><guid>2026-10-08-introducing-grails-8</guid><pubDate>Thu, 08 Oct 2026 00:00:00 GMT</pubDate></item><item><title>Søren Glasius Named 2026 Grails® Lifetime Contributor</title><link>https://grails.apache.org/blog/2026-07-28-soren-glasius-lifetime-contributor-award.html</link><description><![CDATA[</p>
 <p>The Apache Grails community is proud to honor <a href="https://github.com/sbglasius">Søren Berg Glasius</a> with the 2026 Grails Lifetime Contributor Award. The award recognizes long-term, sustained contributions that have strengthened Grails as a framework, an ecosystem, and a community.</p>
 <p>For years, Grails users, plugin authors, conference speakers, and project contributors have seen the same pattern: Søren shows up for Grails, helps others succeed with it, and strengthens its ecosystem. Today he serves on the Project Management Committees for Apache Grails and Apache Groovy.</p>
 <h2>A Builder Across the Grails Framework</h2>
