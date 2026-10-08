@@ -428,6 +428,37 @@ startup failed:script14738267015581837265078.groovy: 13: unable to resolve class
 </div>
 </div>
 <div class="sect2">
+<h3 id="_placeholders_in_yaml_lists">Placeholders in YAML Lists</h3>
+<div class="paragraph">
+<p>YAML list elements can contain Spring property placeholders, including environment variables and default values.
+These placeholders are resolved when the list is bound to a Spring Boot <code>@ConfigurationProperties</code> bean. For example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">cors</span>:
+        <span class="key">enabled</span>: <span class="string"><span class="content">true</span></span>
+        <span class="key">allowedOrigins</span>:
+            - <span class="string"><span class="content">https://static.example.com</span></span>
+            - <span class="string"><span class="delimiter">&quot;</span><span class="content">${CORS_ALLOWED_ORIGIN:https://default.example.com}</span><span class="delimiter">&quot;</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The second allowed origin is the value of <code>CORS_ALLOWED_ORIGIN</code>, or <code><a href="https://default.example.com" class="bare">https://default.example.com</a></code> when that variable
+is not set. Each element is resolved independently; the list does not need to be written as a comma-separated string.</p>
+</div>
+<div class="paragraph">
+<p>To read a whole list, use <code>grailsApplication.config.getProperty('grails.cors.allowedOrigins', List)</code> or bind it with
+<code>@ConfigurationProperties</code>. Spring&#8217;s <code>Environment</code> exposes non-empty YAML lists through indexed properties such as
+<code>grails.cors.allowedOrigins[0]</code>. A list nested in a list uses one index per level, such as <code>app.groups[0][1]</code>.</p>
+</div>
+<div class="paragraph">
+<p>Because the list itself is not a property of the <code>Environment</code>, a <code>@Value('${grails.cors.allowedOrigins}')</code> placeholder
+cannot inject it, just as in a plain Spring Boot application. Bind the list with <code>@ConfigurationProperties</code> or with Spring Boot&#8217;s
+<code>Binder</code>, or write the value as one comma-separated string where a <code>@Value</code> placeholder must read it.</p>
+</div>
+</div>
+<div class="sect2">
 <h3 id="_configuration_metadata">Configuration Metadata</h3>
 <div class="paragraph">
 <p>Grails framework modules publish standard Spring Boot configuration metadata in
