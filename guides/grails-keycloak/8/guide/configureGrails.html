@@ -1,0 +1,250 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+                      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+    <title>3 Configure the Grails Application</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="canonical" href="https://grails.apache.org/guides/grails-keycloak/8/guide/index.html"/>
+    <link rel="stylesheet" href="../css/main.css" type="text/css" media="screen, print" title="Style" charset="utf-8"/>
+    <link rel="stylesheet" href="../css/guide.css" type="text/css" media="screen, print" title="Style" charset="utf-8" />            
+    <link rel="stylesheet" href="../css/pdf.css" type="text/css" media="print" title="PDF" charset="utf-8"/>
+    <script type="text/javascript" src="../js/clipboard.min.js"></script>
+    <script type="text/javascript">
+function addJsClass() {
+    var classes = document.body.className.split(" ");
+    classes.push("js");
+    document.body.className = classes.join(" ");
+}
+    </script>
+</head>
+
+<body class="body" onload="addJsClass();">
+<div id="navigation">
+    <div class="navTitle">
+        
+        Grails Framework Guide 
+    </div>
+    <div class="navLinks">
+        <ul>
+            <li>
+                <div id="nav-summary">
+                    <a href="../guide/index.html" class="button" aria-haspopup="true">Table of contents</a>
+
+                    <div id="nav-summary-childs">
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/gettingStarted.html"><strong>1</strong><span>Getting Started</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/keycloakSetup.html"><strong>2</strong><span>Run a Local Keycloak</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/configureGrails.html"><strong>3</strong><span>Configure the Grails Application</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/understandingTheCode.html"><strong>4</strong><span>Understand the Security Integration</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/runningTheApp.html"><strong>5</strong><span>Prove USER and ADMIN</span></a>
+                        </div>
+                        
+                        <div class="toc-item" style="margin-left:0"><a href="../guide/helpWithGrails.html"><strong>6</strong><span>Do You Need Help With Grails?</span></a>
+                        </div>
+                        
+                    </div>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+
+</div>
+
+<table id="colset" border="0" cellpadding="0" cellspacing="0">
+    <tr>
+        <td id="col1">
+            <div id="main" class="corner-all">
+
+                <nav class="chapter-navigation" aria-label="Chapter navigation">
+                    
+                        <div class="toc-item prev-left"><a href="../guide/keycloakSetup.html">&lt;&lt; <strong>2</strong><span>Run a Local Keycloak</span></a></div>
+                    
+
+                    
+                        <div class="toc-item next-right"><a href="../guide/understandingTheCode.html"><strong>4</strong><span>Understand the Security Integration</span> >></a></div>
+                    
+                </nav>
+
+
+                
+
+                
+
+<h1 id="configureGrails">3 Configure the Grails Application</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-keycloak/v8/guide/configureGrails.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Add the Spring Security client libraries to <code>build.gradle</code>. Grails 8.0.0 manages the Spring Boot 4.1.1 line through <code>grails-bom</code>, so these two dependencies do not need their own versions:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">implementation <span class="string"><span class="delimiter">'</span><span class="content">org.springframework.boot:spring-boot-starter-security</span><span class="delimiter">'</span></span>
+implementation <span class="string"><span class="delimiter">'</span><span class="content">org.springframework.boot:spring-boot-starter-oauth2-client</span><span class="delimiter">'</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>complete/gradle.properties</code> sets <code>grailsVersion=8.0.0</code>. Keep <code>initial/gradle.properties</code> on that same version.</p>
+</div>
+<div class="sect1">
+<h2 id="_application_yml">application.yml</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The datasource stays on embedded H2. The Keycloak registration is the <code>keycloak</code> client under Spring Security&#8217;s OAuth2 client properties. The registration id is the last segment of the login callback, <code>/login/oauth2/code/keycloak</code>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">info</span>:
+  <span class="key">app</span>:
+    <span class="key">name</span>: <span class="string"><span class="content">'@info.app.name@'</span></span>
+    <span class="key">version</span>: <span class="string"><span class="content">'@info.app.version@'</span></span>
+    <span class="key">grailsVersion</span>: <span class="string"><span class="content">'@info.app.grailsVersion@'</span></span>
+<span class="key">dataSource</span>:
+  <span class="key">driverClassName</span>: <span class="string"><span class="content">org.h2.Driver</span></span>
+  <span class="key">username</span>: <span class="string"><span class="content">sa</span></span>
+  <span class="key">password</span>: <span class="string"><span class="content">''</span></span>
+  <span class="key">pooled</span>: <span class="string"><span class="content">true</span></span>
+  <span class="key">jmxExport</span>: <span class="string"><span class="content">true</span></span>
+<span class="key">environments</span>:
+  <span class="key">development</span>:
+    <span class="key">dataSource</span>:
+      <span class="key">dbCreate</span>: <span class="string"><span class="content">create-drop</span></span>
+      <span class="key">url</span>: <span class="string"><span class="content">jdbc:h2:mem:devDb;LOCK_TIMEOUT=10000;DB_CLOSE_ON_EXIT=FALSE</span></span>
+  <span class="key">test</span>:
+    <span class="key">dataSource</span>:
+      <span class="key">dbCreate</span>: <span class="string"><span class="content">update</span></span>
+      <span class="key">url</span>: <span class="string"><span class="content">jdbc:h2:mem:testDb;LOCK_TIMEOUT=10000;DB_CLOSE_ON_EXIT=FALSE</span></span>
+  <span class="key">production</span>:
+    <span class="key">dataSource</span>:
+      <span class="key">dbCreate</span>: <span class="string"><span class="content">none</span></span>
+      <span class="key">url</span>: <span class="string"><span class="content">jdbc:h2:./prodDb;LOCK_TIMEOUT=10000;DB_CLOSE_ON_EXIT=FALSE</span></span>
+<span class="key">hibernate</span>:
+  <span class="key">cache</span>:
+    <span class="key">queries</span>: <span class="string"><span class="content">false</span></span>
+    <span class="key">use_second_level_cache</span>: <span class="string"><span class="content">false</span></span>
+    <span class="key">use_query_cache</span>: <span class="string"><span class="content">false</span></span>
+<span class="key">grails</span>:
+  <span class="key">codegen</span>:
+    <span class="key">defaultPackage</span>: <span class="string"><span class="content">com.grails.example</span></span>
+  <span class="key">profile</span>: <span class="string"><span class="content">web</span></span>
+  <span class="key">views</span>:
+    <span class="key">gsp</span>:
+      <span class="key">encoding</span>: <span class="string"><span class="content">UTF-8</span></span>
+      <span class="key">htmlcodec</span>: <span class="string"><span class="content">xml</span></span>
+      <span class="key">codecs</span>:
+        <span class="key">scriptlet</span>: <span class="string"><span class="content">html</span></span>
+<span class="key">spring</span>:
+  <span class="key">security</span>:
+    <span class="key">oauth2</span>:
+      <span class="key">client</span>:
+        <span class="key">registration</span>:
+          <span class="key">keycloak</span>:
+            <span class="key">provider</span>: <span class="string"><span class="content">keycloak</span></span>
+            <span class="key">client-id</span>: <span class="string"><span class="content">${KEYCLOAK_CLIENT_ID}</span></span>
+            <span class="key">client-secret</span>: <span class="string"><span class="content">${KEYCLOAK_CLIENT_SECRET}</span></span>
+            <span class="key">authorization-grant-type</span>: <span class="string"><span class="content">authorization_code</span></span>
+            <span class="key">redirect-uri</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">{baseUrl}/login/oauth2/code/{registrationId}</span><span class="delimiter">&quot;</span></span>
+            <span class="key">scope</span>:
+              - <span class="string"><span class="content">openid</span></span>
+              - <span class="string"><span class="content">profile</span></span>
+              - <span class="string"><span class="content">email</span></span>
+        <span class="key">provider</span>:
+          <span class="key">keycloak</span>:
+            <span class="key">issuer-uri</span>: <span class="string"><span class="content">${KEYCLOAK_ISSUER}</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>KEYCLOAK_ISSUER</code> is the realm issuer, <code><a href="http://localhost:8081/realms/example" class="bare">http://localhost:8081/realms/example</a></code>, not the Keycloak root URL.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_register_the_role_mapper">Register the role mapper</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><code>KeycloakAuthoritiesMapper</code> is not a Spring stereotype. Register it in <code>grails-app/conf/spring/resources.groovy</code> so <code>SecurityConfig</code> can inject it:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">com.grails.example.KeycloakAuthoritiesMapper</span>
+
+<span class="comment">// Place your Spring DSL code here</span>
+beans = {
+    keycloakAuthoritiesMapper(KeycloakAuthoritiesMapper)
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Place <code>SecurityConfig</code> and <code>KeycloakAuthoritiesMapper</code> in <code>src/main/groovy/com/grails/example/</code>. Place <code>SecurityTagLib</code> in <code>grails-app/taglib/com/grails/example/</code>. The next chapter walks through each class.</p>
+</div>
+</div>
+</div>
+
+
+                <div style="clear:both;margin-top:15px;"></div>
+                
+                    <div class="toc-item prev-left"><a href="../guide/keycloakSetup.html">&lt;&lt; <strong>2</strong><span>Run a Local Keycloak</span></a></div>
+                
+                    <div class="toc-item next-right"><a href="../guide/understandingTheCode.html"><strong>4</strong><span>Understand the Security Integration</span> >></a></div>
+                
+                <div style="clear:both"></div>
+            </div>
+        </td>
+        <td id="col2">
+            <div class="local clearfix">
+                <div class="local-title">
+                    <a href="https://github.com/grails-guides/grails-keycloak">
+                    <svg height="35" class="octicon octicon-mark-github" viewBox="0 0 16 16" version="1.1" width="35" aria-hidden="true"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a> &nbsp;&nbsp;Get the Code
+                </div>
+                <div class="menu">
+                    <div class="input-group">                        
+                        <button href="#" onclick="document.getElementById('github-url').value='git@github.com:grails-guides/grails-keycloak.git'" class="codeButton">SSH</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-keycloak.git'" class="codeButton">HTTPS</button>
+                        <button onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-keycloak'" class="codeButton">Subversion</button>
+                    </div>
+       
+                    <div class="input-group">                    
+                        <!-- Target -->
+                        <input id="github-url" aria-label="Git repository URL" value="git@github.com:grails-guides/grails-keycloak.git" type="text" />
+
+                        <!-- Trigger -->
+                        <button class="clipbtn" type="button" data-clipboard-target="#github-url" aria-label="Copy Git repository URL">
+
+                            <img width="13" src="../img/clippy.svg" alt="Copy to clipboard">
+                        </button>       
+                        <script type="text/javascript">new Clipboard('.clipbtn');</script>
+
+                    </div>
+                    <div class="input-group">
+                      <a href="https://github.com/grails-guides/grails-keycloak/archive/grails8.zip" class="downloadButton">Download ZIP</a>
+                    </div>
+                </div>
+            </div>
+        </td>
+    </tr>
+</table>
+
+<div id="footer">
+    
+    
+</div>
+
+<script type="text/javascript" src="../js/docs.js"></script>
+
+</body>
+</html>

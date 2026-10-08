@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Keycloak Authentication in Grails 8 | Grails Guides | Apache Grails</title>
+    <meta name='description' content='Keycloak Authentication in Grails 8. Sign users in with Keycloak and enforce USER and ADMIN client roles.'/>
+    <link rel='canonical' href='https://grails.apache.org/guides/grails-keycloak/8/guide/index.html'/>
+    <meta charset='UTF-8'/>
+<meta name='viewport' content='width=device-width, initial-scale=1'/>
+<link rel='icon' href='https://grails.apache.org/images/favicon.ico'/>
+<link rel='mask-icon' href='https://grails.apache.org/images/grails-pinned-icon.svg' color='#feb672'/>
+<link rel='alternate' type='application/rss+xml' title='RSS' href='https://grails.apache.org/rss.xml'/>
+<link rel='stylesheet' href='https://grails.apache.org/stylesheets/screen.css'/>
+<link rel='stylesheet' href='https://grails.apache.org/stylesheets/plugin.css'/>
+<script src='https://grails.apache.org/javascripts/navigation.js'></script>
+
+<!-- Matomo -->
+<script>
+  var _paq = window._paq || [];
+  window._paq = _paq;
+  _paq.push(['setDoNotTrack', true]);
+  _paq.push(['disableCookies']);
+  _paq.push(['trackPageView']);
+  _paq.push(['enableLinkTracking']);
+  (function() {
+    var u = 'https://analytics.apache.org/';
+    _paq.push(['setTrackerUrl', u + 'matomo.php']);
+    _paq.push(['setSiteId', '79']);
+    var d = document, g = d.createElement('script'), s = d.getElementsByTagName('script')[0];
+    g.async = true; g.src = u + 'matomo.js'; s.parentNode.insertBefore(g, s);
+  })();
+</script>
+<!-- End Matomo Code -->
+
+<script
+    async
+    src="https://widget.kapa.ai/kapa-widget.bundle.js"
+    data-website-id="d804a9f2-51a2-414c-97f7-12f2a1ba4609"
+    data-project-name="Apache Grails"
+    data-project-color="#3F4346"
+    data-font-family="system-ui,-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,Segoe UI,sans-serif,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol;"
+    data-project-logo="https://grails.apache.org/images/grails.png"
+    data-modal-override-open-id="ask-ai-input"
+    data-modal-override-open-class="search-input"
+    data-user-analytics-fingerprint-enabled="true"
+    data-modal-title="Apache Grails AI Assistant"
+    data-modal-example-questions-title="Try asking me..."
+    data-modal-example-questions="How does database migration work?,How does Spring Security work?"
+    data-button-text="Ask AI"
+    data-button-text-color="#feb672"
+    data-button-text-font-size="0"
+    data-button-bg-color="#3F4346"
+    data-button-height="44px"
+    data-button-width="44px"
+    data-button-image-height="24"
+    data-button-image-width="24"
+    data-button-padding="10px"
+    data-button-border-radius="50%"
+    data-button-position-bottom="12px"
+    data-button-position-right="12px"
+    data-launcher-button-text="Ask AI"
+    data-launcher-button-font-size="0"
+    data-launcher-button-background-color="#3F4346"
+    data-launcher-button-height="44px"
+    data-launcher-button-width="44px"
+    data-launcher-button-image-height="24"
+    data-launcher-button-image-width="24"
+    data-launcher-button-padding="10px"
+    data-launcher-button-border-radius="50%"
+    data-launcher-button-bottom="12px"
+    data-launcher-button-right="12px"
+    data-modal-header-bg-color="#FFFFFF"
+    data-modal-title-color="#255AA8"
+    data-consent-required="true"></script>
+
+    <link rel='stylesheet' href='../css/guide.css'/>
+    <script src='https://grails.apache.org/javascripts/algolia-config.js'></script>
+    <link rel='stylesheet' href='https://grails.apache.org/stylesheets/algolia-search.css'/>
+    <script src='https://grails.apache.org/javascripts/algolia-search.js'></script>
+    <script src='../js/clipboard.min.js'></script>
+</head>
+<body class='guide'>
+<header class='main-header'>
+    <div class='content'>
+        <a href='https://grails.apache.org/index.html'><img class='grails-logo' src='https://grails.apache.org/images/grails_logo.svg' alt='Grails Logo'/></a>
+        <button type='button' id='show-navigation-link'
+            class='mobile align-center navigation-toggle'
+            aria-expanded='false'
+            aria-controls='top-menus'
+            onclick='toggleNavigation()'>Show Navigation</button>
+        <div id='top-menus'>
+            <nav class='secondary-menu' id='secondary-menu'>
+                <ul>
+                    <li><a href='https://grails.apache.org/blog/index.html'>Blog</a></li>
+                    <li><a href='https://grails.apache.org/casestudies/index.html'>Case Studies</a></li>
+                    <li><a href='https://grails.apache.org/community.html'>Community</a></li>
+                    <li><a href='https://grails.apache.org/faq.html'>FAQ</a></li>
+                    <li><a href='https://grails.apache.org/support.html'>Support</a></li>
+                </ul>
+            </nav>
+            <nav class='main-menu' id='main-menu'>
+                <ul>
+                    <li><a href='https://grails.apache.org/search.html' class='search-nav-link' data-search-open
+                           aria-haspopup='dialog' aria-controls='global-search-dialog' aria-keyshortcuts='Control+K Meta+K'>
+                        <svg class='search-nav-icon' aria-hidden='true' focusable='false' viewBox='0 0 24 24'>
+                            <circle cx='11' cy='11' r='6.5'></circle>
+                            <path d='m16 16 5 5'></path>
+                        </svg>
+                        <span>Search</span><kbd aria-label='Control or Command K'>Ctrl K</kbd>
+                    </a></li>
+                    <li class='search-nav-divider'><a href='https://grails.apache.org/start' class='app-forge-nav-link'>
+                        <span>App Forge</span>
+                    </a></li>
+                    <li><a href='https://grails.apache.org/documentation.html'>Documentation</a></li>
+                    <li><a href='https://grails.apache.org/download.html'>Download</a></li>
+                    <li class='active'><a href='https://grails.apache.org/guides'>Guides</a></li>
+                    <li><a href='https://grails.apache.org/plugins.html'>Plugins</a></li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</header>
+<div id='global-search-dialog' class='global-search-dialog' role='dialog'
+     aria-modal='true' aria-label='Search' hidden>
+    <div class='global-search-backdrop' data-search-close></div>
+    <div class='global-search-panel'>
+        <div class='global-search-fixed-content'>
+            <form id='global-search-form' class='global-search-form' role='search'>
+                <div class='global-search-input-row'>
+                    <div class='global-search-input-control'>
+                        <input id='global-search-input' type='search' autocomplete='off'
+                               aria-label='Search the Grails website, guides and documentation'
+                               placeholder='Search the Grails website and documentation'
+                               aria-describedby='global-search-status'/>
+                        <button id='global-search-clear' class='global-search-clear' type='button'
+                                aria-label='Clear search' hidden>
+                            <svg aria-hidden='true' focusable='false' viewBox='0 0 24 24'>
+                                <path d='m6 6 12 12M18 6 6 18'></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <button type='button' class='global-search-mobile-close' data-search-close>Close</button>
+                </div>
+            </form>
+            <div class='global-search-filters'>
+                <select id='global-search-source-filter' aria-label='Collection'>
+                    <option value=''>All content</option>
+                    <option value='website'>Website</option>
+                    <option value='guides'>Guides</option>
+                    <option value='user-documentation'>User Documentation</option>
+                    <option value='api'>API Documentation</option>
+                </select>
+                <div id='global-search-content-type-filter-container'>
+                    <select id='global-search-content-type-filter' aria-label='Type'>
+                        <option value=''>All types</option>
+                        <option value='page'>Pages</option>
+                        <option value='plugin'>Plugins</option>
+                        <option value='blog'>Blog posts</option>
+                        <option value='faq'>FAQ</option>
+                        <option value='case-study'>Case studies</option>
+                        <option value='guide'>Guides</option>
+                        <option value='guide-catalog'>Guide catalogue</option>
+                        <option value='user-documentation'>User Documentation</option>
+                        <option value='api'>API Documentation</option>
+                    </select>
+                </div>
+                <select id='global-search-version-filter' aria-label='Version'>
+                    <option value=''>All versions</option>
+                </select>
+            </div>
+        </div>
+        <div class='global-search-results-pane' tabindex='-1'>
+            <div class='global-search-results-content'>
+                <div id='global-search-results' class='global-search-results'></div>
+                <div id='global-search-load-more' class='global-search-load-more' aria-hidden='true'></div>
+            </div>
+        </div>
+        <p class='global-search-attribution'>
+            <a href='https://algolia.com' target='_blank' rel='noopener noreferrer' aria-label='Search by Algolia'>
+                <span>Search by</span>
+                <img class='global-search-algolia-logo' src='https://grails.apache.org/images/algolia-logo-blue.svg' alt=''/>
+            </a>
+            <span class='global-search-footer-status'>
+                <span id='global-search-status' class='global-search-status' role='status' aria-live='polite'></span>
+                <span class='global-search-close-separator' aria-hidden='true'>&bull;</span>
+                <button type='button' class='global-search-close-hint' data-search-close>Esc to close</button>
+            </span>
+        </p>
+    </div>
+</div>
+
+<div class='fullwidth'><article class="guide">
+    <aside>
+        <button type="button" class="btn btn-large" onclick="window.location.href=&quot;https://github.com/grails-guides/grails-keycloak&quot;"><img height="15" src="../img/github_white.svg" alt="GitHub"/><span>&nbsp;Get the Code</span></button>
+        <ul class="githublinks">
+            <li><button type="button" class="btn btn-default codeButton" onclick="document.getElementById('github-url').value='git@github.com:grails-guides/grails-keycloak.git'">SSH</button></li>
+            <li><button type="button" class="btn btn-default codeButton" onclick="document.getElementById('github-url').value='https://github.com/grails-guides/grails-keycloak.git'">HTTPS</button></li>
+        </ul>
+        <div class="input-group">
+            <input id="github-url" aria-label="Git repository URL" value="git@github.com:grails-guides/grails-keycloak.git" type="text"/>
+            <button type="button" class="clippy btn btn-default" data-clipboard-target="#github-url" aria-label="Copy Git repository URL">
+                <img width="13" src="../img/clippy.svg" alt="Copy to clipboard">
+            </button>
+        </div>
+        <script>var clipboard = new Clipboard('.clippy');</script>
+        <button type="button" class="btn btn-large" onclick="window.location.href=&quot;https://github.com/grails-guides/grails-keycloak/archive/grails8.zip&quot;">Download ZIP</button>
+        
+        <div id="table-of-content">
+            <h3>Table of Contents</h3>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#gettingStarted"><strong>1</strong><span>Getting Started</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#keycloakSetup"><strong>2</strong><span>Run a Local Keycloak</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#configureGrails"><strong>3</strong><span>Configure the Grails Application</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#understandingTheCode"><strong>4</strong><span>Understand the Security Integration</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#runningTheApp"><strong>5</strong><span>Prove USER and ADMIN</span></a></div>
+            
+            <div class="toc-item" style="margin-left:0px"><a href="#helpWithGrails"><strong>6</strong><span>Do You Need Help With Grails?</span></a></div>
+            
+            <div style="clear:both"></div>
+        </div>
+        
+    </aside>
+    <header>
+        <h1>Keycloak Authentication in Grails 8</h1>
+        <p>Sign users in with Keycloak and enforce USER and ADMIN client roles.</p>
+        <p><strong>Authors:</strong> Aaron</p>
+        <p><strong>Grails Version:</strong> 8</p>
+    </header>
+    
+
+<h1 id="gettingStarted">1 Getting Started</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-keycloak/v8/guide/gettingStarted.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>This guide connects a Grails 8.0.0 application to Keycloak with OpenID Connect. Users, passwords, and roles live in Keycloak. The Grails application stores nothing of its own and uses an embedded H2 database.</p>
+</div>
+<div class="paragraph">
+<p>The finished sample is the <code>grails8</code> branch of <a href="https://github.com/grails-guides/grails-keycloak">grails-guides/grails-keycloak</a>. <code>initial/</code> is a plain Grails web application. <code>complete/</code> adds Spring Security OAuth2 login, a client-role mapper, GSP security tags, and pages for the <code>USER</code> and <code>ADMIN</code> roles.</p>
+</div>
+<div class="sect1">
+<h2 id="_what_you_will_build">What you will build</h2>
+<div class="sectionbody">
+<div class="ulist">
+<ul>
+<li>
+<p>A public home page at <code>/</code>.</p>
+</li>
+<li>
+<p>An Account page that requires the Keycloak client role <code>USER</code>.</p>
+</li>
+<li>
+<p>An Admin page that requires the Keycloak client role <code>ADMIN</code>.</p>
+</li>
+<li>
+<p>A login redirect to Keycloak, and a logout that returns the browser to <code><a href="http://localhost:8080" class="bare">http://localhost:8080</a></code>.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_what_you_will_need">What you will need</h2>
+<div class="sectionbody">
+<div class="ulist">
+<ul>
+<li>
+<p>JDK 21, with <code>JAVA_HOME</code> set.</p>
+</li>
+<li>
+<p>Docker, to run Keycloak 26.8.0.</p>
+</li>
+<li>
+<p>A browser.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The sample&#8217;s Gradle wrapper downloads Grails 8.0.0 and Gradle 9.8.0. You do not need a separate Grails install to run it. The Grails application does not need PostgreSQL. Keycloak <code>start-dev</code> keeps its own embedded database.</p>
+</div>
+<div class="paragraph">
+<p>The sample repository also contains <code>KEYCLOAK.md</code>. That file is a longer Keycloak setup (PostgreSQL, systemd, and SMTP). This guide is enough to sign in and prove the two roles.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_how_to_follow_this_guide">How to follow this guide</h2>
+<div class="sectionbody">
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">git clone -b grails8 https://github.com/grails-guides/grails-keycloak.git
+cd grails-keycloak</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Open <code>complete/</code> to run the finished application. Open <code>initial/</code> to apply the steps yourself. The chapters below show the files from <code>complete/</code>.</p>
+</div>
+</div>
+</div>
+
+
+<h1 id="keycloakSetup">2 Run a Local Keycloak</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-keycloak/v8/guide/keycloakSetup.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Run Keycloak on port 8081 so it does not collide with the Grails application on port 8080.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">docker run --rm --name grails-keycloak \
+  -p 8081:8080 \
+  -e KC_BOOTSTRAP_ADMIN_USERNAME=admin \
+  -e KC_BOOTSTRAP_ADMIN_PASSWORD=admin \
+  quay.io/keycloak/keycloak:26.8.0 \
+  start-dev</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Open <a href="http://localhost:8081">http://localhost:8081</a> and sign in as <code>admin</code> / <code>admin</code>. <code>start-dev</code> reads the browser&#8217;s host, so the issuer for this guide is <code><a href="http://localhost:8081/realms/example" class="bare">http://localhost:8081/realms/example</a></code>.</p>
+</div>
+<div class="sect1">
+<h2 id="_realm_and_client">Realm and client</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Create a realm named <code>example</code>.</p>
+</div>
+<div class="paragraph">
+<p>In that realm, create an OpenID Connect client:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Setting</th>
+<th class="tableblock halign-left valign-top">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Client type</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OpenID Connect</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Client ID</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>example-client</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Client authentication</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">On</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Standard flow</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">On</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Valid redirect URIs</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code><a href="http://localhost:8080/login/oauth2/code/keycloak" class="bare">http://localhost:8080/login/oauth2/code/keycloak</a></code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Valid post logout redirect URIs</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code><a href="http://localhost:8080" class="bare">http://localhost:8080</a></code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Web origins</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code><a href="http://localhost:8080" class="bare">http://localhost:8080</a></code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The redirect URI is the Spring Security login callback. The post-logout URI is <code>{baseUrl}</code> from the application, which is <code><a href="http://localhost:8080" class="bare">http://localhost:8080</a></code> when Grails listens on that port. Keycloak 18 and later rejects a logout redirect that is not registered. In the Keycloak 26 client settings this field is under <strong>Logout settings</strong>.</p>
+</div>
+<div class="paragraph">
+<p>Copy the client secret from <strong>Clients &#8594; example-client &#8594; Credentials</strong>. The application reads it from <code>KEYCLOAK_CLIENT_SECRET</code>. Do not commit the secret.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_client_roles">Client roles</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Create <code>USER</code> and <code>ADMIN</code> under <strong>Clients &#8594; example-client &#8594; Roles</strong>. The mapper in this guide reads <code>resource_access.example-client.roles</code> from the ID token. Roles created under <strong>Realm roles</strong> are not in that claim, so a user can sign in and still fail every <code>@PreAuthorize</code> check.</p>
+</div>
+<div class="paragraph">
+<p>Open <code>ADMIN</code> and add <code>USER</code> as an associated role so <code>ADMIN</code> is a composite role. A user who is assigned only <code>ADMIN</code> then receives both <code>ADMIN</code> and <code>USER</code> in the client-role claim. The Account page requires <code>USER</code>, and the Admin page requires <code>ADMIN</code>, so an administrator can open both.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_put_the_client_roles_on_the_id_token">Put the client roles on the ID token</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Open <strong>Clients &#8594; example-client &#8594; Client scopes &#8594; dedicated scope</strong> and add a mapper of type <strong>User Client Role</strong>.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Setting</th>
+<th class="tableblock halign-left valign-top">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Name</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>example-client-roles</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Client ID</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>example-client</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Client Role prefix</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">leave blank</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Multivalued</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">On</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Token Claim Name</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>resource_access.example-client.roles</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Claim JSON Type</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">String</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Add to ID token</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">On</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Add to access token</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">On</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Add to lightweight access token</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Off</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Add to userinfo</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">On</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Add to token introspection</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">On</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Token Claim Name is required and has no default. That value is the only claim <code>KeycloakAuthoritiesMapper</code> reads. Leave Client Role prefix blank so the token contains <code>USER</code> and <code>ADMIN</code>. The Grails mapper adds <code>ROLE_</code>.</p>
+</div>
+<div class="paragraph">
+<p>Check the result before starting Grails. Open <strong>Client scopes &#8594; Evaluate</strong>, choose the test user, and generate an ID token. A user with the <code>USER</code> client role should show:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="json">{
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">resource_access</span><span class="delimiter">&quot;</span></span>: {
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">example-client</span><span class="delimiter">&quot;</span></span>: {
+      <span class="key"><span class="delimiter">&quot;</span><span class="content">roles</span><span class="delimiter">&quot;</span></span>: [<span class="string"><span class="delimiter">&quot;</span><span class="content">USER</span><span class="delimiter">&quot;</span></span>]
+    }
+  }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>An <code>ADMIN</code> user should show both <code>ADMIN</code> and <code>USER</code> in that same <code>roles</code> array.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_users">Users</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Create two users in the <code>example</code> realm. Set a non-temporary password on each.</p>
+</div>
+<div class="paragraph">
+<p>Assign client roles from <strong>Role mapping &#8594; Assign role</strong>, with the filter set to clients:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>One user gets <code>example-client</code> / <code>USER</code> only.</p>
+</li>
+<li>
+<p>The other user gets <code>example-client</code> / <code>ADMIN</code> only. Composite membership supplies <code>USER</code>.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_environment_variables">Environment variables</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The Grails application reads three variables. There is no database variable.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">export KEYCLOAK_CLIENT_ID=example-client
+export KEYCLOAK_CLIENT_SECRET=paste-the-client-secret
+export KEYCLOAK_ISSUER=http://localhost:8081/realms/example</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>On PowerShell:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="powershell">$env:KEYCLOAK_CLIENT_ID = &quot;example-client&quot;
+$env:KEYCLOAK_CLIENT_SECRET = &quot;paste-the-client-secret&quot;
+$env:KEYCLOAK_ISSUER = &quot;http://localhost:8081/realms/example&quot;</code></pre>
+</div>
+</div>
+</div>
+</div>
+
+
+<h1 id="configureGrails">3 Configure the Grails Application</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-keycloak/v8/guide/configureGrails.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Add the Spring Security client libraries to <code>build.gradle</code>. Grails 8.0.0 manages the Spring Boot 4.1.1 line through <code>grails-bom</code>, so these two dependencies do not need their own versions:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">implementation <span class="string"><span class="delimiter">'</span><span class="content">org.springframework.boot:spring-boot-starter-security</span><span class="delimiter">'</span></span>
+implementation <span class="string"><span class="delimiter">'</span><span class="content">org.springframework.boot:spring-boot-starter-oauth2-client</span><span class="delimiter">'</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>complete/gradle.properties</code> sets <code>grailsVersion=8.0.0</code>. Keep <code>initial/gradle.properties</code> on that same version.</p>
+</div>
+<div class="sect1">
+<h2 id="_application_yml">application.yml</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The datasource stays on embedded H2. The Keycloak registration is the <code>keycloak</code> client under Spring Security&#8217;s OAuth2 client properties. The registration id is the last segment of the login callback, <code>/login/oauth2/code/keycloak</code>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">info</span>:
+  <span class="key">app</span>:
+    <span class="key">name</span>: <span class="string"><span class="content">'@info.app.name@'</span></span>
+    <span class="key">version</span>: <span class="string"><span class="content">'@info.app.version@'</span></span>
+    <span class="key">grailsVersion</span>: <span class="string"><span class="content">'@info.app.grailsVersion@'</span></span>
+<span class="key">dataSource</span>:
+  <span class="key">driverClassName</span>: <span class="string"><span class="content">org.h2.Driver</span></span>
+  <span class="key">username</span>: <span class="string"><span class="content">sa</span></span>
+  <span class="key">password</span>: <span class="string"><span class="content">''</span></span>
+  <span class="key">pooled</span>: <span class="string"><span class="content">true</span></span>
+  <span class="key">jmxExport</span>: <span class="string"><span class="content">true</span></span>
+<span class="key">environments</span>:
+  <span class="key">development</span>:
+    <span class="key">dataSource</span>:
+      <span class="key">dbCreate</span>: <span class="string"><span class="content">create-drop</span></span>
+      <span class="key">url</span>: <span class="string"><span class="content">jdbc:h2:mem:devDb;LOCK_TIMEOUT=10000;DB_CLOSE_ON_EXIT=FALSE</span></span>
+  <span class="key">test</span>:
+    <span class="key">dataSource</span>:
+      <span class="key">dbCreate</span>: <span class="string"><span class="content">update</span></span>
+      <span class="key">url</span>: <span class="string"><span class="content">jdbc:h2:mem:testDb;LOCK_TIMEOUT=10000;DB_CLOSE_ON_EXIT=FALSE</span></span>
+  <span class="key">production</span>:
+    <span class="key">dataSource</span>:
+      <span class="key">dbCreate</span>: <span class="string"><span class="content">none</span></span>
+      <span class="key">url</span>: <span class="string"><span class="content">jdbc:h2:./prodDb;LOCK_TIMEOUT=10000;DB_CLOSE_ON_EXIT=FALSE</span></span>
+<span class="key">hibernate</span>:
+  <span class="key">cache</span>:
+    <span class="key">queries</span>: <span class="string"><span class="content">false</span></span>
+    <span class="key">use_second_level_cache</span>: <span class="string"><span class="content">false</span></span>
+    <span class="key">use_query_cache</span>: <span class="string"><span class="content">false</span></span>
+<span class="key">grails</span>:
+  <span class="key">codegen</span>:
+    <span class="key">defaultPackage</span>: <span class="string"><span class="content">com.grails.example</span></span>
+  <span class="key">profile</span>: <span class="string"><span class="content">web</span></span>
+  <span class="key">views</span>:
+    <span class="key">gsp</span>:
+      <span class="key">encoding</span>: <span class="string"><span class="content">UTF-8</span></span>
+      <span class="key">htmlcodec</span>: <span class="string"><span class="content">xml</span></span>
+      <span class="key">codecs</span>:
+        <span class="key">scriptlet</span>: <span class="string"><span class="content">html</span></span>
+<span class="key">spring</span>:
+  <span class="key">security</span>:
+    <span class="key">oauth2</span>:
+      <span class="key">client</span>:
+        <span class="key">registration</span>:
+          <span class="key">keycloak</span>:
+            <span class="key">provider</span>: <span class="string"><span class="content">keycloak</span></span>
+            <span class="key">client-id</span>: <span class="string"><span class="content">${KEYCLOAK_CLIENT_ID}</span></span>
+            <span class="key">client-secret</span>: <span class="string"><span class="content">${KEYCLOAK_CLIENT_SECRET}</span></span>
+            <span class="key">authorization-grant-type</span>: <span class="string"><span class="content">authorization_code</span></span>
+            <span class="key">redirect-uri</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">{baseUrl}/login/oauth2/code/{registrationId}</span><span class="delimiter">&quot;</span></span>
+            <span class="key">scope</span>:
+              - <span class="string"><span class="content">openid</span></span>
+              - <span class="string"><span class="content">profile</span></span>
+              - <span class="string"><span class="content">email</span></span>
+        <span class="key">provider</span>:
+          <span class="key">keycloak</span>:
+            <span class="key">issuer-uri</span>: <span class="string"><span class="content">${KEYCLOAK_ISSUER}</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>KEYCLOAK_ISSUER</code> is the realm issuer, <code><a href="http://localhost:8081/realms/example" class="bare">http://localhost:8081/realms/example</a></code>, not the Keycloak root URL.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_register_the_role_mapper">Register the role mapper</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><code>KeycloakAuthoritiesMapper</code> is not a Spring stereotype. Register it in <code>grails-app/conf/spring/resources.groovy</code> so <code>SecurityConfig</code> can inject it:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">com.grails.example.KeycloakAuthoritiesMapper</span>
+
+<span class="comment">// Place your Spring DSL code here</span>
+beans = {
+    keycloakAuthoritiesMapper(KeycloakAuthoritiesMapper)
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Place <code>SecurityConfig</code> and <code>KeycloakAuthoritiesMapper</code> in <code>src/main/groovy/com/grails/example/</code>. Place <code>SecurityTagLib</code> in <code>grails-app/taglib/com/grails/example/</code>. The next chapter walks through each class.</p>
+</div>
+</div>
+</div>
+
+
+<h1 id="understandingTheCode">4 Understand the Security Integration</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-keycloak/v8/guide/understandingTheCode.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>A protected request that has no session is redirected to Keycloak. After a successful login, Keycloak sends the browser to <code>/login/oauth2/code/keycloak</code> with an authorization code. Spring Security exchanges the code for an ID token. <code>KeycloakAuthoritiesMapper</code> turns client roles from that token into <code>ROLE_*</code> authorities. Controller annotations and GSP tags then read those authorities.</p>
+</div>
+<div class="sect1">
+<h2 id="_securityconfig">SecurityConfig</h2>
+<div class="sectionbody">
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> com.grails.example
+
+<span class="keyword">import</span> <span class="include">groovy.util.logging.Slf4j</span>
+
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Autowired</span>
+<span class="keyword">import</span> <span class="include">org.springframework.context.annotation.Bean</span>
+<span class="keyword">import</span> <span class="include">org.springframework.context.annotation.Configuration</span>
+<span class="keyword">import</span> <span class="include">org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity</span>
+<span class="keyword">import</span> <span class="include">org.springframework.security.config.annotation.web.builders.HttpSecurity</span>
+<span class="keyword">import</span> <span class="include">org.springframework.security.oauth2.client.oidc.web.logout.OidcClientInitiatedLogoutSuccessHandler</span>
+<span class="keyword">import</span> <span class="include">org.springframework.security.oauth2.client.registration.ClientRegistrationRepository</span>
+<span class="keyword">import</span> <span class="include">org.springframework.security.web.SecurityFilterChain</span>
+
+<span class="annotation">@Configuration</span>
+<span class="annotation">@Slf4j</span>
+<span class="annotation">@EnableMethodSecurity</span>
+<span class="type">class</span> <span class="class">SecurityConfig</span> {
+
+    <span class="annotation">@Autowired</span>
+    KeycloakAuthoritiesMapper keycloakAuthoritiesMapper
+
+    <span class="annotation">@Bean</span>
+    SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                            ClientRegistrationRepository clientRegistrationRepository) <span class="directive">throws</span> <span class="exception">Exception</span> {
+        <span class="keyword">def</span> oidcLogoutSuccessHandler = <span class="keyword">new</span> OidcClientInitiatedLogoutSuccessHandler(clientRegistrationRepository)
+
+        oidcLogoutSuccessHandler.setPostLogoutRedirectUri(<span class="string"><span class="delimiter">&quot;</span><span class="content">{baseUrl}</span><span class="delimiter">&quot;</span></span>)
+        http
+                .authorizeHttpRequests { auth -&gt;
+                    auth
+                            .requestMatchers(
+                                    <span class="string"><span class="delimiter">&quot;</span><span class="content">/</span><span class="delimiter">&quot;</span></span>,
+                                    <span class="string"><span class="delimiter">&quot;</span><span class="content">/home/**</span><span class="delimiter">&quot;</span></span>,
+                                    <span class="string"><span class="delimiter">&quot;</span><span class="content">/logout/**</span><span class="delimiter">&quot;</span></span>,
+                                    <span class="string"><span class="delimiter">&quot;</span><span class="content">/error</span><span class="delimiter">&quot;</span></span>,
+                                    <span class="string"><span class="delimiter">&quot;</span><span class="content">/assets/**</span><span class="delimiter">&quot;</span></span>,
+                                    <span class="string"><span class="delimiter">&quot;</span><span class="content">/images/**</span><span class="delimiter">&quot;</span></span>,
+                                    <span class="string"><span class="delimiter">&quot;</span><span class="content">/css/**</span><span class="delimiter">&quot;</span></span>,
+                                    <span class="string"><span class="delimiter">&quot;</span><span class="content">/js/**</span><span class="delimiter">&quot;</span></span>,
+                                    <span class="string"><span class="delimiter">&quot;</span><span class="content">/404</span><span class="delimiter">&quot;</span></span>,
+                                    <span class="string"><span class="delimiter">&quot;</span><span class="content">/403</span><span class="delimiter">&quot;</span></span>
+                            ).permitAll()
+                            .anyRequest().authenticated()
+                }
+                .oauth2Login { oauth -&gt;
+                    oauth.userInfoEndpoint { userInfo -&gt;
+                        userInfo.userAuthoritiesMapper(keycloakAuthoritiesMapper)
+                    }
+                }
+                .logout { logout -&gt;
+                    logout.logoutSuccessHandler(oidcLogoutSuccessHandler)
+                }
+        <span class="keyword">return</span> http.build()
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>/</code> and the static asset paths are public. Every other request requires an authenticated user. <code>oauth2Login</code> installs the Keycloak login and runs <code>KeycloakAuthoritiesMapper</code> when the ID token arrives.</p>
+</div>
+<div class="paragraph">
+<p>Logout uses <code>OidcClientInitiatedLogoutSuccessHandler</code> with <code>post_logout_redirect_uri</code> set to <code>{baseUrl}</code>. Locally that is <code><a href="http://localhost:8080" class="bare">http://localhost:8080</a></code>, which must be listed as a valid post-logout redirect URI on the client. <code>/logout/**</code> is <code>permitAll</code>, which does not turn off CSRF. The logout request still has to be a POST that carries Spring Security&#8217;s CSRF token.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_keycloakauthoritiesmapper">KeycloakAuthoritiesMapper</h2>
+<div class="sectionbody">
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> com.grails.example
+
+<span class="keyword">import</span> <span class="include">grails.core.GrailsApplication</span>
+<span class="keyword">import</span> <span class="include">jakarta.annotation.PostConstruct</span>
+<span class="keyword">import</span> <span class="include">org.springframework.beans.factory.annotation.Autowired</span>
+<span class="keyword">import</span> <span class="include">org.springframework.security.core.GrantedAuthority</span>
+<span class="keyword">import</span> <span class="include">org.springframework.security.core.authority.SimpleGrantedAuthority</span>
+<span class="keyword">import</span> <span class="include">org.springframework.security.core.authority.mapping.GrantedAuthoritiesMapper</span>
+<span class="keyword">import</span> <span class="include">org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority</span>
+
+<span class="type">class</span> <span class="class">KeycloakAuthoritiesMapper</span> <span class="directive">implements</span> GrantedAuthoritiesMapper {
+
+    <span class="annotation">@Autowired</span>
+    GrailsApplication grailsApplication
+
+    <span class="directive">private</span> <span class="predefined-type">String</span> clientId
+
+    <span class="annotation">@PostConstruct</span>
+    <span class="type">void</span> init() {
+        clientId = grailsApplication.config.getProperty(
+                <span class="string"><span class="delimiter">'</span><span class="content">spring.security.oauth2.client.registration.keycloak.client-id</span><span class="delimiter">'</span></span>
+        )
+    }
+
+    <span class="annotation">@Override</span>
+    <span class="predefined-type">Collection</span>&lt;? <span class="directive">extends</span> GrantedAuthority&gt; mapAuthorities(
+            <span class="predefined-type">Collection</span>&lt;? <span class="directive">extends</span> GrantedAuthority&gt; authorities) {
+
+        <span class="keyword">def</span> mappedAuthorities = <span class="keyword">new</span> <span class="predefined-type">HashSet</span>&lt;GrantedAuthority&gt;()
+
+        authorities.each { authority -&gt;
+            <span class="keyword">if</span> (authority <span class="keyword">instanceof</span> OidcUserAuthority) {
+                addKeycloakRoles(
+                        mappedAuthorities,
+                        authority.idToken.claims
+                )
+            } <span class="keyword">else</span> {
+                mappedAuthorities.add(authority)
+            }
+        }
+
+        <span class="keyword">return</span> mappedAuthorities
+    }
+
+    <span class="directive">private</span> <span class="type">void</span> addKeycloakRoles(
+            <span class="predefined-type">Set</span>&lt;GrantedAuthority&gt; authorities,
+            <span class="predefined-type">Map</span>&lt;<span class="predefined-type">String</span>, <span class="predefined-type">Object</span>&gt; claims) {
+
+        <span class="keyword">def</span> resourceAccess = claims[<span class="string"><span class="delimiter">'</span><span class="content">resource_access</span><span class="delimiter">'</span></span>]
+
+        <span class="keyword">if</span> (!(resourceAccess <span class="keyword">instanceof</span> <span class="predefined-type">Map</span>)) {
+            <span class="keyword">return</span>
+        }
+
+        <span class="keyword">def</span> clientAccess = resourceAccess[clientId]
+
+        <span class="keyword">if</span> (!(clientAccess <span class="keyword">instanceof</span> <span class="predefined-type">Map</span>)) {
+            <span class="keyword">return</span>
+        }
+
+        <span class="keyword">def</span> roles = clientAccess[<span class="string"><span class="delimiter">'</span><span class="content">roles</span><span class="delimiter">'</span></span>]
+
+        <span class="keyword">if</span> (!(roles <span class="keyword">instanceof</span> <span class="predefined-type">Collection</span>)) {
+            <span class="keyword">return</span>
+        }
+
+        roles.each { role -&gt;
+            authorities.add(
+                    <span class="keyword">new</span> SimpleGrantedAuthority(
+                            <span class="string"><span class="delimiter">&quot;</span><span class="content">ROLE_</span><span class="inline"><span class="inline-delimiter">${</span>role.toString().toUpperCase()<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>
+                    )
+            )
+        }
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>init()</code> reads <code>spring.security.oauth2.client.registration.keycloak.client-id</code>. For an ID token, <code>addKeycloakRoles</code> looks only at <code>resource_access.&lt;clientId&gt;.roles</code> and prefixes each role with <code>ROLE_</code>. A token that has realm roles under <code>realm_access</code> and no <code>resource_access</code> entry for <code>example-client</code> produces no <code>ROLE_*</code> authorities from this mapper.</p>
+</div>
+<div class="paragraph">
+<p><code>KeycloakAuthoritiesMapperSpec</code> covers that contract: <code>USER</code> and <code>ADMIN</code> become <code>ROLE_USER</code> and <code>ROLE_ADMIN</code>, a realm-only token contributes no <code>ROLE_*</code> authority, and a missing client id or a missing <code>resource_access</code> claim does the same.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_controllers">Controllers</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Home is public:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> com.grails.example
+
+<span class="type">class</span> <span class="class">HomeController</span> {
+
+    <span class="keyword">def</span> <span class="function">index</span>() {
+        render(<span class="key">view</span>: <span class="string"><span class="delimiter">'</span><span class="content">index</span><span class="delimiter">'</span></span>, <span class="key">model</span>: <span class="type">[]</span>)
+    }
+
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Account requires <code>USER</code>. Admin requires <code>ADMIN</code>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> com.grails.example
+
+<span class="keyword">import</span> <span class="include">org.springframework.security.access.prepost.PreAuthorize</span>
+
+<span class="annotation">@PreAuthorize</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">hasRole('USER')</span><span class="delimiter">&quot;</span></span>)
+<span class="type">class</span> <span class="class">AccountController</span> {
+    <span class="keyword">def</span> <span class="function">index</span>() {
+        render(<span class="key">view</span>: <span class="string"><span class="delimiter">'</span><span class="content">index</span><span class="delimiter">'</span></span>)
+    }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> com.grails.example
+
+<span class="keyword">import</span> <span class="include">org.springframework.security.access.prepost.PreAuthorize</span>;
+
+<span class="annotation">@PreAuthorize</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">hasRole('ADMIN')</span><span class="delimiter">&quot;</span></span>)
+<span class="type">class</span> <span class="class">AdminController</span> {
+
+    <span class="keyword">def</span> <span class="function">index</span>() {
+        render(<span class="key">view</span>: <span class="string"><span class="delimiter">'</span><span class="content">index</span><span class="delimiter">'</span></span>)
+    }
+
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Use <code>hasRole('USER')</code> and <code>hasRole('ADMIN')</code>, matching the controllers. With the default <code>ROLE_</code> prefix, those checks are <code>ROLE_USER</code> and <code>ROLE_ADMIN</code>, which is what the mapper stores.</p>
+</div>
+<div class="paragraph">
+<p>An administrator who only has the composite <code>ADMIN</code> role still receives <code>USER</code> in <code>resource_access.example-client.roles</code>, so both annotations pass. A user with only <code>USER</code> can open Account and is denied on Admin.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_security_tags">Security tags</h2>
+<div class="sectionbody">
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">package</span> com.grails.example
+
+<span class="keyword">import</span> <span class="include">org.springframework.security.authentication.AnonymousAuthenticationToken</span>
+<span class="keyword">import</span> <span class="include">org.springframework.security.core.context.SecurityContextHolder</span>
+<span class="keyword">import</span> <span class="include">org.springframework.security.oauth2.core.oidc.user.OidcUser</span>
+
+<span class="type">class</span> <span class="class">SecurityTagLib</span> {
+
+    <span class="directive">static</span> namespace = <span class="string"><span class="delimiter">&quot;</span><span class="content">app</span><span class="delimiter">&quot;</span></span>
+
+    <span class="keyword">def</span> loggedIn = {attrs, body -&gt;
+        <span class="keyword">def</span> authentication = SecurityContextHolder.context.authentication
+
+        <span class="keyword">if</span>(authentication &amp;&amp; authentication.authenticated &amp;&amp;
+           !(authentication <span class="keyword">instanceof</span> AnonymousAuthenticationToken)) {
+            out &lt;&lt; body()
+        }
+    }
+
+    <span class="keyword">def</span> hasRole = {attrs, body -&gt;
+        <span class="keyword">def</span> authentication = SecurityContextHolder.context.authentication
+
+        <span class="keyword">if</span>(!authentication || !authentication.authenticated || authentication <span class="keyword">instanceof</span> AnonymousAuthenticationToken) {
+            <span class="keyword">return</span>
+        }
+
+        <span class="keyword">def</span> role = attrs.role?.toString()?.toUpperCase()
+
+        <span class="keyword">if</span>(!role) {
+            <span class="keyword">return</span>
+        }
+
+        <span class="keyword">def</span> requiredAuthority = role.startsWith(<span class="string"><span class="delimiter">'</span><span class="content">ROLE_</span><span class="delimiter">'</span></span>) ? role:<span class="string"><span class="delimiter">&quot;</span><span class="content">ROLE_</span><span class="inline"><span class="inline-delimiter">${</span>role<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>
+
+        <span class="keyword">if</span>(authentication.authorities.any {
+            <span class="local-variable">it</span>.authority == requiredAuthority
+        }) {
+            out &lt;&lt; body()
+        }
+    }
+
+    <span class="keyword">def</span> ifNotLoggedIn = {attrs, body -&gt;
+        <span class="keyword">def</span> authentication = SecurityContextHolder.context.authentication
+
+        <span class="keyword">if</span>(!authentication || !authentication.authenticated || authentication <span class="keyword">instanceof</span> AnonymousAuthenticationToken) {
+            out &lt;&lt; body()
+        }
+    }
+
+    <span class="keyword">def</span> currentUser = {attrs, body -&gt;
+        <span class="keyword">def</span> authentication = SecurityContextHolder.context.authentication
+
+        <span class="keyword">if</span>(authentication &amp;&amp; authentication.authenticated &amp;&amp;
+           !(authentication <span class="keyword">instanceof</span> AnonymousAuthenticationToken)) {
+
+            <span class="keyword">def</span> principal = authentication.principal
+
+            <span class="keyword">if</span>(principal <span class="keyword">instanceof</span> OidcUser) {
+                <span class="keyword">def</span> user = [username : principal.preferredUsername,
+                            <span class="key">firstName</span>: principal.givenName,
+                            lastName : principal.familyName,
+                            email    : principal.email]
+
+                out &lt;&lt; body(user)
+            }
+        }
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The tags use the <code>app</code> namespace. <code>&lt;app:hasRole role="USER"&gt;</code> applies the same <code>ROLE_</code> prefix as <code>hasRole</code>. <code>&lt;app:currentUser&gt;</code> reads <code>given_name</code>, <code>family_name</code>, and <code>email</code> from the <code>OidcUser</code>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_logout_form">Logout form</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The header posts to Spring Security&#8217;s <code>/logout</code> endpoint and sends the CSRF token from the request. <code>useToken="true"</code> on <code>&lt;g:form&gt;</code> submits Grails' synchronizer token, which is a different value and does not satisfy the CSRF filter.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="html"><span class="tag">&lt;header</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">site-header</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;nav</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">site-nav</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+        <span class="tag">&lt;div</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">nav-left</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+            <span class="tag">&lt;g:link</span> <span class="attribute-name">controller</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">home</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">nav-link</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+                <span class="tag">&lt;g:message</span> <span class="attribute-name">code</span>=<span class="string"><span class="delimiter">'</span><span class="content">header.btn.home</span><span class="delimiter">'</span></span> <span class="tag">/&gt;</span>
+            <span class="tag">&lt;/g:link&gt;</span>
+            <span class="tag">&lt;app:hasRole</span> <span class="attribute-name">role</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">USER</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+                <span class="tag">&lt;g:link</span> <span class="attribute-name">controller</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">account</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">nav-link</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+                    <span class="tag">&lt;g:message</span> <span class="attribute-name">code</span>=<span class="string"><span class="delimiter">'</span><span class="content">header.btn.account</span><span class="delimiter">'</span></span> <span class="tag">/&gt;</span>
+                <span class="tag">&lt;/g:link&gt;</span>
+            <span class="tag">&lt;/app:hasRole&gt;</span>
+            <span class="tag">&lt;app:hasRole</span> <span class="attribute-name">role</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">ADMIN</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+                <span class="tag">&lt;g:link</span> <span class="attribute-name">controller</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">admin</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">nav-link</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+                    <span class="tag">&lt;g:message</span> <span class="attribute-name">code</span>=<span class="string"><span class="delimiter">'</span><span class="content">header.btn.admin</span><span class="delimiter">'</span></span> <span class="tag">/&gt;</span>
+                <span class="tag">&lt;/g:link&gt;</span>
+            <span class="tag">&lt;/app:hasRole&gt;</span>
+        <span class="tag">&lt;/div&gt;</span>
+        <span class="tag">&lt;div</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">nav-right</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+            <span class="tag">&lt;app:loggedIn&gt;</span>
+                <span class="tag">&lt;span</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">user-name</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+                    <span class="tag">&lt;app:currentUser&gt;</span>
+                        ${it.firstName} ${it.lastName}
+                    <span class="tag">&lt;/app:currentUser&gt;</span>
+                <span class="tag">&lt;/span&gt;</span>
+                <span class="tag">&lt;g:set</span> <span class="attribute-name">var</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">csrfToken</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">value</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${request.getAttribute('org.springframework.security.web.csrf.CsrfToken')}</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+                <span class="tag">&lt;g:if</span> <span class="attribute-name">test</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${csrfToken instanceof java.util.function.Supplier}</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+                    <span class="tag">&lt;g:set</span> <span class="attribute-name">var</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">csrfToken</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">value</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${csrfToken.get()}</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+                <span class="tag">&lt;/g:if&gt;</span>
+                <span class="tag">&lt;form</span> <span class="attribute-name">action</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${createLink(uri: '/logout')}</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">method</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">post</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">logout-form</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+                    <span class="tag">&lt;g:if</span> <span class="attribute-name">test</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${csrfToken}</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+                        <span class="tag">&lt;g:hiddenField</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${csrfToken.parameterName}</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">value</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${csrfToken.token}</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+                    <span class="tag">&lt;/g:if&gt;</span>
+                    <span class="tag">&lt;button</span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">submit</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">logout-button</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+                        <span class="tag">&lt;g:message</span> <span class="attribute-name">code</span>=<span class="string"><span class="delimiter">'</span><span class="content">header.btn.logout</span><span class="delimiter">'</span></span> <span class="tag">/&gt;</span>
+                    <span class="tag">&lt;/button&gt;</span>
+                <span class="tag">&lt;/form&gt;</span>
+            <span class="tag">&lt;/app:loggedIn&gt;</span>
+             <span class="tag">&lt;app:ifNotLoggedIn&gt;</span>
+                <span class="tag">&lt;g:link</span> <span class="attribute-name">controller</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">account</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">login-button</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+                    <span class="tag">&lt;g:message</span> <span class="attribute-name">code</span>=<span class="string"><span class="delimiter">'</span><span class="content">header.btn.login</span><span class="delimiter">'</span></span> <span class="tag">/&gt;</span>
+                <span class="tag">&lt;/g:link&gt;</span>
+            <span class="tag">&lt;/app:ifNotLoggedIn&gt;</span>
+        <span class="tag">&lt;/div&gt;</span>
+    <span class="tag">&lt;/nav&gt;</span>
+<span class="tag">&lt;/header&gt;</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Spring Security stores the token on the request under <code>org.springframework.security.web.csrf.CsrfToken</code>. On this Grails line that attribute may be a <code>Supplier</code>, so the page calls <code>get()</code> before writing <code>parameterName</code> and <code>token</code>. The parameter name is <code>_csrf</code>. The login link is a normal GET of <code>/account</code>, which sends an anonymous user to Keycloak.</p>
+</div>
+</div>
+</div>
+
+
+<h1 id="runningTheApp">5 Prove USER and ADMIN</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-keycloak/v8/guide/runningTheApp.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>Start Keycloak, export <code>KEYCLOAK_CLIENT_ID</code>, <code>KEYCLOAK_CLIENT_SECRET</code>, and <code>KEYCLOAK_ISSUER</code>, then start Grails from <code>complete/</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">cd complete
+./gradlew bootRun</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>On Windows run <code>gradlew.bat bootRun</code> from the same directory. The application listens on <a href="http://localhost:8080">http://localhost:8080</a>.</p>
+</div>
+<div class="sect1">
+<h2 id="_anonymous">Anonymous</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Open <code>/</code>. The home page renders and the header shows <strong>Login</strong>. <code>/account</code> and <code>/admin</code> redirect to Keycloak.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_user">USER</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Sign in as the user who has only the <code>USER</code> client role.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The header shows <strong>Account</strong> and <strong>Logout</strong>. It does not show <strong>Admin</strong>.</p>
+</li>
+<li>
+<p><code>/account</code> renders the account page.</p>
+</li>
+<li>
+<p><code>/admin</code> is denied. The mapping for <code>AuthorizationDeniedException</code> handles that response.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_admin">ADMIN</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Sign out, then sign in as the user who has the composite <code>ADMIN</code> client role.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The header shows <strong>Account</strong> and <strong>Admin</strong>.</p>
+</li>
+<li>
+<p><code>/account</code> and <code>/admin</code> both render.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>If <strong>Admin</strong> is missing for that user, evaluate the ID token again. <code>ADMIN</code> must be a composite that includes <code>USER</code>, and both roles must appear under <code>resource_access.example-client.roles</code>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_logout">Logout</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><strong>Logout</strong> posts to <code>/logout</code> with the <code>_csrf</code> token. Keycloak ends its session and redirects the browser to <code><a href="http://localhost:8080" class="bare">http://localhost:8080</a></code>. A missing post-logout redirect URI leaves the browser on a Keycloak error page instead.</p>
+</div>
+<div class="paragraph">
+<p>The unit and integration tests do not call Keycloak. <code>KeycloakAuthoritiesMapperSpec</code> checks the claim mapping, and the controller integration specs plant an authentication with <code>ROLE_USER</code> or <code>ROLE_ADMIN</code> to prove <code>@PreAuthorize</code>. Run them with:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">./gradlew test integrationTest</code></pre>
+</div>
+</div>
+</div>
+</div>
+
+
+<h1 id="helpWithGrails">6 Do You Need Help With Grails?</h1>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-static-website/edit/master/guides/grails-keycloak/v8/guide/helpWithGrails.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="sect1">
+<h2 id="_help_with_apache_grails">Help with Apache Grails</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Apache Grails is supported by an active community of contributors and the Apache Software Foundation. If you need help working through a guide, want to discuss the framework, or have run into something that looks like a bug, the channels below are the right place to start.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="https://slack.grails.org">Slack</a> - real-time conversation with the Apache Grails community.</p>
+</li>
+<li>
+<p><a href="https://lists.apache.org/list.html?dev@grails.apache.org">Developer mailing list</a> - design discussions and contributor coordination.</p>
+</li>
+<li>
+<p><a href="https://lists.apache.org/list.html?users@grails.apache.org">Users mailing list</a> - end-user questions and answers.</p>
+</li>
+<li>
+<p><a href="https://github.com/apache/grails-core/issues">Issue tracker on GitHub</a> - file a bug or feature request against the framework.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>For Grails plugins, see the matching project on <a href="https://github.com/apache?q=grails">the apache org</a> or the plugin&#8217;s own GitHub repository.</p>
+</div>
+</div>
+</div>
+
+</article></div>
+<footer>
+    <div class='content'>
+        <div class='apache-grails'>
+            <p>Apache Grails is supported by the Apache Software Foundation and the Grails community.</p>
+            <a href='https://apache.org'><img src='https://www.apache.org/img/asf_logo.png' width='200px' alt='Apache Software Foundation'/></a>
+            <p>Apache, Apache Grails, Grails, Groovy, and the ASF logo are either registered trademarks or trademarks of The Apache Software Foundation.</p>
+        </div>
+        <nav class='social-media-nav'>
+            <ul>
+                <li><a href='mailto:dev@grails.apache.org'><img src='https://grails.apache.org/images/email.svg' alt='Email Icon'/></a></li>
+                <li><a href='https://slack.grails.org'><img src='https://grails.apache.org/images/slack.svg' alt='Slack Icon'/></a></li>
+                <li><a href='https://www.youtube.com/@GrailsFramework'><img src='https://grails.apache.org/images/youtube.svg' alt='Youtube Icon'/></a></li>
+                <li><a href='https://bsky.app/profile/grails.apache.org'><img src='https://grails.apache.org/images/bsky.svg' alt='Bluesky Icon'/></a></li>
+                <li><a rel="me" href="https://fosstodon.org/@grails"><img src='https://grails.apache.org/images/mastodont.svg' alt='Mastodon Icon'/></a></li>
+                <li><a href='https://www.linkedin.com/showcase/official-grails/'><img src='https://grails.apache.org/images/linkedin.svg' alt='LinkedIn Icon'/></a></li>
+                <li><a href='https://github.com/apache/grails-core'><img src='https://grails.apache.org/images/github.svg' alt='GitHub Icon'/></a></li>
+                <li><a href='https://twitter.com/grailsframework'><img src='https://grails.apache.org/images/x-twitter.svg' alt='Twitter Icon'/></a></li>
+            </ul>
+        </nav>
+    </div>
+    <div class='footer-bottom'>
+        <p>&copy; 2005-2026 the Apache Grails project</p>
+        <p>Grails is Open Source:
+            <a href='https://www.apache.org/licenses/'>License</a>,
+            <a href='https://privacy.apache.org/policies/privacy-policy-public.html'>Privacy Policy</a>,
+            <a href='https://www.apache.org/foundation/sponsorship'>Sponsor Apache</a>,
+            <a href='https://www.apache.org/events/current-event'>Events</a>,
+            <a href='https://www.apache.org/security'>Security</a>,
+            <a href='https://www.apache.org/foundation/thanks.html'>Thanks</a>,
+            <a href='https://grails.apache.org/support-schedule.html'>Support Schedule</a>
+        </p>
+    </div>
+</footer>
+
+</body>
+</html>
