@@ -276,6 +276,8 @@ Companies deploy assistants like this [](https://kapa.ai) on docs via [website w
                             
                             <div class="toc-item" style="margin-left:20px"><a href="#gradlePlugins"><strong>5.6.3</strong><span>Grails plugins for Gradle</span></a></div>
                             
+                            <div class="toc-item" style="margin-left:20px"><a href="#gradleConfigurationCache"><strong>5.6.4</strong><span>Using the Gradle Configuration Cache</span></a></div>
+                            
                             <div class="toc-item" style="margin-left:0px"><a href="#profiles"><strong>6</strong><span>Application Profiles</span></a></div>
                             
                             <div class="toc-item" style="margin-left:10px"><a href="#standardProfiles"><strong>6.1</strong><span>Standard Profiles</span></a></div>
@@ -966,6 +968,14 @@ Notable new features are included below.</p>
 <div class="paragraph">
 <p>Grails 8 raises the standard build and runtime baseline to Java 21 and uses Gradle 9.8.0.
 The standard Grails BOM uses Groovy 5.1.3 and Spock 2.4-groovy-5.0.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_gradle_configuration_cache">Gradle Configuration Cache</h4>
+<div class="paragraph">
+<p>Starting with Grails 8.0, the Grails Gradle plugins support the <a href="https://docs.gradle.org/9.8.0/userguide/configuration_cache.html">Gradle configuration cache</a>, and new applications and plugins turn it on in their <code>gradle.properties</code>.
+A build that runs the same tasks again skips configuring the project, so repeated runs of tasks such as <code>bootRun</code> and <code>test</code> start faster.
+See <a href="commandLine.html#gradleConfigurationCache">Using the Gradle Configuration Cache</a> for how to enable it in an existing project and what it asks of build scripts.</p>
 </div>
 </div>
 <div class="sect3">
@@ -2749,7 +2759,7 @@ For larger projects, it may be beneficial to adjust memory settings, based on av
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">plugins {
     <span class="comment">// the application's other plugins</span>
-    id <span class="string"><span class="delimiter">'</span><span class="content">com.skillsjars.gradle-plugin</span><span class="delimiter">'</span></span> version <span class="string"><span class="delimiter">'</span><span class="content">0.1.4</span><span class="delimiter">'</span></span>
+    id <span class="string"><span class="delimiter">'</span><span class="content">com.skillsjars.gradle-plugin</span><span class="delimiter">'</span></span> version <span class="string"><span class="delimiter">'</span><span class="content">0.2.0</span><span class="delimiter">'</span></span>
 }
 
 dependencies {
@@ -2763,7 +2773,7 @@ skillsjars {
 </div>
 </div>
 <div class="paragraph">
-<p>Use version 0.1.4 or later of the SkillsJars Gradle plugin. Earlier versions have issues that prevent using it with third-party skills such as the Grails skills.</p>
+<p>Use version 0.2.0 or later of the SkillsJars Gradle plugin. Earlier versions have issues that prevent using it with third-party skills such as the Grails skills, and do not support the <a href="commandLine.html#gradleConfigurationCache">Gradle configuration cache</a>, which Grails applications enable.</p>
 </div>
 <div class="paragraph">
 <p>Then extract them:</p>
@@ -9862,6 +9872,29 @@ for template renders:</p>
 <div class="paragraph">
 <p>Objects passed with <code>bean</code> or <code>collection</code> are not part of <code>model</code>. See
 <a href="theWebLayer.html#definingInterceptors">Defining Interceptors</a>.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_85_gradle_configuration_cache">85. Gradle Configuration Cache</h4>
+<div class="paragraph">
+<p>The Grails Gradle plugins of Grails 8.0, and the Asset Pipeline and Grails Publish plugins in the versions the Grails 8.0 BOM manages, support the <a href="https://docs.gradle.org/9.8.0/userguide/configuration_cache.html">Gradle configuration cache</a>.
+Applications and plugins created with Grails 8.0 enable it in <code>gradle.properties</code>.</p>
+</div>
+<div class="paragraph">
+<p>An application or plugin upgraded to Grails 8.0 can enable it by adding the same property, once it uses the Grails 8.0 Gradle plugins and BOM:</p>
+</div>
+<div class="listingblock">
+<div class="title">gradle.properties</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="properties">org.gradle.configuration-cache=true</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>When upgrading from an earlier Grails 8 milestone or release candidate, update the Grails Gradle plugins and BOM before enabling the configuration cache.</p>
+</div>
+<div class="paragraph">
+<p>With the configuration cache, task actions such as <code>doFirst</code> and <code>doLast</code> closures may not use <code>project</code>, other tasks or build script properties while they run, and Gradle fails the build when a build script or another Gradle plugin does.
+See <a href="commandLine.html#gradleConfigurationCache">Using the Gradle Configuration Cache</a> for how to adapt build scripts and what to do about plugins that do not support it.</p>
 </div>
 </div>
 </div>
@@ -19262,6 +19295,108 @@ apply <span class="key">plugin</span>: <span class="string"><span class="delimit
 <p><code>org.apache.grails.gradle.grails-publish-profile</code> - Adds support for publishing Grails Profiles</p>
 </li>
 </ul>
+</div>
+
+
+<h2 id="gradleConfigurationCache">5.6.4 Using the Gradle Configuration Cache</h2>
+
+<div class='contribute-btn'>
+    <button type='button' class='btn btn-default' onclick='window.location.href="https://github.com/apache/grails-core/edit/8.0.x/grails-doc/src/en/guide/commandLine/gradleBuild/gradleConfigurationCache.adoc"'>
+        <i class='fa fa-pencil-square-o'></i> Improve this doc
+    </button>
+</div>
+
+
+<div class="paragraph">
+<p>The <a href="https://docs.gradle.org/9.8.0/userguide/configuration_cache.html">Gradle configuration cache</a> stores the result of the configuration phase - the task graph and everything the tasks need to run - and reuses it when the same tasks are requested again.
+A build that reuses an entry skips configuring the projects altogether and runs more of its tasks in parallel, which makes repeated builds such as <code>./gradlew bootRun</code> or <code>./gradlew test</code> start noticeably faster.</p>
+</div>
+<div class="paragraph">
+<p>The Grails Gradle plugins support the configuration cache, and so do the Asset Pipeline and Grails Publish plugins in the versions the Grails Gradle BOM manages.
+Applications and plugins created with Grails 8.0 or later turn it on in their <code>gradle.properties</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">gradle.properties</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="properties">org.gradle.configuration-cache=true</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A project created with an earlier version can use it once it is upgraded to Grails 8.0, by adding the same line to its <code>gradle.properties</code>, as <a href="upgrading.html#upgrading80x">Upgrading from Grails 7 to Grails 8</a> describes. When upgrading from an earlier Grails 8 milestone or release candidate, update the Grails Gradle plugins and BOM before enabling the configuration cache.
+To run a single build without it, pass <code>--no-configuration-cache</code>.</p>
+</div>
+<div class="paragraph">
+<p>The first build stores an entry and the next build with the same tasks and inputs reuses it:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="console">$ ./gradlew bootJar
+...
+Configuration cache entry stored.
+
+$ ./gradlew bootJar
+Reusing configuration cache.
+...
+Configuration cache entry reused.</code></pre>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_writing_compatible_build_logic">Writing Compatible Build Logic</h4>
+<div class="paragraph">
+<p>With the configuration cache, the actions of a task run without access to the build model: a <code>doFirst</code> or <code>doLast</code> closure, an <code>onlyIf</code> condition or any other closure that runs while the task executes may not use <code>project</code>, other tasks, configurations or properties of the build script.
+Read what the task needs while it is configured, into a local variable or a provider, and use only that when it runs:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">tasks.register(<span class="string"><span class="delimiter">'</span><span class="content">printVersion</span><span class="delimiter">'</span></span>) {
+    <span class="predefined-type">String</span> version = project.version.toString() <i class="conum" data-value="1"></i><b>(1)</b>
+    doLast {
+        println <span class="string"><span class="delimiter">&quot;</span><span class="content">Version </span><span class="inline"><span class="inline-delimiter">${</span>version<span class="inline-delimiter">}</span></span><span class="delimiter">&quot;</span></span>            <i class="conum" data-value="2"></i><b>(2)</b>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Read while the task is configured</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Only the value is used when the task runs</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Use the services Gradle injects instead of the methods of <code>project</code> to copy, delete or execute while a task runs, for example <code>FileSystemOperations</code> and <code>ExecOperations</code>.
+Gradle reports anything that cannot be stored, together with the line of the build script that caused it, and fails the build; see the <a href="https://docs.gradle.org/9.8.0/userguide/configuration_cache_requirements.html">configuration cache requirements</a> for the complete list.</p>
+</div>
+<div class="paragraph">
+<p>Grails discovers the application&#8217;s main class in the <code>findMainClass</code> task, after compilation.
+A configuration-time read of the <code>springBoot.mainClass</code> or <code>mainClassName</code> provider may return no value on a clean build, or the class found by an earlier build.
+A custom task that needs the discovered class must depend on <code>findMainClass</code> and read the provider during execution, when it returns the class found by the current build.
+Capture the provider while configuring the task rather than its current value.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_plugins_without_configuration_cache_support">Plugins Without Configuration Cache Support</h4>
+<div class="paragraph">
+<p>A third-party Gradle plugin that does not support the configuration cache makes the build fail as soon as one of its tasks is part of it.
+Mark such tasks as not compatible to have Gradle run those builds without the configuration cache instead of failing them, as applications created with the <code>asciidoctor</code> feature do for the Asciidoctor Gradle plugin:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">tasks.withType(org.asciidoctor.gradle.jvm.AsciidoctorTask).configureEach {
+    notCompatibleWithConfigurationCache(<span class="string"><span class="delimiter">'</span><span class="content">The Asciidoctor Gradle plugin does not support the configuration cache</span><span class="delimiter">'</span></span>)
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If a plugin cannot be dealt with that way, set <code>org.gradle.configuration-cache=false</code> in <code>gradle.properties</code> until it supports the configuration cache.</p>
+</div>
 </div>
 
 
