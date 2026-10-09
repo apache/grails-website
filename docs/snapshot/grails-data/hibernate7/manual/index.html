@@ -4987,7 +4987,77 @@ def peopleWithShortFirstNames = c.list {
 </div>
 </div>
 <div class="sect3">
-<h4 id="_setting_properties_in_the_criteria_instance">30.5.6. Setting Properties in the Criteria Instance</h4>
+<h4 id="_sql_projections">30.5.6. SQL Projections</h4>
+<div class="paragraph">
+<p>The <code>projections</code> node also accepts native SQL, for a value that only SQL computes, such as a date truncated to the day.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="java"><span class="comment">// Box is a domain class...</span>
+<span class="type">class</span> <span class="class">Box</span> {
+    <span class="type">int</span> width
+    <span class="type">int</span> height
+    <span class="predefined-type">Date</span> packedAt
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="java">def c = <span class="predefined-type">Box</span>.createCriteria()
+
+def results = c.list {
+    projections {
+        sqlProjection <span class="string"><span class="delimiter">'</span><span class="content">(2 * (width + height)) as perimeter, (width * height) as area</span><span class="delimiter">'</span></span>, [<span class="string"><span class="delimiter">'</span><span class="content">perimeter</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">area</span><span class="delimiter">'</span></span>], [INTEGER, INTEGER]
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The first argument to the <code>sqlProjection</code> method is the SQL which defines the projected values, separated by commas, each one optionally followed by <code>as</code> and its column alias. The second argument is the list of column aliases of the projected values, and the third is the list of their types. A type is a constant of <code>org.hibernate.type.StandardBasicTypes</code>, such as <code>INTEGER</code>, <code>LONG</code>, <code>STRING</code> or <code>TIMESTAMP</code>, which the DSL provides under the same name, an <code>org.hibernate.type.Type</code> or a Java class.</p>
+</div>
+<div class="paragraph">
+<p>The query above returns the perimeter and the area of each box, in a list each: <code>[[18, 14], [20, 16], [22, 18], [26, 36]]</code>. If only one value is projected, the alias and the type do not need to be in a list:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="java">def totalArea = <span class="predefined-type">Box</span>.createCriteria().get {
+    projections {
+        sqlProjection <span class="string"><span class="delimiter">'</span><span class="content">sum(width * height) as totalArea</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">totalArea</span><span class="delimiter">'</span></span>, INTEGER
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The <code>sqlGroupProjection</code> method groups the results by a SQL group by clause, a single expression or a comma separated list of them, given as its second argument:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="java">def results = <span class="predefined-type">Box</span>.createCriteria().list {
+    projections {
+        sqlGroupProjection <span class="string"><span class="delimiter">'</span><span class="content">width, sum(height) as combinedHeightsForThisWidth</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">width</span><span class="delimiter">'</span></span>, [<span class="string"><span class="delimiter">'</span><span class="content">width</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">combinedHeightsForThisWidth</span><span class="delimiter">'</span></span>], [INTEGER, INTEGER]
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The query above returns the combined heights of the boxes of each width: <code>[[2, 24], [4, 9]]</code>. A SQL projection combines with the other projections, such as <code>rowCount()</code>, and the results can be ordered by its column alias with <code>order</code>. The group by clause may also name a column alias, which stands for the SQL that it names. A restriction such as <code>gt('height', 5)</code> always restricts the property, even if a column alias has the same name.</p>
+</div>
+<div class="paragraph">
+<p>As in a SQL restriction, <code>{alias}</code> in the SQL stands for the table alias of the queried class, so a column that a joined table also has is not ambiguous:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="java">def boxesPerDay = <span class="predefined-type">Box</span>.createCriteria().list {
+    projections {
+        sqlGroupProjection <span class="string"><span class="delimiter">&quot;</span><span class="content">date_trunc('day', {alias}.packed_at) as day</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">date_trunc('day', {alias}.packed_at)</span><span class="delimiter">&quot;</span></span>, [<span class="string"><span class="delimiter">'</span><span class="content">day</span><span class="delimiter">'</span></span>], [TIMESTAMP]
+        rowCount()
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_setting_properties_in_the_criteria_instance">30.5.7. Setting Properties in the Criteria Instance</h4>
 <div class="paragraph">
 <p>The builder allows setting properties that control how the query is executed.</p>
 </div>
@@ -5010,7 +5080,7 @@ def results = c.list {
 </div>
 </div>
 <div class="sect3">
-<h4 id="_advanced_hibernate_7_features">30.5.7. Advanced Hibernate 7 Features</h4>
+<h4 id="_advanced_hibernate_7_features">30.5.8. Advanced Hibernate 7 Features</h4>
 <div class="paragraph">
 <p>The Hibernate 7 criteria builder supports several advanced features:</p>
 </div>
@@ -5032,7 +5102,7 @@ def results = c.list {
 </div>
 </div>
 <div class="sect3">
-<h4 id="_using_scrollable_results">30.5.8. Using Scrollable Results</h4>
+<h4 id="_using_scrollable_results">30.5.9. Using Scrollable Results</h4>
 <div class="paragraph">
 <p>You can use Hibernate&#8217;s <a href="https://docs.hibernate.org/orm/7.0/javadocs/org/hibernate/ScrollableResults.html">ScrollableResults</a> feature by calling the scroll method:</p>
 </div>
@@ -5065,7 +5135,7 @@ def results = c.list {
 </div>
 </div>
 <div class="sect3">
-<h4 id="_querying_with_eager_fetching">30.5.9. Querying with Eager Fetching</h4>
+<h4 id="_querying_with_eager_fetching">30.5.10. Querying with Eager Fetching</h4>
 <div class="paragraph">
 <p>In the section on eager and lazy fetching we discussed how to declaratively specify fetching to avoid the N+1 SELECT problem. However, this can also be achieved using a criteria query:</p>
 </div>
@@ -5126,7 +5196,7 @@ def results = Airport.withCriteria {
 </div>
 </div>
 <div class="sect3">
-<h4 id="_method_reference">30.5.10. Method Reference</h4>
+<h4 id="_method_reference">30.5.11. Method Reference</h4>
 <div class="paragraph">
 <p>If you invoke the builder with no method name such as:</p>
 </div>
@@ -5179,7 +5249,7 @@ def results = Airport.withCriteria {
 </table>
 </div>
 <div class="sect3">
-<h4 id="_combining_criteria">30.5.11. Combining Criteria</h4>
+<h4 id="_combining_criteria">30.5.12. Combining Criteria</h4>
 <div class="paragraph">
 <p>You can combine multiple criteria closures in the following way:</p>
 </div>
