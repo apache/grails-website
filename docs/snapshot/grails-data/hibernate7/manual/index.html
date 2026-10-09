@@ -528,7 +528,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <div id="header">
 <h1>GORM for Hibernate 7</h1>
 <div class="details">
-<span id="revnumber">version 8.0.1-SNAPSHOT</span>
+<span id="revnumber">version 8.1.0-SNAPSHOT</span>
 </div>
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
@@ -1199,12 +1199,12 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <h2 id="gettingStarted">5. Getting Started</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>To use GORM 8.0.1-SNAPSHOT for Hibernate in Grails 8 you can specify the following configuration in <code>build.gradle</code>:</p>
+<p>To use GORM 8.1.0-SNAPSHOT for Hibernate in Grails 8 you can specify the following configuration in <code>build.gradle</code>:</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
-    implementation "org.grails.plugins:hibernate7:8.0.1-SNAPSHOT"
+    implementation "org.grails.plugins:hibernate7:8.1.0-SNAPSHOT"
     runtimeOnly 'org.hibernate:hibernate-ehcache:7.0.Final', {
     // exclude javax variant of hibernate-core
     exclude group: 'org.hibernate', module: 'hibernate-core'
@@ -1220,7 +1220,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="properties">gormVersion=8.0.1-SNAPSHOT</code></pre>
+<pre class="CodeRay highlight"><code data-lang="properties">gormVersion=8.1.0-SNAPSHOT</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1233,7 +1233,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
     resolutionStrategy.eachDependency { DependencyResolveDetails details ->
         if( details.requested.group == 'org.grails' &&
             details.requested.name.startsWith('grails-datastore')) {
-            details.useVersion("8.0.1-SNAPSHOT")
+            details.useVersion("8.1.0-SNAPSHOT")
         }
     }
 }
@@ -1457,7 +1457,7 @@ dependencies {
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">implementation 'org.grails:gorm-hibernate7-spring-boot:8.0.1-SNAPSHOT'</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">implementation 'org.grails:gorm-hibernate7-spring-boot:8.1.0-SNAPSHOT'</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1576,7 +1576,7 @@ If your GORM entities are in a different package, specify the package name as th
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">implementation platform("org.apache.grails:grails-bom:8.0.1-SNAPSHOT")
+<pre class="CodeRay highlight"><code data-lang="groovy">implementation platform("org.apache.grails:grails-bom:8.1.0-SNAPSHOT")
 implementation "org.apache.grails.data:grails-data-hibernate7-core"
 runtimeOnly "com.h2database"
 runtimeOnly "org.apache.tomcat:tomcat-jdbc"
@@ -4987,77 +4987,7 @@ def peopleWithShortFirstNames = c.list {
 </div>
 </div>
 <div class="sect3">
-<h4 id="_sql_projections">30.5.6. SQL Projections</h4>
-<div class="paragraph">
-<p>The <code>projections</code> node also accepts native SQL, for a value that only SQL computes, such as a date truncated to the day.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="comment">// Box is a domain class...</span>
-<span class="type">class</span> <span class="class">Box</span> {
-    <span class="type">int</span> width
-    <span class="type">int</span> height
-    <span class="predefined-type">Date</span> packedAt
-}</code></pre>
-</div>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="java">def c = <span class="predefined-type">Box</span>.createCriteria()
-
-def results = c.list {
-    projections {
-        sqlProjection <span class="string"><span class="delimiter">'</span><span class="content">(2 * (width + height)) as perimeter, (width * height) as area</span><span class="delimiter">'</span></span>, [<span class="string"><span class="delimiter">'</span><span class="content">perimeter</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">area</span><span class="delimiter">'</span></span>], [INTEGER, INTEGER]
-    }
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The first argument to the <code>sqlProjection</code> method is the SQL which defines the projected values, separated by commas, each one optionally followed by <code>as</code> and its column alias. The second argument is the list of column aliases of the projected values, and the third is the list of their types. A type is a constant of <code>org.hibernate.type.StandardBasicTypes</code>, such as <code>INTEGER</code>, <code>LONG</code>, <code>STRING</code> or <code>TIMESTAMP</code>, which the DSL provides under the same name, an <code>org.hibernate.type.Type</code> or a Java class.</p>
-</div>
-<div class="paragraph">
-<p>The query above returns the perimeter and the area of each box, in a list each: <code>[[18, 14], [20, 16], [22, 18], [26, 36]]</code>. If only one value is projected, the alias and the type do not need to be in a list:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="java">def totalArea = <span class="predefined-type">Box</span>.createCriteria().get {
-    projections {
-        sqlProjection <span class="string"><span class="delimiter">'</span><span class="content">sum(width * height) as totalArea</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">totalArea</span><span class="delimiter">'</span></span>, INTEGER
-    }
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The <code>sqlGroupProjection</code> method groups the results by a SQL group by clause, a single expression or a comma separated list of them, given as its second argument:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="java">def results = <span class="predefined-type">Box</span>.createCriteria().list {
-    projections {
-        sqlGroupProjection <span class="string"><span class="delimiter">'</span><span class="content">width, sum(height) as combinedHeightsForThisWidth</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">width</span><span class="delimiter">'</span></span>, [<span class="string"><span class="delimiter">'</span><span class="content">width</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">combinedHeightsForThisWidth</span><span class="delimiter">'</span></span>], [INTEGER, INTEGER]
-    }
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The query above returns the combined heights of the boxes of each width: <code>[[2, 24], [4, 9]]</code>. A SQL projection combines with the other projections, such as <code>rowCount()</code>, and the results can be ordered by its column alias with <code>order</code>. The group by clause may also name a column alias, which stands for the SQL that it names. A restriction such as <code>gt('height', 5)</code> always restricts the property, even if a column alias has the same name.</p>
-</div>
-<div class="paragraph">
-<p>As in a SQL restriction, <code>{alias}</code> in the SQL stands for the table alias of the queried class, so a column that a joined table also has is not ambiguous:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="java">def boxesPerDay = <span class="predefined-type">Box</span>.createCriteria().list {
-    projections {
-        sqlGroupProjection <span class="string"><span class="delimiter">&quot;</span><span class="content">date_trunc('day', {alias}.packed_at) as day</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">date_trunc('day', {alias}.packed_at)</span><span class="delimiter">&quot;</span></span>, [<span class="string"><span class="delimiter">'</span><span class="content">day</span><span class="delimiter">'</span></span>], [TIMESTAMP]
-        rowCount()
-    }
-}</code></pre>
-</div>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_setting_properties_in_the_criteria_instance">30.5.7. Setting Properties in the Criteria Instance</h4>
+<h4 id="_setting_properties_in_the_criteria_instance">30.5.6. Setting Properties in the Criteria Instance</h4>
 <div class="paragraph">
 <p>The builder allows setting properties that control how the query is executed.</p>
 </div>
@@ -5080,7 +5010,7 @@ def results = c.list {
 </div>
 </div>
 <div class="sect3">
-<h4 id="_advanced_hibernate_7_features">30.5.8. Advanced Hibernate 7 Features</h4>
+<h4 id="_advanced_hibernate_7_features">30.5.7. Advanced Hibernate 7 Features</h4>
 <div class="paragraph">
 <p>The Hibernate 7 criteria builder supports several advanced features:</p>
 </div>
@@ -5102,7 +5032,7 @@ def results = c.list {
 </div>
 </div>
 <div class="sect3">
-<h4 id="_using_scrollable_results">30.5.9. Using Scrollable Results</h4>
+<h4 id="_using_scrollable_results">30.5.8. Using Scrollable Results</h4>
 <div class="paragraph">
 <p>You can use Hibernate&#8217;s <a href="https://docs.hibernate.org/orm/7.0/javadocs/org/hibernate/ScrollableResults.html">ScrollableResults</a> feature by calling the scroll method:</p>
 </div>
@@ -5135,7 +5065,7 @@ def results = c.list {
 </div>
 </div>
 <div class="sect3">
-<h4 id="_querying_with_eager_fetching">30.5.10. Querying with Eager Fetching</h4>
+<h4 id="_querying_with_eager_fetching">30.5.9. Querying with Eager Fetching</h4>
 <div class="paragraph">
 <p>In the section on eager and lazy fetching we discussed how to declaratively specify fetching to avoid the N+1 SELECT problem. However, this can also be achieved using a criteria query:</p>
 </div>
@@ -5196,7 +5126,7 @@ def results = Airport.withCriteria {
 </div>
 </div>
 <div class="sect3">
-<h4 id="_method_reference">30.5.11. Method Reference</h4>
+<h4 id="_method_reference">30.5.10. Method Reference</h4>
 <div class="paragraph">
 <p>If you invoke the builder with no method name such as:</p>
 </div>
@@ -5249,7 +5179,7 @@ def results = Airport.withCriteria {
 </table>
 </div>
 <div class="sect3">
-<h4 id="_combining_criteria">30.5.12. Combining Criteria</h4>
+<h4 id="_combining_criteria">30.5.11. Combining Criteria</h4>
 <div class="paragraph">
 <p>You can combine multiple criteria closures in the following way:</p>
 </div>
@@ -9251,7 +9181,7 @@ RxJava 2.x support is planned for a future release
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.grails:grails-datastore-gorm-rx:8.0.1-SNAPSHOT"</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.grails:grails-datastore-gorm-rx:8.1.0-SNAPSHOT"</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -9756,7 +9686,7 @@ SessionFactory sessionFactory = hibernateDatastore
 <i class="fa icon-tip" title="Tip"></i>
 </td>
 <td class="content">
-If you are interested in more examples, an <a href="https://github.com/apache/grails-core/blob/8.0.1-SNAPSHOT/grails-data-mongodb/core/src/main/groovy/org/grails/datastore/mapping/mongo/connections/MongoConnectionSources.groovy">implementation exists for MongoDB</a> that reads connection sources from a MongoDB collection. However, it doesn&#8217;t implement support for provision MongoDB instances at runtime.
+If you are interested in more examples, an <a href="https://github.com/apache/grails-core/blob/8.1.0-SNAPSHOT/grails-data-mongodb/core/src/main/groovy/org/grails/datastore/mapping/mongo/connections/MongoConnectionSources.groovy">implementation exists for MongoDB</a> that reads connection sources from a MongoDB collection. However, it doesn&#8217;t implement support for provision MongoDB instances at runtime.
 </td>
 </tr>
 </table>
@@ -10030,7 +9960,7 @@ sessionFactory.openSession()</code></pre>
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.grails:grails-datastore-web:8.0.1-SNAPSHOT"</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.grails:grails-datastore-web:8.1.0-SNAPSHOT"</code></pre>
 </div>
 </div>
 </div>
@@ -10836,13 +10766,13 @@ JUnit doesn&#8217;t have anything like Spock&#8217;s <code>AutoCleanup</code> so
 <pre class="CodeRay highlight"><code data-lang="groovy">buildscript {
    dependencies {
       ...
-      classpath 'org.apache.grails:grails-data-hibernate7-dbmigration:8.0.1-SNAPSHOT'
+      classpath 'org.apache.grails:grails-data-hibernate7-dbmigration:8.1.0-SNAPSHOT'
    }
 }
 
 dependencies {
    ...
-     implementation 'org.apache.grails:grails-data-hibernate7-dbmigration:8.0.1-SNAPSHOT'
+     implementation 'org.apache.grails:grails-data-hibernate7-dbmigration:8.1.0-SNAPSHOT'
 }</code></pre>
 </div>
 </div>
@@ -11201,6 +11131,9 @@ grails.plugin.databasemigration.changelogFileName = changelog.groovy</code></pre
 </div>
 </div>
 <div class="paragraph">
+<p>The update on start reports its progress as a startup task, so the Grails startup progress page, signed in with the address the application logs as it starts, shows how many change sets are left to run and the one being run, and the startup report lists how many ran and how long the update took. Counting the change sets takes one more read of the change log and the database, which is only done when something records the application&#8217;s start, such as the startup progress page or Spring Boot Actuator&#8217;s <code>startup</code> endpoint. See <em>Watching the Application Start</em> in the Grails user guide.</p>
+</div>
+<div class="paragraph">
 <p>You can be notified when migration are run (for example to do some work before and/or after the migrations execute) by registering a "callback" class as a Spring bean. The class can have any name and package and doesn&#8217;t have to implement any interface since its methods will be called using Groovy duck-typing.</p>
 </div>
 <div class="paragraph">
@@ -11212,7 +11145,7 @@ grails.plugin.databasemigration.changelogFileName = changelog.groovy</code></pre
 <p><code>beforeStartMigration</code> will be called (if it exists) for each datasource before any migrations have run; the method will be passed a single argument, the Liquibase <code>Database</code> for that datasource</p>
 </li>
 <li>
-<p><code>onStartMigration</code> will be called (if it exists) for each migration script; the method will be passed three arguments, the Liquibase <code>Database</code>, the <code>Liquibase</code> instance, and the changelog file name</p>
+<p><code>onStartMigration</code> will be called (if it exists) for each migration script; the method will be passed three arguments, the Liquibase <code>Database</code>, the <code>Liquibase</code> instance, and the changelog file name. A change listener the callback sets on the <code>Liquibase</code> instance is added to the listeners already set, so the one that reports the update&#8217;s progress and a listener class configured for Liquibase with <code>liquibase.command.changeExecListenerClass</code> still hear of each change set.</p>
 </li>
 <li>
 <p><code>afterMigrations</code> will be called (if it exists) for each datasource after all migrations have run; the method will be passed a single argument, the Liquibase <code>Database</code> for that datasource</p>
@@ -13987,7 +13920,7 @@ For the <code>dataSource</code> parameter, if the data source is configured as <
 </div>
 <div id="footer">
 <div id="footer-text">
-Version 8.0.1-SNAPSHOT<br>
+Version 8.1.0-SNAPSHOT<br>
 </div>
 </div>
 </body>
