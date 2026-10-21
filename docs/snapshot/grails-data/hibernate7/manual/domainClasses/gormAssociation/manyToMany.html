@@ -485,6 +485,55 @@ class Author {
 <div class="paragraph">
 <p>GORM creates a join table <code>author_books</code> with foreign-key columns for both sides.</p>
 </div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+One side must declare <code>belongsTo</code>. If neither side does, neither side writes the join table, so the relationship is not stored. GORM logs a warning at startup for such a mapping.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>A many-to-many with a <code>Map</code> on either side needs no <code>belongsTo</code>, because a <code>Map</code> side always writes its join table, so GORM logs no warning for it.</p>
+</div>
+<div class="paragraph">
+<p>The warning also applies to a many-to-many between a class and itself, where both properties are on the same class. Without <code>belongsTo</code>, the relationship is not stored and GORM logs the same warning at startup:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class User {
+    String name
+    static hasMany   = [following: User, followers: User]
+    static mappedBy  = [following: 'followers', followers: 'following']
+    static belongsTo = User             <i class="conum" data-value="1"></i><b>(1)</b>
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Without this line, <code>user.addToFollowing(other); user.save()</code> writes nothing, and both <code>following</code> and <code>followers</code> read back empty.</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Adding <code>belongsTo</code> to an existing mapping of this kind changes the columns of both join tables. In a schema that Hibernate 7 created they hold no rows, because nothing was stored without it, so drop them and let GORM recreate them, or add a migration. An application that moves from Hibernate 5 arrives with rows in both tables, because Hibernate 5 stores this shape without <code>belongsTo</code>: migrate those tables rather than drop them. <code>dbCreate: 'update'</code> does not remove the old columns, and the first save then fails.</p>
+</div>
+<div class="paragraph">
+<p>With <code>belongsTo</code>, each of the two properties writes its own join table, so use <code>addToFollowing</code> and <code>removeFromFollowing</code>, which update both sides. Assigning <code>user.following = [other] as Set</code> stores the row for <code>following</code> only. Before deleting a <code>User</code>, remove it from both sides:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">user.following.toList().each { user.removeFromFollowing(it) }
+user.followers.toList().each { it.removeFromFollowing(user) }
+user.delete()</code></pre>
+</div>
+</div>
 </div>
 <div class="sect2">
 <h3 id="_saving_a_many_to_many">Saving a Many-to-Many</h3>
@@ -549,7 +598,7 @@ book.authors.each { println it.name }</code></pre>
 </div>
 <div id="footer">
 <div id="footer-text">
-Version 10.0.0-SNAPSHOT<br>
+Version 9.0.0-SNAPSHOT<br>
 </div>
 </div>
 </body>

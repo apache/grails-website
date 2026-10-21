@@ -551,6 +551,21 @@ Book.find(eq("title", "The Stand")).first()</code></pre>
 </div>
 </div>
 <div class="paragraph">
+<p>Lookups by id are restricted to the current tenant as well. <code>get</code>, <code>read</code>, <code>exists</code> and <code>getAll</code> find no document of another tenant, and the proxy returned by <code>load</code> fails to initialize for one, as it does for an id that does not exist:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">// null if the book belongs to another tenant
+Book.get(id)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Without a current tenant a lookup by id throws <code>TenantNotFoundException</code>, as a query does. Inside <code>Tenants.withoutId</code> a lookup by id is not restricted to a tenant, and neither is a proxy returned by <code>load</code> that is initialized there. A tenant id of <code>default</code> restricts a lookup by id to that tenant as it restricts a query.</p>
+</div>
+<div class="paragraph">
+<p>When an instance is saved, GORM sets its <code>tenantId</code> to the current tenant id, also when that tenant id is <code>default</code>, the name of the default connection source. Only inside <code>Tenants.withoutId</code> or a method annotated with <code>@WithoutTenant</code> does an instance keep the <code>tenantId</code> that is set on it.</p>
+</div>
+<div class="paragraph">
 <p>But this logic bypasses any built into tenant id interception and inclusion:</p>
 </div>
 <div class="listingblock">
@@ -579,7 +594,7 @@ Book.collection.find(eq("tenantId", Tenants.currentId())).first()</code></pre>
 </div>
 <div id="footer">
 <div id="footer-text">
-Version 10.0.0-SNAPSHOT<br>
+Version 9.0.0-SNAPSHOT<br>
 </div>
 </div>
 </body>
