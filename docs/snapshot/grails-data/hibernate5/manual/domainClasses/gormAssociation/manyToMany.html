@@ -499,10 +499,38 @@ One side must declare <code>belongsTo</code>. If neither side does, neither side
 <div class="paragraph">
 <p>This is the expected behaviour as, just like Hibernate, only one side of a many-to-many can take responsibility for managing the relationship.</p>
 </div>
+<div class="paragraph">
+<p>A many-to-many with a <code>Map</code> on either side needs no <code>belongsTo</code> to be stored, because each <code>Map</code> side writes its own join table, so GORM logs no warning for it.</p>
+</div>
+<div class="paragraph">
+<p>A many-to-many can also join a class to itself, with both properties on that class:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class User {
+    String name
+    static hasMany = [following: User, followers: User]
+    static mappedBy = [following: 'followers', followers: 'following']
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Such a mapping needs no <code>belongsTo</code>, and GORM logs no warning for it. Each of the two properties writes its own join table, so use <code>addToFollowing</code> and <code>removeFromFollowing</code>, which update both sides. Before deleting a <code>User</code>, remove it from both sides, otherwise the delete fails on a foreign key:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">user.following.toList().each { user.removeFromFollowing(it) }
+user.followers.toList().each { it.removeFromFollowing(user) }
+user.delete()</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Declaring <code>belongsTo</code> on such a class changes which table each property uses, so do not add it to a mapping that already works.</p>
+</div>
 </div>
 <div id="footer">
 <div id="footer-text">
-Version 8.1.0-SNAPSHOT<br>
+Version 8.0.1-SNAPSHOT<br>
 </div>
 </div>
 </body>
