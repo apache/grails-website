@@ -444,6 +444,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <ul class="sectlevel2">
 <li><a href="#_per_property_type">Per-Property Type</a></li>
 <li><a href="#_type_parameters">Type Parameters</a></li>
+<li><a href="#_composite_user_types">Composite User Types</a></li>
 <li><a href="#_global_user_type_mapping">Global User Type Mapping</a></li>
 </ul>
 </li>
@@ -524,6 +525,122 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </div>
 </div>
 <div class="sect2">
+<h3 id="_composite_user_types">Composite User Types</h3>
+<div class="paragraph">
+<p>A type that spans several columns implements <code>org.hibernate.usertype.CompositeUserType</code> instead of <code>UserType</code>. Hibernate maps it like an embeddable: the <code>embeddable()</code> method of the user type names a class whose persistent attributes describe the columns, one column per attribute. The attributes are indexed in the alphabetical order of their names, and that index is what <code>getPropertyValue(value, index)</code> receives and what <code>instantiate(values)</code> reads from. The embeddable class may be the value class itself, when its attributes match the columns, or a separate class or record that only serves as metadata. Its attributes are the components of a record, or otherwise its fields and its readable properties, whether or not they have a setter, less the static and <code>transient</code> ones and the names listed in a static <code>transients</code> property; a computed getter that is not a column belongs in <code>transients</code>. Hibernate never instantiates the embeddable class or writes to it: it reads a value through <code>getPropertyValue(value, index)</code> and rebuilds one through <code>instantiate(values)</code>, so an immutable value class, or a class with private fields and no accessors, works as well.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">import groovy.transform.EqualsAndHashCode
+import org.hibernate.HibernateException
+import org.hibernate.metamodel.spi.ValueAccess
+import org.hibernate.usertype.CompositeUserType
+
+@EqualsAndHashCode
+class MonetaryAmount implements Serializable {
+    BigDecimal value
+    Currency currency
+}
+
+class MonetaryAmountType implements CompositeUserType&lt;MonetaryAmount&gt; {
+
+    @Override
+    Object getPropertyValue(MonetaryAmount component, int property) {
+        switch (property) {
+            case 0: return component.currency      <i class="conum" data-value="1"></i><b>(1)</b>
+            case 1: return component.value
+            default: throw new HibernateException("Unknown property index ${property}")
+        }
+    }
+
+    @Override
+    MonetaryAmount instantiate(ValueAccess values) {
+        Currency currency = values.getValue(0, Currency)
+        BigDecimal value = values.getValue(1, BigDecimal)
+        currency == null &amp;&amp; value == null ? null : new MonetaryAmount(value: value, currency: currency)
+    }
+
+    @Override
+    Class&lt;?&gt; embeddable() { MonetaryAmount }       <i class="conum" data-value="2"></i><b>(2)</b>
+
+    @Override
+    Class&lt;MonetaryAmount&gt; returnedClass() { MonetaryAmount }
+
+    @Override
+    boolean isMutable() { false }
+
+    @Override
+    MonetaryAmount deepCopy(MonetaryAmount value) { value }
+
+    @Override
+    boolean equals(MonetaryAmount x, MonetaryAmount y) { x == y }
+
+    @Override
+    int hashCode(MonetaryAmount x) { x == null ? 0 : x.hashCode() }
+
+    @Override
+    Serializable disassemble(MonetaryAmount value) { value }
+
+    @Override
+    MonetaryAmount assemble(Serializable cached, Object owner) { (MonetaryAmount) cached }
+
+    @Override
+    MonetaryAmount replace(MonetaryAmount detached, MonetaryAmount managed, Object owner) { detached }
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The indexes follow the alphabetical order of the attribute names of the <code>embeddable()</code> class: <code>currency</code> is 0 and <code>value</code> is 1.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The class whose attributes describe the columns, here the value class itself.</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Map the property with <code>type</code> and list its columns in the same alphabetical attribute order:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class Payment {
+    MonetaryAmount amount
+
+    static mapping = {
+        amount type: MonetaryAmountType, {
+            column name: 'currency', sqlType: 'char(3)'   <i class="conum" data-value="1"></i><b>(1)</b>
+            column name: 'amount'                         <i class="conum" data-value="2"></i><b>(2)</b>
+        }
+    }
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The first column holds the first attribute in alphabetical order, <code>currency</code>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The second column holds <code>value</code>.</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Without a column list, each column is named after the property and the attribute, here <code>amount_currency</code> and <code>amount_value</code>. A list shorter than the attributes leaves the remaining attributes with those names, and a longer list is a mapping error. The <code>nullable</code> constraint of the property applies to every column. The other constraints of the property, such as <code>maxSize</code>, <code>min</code>, <code>max</code> and <code>scale</code>, describe the whole value and are checked by validation; they are not applied to the columns. Each column takes its <code>length</code>, <code>precision</code> and <code>scale</code> from its own entry in the column list, and a numeric column without a <code>precision</code> gets the default precision of the dialect, as a numeric property without constraints does. The <code>unique</code> constraint applies to the whole value: the schema gets one unique key across all the columns of the property, together with the columns of the other properties of its group, as in <code>amount unique: 'reference'</code>, so two amounts in the same currency are still distinct values. A group that names a composite user type property, whether it is the group of another composite property, as in <code>amount unique: 'fee'</code>, or of a plain one, as in <code>reference unique: 'amount'</code>, spans every column of that property as well.</p>
+</div>
+<div class="paragraph">
+<p>Queries, criteria and dynamic finders that compare the whole property, such as <code>Payment.findAllByAmount(amount)</code>, take an instance of the value class that <code>returnedClass()</code> names, whichever class <code>embeddable()</code> names. A query can also reach a single attribute by its name in the <code>embeddable()</code> class, as in <code>where p.amount.currency = :currency</code>. The value class can be any class, an enum included: an enum property whose <code>type</code> names a composite user type is stored in the columns of that type rather than as an enum column.</p>
+</div>
+<div class="paragraph">
+<p>A composite user type can be <a href="#_global_user_type_mapping">registered for its value class</a> with <code>user-type</code> like a <code>UserType</code>; each property then supplies its columns in its own mapping. A <code>type</code> in the mapping of a property wins over the registration, so <code>amount type: 'serializable'</code> keeps that property in one serialized column. <code>typeParams</code> apply to <code>UserType</code> implementations only: Hibernate instantiates a composite user type itself and passes it no parameters. It creates the type through its default constructor, or, when the <code>hibernate.cdi.extensions</code> setting is enabled, through the configured bean container, which may inject it.</p>
+</div>
+</div>
+<div class="sect2">
 <h3 id="_global_user_type_mapping">Global User Type Mapping</h3>
 <div class="paragraph">
 <p>Use <code>user-type</code> to register a user type for a Java type, so that every property of that type uses it without a per-property <code>type</code>. Registered in a domain class&#8217;s <code>mapping</code> block, it applies to the properties of that class:</p>
@@ -569,7 +686,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <i class="fa icon-tip" title="Tip"></i>
 </td>
 <td class="content">
-A Hibernate 7 <code>UserType</code> must implement <code>getSqlType()</code>, <code>returnedClass()</code>, <code>deepCopy()</code>, and <code>isMutable()</code>, and usually overrides <code>nullSafeGet()</code> and <code>nullSafeSet()</code> to convert between the column value and the Java type. Prefer Hibernate&#8217;s <code>CompositeUserType</code> for multi-column mappings.
+A Hibernate 7 <code>UserType</code> must implement <code>getSqlType()</code>, <code>returnedClass()</code>, <code>deepCopy()</code>, and <code>isMutable()</code>, and usually overrides <code>nullSafeGet()</code> and <code>nullSafeSet()</code> to convert between the column value and the Java type. A type that spans several columns is a <a href="#_composite_user_types">composite user type</a>.
 </td>
 </tr>
 </table>
