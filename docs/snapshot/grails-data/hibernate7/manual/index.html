@@ -528,7 +528,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <div id="header">
 <h1>GORM for Hibernate 7</h1>
 <div class="details">
-<span id="revnumber">version 8.0.1-SNAPSHOT</span>
+<span id="revnumber">version 8.1.0-SNAPSHOT</span>
 </div>
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
@@ -1200,12 +1200,12 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <h2 id="gettingStarted">5. Getting Started</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>To use GORM 8.0.1-SNAPSHOT for Hibernate in Grails 8 you can specify the following configuration in <code>build.gradle</code>:</p>
+<p>To use GORM 8.1.0-SNAPSHOT for Hibernate in Grails 8 you can specify the following configuration in <code>build.gradle</code>:</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
-    implementation "org.grails.plugins:hibernate7:8.0.1-SNAPSHOT"
+    implementation "org.grails.plugins:hibernate7:8.1.0-SNAPSHOT"
     runtimeOnly 'org.hibernate:hibernate-ehcache:7.0.Final', {
     // exclude javax variant of hibernate-core
     exclude group: 'org.hibernate', module: 'hibernate-core'
@@ -1221,7 +1221,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="properties">gormVersion=8.0.1-SNAPSHOT</code></pre>
+<pre class="CodeRay highlight"><code data-lang="properties">gormVersion=8.1.0-SNAPSHOT</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1234,7 +1234,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
     resolutionStrategy.eachDependency { DependencyResolveDetails details ->
         if( details.requested.group == 'org.grails' &&
             details.requested.name.startsWith('grails-datastore')) {
-            details.useVersion("8.0.1-SNAPSHOT")
+            details.useVersion("8.1.0-SNAPSHOT")
         }
     }
 }
@@ -1458,7 +1458,7 @@ dependencies {
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">implementation 'org.grails:gorm-hibernate7-spring-boot:8.0.1-SNAPSHOT'</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">implementation 'org.grails:gorm-hibernate7-spring-boot:8.1.0-SNAPSHOT'</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1577,7 +1577,7 @@ If your GORM entities are in a different package, specify the package name as th
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">implementation platform("org.apache.grails:grails-bom:8.0.1-SNAPSHOT")
+<pre class="CodeRay highlight"><code data-lang="groovy">implementation platform("org.apache.grails:grails-bom:8.1.0-SNAPSHOT")
 implementation "org.apache.grails.data:grails-data-hibernate7-core"
 runtimeOnly "com.h2database"
 runtimeOnly "org.apache.tomcat:tomcat-jdbc"
@@ -5277,7 +5277,105 @@ def results = Airport.withCriteria {
 </div>
 </div>
 <div class="sect3">
-<h4 id="_method_reference">30.5.11. Method Reference</h4>
+<h4 id="_extending_the_criteria_builder">30.5.11. Extending the Criteria Builder</h4>
+<div class="paragraph">
+<p>A plugin or an application can add its own criteria and orders to the Hibernate 7 criteria builder. A custom
+criterion is a <code>org.grails.datastore.mapping.query.Query.Criterion</code>, usually a <code>Query.PropertyCriterion</code> subclass,
+that a registered <em>criterion handler</em> turns into a JPA <code>Predicate</code> when the query runs. A custom order is a
+<code>Query.Order</code> subclass that a registered <em>order handler</em> turns into a JPA <code>Order</code>, which can order by any
+expression, not only by a property. Both are usually added to the builder through a Groovy extension module, so
+that they read like the built-in ones:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">NumberLikeCriterion</span> <span class="directive">extends</span> <span class="predefined-type">Query</span>.PropertyCriterion {
+    NumberLikeCriterion(<span class="predefined-type">String</span> property, <span class="predefined-type">String</span> pattern) { <span class="local-variable">super</span>(property, pattern) }
+}
+
+<span class="type">class</span> <span class="class">ByRandom</span> <span class="directive">extends</span> <span class="predefined-type">Query</span>.Order {
+    ByRandom() { <span class="local-variable">super</span>(<span class="string"><span class="delimiter">'</span><span class="content">random</span><span class="delimiter">'</span></span>) }
+}
+
+<span class="annotation">@CompileStatic</span>
+<span class="type">class</span> <span class="class">MyCriteriaExtensions</span> {
+    <span class="directive">static</span> AbstractDetachedCriteria numberLike(AbstractDetachedCriteria self, <span class="predefined-type">String</span> property, <span class="predefined-type">String</span> pattern) {
+        self.add(<span class="keyword">new</span> NumberLikeCriterion(property, pattern))
+        self
+    }
+
+    <span class="directive">static</span> AbstractDetachedCriteria orderByRandom(AbstractDetachedCriteria self) {
+        self.order(<span class="keyword">new</span> ByRandom())
+        self
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The handlers convert them. A criterion handler is given the query, its root, the Hibernate <code>CriteriaBuilder</code>, the
+criterion and the query&#8217;s <code>QueryPathContext</code>. Through the context, <code>getFullyQualifiedPath</code> resolves a property path
+the way the built-in criteria do: <code>alias.property</code>, for an alias created with <code>createAlias</code>, or <code>association.property</code>
+becomes a path on the join GORM created for that association, so a custom criterion and a built-in one on the
+same association restrict the same row rather than each joining the association again. <code>getSelectionAlias</code> returns
+the expression a <code>sqlProjection</code> or <code>sqlGroupProjection</code> records under its column alias. An order handler that sorts
+by a column alias asks <code>getSelectionAlias</code> first and <code>getFullyQualifiedExpression</code> second, which orders by the
+projection when an alias and a property have the same name, as <code>order(alias)</code> does; a criterion handler asks
+<code>getFullyQualifiedExpression</code> alone, so a restriction on a property restricts the property, as in SQL, where a select
+alias is visible to the <code>order by</code> and not to the <code>where</code>. An order handler is given
+the query, its root, the criteria builder, the order and the context, and returns the JPA order, or <code>null</code> to leave
+the order out. A query whose result is a count leaves every order out by itself, so no handler runs for it:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">PredicateGenerator.registerCriterionHandler(NumberLikeCriterion) { query, root, cb, criterion, context -&gt;
+    <span class="keyword">def</span> c = criterion <span class="keyword">as</span> NumberLikeCriterion
+    cb.like(cb.cast(context.getFullyQualifiedPath(c.property) <span class="keyword">as</span> JpaExpression, <span class="predefined-type">String</span>), c.value <span class="keyword">as</span> <span class="predefined-type">String</span>)
+}
+
+PredicateGenerator.registerOrderHandler(ByRandom) { query, root, cb, order, context -&gt;
+    cb.asc(cb.function(<span class="string"><span class="delimiter">'</span><span class="content">random</span><span class="delimiter">'</span></span>, <span class="predefined-type">Double</span>))
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A closure with five parameters is registered as a handler that receives the context; a closure with four parameters
+is registered as a handler that does not, so both shapes work without <code>as</code>. Handlers are registered for the exact class of the criterion or order, and
+a registered handler wins over the built-in handling, so a handler for <code>Query.Like</code> replaces how <code>like</code> is built.</p>
+</div>
+<div class="paragraph">
+<p>A plugin registers its handlers without any code in the application by implementing
+<code>PredicateGenerator.CriterionHandlerProvider</code> or <code>PredicateGenerator.OrderHandlerProvider</code> and naming the class in
+<code>META-INF/services/org.grails.orm.hibernate.query.PredicateGenerator$CriterionHandlerProvider</code> or
+<code>META-INF/services/org.grails.orm.hibernate.query.PredicateGenerator$OrderHandlerProvider</code>. The providers are
+loaded when the first criteria query runs; a handler registered in code takes precedence over a provider&#8217;s.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">ByRandomOrderHandlerProvider</span> <span class="directive">implements</span> PredicateGenerator.OrderHandlerProvider {
+
+    <span class="predefined-type">Class</span>&lt;? <span class="directive">extends</span> <span class="predefined-type">Query</span>.Order&gt; orderType() { ByRandom }
+
+    PredicateGenerator.OrderHandler orderHandler() {
+        { query, root, cb, order, context -&gt;
+            cb.asc(cb.function(<span class="string"><span class="delimiter">'</span><span class="content">random</span><span class="delimiter">'</span></span>, <span class="predefined-type">Double</span>))
+        } <span class="keyword">as</span> PredicateGenerator.OrderHandler
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>With the extension module and the providers on the classpath, a query uses them like any other criterion or order:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">new</span> DetachedCriteria(<span class="predefined-type">Book</span>).build {
+    numberLike <span class="string"><span class="delimiter">'</span><span class="content">price</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">4%</span><span class="delimiter">'</span></span>
+    orderByRandom()
+}.list()</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_method_reference">30.5.12. Method Reference</h4>
 <div class="paragraph">
 <p>If you invoke the builder with no method name such as:</p>
 </div>
@@ -5330,7 +5428,7 @@ def results = Airport.withCriteria {
 </table>
 </div>
 <div class="sect3">
-<h4 id="_combining_criteria">30.5.12. Combining Criteria</h4>
+<h4 id="_combining_criteria">30.5.13. Combining Criteria</h4>
 <div class="paragraph">
 <p>You can combine multiple criteria closures in the following way:</p>
 </div>
@@ -9448,7 +9546,7 @@ RxJava 2.x support is planned for a future release
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.grails:grails-datastore-gorm-rx:8.0.1-SNAPSHOT"</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.grails:grails-datastore-gorm-rx:8.1.0-SNAPSHOT"</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -9474,6 +9572,20 @@ RxJava 2.x support is planned for a future release
 <span class="annotation">@Service</span>(<span class="predefined-type">Book</span>)
 <span class="type">interface</span> BookService {
    <span class="predefined-type">Observable</span>&lt;<span class="predefined-type">Book</span>&gt; findBooks(<span class="predefined-type">String</span> title)
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The same applies to a projection: a <code>rx.Single</code> of the projected type returns one value, and a <code>rx.Observable</code> of the projected type emits every value:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">rx.*</span>
+
+<span class="annotation">@Service</span>(<span class="predefined-type">Book</span>)
+<span class="type">interface</span> BookService {
+   Single&lt;<span class="predefined-type">Date</span>&gt; findBookReleaseDate(<span class="predefined-type">String</span> title)
+   <span class="predefined-type">Observable</span>&lt;<span class="predefined-type">String</span>&gt; findBookAuthor(<span class="predefined-type">String</span> publisher)
 }</code></pre>
 </div>
 </div>
@@ -9953,7 +10065,7 @@ SessionFactory sessionFactory = hibernateDatastore
 <i class="fa icon-tip" title="Tip"></i>
 </td>
 <td class="content">
-If you are interested in more examples, an <a href="https://github.com/apache/grails-core/blob/8.0.1-SNAPSHOT/grails-data-mongodb/core/src/main/groovy/org/grails/datastore/mapping/mongo/connections/MongoConnectionSources.groovy">implementation exists for MongoDB</a> that reads connection sources from a MongoDB collection. However, it doesn&#8217;t implement support for provision MongoDB instances at runtime.
+If you are interested in more examples, an <a href="https://github.com/apache/grails-core/blob/8.1.0-SNAPSHOT/grails-data-mongodb/core/src/main/groovy/org/grails/datastore/mapping/mongo/connections/MongoConnectionSources.groovy">implementation exists for MongoDB</a> that reads connection sources from a MongoDB collection. However, it doesn&#8217;t implement support for provision MongoDB instances at runtime.
 </td>
 </tr>
 </table>
@@ -10248,7 +10360,7 @@ sessionFactory.openSession()</code></pre>
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.grails:grails-datastore-web:8.0.1-SNAPSHOT"</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">compile "org.grails:grails-datastore-web:8.1.0-SNAPSHOT"</code></pre>
 </div>
 </div>
 </div>
@@ -11054,13 +11166,13 @@ JUnit doesn&#8217;t have anything like Spock&#8217;s <code>AutoCleanup</code> so
 <pre class="CodeRay highlight"><code data-lang="groovy">buildscript {
    dependencies {
       ...
-      classpath 'org.apache.grails:grails-data-hibernate7-dbmigration:8.0.1-SNAPSHOT'
+      classpath 'org.apache.grails:grails-data-hibernate7-dbmigration:8.1.0-SNAPSHOT'
    }
 }
 
 dependencies {
    ...
-     implementation 'org.apache.grails:grails-data-hibernate7-dbmigration:8.0.1-SNAPSHOT'
+     implementation 'org.apache.grails:grails-data-hibernate7-dbmigration:8.1.0-SNAPSHOT'
 }</code></pre>
 </div>
 </div>
@@ -11419,6 +11531,9 @@ grails.plugin.databasemigration.changelogFileName = changelog.groovy</code></pre
 </div>
 </div>
 <div class="paragraph">
+<p>The update on start reports its progress as a startup task, so the Grails startup progress page, signed in with the address the application logs as it starts, shows how many change sets are left to run and the one being run, and the startup report lists how many ran and how long the update took. Counting the change sets takes one more read of the change log and the database, which is only done when something records the application&#8217;s start, such as the startup progress page or Spring Boot Actuator&#8217;s <code>startup</code> endpoint. See <em>Watching the Application Start</em> in the Grails user guide.</p>
+</div>
+<div class="paragraph">
 <p>You can be notified when migration are run (for example to do some work before and/or after the migrations execute) by registering a "callback" class as a Spring bean. The class can have any name and package and doesn&#8217;t have to implement any interface since its methods will be called using Groovy duck-typing.</p>
 </div>
 <div class="paragraph">
@@ -11430,7 +11545,7 @@ grails.plugin.databasemigration.changelogFileName = changelog.groovy</code></pre
 <p><code>beforeStartMigration</code> will be called (if it exists) for each datasource before any migrations have run; the method will be passed a single argument, the Liquibase <code>Database</code> for that datasource</p>
 </li>
 <li>
-<p><code>onStartMigration</code> will be called (if it exists) for each migration script; the method will be passed three arguments, the Liquibase <code>Database</code>, the <code>Liquibase</code> instance, and the changelog file name</p>
+<p><code>onStartMigration</code> will be called (if it exists) for each migration script; the method will be passed three arguments, the Liquibase <code>Database</code>, the <code>Liquibase</code> instance, and the changelog file name. A change listener the callback sets on the <code>Liquibase</code> instance is added to the listeners already set, so the one that reports the update&#8217;s progress and a listener class configured for Liquibase with <code>liquibase.command.changeExecListenerClass</code> still hear of each change set.</p>
 </li>
 <li>
 <p><code>afterMigrations</code> will be called (if it exists) for each datasource after all migrations have run; the method will be passed a single argument, the Liquibase <code>Database</code> for that datasource</p>
@@ -14205,7 +14320,7 @@ For the <code>dataSource</code> parameter, if the data source is configured as <
 </div>
 <div id="footer">
 <div id="footer-text">
-Version 8.0.1-SNAPSHOT<br>
+Version 8.1.0-SNAPSHOT<br>
 </div>
 </div>
 </body>
