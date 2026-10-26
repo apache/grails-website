@@ -450,6 +450,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_advanced_hibernate_7_features">Advanced Hibernate 7 Features</a></li>
 <li><a href="#_using_scrollable_results">Using Scrollable Results</a></li>
 <li><a href="#_querying_with_eager_fetching">Querying with Eager Fetching</a></li>
+<li><a href="#_extending_the_criteria_builder">Extending the Criteria Builder</a></li>
 <li><a href="#_method_reference">Method Reference</a></li>
 <li><a href="#_combining_criteria">Combining Criteria</a></li>
 </ul>
@@ -935,6 +936,104 @@ def results = Airport.withCriteria {
 </div>
 </div>
 <div class="sect3">
+<h4 id="_extending_the_criteria_builder">Extending the Criteria Builder</h4>
+<div class="paragraph">
+<p>A plugin or an application can add its own criteria and orders to the Hibernate 7 criteria builder. A custom
+criterion is a <code>org.grails.datastore.mapping.query.Query.Criterion</code>, usually a <code>Query.PropertyCriterion</code> subclass,
+that a registered <em>criterion handler</em> turns into a JPA <code>Predicate</code> when the query runs. A custom order is a
+<code>Query.Order</code> subclass that a registered <em>order handler</em> turns into a JPA <code>Order</code>, which can order by any
+expression, not only by a property. Both are usually added to the builder through a Groovy extension module, so
+that they read like the built-in ones:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class NumberLikeCriterion extends Query.PropertyCriterion {
+    NumberLikeCriterion(String property, String pattern) { super(property, pattern) }
+}
+
+class ByRandom extends Query.Order {
+    ByRandom() { super('random') }
+}
+
+@CompileStatic
+class MyCriteriaExtensions {
+    static AbstractDetachedCriteria numberLike(AbstractDetachedCriteria self, String property, String pattern) {
+        self.add(new NumberLikeCriterion(property, pattern))
+        self
+    }
+
+    static AbstractDetachedCriteria orderByRandom(AbstractDetachedCriteria self) {
+        self.order(new ByRandom())
+        self
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The handlers convert them. A criterion handler is given the query, its root, the Hibernate <code>CriteriaBuilder</code>, the
+criterion and the query&#8217;s <code>QueryPathContext</code>. Through the context, <code>getFullyQualifiedPath</code> resolves a property path
+the way the built-in criteria do: <code>alias.property</code>, for an alias created with <code>createAlias</code>, or <code>association.property</code>
+becomes a path on the join GORM created for that association, so a custom criterion and a built-in one on the
+same association restrict the same row rather than each joining the association again. <code>getSelectionAlias</code> returns
+the expression a <code>sqlProjection</code> or <code>sqlGroupProjection</code> records under its column alias. An order handler that sorts
+by a column alias asks <code>getSelectionAlias</code> first and <code>getFullyQualifiedExpression</code> second, which orders by the
+projection when an alias and a property have the same name, as <code>order(alias)</code> does; a criterion handler asks
+<code>getFullyQualifiedExpression</code> alone, so a restriction on a property restricts the property, as in SQL, where a select
+alias is visible to the <code>order by</code> and not to the <code>where</code>. An order handler is given
+the query, its root, the criteria builder, the order and the context, and returns the JPA order, or <code>null</code> to leave
+the order out. A query whose result is a count leaves every order out by itself, so no handler runs for it:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">PredicateGenerator.registerCriterionHandler(NumberLikeCriterion) { query, root, cb, criterion, context -&gt;
+    def c = criterion as NumberLikeCriterion
+    cb.like(cb.cast(context.getFullyQualifiedPath(c.property) as JpaExpression, String), c.value as String)
+}
+
+PredicateGenerator.registerOrderHandler(ByRandom) { query, root, cb, order, context -&gt;
+    cb.asc(cb.function('random', Double))
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A closure with five parameters is registered as a handler that receives the context; a closure with four parameters
+is registered as a handler that does not, so both shapes work without <code>as</code>. Handlers are registered for the exact class of the criterion or order, and
+a registered handler wins over the built-in handling, so a handler for <code>Query.Like</code> replaces how <code>like</code> is built.</p>
+</div>
+<div class="paragraph">
+<p>A plugin registers its handlers without any code in the application by implementing
+<code>PredicateGenerator.CriterionHandlerProvider</code> or <code>PredicateGenerator.OrderHandlerProvider</code> and naming the class in
+<code>META-INF/services/org.grails.orm.hibernate.query.PredicateGenerator$CriterionHandlerProvider</code> or
+<code>META-INF/services/org.grails.orm.hibernate.query.PredicateGenerator$OrderHandlerProvider</code>. The providers are
+loaded when the first criteria query runs; a handler registered in code takes precedence over a provider&#8217;s.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">class ByRandomOrderHandlerProvider implements PredicateGenerator.OrderHandlerProvider {
+
+    Class&lt;? extends Query.Order&gt; orderType() { ByRandom }
+
+    PredicateGenerator.OrderHandler orderHandler() {
+        { query, root, cb, order, context -&gt;
+            cb.asc(cb.function('random', Double))
+        } as PredicateGenerator.OrderHandler
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>With the extension module and the providers on the classpath, a query uses them like any other criterion or order:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">new DetachedCriteria(Book).build {
+    numberLike 'price', '4%'
+    orderByRandom()
+}.list()</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
 <h4 id="_method_reference">Method Reference</h4>
 <div class="paragraph">
 <p>If you invoke the builder with no method name such as:</p>
@@ -1015,7 +1114,7 @@ A more flexible approach is to use Detached Criteria, as described in the follow
 </div>
 <div id="footer">
 <div id="footer-text">
-Version 8.0.1-SNAPSHOT<br>
+Version 8.1.0-SNAPSHOT<br>
 </div>
 </div>
 </body>
