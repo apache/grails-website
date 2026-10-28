@@ -1869,6 +1869,40 @@ See <a href="async.html#asyncPromises">Promises</a> and <a href="async.html#even
 </div>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_5_the_character_encoding_filter_runs_first">5. The Character Encoding Filter Runs First</h4>
+<div class="paragraph">
+<p>Grails 8.1 registers its character encoding filter at <code>Ordered.HIGHEST_PRECEDENCE</code>, the order Spring Boot gives its own, instead of at -180. Once a filter reads a request parameter, the servlet container has decoded the request body, as ISO-8859-1 unless an encoding was set by then, so a filter ordered ahead of the encoding filter that read a parameter garbled non-ASCII form input for the rest of the request, for example <code>CafÃ©</code> for <code>Café</code>.</p>
+</div>
+<div class="paragraph">
+<p>Every filter ordered between <code>Ordered.HIGHEST_PRECEDENCE + 1</code> and -181 now runs after the encoding filter instead of before it, and sees the request encoding set. That includes Spring&#8217;s <code>FormContentFilter</code> at -9900, asset-pipeline&#8217;s filter at <code>GrailsFilters.ASSET_PIPELINE_FILTER</code> (-190), a filter at <code>GrailsFilters.FIRST</code>, and filters registered at <code>Ordered.HIGHEST_PRECEDENCE + n</code>:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>FormContentFilter</code>, which every application has unless <code>spring.mvc.formcontent.filter.enabled</code> is false, parses the form of a PUT, PATCH or DELETE request. It decoded a form sent without a charset as UTF-8, whatever <code>grails.filter.encoding</code> said; now it decodes it as <code>grails.filter.encoding</code> says, as a POST form already was. With the default encoding, UTF-8, nothing changes.</p>
+</li>
+<li>
+<p>In a packaged application (a WAR or an executable jar), asset-pipeline copies the request&#8217;s encoding to the precompiled assets it serves, so every asset response now declares a charset, for example <code>text/css;charset=UTF-8</code>, whether or not <code>grails.filter.forceEncoding</code> is set. Browsers use it for stylesheets and scripts instead of detecting their encoding. Assets served by asset-pipeline&#8217;s development runtime still have no charset.</p>
+</li>
+<li>
+<p>A filter that reads a request body sent without a charset through <code>getReader()</code> now decodes it as UTF-8, or as <code>grails.filter.encoding</code> says, instead of as ISO-8859-1.</p>
+</li>
+<li>
+<p>With <code>grails.filter.forceEncoding: true</code>, a response such a filter writes without a charset is now encoded with the forced encoding instead of ISO-8859-1, and a request encoding such a filter sets is no longer replaced by the forced one.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>A filter registered at exactly <code>Ordered.HIGHEST_PRECEDENCE</code> through a <code>FilterRegistrationBean</code> still runs before the encoding filter. The CAS plugin&#8217;s single sign-out filter, which reads a parameter of every POST, was registered that way; it is now registered right after the encoding filter, at <code>Ordered.HIGHEST_PRECEDENCE + 1</code>.</p>
+</div>
+<div class="sect4">
+<h5 id="_required_actions_3">Required Actions</h5>
+<div class="paragraph">
+<p>For most applications <strong>no changes are required</strong>. Check that packaged stylesheets and scripts with non-ASCII characters are in the charset their responses now declare: UTF-8, or the encoding <code>grails.filter.encoding</code> names. When <code>grails.filter.encoding</code> is not UTF-8, check that clients sending a PUT, PATCH or DELETE form without a charset encode it in that encoding, as a POST form already had to be. A filter that has to run before the encoding filter can be registered at <code>Ordered.HIGHEST_PRECEDENCE</code> through a <code>FilterRegistrationBean</code>; a filter that reads request parameters needs a later order than that.</p>
+</div>
+</div>
+</div>
 </div>
 
 
@@ -3931,10 +3965,19 @@ Declaring all three names prevents the naming strategy from changing the mapping
 <div class="sect4">
 <h5 id="_26_12_several_unidirectional_hasmany_associations_on_one_owner">26.12 Several Unidirectional hasMany Associations on One Owner</h5>
 <div class="paragraph">
-<p>Under Hibernate 7, an owner with two or more unidirectional <code>hasMany</code> associations wrote no rows to their join tables: an element added to any of them was lost at flush (issue <a href="https://github.com/apache/grails-core/issues/16665">#16665</a>). This is fixed when each association has a join table of its own, which is the default (<code>item_roles</code> and <code>item_tags</code> for <code>static hasMany = [roles: Role, tags: Tag]</code>) and also the case when two associations to the same class map different tables with <code>joinTable</code>. Each such join table is written, as under Hibernate 5.</p>
+<p>Under Hibernate 7, an owner with two or more unidirectional <code>hasMany</code> associations wrote no rows to their join tables: an element added to any of them was lost at flush (issue <a href="https://github.com/apache/grails-core/issues/16665">#16665</a>). This is fixed when each association has a join table of its own, which is the default for associations to different classes (<code>item_roles</code> and <code>item_tags</code> for <code>static hasMany = [roles: Role, tags: Tag]</code>) and also the case when two associations to the same class map different tables with <code>joinTable</code>. Each such join table is written, as under Hibernate 5.</p>
 </div>
 <div class="paragraph">
-<p>Two unidirectional associations mapped onto one shared join table, with a key column each, are read but their new elements are still not written. That is issue <a href="https://github.com/apache/grails-core/issues/10811">#10811</a> and is not fixed by this change; map a table per association until it is.</p>
+<p>Two unidirectional associations to the same class share one join table by default, named after the owner and the element class, with a key column per association (<code>item_role</code> with <code>item_roles_id</code> and <code>item_deny_roles_id</code> for <code>static hasMany = [roles: Role, denyRoles: Role]</code>). Such a shared table is now written as well: each association keeps its rows unique by its own key column and the element. On most databases that is a unique key per association; on Oracle and on Db2 for Linux, UNIX and Windows, which compare the non-null columns of a partially null row in a unique key, it is one unique key over the key columns of both associations and the element. A schema created by an earlier Grails 8 release has the single unique key Hibernate made for the first association: <code>dbCreate</code> of <code>update</code> adds the second one, and on Oracle and Db2 for Linux, UNIX and Windows a migration has to replace that key with the wider one. A list, a map, or a bag is left as it was: its join table is keyed by the index (for lists and maps), and its elements may repeat.</p>
+</div>
+<div class="paragraph">
+<p>Removing one element of a unidirectional <code>hasMany</code> set or bag, with <code>removeFrom*</code> or by binding a smaller set of ids, deleted every join table row of the owner, so the association lost all its elements (issue <a href="https://github.com/apache/grails-core/issues/16691">#16691</a>). Hibernate 7 deletes such a row by the owner&#8217;s key and only those element columns that are not nullable, and the element column of a GORM join table is nullable. GORM now gives a set or a bag of entities in a join table a collection persister that deletes the row by the owner and the element, as Hibernate 5 did; the schema does not change. An application that configures a persister class resolver of its own with <code>hibernate.persister.resolver</code> keeps it, and with it the Hibernate 7 behaviour. Likewise, GORM configures <code>hibernate.query.sqm.translator</code> to <code>RestrictedCollectionSqmTranslatorFactory</code> by default so that <code>is empty</code> on associations that share a key column (issue <a href="https://github.com/apache/grails-core/issues/16748">#16748</a>) translates to a count query; an application that configures an SQM query translator factory of its own keeps it, and with it the standard Hibernate 7 behaviour.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_26_13_collection_criteria_next_to_association_blocks">26.13 Collection Criteria Next to Association Blocks</h5>
+<div class="paragraph">
+<p>Under Hibernate 7, calling a collection criterion such as <code>isNotEmpty('pets')</code>, <code>isEmpty('pets')</code>, or <code>sizeEq('pets', n)</code> next to an association block for the same collection (<code>pets { &#8230;&#8203; }</code>) threw a <code>ClassCastException</code> because the path resolved to the join rather than the collection attribute (issue <a href="https://github.com/apache/grails-core/issues/16633">#16633</a>). Collection criteria now resolve to the collection property on the parent whether they appear before or after an association block of the same name.</p>
 </div>
 </div>
 </div>

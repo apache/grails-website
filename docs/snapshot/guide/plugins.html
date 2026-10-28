@@ -1854,7 +1854,7 @@ bean(<span class="string"><span class="delimiter">'</span><span class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">myFilter(FilterRegistrationBean) {
     filter = bean(MyFilter)
     urlPatterns = [<span class="string"><span class="delimiter">'</span><span class="content">/*</span><span class="delimiter">'</span></span>]
-    order = Ordered.HIGHEST_PRECEDENCE
+    order = Ordered.HIGHEST_PRECEDENCE + <span class="integer">1</span>
 }</code></pre>
 </div>
 </div>
@@ -1865,7 +1865,7 @@ bean(<span class="string"><span class="delimiter">'</span><span class="content">
 <i class="fa icon-note" title="Note"></i>
 </td>
 <td class="content">
-Grails' internal registered filters (<code>GrailsWebRequestFilter</code>, <code>HiddenHttpMethodFilter</code> etc.) are defined by incrementing <code>HIGHEST_PRECEDENCE</code> by 10 thus allowing several filters to be inserted before or between Grails' filters.
+Grails registers its character encoding filter at <code>Ordered.HIGHEST_PRECEDENCE</code>, ahead of every other filter, as Spring Boot does with its own. Once any filter reads a request parameter, the servlet container has decoded the request body, so a filter that reads parameters needs a later order than the encoding filter, or form input arrives decoded as ISO-8859-1. A filter registered at exactly <code>Ordered.HIGHEST_PRECEDENCE</code> through a <code>FilterRegistrationBean</code> runs before it. Grails' other filters (<code>HiddenHttpMethodFilter</code>, <code>GrailsWebRequestFilter</code> etc.) have orders from -200 to -150, ten apart, and <code>GrailsFilters.LAST</code> is at -110, ahead of the Spring Security filter chain at -100, which leaves room to insert filters before or between them.
 </td>
 </tr>
 </table>

@@ -722,6 +722,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#_checking_a_specific_property">28.2. Checking a Specific Property</a></li>
 <li><a href="#_getting_the_original_value">28.3. Getting the Original Value</a></li>
 <li><a href="#_dirty_properties">28.4. Dirty Properties</a></li>
+<li><a href="#_dirty_checking_and_abstract_base_classes">28.5. Dirty Checking and Abstract Base Classes</a></li>
 </ul>
 </li>
 <li><a href="#querying">29. Querying with GORM</a></li>
@@ -2514,7 +2515,7 @@ Because the setting is Groovy configuration it must go into a Groovy-aware confi
 <p>The join table name defaults to <code>author_books</code> and can be customised — see <a href="#ormdsl-tableAndColumnNames">Table and Column Names</a>.</p>
 </div>
 <div class="paragraph">
-<p>An owner may declare several unidirectional one-to-many associations, such as <code>static hasMany = [roles: Role, tags: Tag]</code>. Each one is written to its own join table, including two associations to the same class that map different tables with <code>joinTable</code>. Two associations mapped onto one shared join table, with a key column each, are read but their new elements are not written (issue <a href="https://github.com/apache/grails-core/issues/10811">#10811</a>); give each association a table of its own.</p>
+<p>An owner may declare several unidirectional one-to-many associations, such as <code>static hasMany = [roles: Role, tags: Tag]</code>. Each one is written to its own join table, including two associations to the same class that map different tables with <code>joinTable</code>. Two associations to the same class share one join table by default, with a key column each (<code>item_role</code> with <code>item_roles_id</code> and <code>item_deny_roles_id</code> for <code>static hasMany = [roles: Role, denyRoles: Role]</code>), and so do associations that <code>joinTable</code> maps onto one table. Each association keeps its rows unique by its own key column and the element, through a unique key per association, or on Oracle and Db2 LUW one unique key over both key columns and the element.</p>
 </div>
 </div>
 <div class="sect2">
@@ -3845,6 +3846,25 @@ println book.dirtyPropertyNames    <span class="comment">// ['title', 'genre']</
 </div>
 </div>
 </div>
+<div class="sect2">
+<h3 id="_dirty_checking_and_abstract_base_classes">28.5. Dirty Checking and Abstract Base Classes</h3>
+<div class="paragraph">
+<p>A domain class can extend an abstract base class defined in a source location other than <code>grails-app/domain</code>. GORM only tracks changes to properties of such a base class if the base class is annotated with <code>@DirtyCheck</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">grails.gorm.dirty.checking.DirtyCheck</span>
+
+<span class="annotation">@DirtyCheck</span>
+<span class="directive">abstract</span> <span class="type">class</span> <span class="class">BaseDomainObject</span> {
+    <span class="predefined-type">String</span> baseClassField
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Without the annotation, changes to the inherited properties are not tracked: <code>isDirty()</code> and <code>dirtyPropertyNames</code> do not report them, and because GORM uses this tracking to decide whether an instance needs updating, a change to an inherited property alone is not saved. A base class that is itself a domain class does not need the annotation.</p>
+</div>
+</div>
 </div>
 </div>
 <div class="sect1">
@@ -4012,7 +4032,7 @@ book =  <span class="predefined-type">Book</span>.findByTitleLike(<span class="s
 <p><code>InRange</code> - Between the <code>from</code> and <code>to</code> values of a Groovy Range</p>
 </li>
 <li>
-<p><code>Rlike</code> - Performs a Regexp LIKE in MySQL or Oracle otherwise falls back to <code>Like</code></p>
+<p><code>Rlike</code> - Performs a regular expression match on MySQL, MariaDB, PostgreSQL, Oracle, H2 and Db2 (Linux, UNIX and Windows 11.1 and later, and IBM i), and falls back to <code>Like</code> on other databases, Db2 for z/OS among them</p>
 </li>
 <li>
 <p><code>Between</code> - Between two values (requires two arguments)</p>

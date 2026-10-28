@@ -5592,6 +5592,40 @@ See <a href="#asyncPromises">Promises</a> and <a href="#events">Events</a>.</p>
 </div>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_5_the_character_encoding_filter_runs_first">5. The Character Encoding Filter Runs First</h4>
+<div class="paragraph">
+<p>Grails 8.1 registers its character encoding filter at <code>Ordered.HIGHEST_PRECEDENCE</code>, the order Spring Boot gives its own, instead of at -180. Once a filter reads a request parameter, the servlet container has decoded the request body, as ISO-8859-1 unless an encoding was set by then, so a filter ordered ahead of the encoding filter that read a parameter garbled non-ASCII form input for the rest of the request, for example <code>CafÃ©</code> for <code>Café</code>.</p>
+</div>
+<div class="paragraph">
+<p>Every filter ordered between <code>Ordered.HIGHEST_PRECEDENCE + 1</code> and -181 now runs after the encoding filter instead of before it, and sees the request encoding set. That includes Spring&#8217;s <code>FormContentFilter</code> at -9900, asset-pipeline&#8217;s filter at <code>GrailsFilters.ASSET_PIPELINE_FILTER</code> (-190), a filter at <code>GrailsFilters.FIRST</code>, and filters registered at <code>Ordered.HIGHEST_PRECEDENCE + n</code>:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>FormContentFilter</code>, which every application has unless <code>spring.mvc.formcontent.filter.enabled</code> is false, parses the form of a PUT, PATCH or DELETE request. It decoded a form sent without a charset as UTF-8, whatever <code>grails.filter.encoding</code> said; now it decodes it as <code>grails.filter.encoding</code> says, as a POST form already was. With the default encoding, UTF-8, nothing changes.</p>
+</li>
+<li>
+<p>In a packaged application (a WAR or an executable jar), asset-pipeline copies the request&#8217;s encoding to the precompiled assets it serves, so every asset response now declares a charset, for example <code>text/css;charset=UTF-8</code>, whether or not <code>grails.filter.forceEncoding</code> is set. Browsers use it for stylesheets and scripts instead of detecting their encoding. Assets served by asset-pipeline&#8217;s development runtime still have no charset.</p>
+</li>
+<li>
+<p>A filter that reads a request body sent without a charset through <code>getReader()</code> now decodes it as UTF-8, or as <code>grails.filter.encoding</code> says, instead of as ISO-8859-1.</p>
+</li>
+<li>
+<p>With <code>grails.filter.forceEncoding: true</code>, a response such a filter writes without a charset is now encoded with the forced encoding instead of ISO-8859-1, and a request encoding such a filter sets is no longer replaced by the forced one.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>A filter registered at exactly <code>Ordered.HIGHEST_PRECEDENCE</code> through a <code>FilterRegistrationBean</code> still runs before the encoding filter. The CAS plugin&#8217;s single sign-out filter, which reads a parameter of every POST, was registered that way; it is now registered right after the encoding filter, at <code>Ordered.HIGHEST_PRECEDENCE + 1</code>.</p>
+</div>
+<div class="sect4">
+<h5 id="_required_actions_3">Required Actions</h5>
+<div class="paragraph">
+<p>For most applications <strong>no changes are required</strong>. Check that packaged stylesheets and scripts with non-ASCII characters are in the charset their responses now declare: UTF-8, or the encoding <code>grails.filter.encoding</code> names. When <code>grails.filter.encoding</code> is not UTF-8, check that clients sending a PUT, PATCH or DELETE form without a charset encode it in that encoding, as a POST form already had to be. A filter that has to run before the encoding filter can be registered at <code>Ordered.HIGHEST_PRECEDENCE</code> through a <code>FilterRegistrationBean</code>; a filter that reads request parameters needs a later order than that.</p>
+</div>
+</div>
+</div>
 </div>
 
 
@@ -7654,10 +7688,19 @@ Declaring all three names prevents the naming strategy from changing the mapping
 <div class="sect4">
 <h5 id="_26_12_several_unidirectional_hasmany_associations_on_one_owner">26.12 Several Unidirectional hasMany Associations on One Owner</h5>
 <div class="paragraph">
-<p>Under Hibernate 7, an owner with two or more unidirectional <code>hasMany</code> associations wrote no rows to their join tables: an element added to any of them was lost at flush (issue <a href="https://github.com/apache/grails-core/issues/16665">#16665</a>). This is fixed when each association has a join table of its own, which is the default (<code>item_roles</code> and <code>item_tags</code> for <code>static hasMany = [roles: Role, tags: Tag]</code>) and also the case when two associations to the same class map different tables with <code>joinTable</code>. Each such join table is written, as under Hibernate 5.</p>
+<p>Under Hibernate 7, an owner with two or more unidirectional <code>hasMany</code> associations wrote no rows to their join tables: an element added to any of them was lost at flush (issue <a href="https://github.com/apache/grails-core/issues/16665">#16665</a>). This is fixed when each association has a join table of its own, which is the default for associations to different classes (<code>item_roles</code> and <code>item_tags</code> for <code>static hasMany = [roles: Role, tags: Tag]</code>) and also the case when two associations to the same class map different tables with <code>joinTable</code>. Each such join table is written, as under Hibernate 5.</p>
 </div>
 <div class="paragraph">
-<p>Two unidirectional associations mapped onto one shared join table, with a key column each, are read but their new elements are still not written. That is issue <a href="https://github.com/apache/grails-core/issues/10811">#10811</a> and is not fixed by this change; map a table per association until it is.</p>
+<p>Two unidirectional associations to the same class share one join table by default, named after the owner and the element class, with a key column per association (<code>item_role</code> with <code>item_roles_id</code> and <code>item_deny_roles_id</code> for <code>static hasMany = [roles: Role, denyRoles: Role]</code>). Such a shared table is now written as well: each association keeps its rows unique by its own key column and the element. On most databases that is a unique key per association; on Oracle and on Db2 for Linux, UNIX and Windows, which compare the non-null columns of a partially null row in a unique key, it is one unique key over the key columns of both associations and the element. A schema created by an earlier Grails 8 release has the single unique key Hibernate made for the first association: <code>dbCreate</code> of <code>update</code> adds the second one, and on Oracle and Db2 for Linux, UNIX and Windows a migration has to replace that key with the wider one. A list, a map, or a bag is left as it was: its join table is keyed by the index (for lists and maps), and its elements may repeat.</p>
+</div>
+<div class="paragraph">
+<p>Removing one element of a unidirectional <code>hasMany</code> set or bag, with <code>removeFrom*</code> or by binding a smaller set of ids, deleted every join table row of the owner, so the association lost all its elements (issue <a href="https://github.com/apache/grails-core/issues/16691">#16691</a>). Hibernate 7 deletes such a row by the owner&#8217;s key and only those element columns that are not nullable, and the element column of a GORM join table is nullable. GORM now gives a set or a bag of entities in a join table a collection persister that deletes the row by the owner and the element, as Hibernate 5 did; the schema does not change. An application that configures a persister class resolver of its own with <code>hibernate.persister.resolver</code> keeps it, and with it the Hibernate 7 behaviour. Likewise, GORM configures <code>hibernate.query.sqm.translator</code> to <code>RestrictedCollectionSqmTranslatorFactory</code> by default so that <code>is empty</code> on associations that share a key column (issue <a href="https://github.com/apache/grails-core/issues/16748">#16748</a>) translates to a count query; an application that configures an SQM query translator factory of its own keeps it, and with it the standard Hibernate 7 behaviour.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_26_13_collection_criteria_next_to_association_blocks">26.13 Collection Criteria Next to Association Blocks</h5>
+<div class="paragraph">
+<p>Under Hibernate 7, calling a collection criterion such as <code>isNotEmpty('pets')</code>, <code>isEmpty('pets')</code>, or <code>sizeEq('pets', n)</code> next to an association block for the same collection (<code>pets { &#8230;&#8203; }</code>) threw a <code>ClassCastException</code> because the path resolved to the join rather than the collection attribute (issue <a href="https://github.com/apache/grails-core/issues/16633">#16633</a>). Collection criteria now resolve to the collection property on the parent whether they appear before or after an association block of the same name.</p>
 </div>
 </div>
 </div>
@@ -55871,10 +55914,10 @@ grails.plugin.springsecurity.secureChannel.insecureHeaderValue = <span class="st
 <p>Upon successful authentication a new HTTP session is created and the previous session&#8217;s attributes are copied into it. If you start your session by clicking a link that was generated by someone trying to hack your account, which contained an active session id, you are no longer sharing the previous session after login. You have your own session.</p>
 </div>
 <div class="paragraph">
-<p>Session fixation is less of a problem now that Grails by default does not include jsessionid in URLs (see <a href="https://jira.grails.org/browse/GRAILS-3364">this JIRA issue</a>), but it&#8217;s still a good idea to use this feature.</p>
+<p>Session fixation is less of a problem now that Grails by default does not include jsessionid in URLs (see <a href="https://github.com/apache/grails-core/issues/4611">this issue</a>), but it&#8217;s still a good idea to use this feature.</p>
 </div>
 <div class="paragraph">
-<p>Note that there is an issue when using the <a href="https://grails.org/plugin/cookie-session">cookie-session</a> plugin; see <a href="https://github.com/benlucchesi/grails-cookie-session-v2/issues/17">this issue</a> for more details.</p>
+<p>Note that there is an issue when using the <a href="https://github.com/benlucchesi/grails-cookie-session">cookie-session</a> plugin; see <a href="https://github.com/benlucchesi/grails-cookie-session/issues/17">this issue</a> for more details.</p>
 </div>
 <div class="paragraph">
 <p>The table shows configuration options for session fixation.</p>
@@ -63043,7 +63086,7 @@ in forms. For more details, refer to the
 <p>You can update any of the attributes or delete the User. You can see that there&#8217;s a "Login as user" button here - that is only shown if you&#8217;re authenticated with a User who is granted <code>ROLE_SWITCH_USER</code> (this role name can be configured in <code>application.groovy</code>):</p>
 </div>
 <div class="paragraph">
-<p>This allows you to temporarily assume the identity of another User (see <a href="https://apache.github.io/grails-spring-security/latest/index.html#switchUser">the Grails Spring Security Core Plugin documentation</a> for more information about switch-user). The "Logged in as &#8230;&#8203;" information in the top right of the screen will change to show that you&#8217;re running as another User and provide a link to switch back. The role name <code>ROLE_SWITCH_USER</code> is the default but you can change the value with the <code>grails.plugin.springsecurity.ui.switchUserRoleName</code> setting in application.groovy.</p>
+<p>This allows you to temporarily assume the identity of another User (see <a href="#core-switchUser">the Grails Spring Security Core Plugin documentation</a> for more information about switch-user). The "Logged in as &#8230;&#8203;" information in the top right of the screen will change to show that you&#8217;re running as another User and provide a link to switch back. The role name <code>ROLE_SWITCH_USER</code> is the default but you can change the value with the <code>grails.plugin.springsecurity.ui.switchUserRoleName</code> setting in application.groovy.</p>
 </div>
 <div class="paragraph">
 <p>If you click the Roles tab you can see the roles granted to this User and can click through to its edit page:</p>
@@ -63200,7 +63243,8 @@ in forms. For more details, refer to the
 </div>
 <div class="paragraph">
 <p>By default e-mail validation for user creation is turned on.  If you wish to turn it off see the 'E-Mail Validation Parameter' section below.
-If this is turned off then no e-mail is sent to the user and they are automatically redirected to the link that would have been sent in the e-mail.</p>
+If this is turned off then no e-mail is sent to the user and they are automatically redirected to the link that would have been sent in the e-mail.
+The registration form always collects an e-mail address and stores it on the new user, so your User domain class needs an <code>email</code> field even if e-mail validation is turned off - see the note under Notes below.</p>
 </div>
 <div class="paragraph">
 <p>After filling out valid values an email will be sent and you&#8217;ll see a success screen:</p>
@@ -63232,6 +63276,11 @@ If this is turned off then no e-mail is sent to the user and they are automatica
 <div class="paragraph">
 <p>The post-registration destination url is configurable in <code>grails-app/conf/application.groovy</code> using the <code>postRegisterUrl</code> attribute:</p>
 </div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.ui.register.postRegisterUrl = <span class="string"><span class="delimiter">'</span><span class="content">/welcome</span><span class="delimiter">'</span></span></code></pre>
+</div>
+</div>
 <div class="paragraph">
 <p>If you don&#8217;t specify a value then the <code>grails.plugin.springsecurity.successHandler.defaultTargetUrl</code> value will be used, which is <code>'/'</code> by default.</p>
 </div>
@@ -63240,7 +63289,15 @@ If this is turned off then no e-mail is sent to the user and they are automatica
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.ui.register.postRegisterUrl = <span class="string"><span class="delimiter">'</span><span class="content">/welcome</span><span class="delimiter">'</span></span></code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.ui.register.defaultRoleNames = <span class="type">[]</span> <span class="comment">// no roles</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>or</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.ui.register.defaultRoleNames = [<span class="string"><span class="delimiter">'</span><span class="content">ROLE_CUSTOMER</span><span class="delimiter">'</span></span>]</code></pre>
 </div>
 </div>
 </div>
@@ -63277,19 +63334,6 @@ grails.plugin.springsecurity.ui.register.emailSubject = <span class="string"><sp
 </div>
 <div class="paragraph">
 <p>The <code>emailBody</code> property should be a GString and will have the User domain class instance in scope in the <code>user</code> variable, and the generated url to click to finalize the signup in the <code>url</code> variable.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.ui.register.defaultRoleNames = <span class="type">[]</span> <span class="comment">// no roles</span></code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>or</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.ui.register.defaultRoleNames = [<span class="string"><span class="delimiter">'</span><span class="content">ROLE_CUSTOMER</span><span class="delimiter">'</span></span>]</code></pre>
-</div>
 </div>
 </div>
 <div class="sect3">
@@ -70167,7 +70211,7 @@ bean(<span class="string"><span class="delimiter">'</span><span class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">myFilter(FilterRegistrationBean) {
     filter = bean(MyFilter)
     urlPatterns = [<span class="string"><span class="delimiter">'</span><span class="content">/*</span><span class="delimiter">'</span></span>]
-    order = Ordered.HIGHEST_PRECEDENCE
+    order = Ordered.HIGHEST_PRECEDENCE + <span class="integer">1</span>
 }</code></pre>
 </div>
 </div>
@@ -70178,7 +70222,7 @@ bean(<span class="string"><span class="delimiter">'</span><span class="content">
 <i class="fa icon-note" title="Note"></i>
 </td>
 <td class="content">
-Grails' internal registered filters (<code>GrailsWebRequestFilter</code>, <code>HiddenHttpMethodFilter</code> etc.) are defined by incrementing <code>HIGHEST_PRECEDENCE</code> by 10 thus allowing several filters to be inserted before or between Grails' filters.
+Grails registers its character encoding filter at <code>Ordered.HIGHEST_PRECEDENCE</code>, ahead of every other filter, as Spring Boot does with its own. Once any filter reads a request parameter, the servlet container has decoded the request body, so a filter that reads parameters needs a later order than the encoding filter, or form input arrives decoded as ISO-8859-1. A filter registered at exactly <code>Ordered.HIGHEST_PRECEDENCE</code> through a <code>FilterRegistrationBean</code> runs before it. Grails' other filters (<code>HiddenHttpMethodFilter</code>, <code>GrailsWebRequestFilter</code> etc.) have orders from -200 to -150, ten apart, and <code>GrailsFilters.LAST</code> is at -110, ahead of the Spring Security filter chain at -100, which leaves room to insert filters before or between them.
 </td>
 </tr>
 </table>
