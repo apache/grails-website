@@ -4679,7 +4679,7 @@ A list or array of locations is also collected into a set, as Spring does: a lis
 <li>
 <p><strong>Configuration lists are exposed as indexed properties.</strong>
 Non-empty lists loaded from <code>application.yml</code> or <code>application.groovy</code> are exposed to Spring&#8217;s <code>Environment</code> through indexed names such as <code>app.names[0]</code>. This lets Spring Boot bind each element to its declared type and resolve placeholders inside scalar lists. Code that reads a whole list using <code>environment.getProperty('app.names', List)</code> should instead bind it with <code>@ConfigurationProperties</code> or <code>Binder.get(environment).bind('app.names', Bindable.listOf(String)).orElse([])</code>, using <code>Binder</code> and <code>Bindable</code> from <code>org.springframework.boot.context.properties.bind</code>. <code>Binder</code> only accepts a name in Spring Boot&#8217;s canonical form (lowercase, dot-separated, kebab-case); when the name is built from a value such as the environment name, pass <code>ConfigurationPropertyName.adapt(name, '.' as char)</code> from <code>org.springframework.boot.context.properties.source</code> instead of the string. Whole-list access through <code>grailsApplication.config.getProperty('app.names', List)</code> remains supported.
-The list itself is no longer a property of the <code>Environment</code>: <code>environment.getProperty('app.names', String[])</code> returns <code>null</code> and <code>environment.containsProperty('app.names')</code> returns <code>false</code>. A <code>@Value('${app.names}')</code> placeholder can no longer read the list either. Without a default, the application fails to start with <code>Could not resolve placeholder 'app.names'</code>; with a default, the placeholder resolves to the default, or to a single value of the same name from a lower-priority source, and the list is ignored. Bind such a list instead, or write it as one comma-separated string. Grails' own list settings, <code>grails.plugin.fields.exclusions.input</code>, <code>grails.plugin.fields.exclusions.display</code>, <code>grails.plugin.fields.exclusions.list</code>, <code>grails.gsp.tldScanPattern</code> and <code>spring.gsp.templateRoots</code>, are bound and accept either form.</p>
+The list itself is no longer a property of the <code>Environment</code>: <code>environment.getProperty('app.names', String[])</code> returns <code>null</code> and <code>environment.containsProperty('app.names')</code> returns <code>false</code>. A <code>${&#8230;&#8203;}</code> placeholder that names a list of plain values, such as <code>@Value('${app.names}')</code>, still reads it, as in Grails 7: it resolves to the elements joined by commas, with the placeholders in the elements resolved, read from the property source of the highest priority that sets the list. A placeholder that names a list of objects has nothing to resolve to. Grails leaves a placeholder it cannot resolve as written, so the injection point receives the placeholder text, or its default when it has one; bind such a list instead. Grails' own list settings, <code>grails.plugin.fields.exclusions.input</code>, <code>grails.plugin.fields.exclusions.display</code>, <code>grails.plugin.fields.exclusions.list</code>, <code>grails.gsp.tldScanPattern</code> and <code>spring.gsp.templateRoots</code>, are bound and accept either form.</p>
 </li>
 <li>
 <p><strong>Namespaced link generation is namespace-aware.</strong>
@@ -9403,15 +9403,17 @@ way on <code>springdoc.group-configs</code> before the application could start.<
 </div>
 <div class="paragraph">
 <p><code>Environment.getProperty('springdoc.group-configs')</code> now returns <code>null</code> and
-<code>Environment.containsProperty</code> returns <code>false</code>, as they do in a Spring Boot application, so a
-<code>@Value('${springdoc.group-configs}')</code> without a default fails to resolve, as does a <code>${&#8230;&#8203;}</code>
-placeholder naming the list anywhere else. Read such a list through <code>grailsApplication.config</code>,
-which is unchanged, or bind it. The same applies to a list holding lists of objects, such as
+<code>Environment.containsProperty</code> returns <code>false</code>, as they do in a Spring Boot application, and a
+<code>${&#8230;&#8203;}</code> placeholder naming the list, such as <code>@Value('${springdoc.group-configs}')</code>, has nothing to
+resolve to: Grails leaves it as written, so the injection point receives the placeholder text, or its
+default when it has one. Read such a list through <code>grailsApplication.config</code>, which is unchanged, or
+bind it. The same applies to a list holding lists of objects, such as
 <code>rows: [[{a: 1}], [{b: 2}]]</code>, whose objects are presented under names such as <code>rows[0][0].a</code>, and to
 a list mixing plain values and objects, such as <code>mixed: [a, {b: 1}]</code>, presented as <code>mixed[0]</code> and
 <code>mixed[1].b</code>. Within such a list, an empty object, an empty list or a <code>null</code> value is presented as an
 empty string under its own name, such as <code>empty[0]</code> for <code>empty: [{}]</code>, as Spring Boot presents it. A
-list of plain values only, such as <code>names: [a, b]</code>, is presented as before.</p>
+list of plain values only, such as <code>names: [a, b]</code>, is presented by its indexed names too, and a
+<code>${&#8230;&#8203;}</code> placeholder naming it resolves to its elements joined by commas.</p>
 </div>
 <div class="paragraph">
 <p>What reads the names the configuration presents sees the change too:</p>
@@ -14778,9 +14780,20 @@ is not set. Each element is resolved independently; the list does not need to be
 <code>grails.cors.allowedOrigins[0]</code>. A list nested in a list uses one index per level, such as <code>app.groups[0][1]</code>.</p>
 </div>
 <div class="paragraph">
-<p>Because the list itself is not a property of the <code>Environment</code>, a <code>@Value('${grails.cors.allowedOrigins}')</code> placeholder
-cannot inject it, just as in a plain Spring Boot application. Bind the list with <code>@ConfigurationProperties</code> or with Spring Boot&#8217;s
-<code>Binder</code>, or write the value as one comma-separated string where a <code>@Value</code> placeholder must read it.</p>
+<p>The list itself is not a property of the <code>Environment</code>, so <code>environment.getProperty('grails.cors.allowedOrigins')</code>
+returns <code>null</code>, as in a plain Spring Boot application. A <code>@Value('${grails.cors.allowedOrigins}')</code> placeholder, or any
+other <code>${&#8230;&#8203;}</code> placeholder that names a list of plain values, still reads it: it resolves to the elements of the list
+joined by commas, with the placeholders in the elements resolved, and Spring converts that value to the <code>List</code> or array
+the placeholder is injected into. The list is read as <code>@ConfigurationProperties</code> binding reads it, from the property
+source of the highest priority that sets it, and its name is matched as that binding matches it, so
+<code>${grails.cors.allowed-origins}</code> reads the same list. A value set under the name of the list itself, in any property
+source, is used instead of the list. The conversion splits an element that contains a comma in two, so bind a list
+whose elements can contain commas.</p>
+</div>
+<div class="paragraph">
+<p>A placeholder that names a list of objects has nothing to resolve to. Grails leaves a placeholder it cannot resolve as
+written, so the injection point receives the placeholder text, or the placeholder&#8217;s default when it has one. Bind such
+a list, or read it through <code>grailsApplication.config</code>.</p>
 </div>
 </div>
 <div class="sect2">

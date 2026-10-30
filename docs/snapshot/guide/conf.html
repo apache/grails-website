@@ -502,9 +502,20 @@ is not set. Each element is resolved independently; the list does not need to be
 <code>grails.cors.allowedOrigins[0]</code>. A list nested in a list uses one index per level, such as <code>app.groups[0][1]</code>.</p>
 </div>
 <div class="paragraph">
-<p>Because the list itself is not a property of the <code>Environment</code>, a <code>@Value('${grails.cors.allowedOrigins}')</code> placeholder
-cannot inject it, just as in a plain Spring Boot application. Bind the list with <code>@ConfigurationProperties</code> or with Spring Boot&#8217;s
-<code>Binder</code>, or write the value as one comma-separated string where a <code>@Value</code> placeholder must read it.</p>
+<p>The list itself is not a property of the <code>Environment</code>, so <code>environment.getProperty('grails.cors.allowedOrigins')</code>
+returns <code>null</code>, as in a plain Spring Boot application. A <code>@Value('${grails.cors.allowedOrigins}')</code> placeholder, or any
+other <code>${&#8230;&#8203;}</code> placeholder that names a list of plain values, still reads it: it resolves to the elements of the list
+joined by commas, with the placeholders in the elements resolved, and Spring converts that value to the <code>List</code> or array
+the placeholder is injected into. The list is read as <code>@ConfigurationProperties</code> binding reads it, from the property
+source of the highest priority that sets it, and its name is matched as that binding matches it, so
+<code>${grails.cors.allowed-origins}</code> reads the same list. A value set under the name of the list itself, in any property
+source, is used instead of the list. The conversion splits an element that contains a comma in two, so bind a list
+whose elements can contain commas.</p>
+</div>
+<div class="paragraph">
+<p>A placeholder that names a list of objects has nothing to resolve to. Grails leaves a placeholder it cannot resolve as
+written, so the injection point receives the placeholder text, or the placeholder&#8217;s default when it has one. Bind such
+a list, or read it through <code>grailsApplication.config</code>.</p>
 </div>
 </div>
 <div class="sect2">

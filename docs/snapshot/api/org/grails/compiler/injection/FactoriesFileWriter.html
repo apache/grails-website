@@ -107,7 +107,8 @@ extends java.lang.Object</pre>
 
     <p> Writes factory registrations for compiled classes into a factories file in the compilation
  target directory, merging any existing entries from previous compilation runs and from
- hand-authored source registrations. The factories file location is supplied by the caller,
+ hand-authored source registrations, and drops the registration of a class compiled again
+ once it no longer qualifies. The factories file location is supplied by the caller,
  so the writer is shared by transformations targeting different registration files
  (e.g. <CODE>META-INF/grails.factories</CODE> and <CODE>META-INF/grails-cli.factories</CODE>). <DL><DT><B>Since:</B></DT><DD>8.0</DD></DL></p>
 
@@ -179,8 +180,16 @@ extends java.lang.Object</pre>
                         <tr class="rowColor">
                             <td class="colFirst"><code></code></td>
                             <td class="colLast"><code>static&nbsp;boolean</code></td>
+                            <td class="colLast"><code><strong><a href="#removeFromFactories(java.lang.String, org.codehaus.groovy.ast.ClassNode, java.io.File, java.lang.String, List)">removeFromFactories</a></strong>(java.lang.String className, <a href='https://docs.groovy-lang.org/5.1.3/html/gapi/org/codehaus/groovy/ast/ClassNode.html' title='ClassNode'>ClassNode</a> superType, java.io.File compilationTargetDirectory, java.lang.String factoriesLocation, java.util.List&lt;java.lang.String&gt; sourceFactoriesLocations)</code><br>Drops the class from the given super type's entry in the factories file, unless a
+ hand-authored factories file registers it, and deletes the file once no entry is left.</td>
+                        </tr>
+                        
+                        <tr class="altColor">
+                            <td class="colFirst"><code></code></td>
+                            <td class="colLast"><code>static&nbsp;boolean</code></td>
                             <td class="colLast"><code><strong><a href="#updateFactoriesWithType(org.codehaus.groovy.ast.ClassNode, org.codehaus.groovy.ast.ClassNode, java.io.File, java.lang.String, List)">updateFactoriesWithType</a></strong>(<a href='https://docs.groovy-lang.org/5.1.3/html/gapi/org/codehaus/groovy/ast/ClassNode.html' title='ClassNode'>ClassNode</a> classNode, <a href='https://docs.groovy-lang.org/5.1.3/html/gapi/org/codehaus/groovy/ast/ClassNode.html' title='ClassNode'>ClassNode</a> superType, java.io.File compilationTargetDirectory, java.lang.String factoriesLocation, java.util.List&lt;java.lang.String&gt; sourceFactoriesLocations)</code><br>Registers the class as an implementation of the given super type in the factories file
- when the class is a non-abstract subtype.</td>
+ when the class is a non-abstract subtype, and otherwise drops it from that type's entry
+ (see <a href='#removeFromFactories'>removeFromFactories</a>).</td>
                         </tr>
                         
                     </table>
@@ -259,12 +268,26 @@ extends java.lang.Object</pre>
                             </li>
                         </ul>
                     
+                        <a name="removeFromFactories(java.lang.String, org.codehaus.groovy.ast.ClassNode, java.io.File, java.lang.String, List)"><!-- --></a>
+                        <ul class="blockListLast">
+                            <li class="blockList">
+                                <h4>static&nbsp;boolean <strong>removeFromFactories</strong>(java.lang.String className, <a href='https://docs.groovy-lang.org/5.1.3/html/gapi/org/codehaus/groovy/ast/ClassNode.html' title='ClassNode'>ClassNode</a> superType, java.io.File compilationTargetDirectory, java.lang.String factoriesLocation, java.util.List&lt;java.lang.String&gt; sourceFactoriesLocations)</h4>
+                                <p> Drops the class from the given super type's entry in the factories file, unless a
+ hand-authored factories file registers it, and deletes the file once no entry is left.
+
+ <p>Incremental compilation recompiles a changed class without the others, so a class that
+ is no longer a concrete subtype, or one its transformation no longer registers, would
+ otherwise keep the entry written by the compilation that registered it.</p> <DL><DT><B>Parameters:</B></DT><DD><code>className</code> -  the binary name of the compiled class</DD><DD><code>superType</code> -  the factory type the class may have been registered under</DD><DD><code>compilationTargetDirectory</code> -  the compilation output directory</DD><DD><code>factoriesLocation</code> -  the factories file path relative to the target directory</DD><DD><code>sourceFactoriesLocations</code> -  project-relative paths of hand-authored factories files</DD></DL><DL><DT><B>Returns:</B></DT><DD><CODE>true</CODE> when an entry was dropped</DD></DL></p>
+                            </li>
+                        </ul>
+                    
                         <a name="updateFactoriesWithType(org.codehaus.groovy.ast.ClassNode, org.codehaus.groovy.ast.ClassNode, java.io.File, java.lang.String, List)"><!-- --></a>
                         <ul class="blockListLast">
                             <li class="blockList">
                                 <h4>static&nbsp;boolean <strong>updateFactoriesWithType</strong>(<a href='https://docs.groovy-lang.org/5.1.3/html/gapi/org/codehaus/groovy/ast/ClassNode.html' title='ClassNode'>ClassNode</a> classNode, <a href='https://docs.groovy-lang.org/5.1.3/html/gapi/org/codehaus/groovy/ast/ClassNode.html' title='ClassNode'>ClassNode</a> superType, java.io.File compilationTargetDirectory, java.lang.String factoriesLocation, java.util.List&lt;java.lang.String&gt; sourceFactoriesLocations)</h4>
                                 <p> Registers the class as an implementation of the given super type in the factories file
- when the class is a non-abstract subtype. <DL><DT><B>Parameters:</B></DT><DD><code>classNode</code> -  the compiled class</DD><DD><code>superType</code> -  the factory type to register the class under</DD><DD><code>compilationTargetDirectory</code> -  the compilation output directory</DD><DD><code>factoriesLocation</code> -  the factories file path relative to the target directory</DD><DD><code>sourceFactoriesLocations</code> -  project-relative paths of hand-authored factories files to merge</DD></DL><DL><DT><B>Returns:</B></DT><DD><CODE>true</CODE> when the class was a subtype of the factory type</DD></DL></p>
+ when the class is a non-abstract subtype, and otherwise drops it from that type's entry
+ (see <a href='#removeFromFactories'>removeFromFactories</a>). <DL><DT><B>Parameters:</B></DT><DD><code>classNode</code> -  the compiled class</DD><DD><code>superType</code> -  the factory type to register the class under</DD><DD><code>compilationTargetDirectory</code> -  the compilation output directory</DD><DD><code>factoriesLocation</code> -  the factories file path relative to the target directory</DD><DD><code>sourceFactoriesLocations</code> -  project-relative paths of hand-authored factories files to merge</DD></DL><DL><DT><B>Returns:</B></DT><DD><CODE>true</CODE> when the class was registered</DD></DL></p>
                             </li>
                         </ul>
                     
