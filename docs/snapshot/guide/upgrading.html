@@ -6902,6 +6902,34 @@ The same applies to <code>grails-data-hibernate7</code> and to any other Grails 
 </ul>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_89_data_binding_white_lists_apply_wherever_a_class_is_compiled">89. Data binding white lists apply wherever a class is compiled</h4>
+<div class="paragraph">
+<p>As of Grails 8.0.1, and 7.0.18 on the 7.0.x line, the lists of bindable properties that Grails generates for a class at compile time, from its statically typed properties, its <code>bindable</code> constraints, its <code>transients</code> list and its <code>transient</code> fields, are generated for every class that implements <code>grails.validation.Validateable</code> or declares <code>constraints</code> or <code>transients</code>, and for every class that extends one, wherever the class is compiled with the data binding library, <code>grails-web-databinding</code>, on the compilation&#8217;s classpath, as it is in an application or a plugin. A library module that compiles against GORM alone generates no lists and gets no warning. Previously only domain classes and the parameter types of controller actions compiled with their controller got them, and in the permissive mode a class without them was bound without restriction.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>A command object compiled apart from the controller that binds it, in a plugin or in a shared module, a <code>Validateable</code> object bound as a nested property, and a command object declared inside another class are now bound by their <code>bindable</code> constraints and their <code>transients</code>, like a command object compiled with its controller. As a consequence, in the permissive mode their dynamically typed properties, declared with <code>def</code> or as <code>Object</code>, are no longer bound by default. Declare a type for such a property, or mark it <code>bindable: true</code>.</p>
+</li>
+<li>
+<p>A class compiled against an already compiled parent takes the parent&#8217;s bindable properties from the compiled parent. When the parent was compiled by an earlier version of Grails, or without the data binding library on its compile classpath, the compiler warns that the lists of the subclass are derived from the parent&#8217;s bytecode and asks for the parent to be recompiled. Recompile the plugin or module that holds the parent with Grails 8.0.1 or later, or 7.0.18 or later, to clear the warning.</p>
+</li>
+<li>
+<p>A property of type <code>org.springframework.validation.Errors</code>, such as the <code>errors</code> property of a domain class or of a <code>Validateable</code> object, is never bound from request data, whatever a generated list names.</p>
+</li>
+<li>
+<p><code>bindData</code> with an <code>exclude</code> list, including the <code>bindData(target, source, List excludes)</code> overloads, keeps the generated list in effect in the permissive mode too and removes the excluded properties from it. Previously, in the permissive mode, an <code>exclude</code> list without an <code>include</code> list set the generated list aside, so that only the excluded properties were kept out.</p>
+</li>
+<li>
+<p>A class that gets the lists now carries them as new <code>public static final</code> fields. A class that implements <code>Serializable</code> without declaring a <code>serialVersionUID</code>, such as a <code>Validateable</code> object kept in a persisted HTTP session or in a distributed cache, therefore gets a new default <code>serialVersionUID</code>, and instances serialized before the upgrade do not deserialize after it. Declare a <code>serialVersionUID</code> on such a class.</p>
+</li>
+<li>
+<p>A controller compiled against a command object that was compiled without the lists, by an earlier version of Grails or without the data binding library, warns that the command object is bound without restriction and should be recompiled.</p>
+</li>
+</ul>
+</div>
+</div>
 </div>
 
 

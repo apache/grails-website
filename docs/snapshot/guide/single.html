@@ -10130,6 +10130,34 @@ The same applies to <code>grails-data-hibernate7</code> and to any other Grails 
 </ul>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_89_data_binding_white_lists_apply_wherever_a_class_is_compiled">89. Data binding white lists apply wherever a class is compiled</h4>
+<div class="paragraph">
+<p>As of Grails 8.0.1, and 7.0.18 on the 7.0.x line, the lists of bindable properties that Grails generates for a class at compile time, from its statically typed properties, its <code>bindable</code> constraints, its <code>transients</code> list and its <code>transient</code> fields, are generated for every class that implements <code>grails.validation.Validateable</code> or declares <code>constraints</code> or <code>transients</code>, and for every class that extends one, wherever the class is compiled with the data binding library, <code>grails-web-databinding</code>, on the compilation&#8217;s classpath, as it is in an application or a plugin. A library module that compiles against GORM alone generates no lists and gets no warning. Previously only domain classes and the parameter types of controller actions compiled with their controller got them, and in the permissive mode a class without them was bound without restriction.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>A command object compiled apart from the controller that binds it, in a plugin or in a shared module, a <code>Validateable</code> object bound as a nested property, and a command object declared inside another class are now bound by their <code>bindable</code> constraints and their <code>transients</code>, like a command object compiled with its controller. As a consequence, in the permissive mode their dynamically typed properties, declared with <code>def</code> or as <code>Object</code>, are no longer bound by default. Declare a type for such a property, or mark it <code>bindable: true</code>.</p>
+</li>
+<li>
+<p>A class compiled against an already compiled parent takes the parent&#8217;s bindable properties from the compiled parent. When the parent was compiled by an earlier version of Grails, or without the data binding library on its compile classpath, the compiler warns that the lists of the subclass are derived from the parent&#8217;s bytecode and asks for the parent to be recompiled. Recompile the plugin or module that holds the parent with Grails 8.0.1 or later, or 7.0.18 or later, to clear the warning.</p>
+</li>
+<li>
+<p>A property of type <code>org.springframework.validation.Errors</code>, such as the <code>errors</code> property of a domain class or of a <code>Validateable</code> object, is never bound from request data, whatever a generated list names.</p>
+</li>
+<li>
+<p><code>bindData</code> with an <code>exclude</code> list, including the <code>bindData(target, source, List excludes)</code> overloads, keeps the generated list in effect in the permissive mode too and removes the excluded properties from it. Previously, in the permissive mode, an <code>exclude</code> list without an <code>include</code> list set the generated list aside, so that only the excluded properties were kept out.</p>
+</li>
+<li>
+<p>A class that gets the lists now carries them as new <code>public static final</code> fields. A class that implements <code>Serializable</code> without declaring a <code>serialVersionUID</code>, such as a <code>Validateable</code> object kept in a persisted HTTP session or in a distributed cache, therefore gets a new default <code>serialVersionUID</code>, and instances serialized before the upgrade do not deserialize after it. Declare a <code>serialVersionUID</code> on such a class.</p>
+</li>
+<li>
+<p>A controller compiled against a command object that was compiled without the lists, by an earlier version of Grails or without the data binding library, warns that the command object is bound without restriction and should be recompiled.</p>
+</li>
+</ul>
+</div>
+</div>
 </div>
 
 
@@ -18111,7 +18139,7 @@ Creates an application
                           gorm-hibernate7, spring-boot-starter-jetty, spring-boot-starter-tomcat,
                           micronaut-http-client, cache-ehcache, hibernate-validator, postgres,
                           mysql, cache, database-migration, grails-gsp, hamcrest, gorm-mongodb,
-                          assertj, mockito, grails-undertow,
+                          gorm-graphql, assertj, mockito, grails-undertow,
                           github-workflow-java-ci, jrebel, testcontainers, sqlserver,
                           grails-console, views-markup, asset-pipeline-grails, views-json,
                           gorm-neo4j, asciidoctor, grails-web-console,
@@ -18143,6 +18171,9 @@ Available Features
 (+) denotes the feature is included by default
   Name                                Description
   ----------------------------------  ---------------
+  API
+  gorm-graphql                        Generates a GraphQL schema based on entities in GORM.
+
   CI/CD
   github-workflow-java-ci [PREVIEW]   Adds a Github Actions Workflow to Build and Test Grails Application
 
@@ -19178,7 +19209,7 @@ the plain <code>-cli</code> coordinate, e.g. <code>grailsCli 'com.example:my-plu
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-f, --features</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The features to use. Possible values: h2, gorm-hibernate5, gorm-hibernate7, spring-boot-starter-jetty, micronaut-http-client, cache-ehcache, hibernate-validator, postgres, mysql, cache, database-migration, grails-gsp, hamcrest, gorm-mongodb, assertj, mockito, grails-undertow, github-workflow-java-ci, jrebel, testcontainers, sqlserver, grails-console, views-markup, views-json, gorm-neo4j, asciidoctor, grails-web-console, logbackGroovy, mongo-sync, shade, properties</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The features to use. Possible values: h2, gorm-hibernate5, gorm-hibernate7, spring-boot-starter-jetty, micronaut-http-client, cache-ehcache, hibernate-validator, postgres, mysql, cache, database-migration, grails-gsp, hamcrest, gorm-mongodb, gorm-graphql, assertj, mockito, grails-undertow, github-workflow-java-ci, jrebel, testcontainers, sqlserver, grails-console, views-markup, views-json, gorm-neo4j, asciidoctor, grails-web-console, logbackGroovy, mongo-sync, shade, properties</p></td>
 <td class="tableblock halign-left valign-top"><div class="content"><div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="shell">--features github-workflow-java-ci,micronaut-http-client</code></pre>
@@ -23829,6 +23860,9 @@ bindData(p, params, [<span class="key">exclude</span>: <span class="string"><spa
 </div>
 </div>
 <div class="paragraph">
+<p>The properties the class itself keeps out of binding, through a <code>bindable: false</code> constraint, its <code>transients</code> or a <code>transient</code> field, stay excluded: <code>exclude</code> narrows the list of bindable properties described below, it does not replace it.</p>
+</div>
+<div class="paragraph">
 <p>Or include only certain properties:</p>
 </div>
 <div class="listingblock">
@@ -23851,6 +23885,15 @@ If an empty List is provided as a value for the <code>include</code> parameter t
 </div>
 <div class="paragraph">
 <p>Grails 8 retains permissive request data binding by default for compatibility, so properties without a <code>bindable</code> constraint continue to bind.  Properties marked <a href="../ref/Constraints/bindable.html"><code>bindable: false</code></a> remain non-bindable in either mode.  Applications can opt into deny-by-default binding allowlists by setting <code>grails.databinding.denyByDefault=true</code>.  In secure mode, add <code>bindable: true</code>, an explicit <code>include</code> list, or <code>@BindAllowed</code> for each intended property; only in this mode does <code>bindable: true</code> act as a restrictive allowlist.</p>
+</div>
+<div class="paragraph">
+<p>When no <code>include</code> list is given, binding is restricted to a list of bindable properties that Grails generates for the class when it is compiled. In the permissive mode the list holds the class&#8217;s statically typed instance properties and those it inherits, less the properties its <code>constraints</code> mark <code>bindable: false</code>, the properties named in its <code>transients</code> list and its <code>transient</code> fields, plus any property its <code>constraints</code> mark <code>bindable: true</code>; under <code>grails.databinding.denyByDefault</code> it holds the properties marked <code>bindable: true</code>. Domain classes, command objects and any other class that implements <code>grails.validation.Validateable</code> or declares <code>constraints</code> or <code>transients</code> get these lists, as do the classes that extend them, wherever they are compiled, in the application, in a plugin, or in another module of a multi-project build, provided the data binding library, <code>grails-web-databinding</code>, is on that compilation&#8217;s classpath, as it is in a Grails application or plugin. A library module that compiles against GORM alone generates no lists. In the permissive mode, a class with none of these is bound without restriction.</p>
+</div>
+<div class="paragraph">
+<p>A class compiled against an already compiled parent, such as a parent in a plugin or in another module, takes the parent&#8217;s bindable properties from the compiled parent. If the parent was compiled by an earlier version of Grails, or without the data binding library on its compile classpath, the compiler warns that the lists of the subclass are derived from the parent&#8217;s bytecode, which does not carry the parent&#8217;s <code>bindable</code> constraints or its <code>transients</code>, and asks for the parent to be recompiled.</p>
+</div>
+<div class="paragraph">
+<p>A property that holds a validation result, of type <code>org.springframework.validation.Errors</code>, such as the <code>errors</code> property of a domain class or of a <code>Validateable</code> object, is never bound from request data.</p>
 </div>
 </div>
 
@@ -51970,6 +52013,21 @@ Logged in as <span class="tag">&lt;sec:username</span><span class="tag">/&gt;</s
 <p>There are a few different approaches to configuring filter chains.</p>
 </div>
 <div class="sect3">
+<h4 id="_requests_that_arrive_before_startup">Requests that arrive before startup</h4>
+<div class="paragraph">
+<p>While the application is starting, the plugin responds to every request with <code>503 Service Unavailable</code>. That includes a request for a static resource. Requests are allowed through only after both of these have happened, in either order: the plugin has finished <code>doWithApplicationContext()</code>, and Spring Boot has published <code>ApplicationStartedEvent</code>.</p>
+</div>
+<div class="paragraph">
+<p>The property is <code>grails.plugin.springsecurity.rejectRequestsDuringStartup</code>. It defaults to <code>true</code>. Set it to <code>false</code> to let requests through during startup:</p>
+</div>
+<div class="listingblock">
+<div class="title">Listing 82. Disabling <code>rejectRequestsDuringStartup</code></div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.rejectRequestsDuringStartup = <span class="predefined-constant">false</span></code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
 <h4 id="_default_approach_to_configuring_filter_chains">Default Approach to Configuring Filter Chains</h4>
 <div class="paragraph">
 <p>The default is to use configuration attributes to determine which extra filters to use (for example, Basic Auth, Switch User, etc.) and add these to the &#8220;core&#8221; filters. For example, setting <code>grails.plugin.springsecurity.useSwitchUserFilter = true</code> adds <code>switchUserProcessingFilter</code> to the filter chain (and in the correct order). The filter chain built here is applied to all URLs. If you need more flexibility, you can use <code>filterChain.chainMap</code> as discussed in <strong>chainMap</strong> below.</p>
@@ -51984,7 +52042,7 @@ Logged in as <span class="tag">&lt;sec:username</span><span class="tag">/&gt;</s
 <p>For example:</p>
 </div>
 <div class="listingblock">
-<div class="title">Listing 82. Sample <code>grails.plugin.springsecurity.filterChain.filterNames</code> configuration</div>
+<div class="title">Listing 83. Sample <code>grails.plugin.springsecurity.filterChain.filterNames</code> configuration</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.filterChain.filterNames = [
    <span class="string"><span class="delimiter">'</span><span class="content">securityContextPersistenceFilter</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">logoutFilter</span><span class="delimiter">'</span></span>,
@@ -52004,7 +52062,7 @@ Logged in as <span class="tag">&lt;sec:username</span><span class="tag">/&gt;</s
 <p>Use the <code>filterChain.chainMap</code> attribute to define which filters are applied to different URL patterns. You define a Map that specifies one or more lists of filter bean names, each with a corresponding URL pattern.</p>
 </div>
 <div class="listingblock">
-<div class="title">Listing 83. Sample <code>grails.plugin.springsecurity.filterChain.chainMap</code> configuration</div>
+<div class="title">Listing 84. Sample <code>grails.plugin.springsecurity.filterChain.chainMap</code> configuration</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.filterChain.chainMap = [
    [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/urlpattern1/**</span><span class="delimiter">'</span></span>, <span class="key">filters</span>: <span class="string"><span class="delimiter">'</span><span class="content">filter1,filter2,filter3,filter4</span><span class="delimiter">'</span></span>],
@@ -52037,7 +52095,7 @@ Logged in as <span class="tag">&lt;sec:username</span><span class="tag">/&gt;</s
 <p>There&#8217;s also a filter negation syntax that can be very convenient. Rather than specifying all of the filter names (and risking forgetting one or putting them in the wrong order), you can use the <code>JOINED_FILTERS</code> keyword and one or more filter names prefixed with a <code>-</code> . This means to use all configured filters except for the excluded ones. For example, if you had a web service that uses Basic Auth for <code>/webservice/**</code> URLs, you would configure that using:</p>
 </div>
 <div class="listingblock">
-<div class="title">Listing 84. Using <code>JOINED_FILTERS</code> in a <code>filterChain.chainMap</code> configuration</div>
+<div class="title">Listing 85. Using <code>JOINED_FILTERS</code> in a <code>filterChain.chainMap</code> configuration</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.filterChain.chainMap = [
    [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/webservice/**</span><span class="delimiter">'</span></span>, <span class="key">filters</span>: <span class="string"><span class="delimiter">'</span><span class="content">JOINED_FILTERS,-exceptionTranslationFilter</span><span class="delimiter">'</span></span>],
@@ -52055,7 +52113,7 @@ Logged in as <span class="tag">&lt;sec:username</span><span class="tag">/&gt;</s
 <p>Additionally, you can use a <code>chainMap</code> configuration to declare one or more URL patterns which should have no filters applied. Use the name <code>'none'</code> for these patterns, e.g.</p>
 </div>
 <div class="listingblock">
-<div class="title">Listing 85. Using <code>none</code> in a <code>filterChain.chainMap</code> configuration</div>
+<div class="title">Listing 86. Using <code>none</code> in a <code>filterChain.chainMap</code> configuration</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.filterChain.chainMap = [
    [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/someurlpattern/**</span><span class="delimiter">'</span></span>, <span class="key">filters</span>: <span class="string"><span class="delimiter">'</span><span class="content">none</span><span class="delimiter">'</span></span>],
@@ -52182,7 +52240,7 @@ beans = {
 <p>Build a <code>List</code> of single-entry <code>Map</code>s under the <code>secureChannel.definition</code> key, where URL patterns are stored under the key &#8220;pattern&#8221;, and the values are stored under the key &#8220;access&#8221; and are one of the access keywords <code>REQUIRES_SECURE_CHANNEL</code>, <code>REQUIRES_INSECURE_CHANNEL</code>, or <code>ANY_CHANNEL</code>:</p>
 </div>
 <div class="listingblock">
-<div class="title">Listing 86. Sample <code>grails.plugin.springsecurity.secureChannel.definition</code></div>
+<div class="title">Listing 87. Sample <code>grails.plugin.springsecurity.secureChannel.definition</code></div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.secureChannel.definition = [
    [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/login/**</span><span class="delimiter">'</span></span>,        <span class="key">access</span>: <span class="string"><span class="delimiter">'</span><span class="content">REQUIRES_SECURE_CHANNEL</span><span class="delimiter">'</span></span>],
@@ -52266,7 +52324,7 @@ grails.plugin.springsecurity.secureChannel.insecureHeaderValue = <span class="st
 <p>To use this feature, specify an <code>ipRestrictions</code> configuration as a <code>List</code> of <code>Map</code>s, one for each combination of URL pattern to IP address patterns that can access those URLs. The IP patterns can be single-value strings, or multi-value lists of strings. They can use <a href="https://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing">CIDR</a> masks, and can specify either IPv4 or IPv6 patterns. For example, given this configuration:</p>
 </div>
 <div class="listingblock">
-<div class="title">Listing 87. Sample <code>grails.plugin.springsecurity.ipRestrictions</code> configuration</div>
+<div class="title">Listing 88. Sample <code>grails.plugin.springsecurity.ipRestrictions</code> configuration</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.ipRestrictions = [
    [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/pattern1/**</span><span class="delimiter">'</span></span>, <span class="key">access</span>: <span class="string"><span class="delimiter">'</span><span class="content">123.234.345.456</span><span class="delimiter">'</span></span>],
@@ -52405,7 +52463,7 @@ grails.plugin.springsecurity.secureChannel.insecureHeaderValue = <span class="st
 <p>The beans must be declared either by the plugin or by you in <code>resources.groovy</code>. For example, suppose you have a custom <code>MyLogoutHandler</code> in <code>resources.groovy</code>:</p>
 </div>
 <div class="listingblock">
-<div class="title">Listing 88. Registering a custom logout handler in <code>resources.groovy</code></div>
+<div class="title">Listing 89. Registering a custom logout handler in <code>resources.groovy</code></div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">com.foo.MyLogoutHandler</span>
 
@@ -52420,7 +52478,7 @@ beans = {
 <p>You register it in <code>grails-app/conf/application.groovy</code> as:</p>
 </div>
 <div class="listingblock">
-<div class="title">Listing 89. Adding a custom logout handler in <code>grails.plugin.springsecurity.logout.handlerNames</code></div>
+<div class="title">Listing 90. Adding a custom logout handler in <code>grails.plugin.springsecurity.logout.handlerNames</code></div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.logout.handlerNames = [
    <span class="string"><span class="delimiter">'</span><span class="content">rememberMeServices</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">securityContextLogoutHandler</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">myLogoutHandler</span><span class="delimiter">'</span></span>
@@ -52521,6 +52579,11 @@ beans = {
 <td class="tableblock halign-left valign-top"><p class="tableblock">rejectIfNoRule</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">&#8220;strict&#8221; mode where a request mapping is required for all resources; if <code>true</code> make sure to allow <code>permitAll</code> for &#8220;/&#8221;, &#8220;/js/**&#8221;, &#8220;/css/**&#8221;, &#8220;/images/**&#8221;, &#8220;/login/**&#8221;, &#8220;/logout/**&#8221;, and so on</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">rejectRequestsDuringStartup</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">If <code>true</code>, respond with 503 to every request, including a static resource, until the application has started. Set to <code>false</code> to allow those requests. See <a href="#core-filters">Filters</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">anon.key</p></td>
@@ -53425,7 +53488,7 @@ Be careful not to double-encode passwords if you also use a <code>beforeInsert()
 <p>Returns <code>true</code> if there is an authenticated user.</p>
 </div>
 <div class="listingblock">
-<div class="title">Listing 90. Example use of <code>isLoggedIn()</code></div>
+<div class="title">Listing 91. Example use of <code>isLoggedIn()</code></div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">MyController</span> {
 
@@ -53460,7 +53523,7 @@ Be careful not to double-encode passwords if you also use a <code>beforeInsert()
 <p>Retrieves the current authenticated user&#8217;s Principal (a <code>GrailsUser</code> instance unless you&#8217;ve customized this) or <code>null</code> if not authenticated.</p>
 </div>
 <div class="listingblock">
-<div class="title">Listing 91. Example use of <code>getPrincipal()</code></div>
+<div class="title">Listing 92. Example use of <code>getPrincipal()</code></div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">MyController</span> {
 
@@ -53487,7 +53550,7 @@ Be careful not to double-encode passwords if you also use a <code>beforeInsert()
 <p>Loads the user domain class instance from the database that corresponds to the currently authenticated user, or <code>null</code> if not authenticated. This is the equivalent of adding a dependency injection for <code>springSecurityService</code> and calling <code>PersonDomainClassName.get(springSecurityService.principal.id)</code> (the typical way that this is often done).</p>
 </div>
 <div class="listingblock">
-<div class="title">Listing 92. Example use of <code>getAuthenticatedUser()</code></div>
+<div class="title">Listing 93. Example use of <code>getAuthenticatedUser()</code></div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">MyController</span> {
 

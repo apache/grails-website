@@ -6649,6 +6649,21 @@ Logged in as <span class="tag">&lt;sec:username</span><span class="tag">/&gt;</s
 <p>There are a few different approaches to configuring filter chains.</p>
 </div>
 <div class="sect3">
+<h4 id="_requests_that_arrive_before_startup">Requests that arrive before startup</h4>
+<div class="paragraph">
+<p>While the application is starting, the plugin responds to every request with <code>503 Service Unavailable</code>. That includes a request for a static resource. Requests are allowed through only after both of these have happened, in either order: the plugin has finished <code>doWithApplicationContext()</code>, and Spring Boot has published <code>ApplicationStartedEvent</code>.</p>
+</div>
+<div class="paragraph">
+<p>The property is <code>grails.plugin.springsecurity.rejectRequestsDuringStartup</code>. It defaults to <code>true</code>. Set it to <code>false</code> to let requests through during startup:</p>
+</div>
+<div class="listingblock">
+<div class="title">Listing 82. Disabling <code>rejectRequestsDuringStartup</code></div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.rejectRequestsDuringStartup = <span class="predefined-constant">false</span></code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
 <h4 id="_default_approach_to_configuring_filter_chains">Default Approach to Configuring Filter Chains</h4>
 <div class="paragraph">
 <p>The default is to use configuration attributes to determine which extra filters to use (for example, Basic Auth, Switch User, etc.) and add these to the &#8220;core&#8221; filters. For example, setting <code>grails.plugin.springsecurity.useSwitchUserFilter = true</code> adds <code>switchUserProcessingFilter</code> to the filter chain (and in the correct order). The filter chain built here is applied to all URLs. If you need more flexibility, you can use <code>filterChain.chainMap</code> as discussed in <strong>chainMap</strong> below.</p>
@@ -6663,7 +6678,7 @@ Logged in as <span class="tag">&lt;sec:username</span><span class="tag">/&gt;</s
 <p>For example:</p>
 </div>
 <div class="listingblock">
-<div class="title">Listing 82. Sample <code>grails.plugin.springsecurity.filterChain.filterNames</code> configuration</div>
+<div class="title">Listing 83. Sample <code>grails.plugin.springsecurity.filterChain.filterNames</code> configuration</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.filterChain.filterNames = [
    <span class="string"><span class="delimiter">'</span><span class="content">securityContextPersistenceFilter</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">logoutFilter</span><span class="delimiter">'</span></span>,
@@ -6683,7 +6698,7 @@ Logged in as <span class="tag">&lt;sec:username</span><span class="tag">/&gt;</s
 <p>Use the <code>filterChain.chainMap</code> attribute to define which filters are applied to different URL patterns. You define a Map that specifies one or more lists of filter bean names, each with a corresponding URL pattern.</p>
 </div>
 <div class="listingblock">
-<div class="title">Listing 83. Sample <code>grails.plugin.springsecurity.filterChain.chainMap</code> configuration</div>
+<div class="title">Listing 84. Sample <code>grails.plugin.springsecurity.filterChain.chainMap</code> configuration</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.filterChain.chainMap = [
    [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/urlpattern1/**</span><span class="delimiter">'</span></span>, <span class="key">filters</span>: <span class="string"><span class="delimiter">'</span><span class="content">filter1,filter2,filter3,filter4</span><span class="delimiter">'</span></span>],
@@ -6716,7 +6731,7 @@ Logged in as <span class="tag">&lt;sec:username</span><span class="tag">/&gt;</s
 <p>There&#8217;s also a filter negation syntax that can be very convenient. Rather than specifying all of the filter names (and risking forgetting one or putting them in the wrong order), you can use the <code>JOINED_FILTERS</code> keyword and one or more filter names prefixed with a <code>-</code> . This means to use all configured filters except for the excluded ones. For example, if you had a web service that uses Basic Auth for <code>/webservice/**</code> URLs, you would configure that using:</p>
 </div>
 <div class="listingblock">
-<div class="title">Listing 84. Using <code>JOINED_FILTERS</code> in a <code>filterChain.chainMap</code> configuration</div>
+<div class="title">Listing 85. Using <code>JOINED_FILTERS</code> in a <code>filterChain.chainMap</code> configuration</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.filterChain.chainMap = [
    [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/webservice/**</span><span class="delimiter">'</span></span>, <span class="key">filters</span>: <span class="string"><span class="delimiter">'</span><span class="content">JOINED_FILTERS,-exceptionTranslationFilter</span><span class="delimiter">'</span></span>],
@@ -6734,7 +6749,7 @@ Logged in as <span class="tag">&lt;sec:username</span><span class="tag">/&gt;</s
 <p>Additionally, you can use a <code>chainMap</code> configuration to declare one or more URL patterns which should have no filters applied. Use the name <code>'none'</code> for these patterns, e.g.</p>
 </div>
 <div class="listingblock">
-<div class="title">Listing 85. Using <code>none</code> in a <code>filterChain.chainMap</code> configuration</div>
+<div class="title">Listing 86. Using <code>none</code> in a <code>filterChain.chainMap</code> configuration</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.filterChain.chainMap = [
    [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/someurlpattern/**</span><span class="delimiter">'</span></span>, <span class="key">filters</span>: <span class="string"><span class="delimiter">'</span><span class="content">none</span><span class="delimiter">'</span></span>],
@@ -6861,7 +6876,7 @@ beans = {
 <p>Build a <code>List</code> of single-entry <code>Map</code>s under the <code>secureChannel.definition</code> key, where URL patterns are stored under the key &#8220;pattern&#8221;, and the values are stored under the key &#8220;access&#8221; and are one of the access keywords <code>REQUIRES_SECURE_CHANNEL</code>, <code>REQUIRES_INSECURE_CHANNEL</code>, or <code>ANY_CHANNEL</code>:</p>
 </div>
 <div class="listingblock">
-<div class="title">Listing 86. Sample <code>grails.plugin.springsecurity.secureChannel.definition</code></div>
+<div class="title">Listing 87. Sample <code>grails.plugin.springsecurity.secureChannel.definition</code></div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.secureChannel.definition = [
    [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/login/**</span><span class="delimiter">'</span></span>,        <span class="key">access</span>: <span class="string"><span class="delimiter">'</span><span class="content">REQUIRES_SECURE_CHANNEL</span><span class="delimiter">'</span></span>],
@@ -6945,7 +6960,7 @@ grails.plugin.springsecurity.secureChannel.insecureHeaderValue = <span class="st
 <p>To use this feature, specify an <code>ipRestrictions</code> configuration as a <code>List</code> of <code>Map</code>s, one for each combination of URL pattern to IP address patterns that can access those URLs. The IP patterns can be single-value strings, or multi-value lists of strings. They can use <a href="https://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing">CIDR</a> masks, and can specify either IPv4 or IPv6 patterns. For example, given this configuration:</p>
 </div>
 <div class="listingblock">
-<div class="title">Listing 87. Sample <code>grails.plugin.springsecurity.ipRestrictions</code> configuration</div>
+<div class="title">Listing 88. Sample <code>grails.plugin.springsecurity.ipRestrictions</code> configuration</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.ipRestrictions = [
    [<span class="key">pattern</span>: <span class="string"><span class="delimiter">'</span><span class="content">/pattern1/**</span><span class="delimiter">'</span></span>, <span class="key">access</span>: <span class="string"><span class="delimiter">'</span><span class="content">123.234.345.456</span><span class="delimiter">'</span></span>],
@@ -7084,7 +7099,7 @@ grails.plugin.springsecurity.secureChannel.insecureHeaderValue = <span class="st
 <p>The beans must be declared either by the plugin or by you in <code>resources.groovy</code>. For example, suppose you have a custom <code>MyLogoutHandler</code> in <code>resources.groovy</code>:</p>
 </div>
 <div class="listingblock">
-<div class="title">Listing 88. Registering a custom logout handler in <code>resources.groovy</code></div>
+<div class="title">Listing 89. Registering a custom logout handler in <code>resources.groovy</code></div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">com.foo.MyLogoutHandler</span>
 
@@ -7099,7 +7114,7 @@ beans = {
 <p>You register it in <code>grails-app/conf/application.groovy</code> as:</p>
 </div>
 <div class="listingblock">
-<div class="title">Listing 89. Adding a custom logout handler in <code>grails.plugin.springsecurity.logout.handlerNames</code></div>
+<div class="title">Listing 90. Adding a custom logout handler in <code>grails.plugin.springsecurity.logout.handlerNames</code></div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.logout.handlerNames = [
    <span class="string"><span class="delimiter">'</span><span class="content">rememberMeServices</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">securityContextLogoutHandler</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">myLogoutHandler</span><span class="delimiter">'</span></span>
@@ -7200,6 +7215,11 @@ beans = {
 <td class="tableblock halign-left valign-top"><p class="tableblock">rejectIfNoRule</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">&#8220;strict&#8221; mode where a request mapping is required for all resources; if <code>true</code> make sure to allow <code>permitAll</code> for &#8220;/&#8221;, &#8220;/js/**&#8221;, &#8220;/css/**&#8221;, &#8220;/images/**&#8221;, &#8220;/login/**&#8221;, &#8220;/logout/**&#8221;, and so on</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">rejectRequestsDuringStartup</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">If <code>true</code>, respond with 503 to every request, including a static resource, until the application has started. Set to <code>false</code> to allow those requests. See <a href="#core-filters">Filters</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">anon.key</p></td>
@@ -8104,7 +8124,7 @@ Be careful not to double-encode passwords if you also use a <code>beforeInsert()
 <p>Returns <code>true</code> if there is an authenticated user.</p>
 </div>
 <div class="listingblock">
-<div class="title">Listing 90. Example use of <code>isLoggedIn()</code></div>
+<div class="title">Listing 91. Example use of <code>isLoggedIn()</code></div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">MyController</span> {
 
@@ -8139,7 +8159,7 @@ Be careful not to double-encode passwords if you also use a <code>beforeInsert()
 <p>Retrieves the current authenticated user&#8217;s Principal (a <code>GrailsUser</code> instance unless you&#8217;ve customized this) or <code>null</code> if not authenticated.</p>
 </div>
 <div class="listingblock">
-<div class="title">Listing 91. Example use of <code>getPrincipal()</code></div>
+<div class="title">Listing 92. Example use of <code>getPrincipal()</code></div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">MyController</span> {
 
@@ -8166,7 +8186,7 @@ Be careful not to double-encode passwords if you also use a <code>beforeInsert()
 <p>Loads the user domain class instance from the database that corresponds to the currently authenticated user, or <code>null</code> if not authenticated. This is the equivalent of adding a dependency injection for <code>springSecurityService</code> and calling <code>PersonDomainClassName.get(springSecurityService.principal.id)</code> (the typical way that this is often done).</p>
 </div>
 <div class="listingblock">
-<div class="title">Listing 92. Example use of <code>getAuthenticatedUser()</code></div>
+<div class="title">Listing 93. Example use of <code>getAuthenticatedUser()</code></div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">MyController</span> {
 
