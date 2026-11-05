@@ -443,6 +443,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#HibernateCriteriaDSL">Hibernate Criteria DSL</a></li>
 <li><a href="#_conjunctions_and_disjunctions">Conjunctions and Disjunctions</a></li>
 <li><a href="#_querying_associations">Querying Associations</a></li>
+<li><a href="#criteriaAssociationAliases">Association Aliases</a></li>
 <li><a href="#_querying_with_projections">Querying with Projections</a></li>
 <li><a href="#_sql_restrictions">SQL Restrictions</a></li>
 <li><a href="#_sql_projections">SQL Projections</a></li>
@@ -609,6 +610,58 @@ def results = c.list {
 </div>
 <div class="paragraph">
 <p>Here we find all accounts that have either performed transactions in the last 10 days OR have been recently created in the last 10 days.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="criteriaAssociationAliases">Association Aliases</h4>
+<div class="paragraph">
+<p><code>createAlias('association', 'alias')</code> creates an inner join. Restrictions, projections, and ordering on <code>alias.property</code> reuse that association join rather than adding another join. The three-argument overload accepts <code>0</code> for an inner join, <code>1</code> for a left outer join, or <code>2</code> for a right outer join. Hibernate 7 does not support full joins through this overload; other values produce an inner join.</p>
+</div>
+<div class="paragraph">
+<p>Every explicitly requested alias of an entity association creates a join, even when no restriction, projection, or order references it. For example, <code>createAlias('favorite', 'a', 1)</code> followed by <code>createAlias('favorite', 'b', 0)</code> creates both a left join and an inner join. The inner join excludes entities with no favorite even when <code>b</code> is otherwise unused. This also applies to counts and paginated queries.</p>
+</div>
+<div class="paragraph">
+<p>An explicitly declared alias takes precedence over an association path with the same name. For example, after <code>createAlias('favorite', 'f')</code> and <code>createAlias('likes', 'favorite')</code>, <code>f.label</code> refers to the favorite entity, while <code>favorite.label</code> refers to an element of <code>likes</code>. This applies independently to restrictions, projections, and ordering; using <code>f.label</code> only in a projection or an order does not change which association <code>favorite.label</code> restricts.</p>
+</div>
+<div class="paragraph">
+<p>Aliases declared inside an association block are relative to that association. For example, <code>likes { createAlias('tag', 't'); eq('t.name', 'a') }</code> joins the tag of each like, not a tag on the outer entity. A local alias can reuse an outer alias name without changing the outer alias. Aliases declared in a <code>list { ... }</code> closure are discarded when another <code>list { ... }</code> query starts on the same builder.</p>
+</div>
+<div class="paragraph">
+<p>An unused entity alias inside an association block still creates its requested join in that association&#8217;s scope. For example, <code>likes { createAlias('tag', 't') }</code> excludes likes with no tag, even without a restriction on <code>t</code>. Using join type <code>1</code> retains those likes. These join semantics also apply to counts and paginated totals.</p>
+</div>
+<div class="sect4">
+<h5 id="_collection_aliases">Collection Aliases</h5>
+<div class="paragraph">
+<p>Declaring two different aliases for the same entity-valued collection in <code>createCriteria()</code> or <code>withCriteria</code> creates independent joins, so restrictions on those aliases can match different associated entities:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def teams = Team.withCriteria {
+    createAlias('likes', 'a')
+    createAlias('likes', 'b')
+    eq('a.label', 'first')
+    eq('b.label', 'second')
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Each alias retains its own join type: <code>createAlias('likes', 'a')</code> followed by <code>createAlias('likes', 'b', 1)</code> leaves <code>a</code> as an inner join rather than changing it to a left join. In particular, <code>isNull('a.label')</code> does not match an entity with no likes. This also applies when an explicitly declared alias has the same name as the association path, for example <code>createAlias('likes', 'likes')</code> followed by <code>createAlias('likes', 'other')</code>. Repeated restrictions, projections, and ordering on one alias still reuse that alias&#8217;s join.</p>
+</div>
+<div class="paragraph">
+<p>For a collection of basic values, such as <code>static hasMany = [schools: String]</code>, each explicit alias represents an independent element join with its own join type. For example, restrictions on two aliases can match different elements of the same collection. The collection property itself remains available for collection restrictions such as <code>sizeEq('schools', 2)</code>, even when an alias is used to restrict an individual element.</p>
+</div>
+<div class="paragraph">
+<p>These aliases are also preserved when calculating a paged criteria result&#8217;s <code>totalCount</code> and when calling <code>count { ... }</code> with projections. This includes multiple aliases of an entity collection and aliases of basic-value collections. The total count uses the alias restrictions without applying the page&#8217;s <code>max</code> or <code>offset</code>.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_aliases_in_subqueries">Aliases in Subqueries</h5>
+<div class="paragraph">
+<p>An association alias declared in a detached subquery joins from the subquery&#8217;s own root, even if its name matches an association path or alias in the outer query. A locally declared alias takes precedence. Referencing an outer query&#8217;s alias explicitly, without redeclaring it in the subquery, can still correlate the subquery with the outer query.</p>
+</div>
+<div class="paragraph">
+<p>A plain dotted association path in a detached subquery, such as <code>eq('favorite.label', 'second')</code>, resolves from the subquery&#8217;s own root when its entity has that association, rather than reusing an outer query&#8217;s implicit association join. This applies to either operand of a property comparison, including <code>eqProperty('name', 'favorite.label')</code>, and to comparisons inside nested junctions. When the subquery entity does not have that association, the path can instead reference an existing enclosing query join. For example, a subquery over <code>Like</code> can use <code>eqProperty('favorite.label', 'label')</code> to correlate with an outer <code>Team</code> query that joins <code>favorite</code>. This works whether the outer join comes from a dotted path restriction, <code>createAlias('favorite', 'f')</code>, or an association block such as <code>favorite { isNotNull('label') }</code> in an outer detached query. A dotted-path restriction or association block in the outer query must come before the <code>exists</code>; otherwise, use <code>createAlias</code> on the outer query.</p>
+</div>
 </div>
 </div>
 <div class="sect3">

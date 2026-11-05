@@ -4499,35 +4499,27 @@ Person p = bartQuery.find()</code></pre>
 <div class="sect3">
 <h4 id="_query_aliases_and_sorting">30.4.6. Query Aliases and Sorting</h4>
 <div class="paragraph">
-<p>If you define a query for an association an alias is automatically generated for the query. For example the following query:</p>
+<p>To sort by a property of an associated entity, use the association path, such as <code>owner.lastName</code>. This also works when the <code>where</code> query uses the same association:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> query = Pet.where {
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> results = Pet.where {
     owner.firstName == <span class="string"><span class="delimiter">&quot;</span><span class="content">Fred</span><span class="delimiter">&quot;</span></span>
-}</code></pre>
+}.list(<span class="key">sort</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">owner.lastName</span><span class="delimiter">&quot;</span></span>)</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Will generate an alias for the <code>owner</code> association such as <code>owner_alias_0</code>. These generated aliases are fine for most cases, but are not useful if you want to later sort or use a projection on the results. For example the following query will fail:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">// fails because a dynamic alias is used</span>
-Pet.where {
-    owner.firstName == <span class="string"><span class="delimiter">&quot;</span><span class="content">Fred</span><span class="delimiter">&quot;</span></span>
-}.list(<span class="key">sort</span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">owner.lastName</span><span class="delimiter">&quot;</span></span>)</code></pre>
-</div>
+<p>The path can go through more than one association, such as <code>owner.employer.name</code>, where both <code>owner</code> and <code>employer</code> are associations.</p>
 </div>
 <div class="paragraph">
-<p>If you plan to sort the results then an explicit alias should be used and these can be defined by simply declaring a variable in the <code>where</code> query:</p>
+<p>You can also define an explicit alias for an association by declaring a variable in the <code>where</code> query, and sort by the alias:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> query = Pet.where {
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> results = Pet.where {
     <span class="keyword">def</span> o1 = owner <i class="conum" data-value="1"></i><b>(1)</b>
     o1.firstName == <span class="string"><span class="delimiter">&quot;</span><span class="content">Fred</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="2"></i><b>(2)</b>
-}.list(<span class="key">sort</span>:<span class="string"><span class="delimiter">'</span><span class="content">o1.lastName</span><span class="delimiter">'</span></span>) <i class="conum" data-value="3"></i><b>(3)</b></code></pre>
+}.list(<span class="key">sort</span>: <span class="string"><span class="delimiter">'</span><span class="content">o1.lastName</span><span class="delimiter">'</span></span>) <i class="conum" data-value="3"></i><b>(3)</b></code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -4974,7 +4966,59 @@ def results = c.list {
 </div>
 </div>
 <div class="sect3">
-<h4 id="_querying_with_projections">30.5.4. Querying with Projections</h4>
+<h4 id="criteriaAssociationAliases">30.5.4. Association Aliases</h4>
+<div class="paragraph">
+<p><code>createAlias('association', 'alias')</code> creates an inner join. Restrictions, projections, and ordering on <code>alias.property</code> reuse that association join rather than adding another join. The three-argument overload accepts <code>0</code> for an inner join, <code>1</code> for a left outer join, or <code>2</code> for a right outer join. Hibernate 7 does not support full joins through this overload; other values produce an inner join.</p>
+</div>
+<div class="paragraph">
+<p>Every explicitly requested alias of an entity association creates a join, even when no restriction, projection, or order references it. For example, <code>createAlias('favorite', 'a', 1)</code> followed by <code>createAlias('favorite', 'b', 0)</code> creates both a left join and an inner join. The inner join excludes entities with no favorite even when <code>b</code> is otherwise unused. This also applies to counts and paginated queries.</p>
+</div>
+<div class="paragraph">
+<p>An explicitly declared alias takes precedence over an association path with the same name. For example, after <code>createAlias('favorite', 'f')</code> and <code>createAlias('likes', 'favorite')</code>, <code>f.label</code> refers to the favorite entity, while <code>favorite.label</code> refers to an element of <code>likes</code>. This applies independently to restrictions, projections, and ordering; using <code>f.label</code> only in a projection or an order does not change which association <code>favorite.label</code> restricts.</p>
+</div>
+<div class="paragraph">
+<p>Aliases declared inside an association block are relative to that association. For example, <code>likes { createAlias('tag', 't'); eq('t.name', 'a') }</code> joins the tag of each like, not a tag on the outer entity. A local alias can reuse an outer alias name without changing the outer alias. Aliases declared in a <code>list { ... }</code> closure are discarded when another <code>list { ... }</code> query starts on the same builder.</p>
+</div>
+<div class="paragraph">
+<p>An unused entity alias inside an association block still creates its requested join in that association&#8217;s scope. For example, <code>likes { createAlias('tag', 't') }</code> excludes likes with no tag, even without a restriction on <code>t</code>. Using join type <code>1</code> retains those likes. These join semantics also apply to counts and paginated totals.</p>
+</div>
+<div class="sect4">
+<h5 id="_collection_aliases">Collection Aliases</h5>
+<div class="paragraph">
+<p>Declaring two different aliases for the same entity-valued collection in <code>createCriteria()</code> or <code>withCriteria</code> creates independent joins, so restrictions on those aliases can match different associated entities:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> teams = Team.withCriteria {
+    createAlias(<span class="string"><span class="delimiter">'</span><span class="content">likes</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">a</span><span class="delimiter">'</span></span>)
+    createAlias(<span class="string"><span class="delimiter">'</span><span class="content">likes</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">b</span><span class="delimiter">'</span></span>)
+    eq(<span class="string"><span class="delimiter">'</span><span class="content">a.label</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">first</span><span class="delimiter">'</span></span>)
+    eq(<span class="string"><span class="delimiter">'</span><span class="content">b.label</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">'</span><span class="content">second</span><span class="delimiter">'</span></span>)
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Each alias retains its own join type: <code>createAlias('likes', 'a')</code> followed by <code>createAlias('likes', 'b', 1)</code> leaves <code>a</code> as an inner join rather than changing it to a left join. In particular, <code>isNull('a.label')</code> does not match an entity with no likes. This also applies when an explicitly declared alias has the same name as the association path, for example <code>createAlias('likes', 'likes')</code> followed by <code>createAlias('likes', 'other')</code>. Repeated restrictions, projections, and ordering on one alias still reuse that alias&#8217;s join.</p>
+</div>
+<div class="paragraph">
+<p>For a collection of basic values, such as <code>static hasMany = [schools: String]</code>, each explicit alias represents an independent element join with its own join type. For example, restrictions on two aliases can match different elements of the same collection. The collection property itself remains available for collection restrictions such as <code>sizeEq('schools', 2)</code>, even when an alias is used to restrict an individual element.</p>
+</div>
+<div class="paragraph">
+<p>These aliases are also preserved when calculating a paged criteria result&#8217;s <code>totalCount</code> and when calling <code>count { ... }</code> with projections. This includes multiple aliases of an entity collection and aliases of basic-value collections. The total count uses the alias restrictions without applying the page&#8217;s <code>max</code> or <code>offset</code>.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_aliases_in_subqueries">Aliases in Subqueries</h5>
+<div class="paragraph">
+<p>An association alias declared in a detached subquery joins from the subquery&#8217;s own root, even if its name matches an association path or alias in the outer query. A locally declared alias takes precedence. Referencing an outer query&#8217;s alias explicitly, without redeclaring it in the subquery, can still correlate the subquery with the outer query.</p>
+</div>
+<div class="paragraph">
+<p>A plain dotted association path in a detached subquery, such as <code>eq('favorite.label', 'second')</code>, resolves from the subquery&#8217;s own root when its entity has that association, rather than reusing an outer query&#8217;s implicit association join. This applies to either operand of a property comparison, including <code>eqProperty('name', 'favorite.label')</code>, and to comparisons inside nested junctions. When the subquery entity does not have that association, the path can instead reference an existing enclosing query join. For example, a subquery over <code>Like</code> can use <code>eqProperty('favorite.label', 'label')</code> to correlate with an outer <code>Team</code> query that joins <code>favorite</code>. This works whether the outer join comes from a dotted path restriction, <code>createAlias('favorite', 'f')</code>, or an association block such as <code>favorite { isNotNull('label') }</code> in an outer detached query. A dotted-path restriction or association block in the outer query must come before the <code>exists</code>; otherwise, use <code>createAlias</code> on the outer query.</p>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_querying_with_projections">30.5.5. Querying with Projections</h4>
 <div class="paragraph">
 <p>Projections may be used to customise the results. Define a "projections" node within the criteria builder tree to use projections.</p>
 </div>
@@ -4997,7 +5041,7 @@ def numberOfBranches = c.get {
 </div>
 </div>
 <div class="sect3">
-<h4 id="_sql_restrictions">30.5.5. SQL Restrictions</h4>
+<h4 id="_sql_restrictions">30.5.6. SQL Restrictions</h4>
 <div class="paragraph">
 <p>You can restrict the results with a native SQL condition, which is added to the <code>where</code> clause of the query as written, in parentheses.</p>
 </div>
@@ -5088,7 +5132,7 @@ def peopleWithShortFirstNames = c.list {
 </div>
 </div>
 <div class="sect3">
-<h4 id="_sql_projections">30.5.6. SQL Projections</h4>
+<h4 id="_sql_projections">30.5.7. SQL Projections</h4>
 <div class="paragraph">
 <p>The <code>projections</code> node also accepts native SQL, for a value that only SQL computes, such as a date truncated to the day.</p>
 </div>
@@ -5158,7 +5202,7 @@ def results = c.list {
 </div>
 </div>
 <div class="sect3">
-<h4 id="_setting_properties_in_the_criteria_instance">30.5.7. Setting Properties in the Criteria Instance</h4>
+<h4 id="_setting_properties_in_the_criteria_instance">30.5.8. Setting Properties in the Criteria Instance</h4>
 <div class="paragraph">
 <p>The builder allows setting properties that control how the query is executed.</p>
 </div>
@@ -5181,7 +5225,7 @@ def results = c.list {
 </div>
 </div>
 <div class="sect3">
-<h4 id="_advanced_hibernate_7_features">30.5.8. Advanced Hibernate 7 Features</h4>
+<h4 id="_advanced_hibernate_7_features">30.5.9. Advanced Hibernate 7 Features</h4>
 <div class="paragraph">
 <p>The Hibernate 7 criteria builder supports several advanced features:</p>
 </div>
@@ -5203,7 +5247,7 @@ def results = c.list {
 </div>
 </div>
 <div class="sect3">
-<h4 id="_using_scrollable_results">30.5.9. Using Scrollable Results</h4>
+<h4 id="_using_scrollable_results">30.5.10. Using Scrollable Results</h4>
 <div class="paragraph">
 <p>You can use Hibernate&#8217;s <a href="https://docs.hibernate.org/orm/7.0/javadocs/org/hibernate/ScrollableResults.html">ScrollableResults</a> feature by calling the scroll method:</p>
 </div>
@@ -5236,7 +5280,7 @@ def results = c.list {
 </div>
 </div>
 <div class="sect3">
-<h4 id="_querying_with_eager_fetching">30.5.10. Querying with Eager Fetching</h4>
+<h4 id="_querying_with_eager_fetching">30.5.11. Querying with Eager Fetching</h4>
 <div class="paragraph">
 <p>In the section on eager and lazy fetching we discussed how to declaratively specify fetching to avoid the N+1 SELECT problem. However, this can also be achieved using a criteria query:</p>
 </div>
@@ -5297,7 +5341,7 @@ def results = Airport.withCriteria {
 </div>
 </div>
 <div class="sect3">
-<h4 id="_method_reference">30.5.11. Method Reference</h4>
+<h4 id="_method_reference">30.5.12. Method Reference</h4>
 <div class="paragraph">
 <p>If you invoke the builder with no method name such as:</p>
 </div>
@@ -5350,7 +5394,7 @@ def results = Airport.withCriteria {
 </table>
 </div>
 <div class="sect3">
-<h4 id="_combining_criteria">30.5.12. Combining Criteria</h4>
+<h4 id="_combining_criteria">30.5.13. Combining Criteria</h4>
 <div class="paragraph">
 <p>You can combine multiple criteria closures in the following way:</p>
 </div>

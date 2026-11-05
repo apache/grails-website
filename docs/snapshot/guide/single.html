@@ -10141,6 +10141,9 @@ The same applies to <code>grails-data-hibernate7</code> and to any other Grails 
 <p>A command object compiled apart from the controller that binds it, in a plugin or in a shared module, a <code>Validateable</code> object bound as a nested property, and a command object declared inside another class are now bound by their <code>bindable</code> constraints and their <code>transients</code>, like a command object compiled with its controller. As a consequence, in the permissive mode their dynamically typed properties, declared with <code>def</code> or as <code>Object</code>, are no longer bound by default. Declare a type for such a property, or mark it <code>bindable: true</code>.</p>
 </li>
 <li>
+<p>A GORM entity compiled outside <code>grails-app/domain</code>, such as an <code>@Entity</code> class in <code>src/main/groovy</code> or in a shared module, now gets the lists a domain class in <code>grails-app/domain</code> gets, as GORM declares a <code>transients</code> list on every entity, and is bound by the same rules. In particular, <code>bindData</code> no longer binds its <code>id</code>, <code>version</code>, <code>dateCreated</code> and <code>lastUpdated</code>. Previously, in the permissive mode, such a class was bound without restriction, its <code>id</code> and <code>version</code> included.</p>
+</li>
+<li>
 <p>A class compiled against an already compiled parent takes the parent&#8217;s bindable properties from the compiled parent. When the parent was compiled by an earlier version of Grails, or without the data binding library on its compile classpath, the compiler warns that the lists of the subclass are derived from the parent&#8217;s bytecode and asks for the parent to be recompiled. Recompile the plugin or module that holds the parent with Grails 8.0.1 or later, or 7.0.18 or later, to clear the warning.</p>
 </li>
 <li>
@@ -14965,6 +14968,23 @@ In Groovy code you must use single quotes around the string for the value of the
 <p>Similarly system arguments can be accessed.</p>
 </div>
 <div class="paragraph">
+<p>A placeholder in an element of a list, or in a map inside one, is resolved when the list is read through <code>grailsApplication.config</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">app</span>:
+    <span class="key">origins</span>:
+        - <span class="string"><span class="content">https://app.example.com</span></span>
+        - <span class="string"><span class="content">'${EXTRA_ORIGIN:https://admin.example.com}'</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>grailsApplication.config</code> gives the resolved element whether the list is read whole, with <code>config.getProperty('app.origins', List)</code>, or by index, with <code>config.getProperty('app.origins[1]')</code>.</p>
+</div>
+<div class="paragraph">
+<p>A placeholder escaped with a backslash is kept as text: <code>\${EXTRA_ORIGIN}</code> in <code>application.yml</code>, a system property or a command line argument is read as <code>${EXTRA_ORIGIN}</code>, as the <code>Environment</code> reads it.</p>
+</div>
+<div class="paragraph">
 <p>You will need to have this in <code>build.gradle</code> to modify the <code>bootRun</code> target if <code>grails run-app</code> or <code>./gradlew bootRun</code> is used to start the application</p>
 </div>
 <div class="listingblock">
@@ -16343,8 +16363,8 @@ These default to <code>true</code> in Grails to preserve compatibility, which di
             <span class="key">dbCreate</span>: <span class="string"><span class="content">update</span></span>
             <span class="key">url</span>: <span class="string"><span class="content">jdbc:h2:prodDb;LOCK_TIMEOUT=10000;DB_CLOSE_ON_EXIT=FALSE</span></span>
             <span class="key">properties</span>:
-               <span class="key">jmxEnabled</span>: <span class="string"><span class="content">true</span></span>
-               <span class="key">initialSize</span>: <span class="string"><span class="content">5</span></span>
+               <span class="key">registerMbeans</span>: <span class="string"><span class="content">true</span></span>
+               <span class="key">minimumIdle</span>: <span class="string"><span class="content">5</span></span>
         <span class="error">...</span></code></pre>
 </div>
 </div>
@@ -16377,8 +16397,8 @@ environments {
             dbCreate = <span class="string"><span class="delimiter">&quot;</span><span class="content">update</span><span class="delimiter">&quot;</span></span>
             url = <span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc:h2:prodDb</span><span class="delimiter">&quot;</span></span>
             properties {
-               jmxEnabled = <span class="predefined-constant">true</span>
-               initialSize = <span class="integer">5</span>
+               registerMbeans = <span class="predefined-constant">true</span>
+               minimumIdle = <span class="integer">5</span>
             }
         }
     }
@@ -16409,8 +16429,8 @@ environments {
             <span class="key">dbCreate</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">update</span><span class="delimiter">&quot;</span></span>
             <span class="key">url</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc:h2:prodDb</span><span class="delimiter">&quot;</span></span>
             <span class="key">properties</span>:
-               <span class="key">jmxEnabled</span>: <span class="string"><span class="content">true</span></span>
-               <span class="key">initialSize</span>: <span class="string"><span class="content">5</span></span></code></pre>
+               <span class="key">registerMbeans</span>: <span class="string"><span class="content">true</span></span>
+               <span class="key">minimumIdle</span>: <span class="string"><span class="content">5</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -16611,10 +16631,10 @@ switch (Environment.current) {
 <p><code>persistenceInterceptor</code> - The default datasource is automatically wired up to the persistence interceptor, other datasources are not wired up automatically unless this is set to <code>true</code></p>
 </li>
 <li>
-<p><code>properties</code> - Extra properties to set on the DataSource bean. See the <a href="https://tomcat.apache.org/tomcat-7.0-doc/jdbc-pool.html#Common_Attributes">Tomcat Pool</a> documentation. There is also a Javadoc format <a href="https://tomcat.apache.org/tomcat-7.0-doc/api/org/apache/tomcat/jdbc/pool/PoolConfiguration.html">documentation of the properties</a>.</p>
+<p><code>properties</code> - Extra properties to set on the DataSource bean. The supported properties depend on the connection pool implementation. See the <a href="https://github.com/brettwooldridge/HikariCP#gear-configuration-knobs-baby">HikariCP configuration documentation</a> for HikariCP, or the <a href="https://tomcat.apache.org/tomcat-11.0-doc/jdbc-pool.html#Common_Attributes">Tomcat JDBC Pool documentation</a> for Tomcat JDBC Pool.</p>
 </li>
 <li>
-<p><code>jmxExport</code> - If <code>true</code>, registers JMX MBeans for the Tomcat JDBC pool DataSources that have <code>jmxEnabled = true</code> in their properties (defaults to false)</p>
+<p><code>jmxExport</code> - If <code>true</code>, registers JMX MBeans for Tomcat JDBC Pool DataSources with <code>jmxEnabled = true</code> in their properties (defaults to false). For HikariCP, use <code>properties.registerMbeans = true</code> instead.</p>
 </li>
 <li>
 <p><code>type</code> - The connection pool class if you want to force Grails to use it when there are more than one available.</p>
@@ -16622,7 +16642,13 @@ switch (Environment.current) {
 </ul>
 </div>
 <div class="paragraph">
-<p>A typical configuration for MySQL in <code>application.groovy</code> may be something like:</p>
+<p>The following examples explicitly select HikariCP. Pool properties are not portable between implementations: Grails does not translate Tomcat JDBC Pool settings such as <code>maxActive</code>, <code>minIdle</code>, <code>maxWait</code>, or <code>jdbcInterceptors</code> into HikariCP settings, and properties that the selected pool does not have are ignored without a warning. For HikariCP, use <code>maximumPoolSize</code>, <code>minimumIdle</code>, and <code>connectionTimeout</code> (in milliseconds); there is no direct equivalent for Tomcat&#8217;s <code>maxIdle</code> or <code>jdbcInterceptors</code>.</p>
+</div>
+<div class="paragraph">
+<p>To use Tomcat-specific properties instead, add <code>runtimeOnly 'org.apache.tomcat:tomcat-jdbc'</code> to your dependencies (the Grails BOM manages its version) and select <code>type = "org.apache.tomcat.jdbc.pool.DataSource"</code>.</p>
+</div>
+<div class="paragraph">
+<p>A typical configuration for MySQL with HikariCP in <code>application.groovy</code> may be something like:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -16636,23 +16662,10 @@ switch (Environment.current) {
     password = <span class="string"><span class="delimiter">&quot;</span><span class="content">password</span><span class="delimiter">&quot;</span></span>
     type = <span class="string"><span class="delimiter">&quot;</span><span class="content">com.zaxxer.hikari.HikariDataSource</span><span class="delimiter">&quot;</span></span>
     properties {
-       jmxEnabled = <span class="predefined-constant">true</span>
-       initialSize = <span class="integer">5</span>
-       maxActive = <span class="integer">50</span>
-       minIdle = <span class="integer">5</span>
-       maxIdle = <span class="integer">25</span>
-       maxWait = <span class="integer">10000</span>
-       maxAge = <span class="integer">10</span> * <span class="integer">60000</span>
-       timeBetweenEvictionRunsMillis = <span class="integer">5000</span>
-       minEvictableIdleTimeMillis = <span class="integer">60000</span>
-       validationQuery = <span class="string"><span class="delimiter">&quot;</span><span class="content">SELECT 1</span><span class="delimiter">&quot;</span></span>
-       validationQueryTimeout = <span class="integer">3</span>
-       validationInterval = <span class="integer">15000</span>
-       testOnBorrow = <span class="predefined-constant">true</span>
-       testWhileIdle = <span class="predefined-constant">true</span>
-       testOnReturn = <span class="predefined-constant">false</span>
-       jdbcInterceptors = <span class="string"><span class="delimiter">&quot;</span><span class="content">ConnectionState;StatementCache(max=200)</span><span class="delimiter">&quot;</span></span>
-       defaultTransactionIsolation = java.sql.Connection.TRANSACTION_READ_COMMITTED
+        maximumPoolSize = <span class="integer">50</span>
+        minimumIdle = <span class="integer">5</span>
+        connectionTimeout = <span class="integer">10000</span>
+        transactionIsolation = <span class="string"><span class="delimiter">&quot;</span><span class="content">TRANSACTION_READ_COMMITTED</span><span class="delimiter">&quot;</span></span>
     }
 }</code></pre>
 </div>
@@ -16691,7 +16704,7 @@ When configuring the DataSource do not include the type or the def keyword befor
 </div>
 </div>
 <div class="paragraph">
-<p>Example of advanced configuration using extra properties:</p>
+<p>Example of advanced HikariCP configuration using extra properties. Pool timeouts are in milliseconds. <code>leakDetectionThreshold</code> logs a possible connection leak; it does not reclaim abandoned connections. HikariCP uses JDBC4 <code>Connection.isValid()</code> for validation, so a <code>connectionTestQuery</code> is normally unnecessary with a JDBC4 driver.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -16705,67 +16718,23 @@ When configuring the DataSource do not include the type or the def keyword befor
     password = <span class="string"><span class="delimiter">&quot;</span><span class="content">password</span><span class="delimiter">&quot;</span></span>
     type = <span class="string"><span class="delimiter">&quot;</span><span class="content">com.zaxxer.hikari.HikariDataSource</span><span class="delimiter">&quot;</span></span>
     properties {
-       <span class="comment">// Documentation for Tomcat JDBC Pool</span>
-       <span class="comment">// https://tomcat.apache.org/tomcat-7.0-doc/jdbc-pool.html#Common_Attributes</span>
-       <span class="comment">// https://tomcat.apache.org/tomcat-7.0-doc/api/org/apache/tomcat/jdbc/pool/PoolConfiguration.html</span>
-       jmxEnabled = <span class="predefined-constant">true</span>
-       initialSize = <span class="integer">5</span>
-       maxActive = <span class="integer">50</span>
-       minIdle = <span class="integer">5</span>
-       maxIdle = <span class="integer">25</span>
-       maxWait = <span class="integer">10000</span>
-       maxAge = <span class="integer">10</span> * <span class="integer">60000</span>
-       timeBetweenEvictionRunsMillis = <span class="integer">5000</span>
-       minEvictableIdleTimeMillis = <span class="integer">60000</span>
-       validationQuery = <span class="string"><span class="delimiter">&quot;</span><span class="content">SELECT 1</span><span class="delimiter">&quot;</span></span>
-       validationQueryTimeout = <span class="integer">3</span>
-       validationInterval = <span class="integer">15000</span>
-       testOnBorrow = <span class="predefined-constant">true</span>
-       testWhileIdle = <span class="predefined-constant">true</span>
-       testOnReturn = <span class="predefined-constant">false</span>
-       ignoreExceptionOnPreLoad = <span class="predefined-constant">true</span>
-       <span class="comment">// https://tomcat.apache.org/tomcat-7.0-doc/jdbc-pool.html#JDBC_interceptors</span>
-       jdbcInterceptors = <span class="string"><span class="delimiter">&quot;</span><span class="content">ConnectionState;StatementCache(max=200)</span><span class="delimiter">&quot;</span></span>
-       defaultTransactionIsolation = java.sql.Connection.TRANSACTION_READ_COMMITTED <span class="comment">// safe default</span>
-       <span class="comment">// controls for leaked connections</span>
-       abandonWhenPercentageFull = <span class="integer">100</span> <span class="comment">// settings are active only when pool is full</span>
-       removeAbandonedTimeout = <span class="integer">120</span>
-       removeAbandoned = <span class="predefined-constant">true</span>
-       <span class="comment">// use JMX console to change this setting at runtime</span>
-       logAbandoned = <span class="predefined-constant">false</span> <span class="comment">// causes stacktrace recording overhead, use only for debugging</span>
-       <span class="comment">// JDBC driver properties</span>
-       <span class="comment">// Mysql as example</span>
-       dbProperties {
-           <span class="comment">// Mysql specific driver properties</span>
-           <span class="comment">// https://dev.mysql.com/doc/connector-j/en/connector-j-reference-configuration-properties.html</span>
-           <span class="comment">// let Tomcat JDBC Pool handle reconnecting</span>
-           autoReconnect=<span class="predefined-constant">false</span>
-           <span class="comment">// truncation behaviour</span>
-           jdbcCompliantTruncation=<span class="predefined-constant">false</span>
-           <span class="comment">// mysql 0-date conversion</span>
-           zeroDateTimeBehavior=<span class="string"><span class="delimiter">'</span><span class="content">convertToNull</span><span class="delimiter">'</span></span>
-           <span class="comment">// Tomcat JDBC Pool's StatementCache is used instead, so disable mysql driver's cache</span>
-           cachePrepStmts=<span class="predefined-constant">false</span>
-           cacheCallableStmts=<span class="predefined-constant">false</span>
-           <span class="comment">// Tomcat JDBC Pool's StatementFinalizer keeps track</span>
-           dontTrackOpenResources=<span class="predefined-constant">true</span>
-           <span class="comment">// performance optimization: reduce number of SQLExceptions thrown in mysql driver code</span>
-           holdResultsOpenOverStatementClose=<span class="predefined-constant">true</span>
-           <span class="comment">// enable MySQL query cache - using server prep stmts will disable query caching</span>
-           useServerPrepStmts=<span class="predefined-constant">false</span>
-           <span class="comment">// metadata caching</span>
-           cacheServerConfiguration=<span class="predefined-constant">true</span>
-           cacheResultSetMetadata=<span class="predefined-constant">true</span>
-           metadataCacheSize=<span class="integer">100</span>
-           <span class="comment">// timeouts for TCP/IP</span>
-           connectTimeout=<span class="integer">15000</span>
-           socketTimeout=<span class="integer">120000</span>
-           <span class="comment">// timer tuning (disable)</span>
-           maintainTimeStats=<span class="predefined-constant">false</span>
-           enableQueryTimeouts=<span class="predefined-constant">false</span>
-           <span class="comment">// misc tuning</span>
-           noDatetimeStringSync=<span class="predefined-constant">true</span>
-       }
+        registerMbeans = <span class="predefined-constant">true</span>
+        maximumPoolSize = <span class="integer">50</span>
+        minimumIdle = <span class="integer">5</span>
+        connectionTimeout = <span class="integer">10000</span>
+        maxLifetime = <span class="integer">600000</span>
+        idleTimeout = <span class="integer">60000</span>
+        validationTimeout = <span class="integer">3000</span>
+        transactionIsolation = <span class="string"><span class="delimiter">&quot;</span><span class="content">TRANSACTION_READ_COMMITTED</span><span class="delimiter">&quot;</span></span>
+        leakDetectionThreshold = <span class="integer">120000</span>
+        <span class="comment">// MySQL JDBC driver properties, not pool settings</span>
+        dataSourceProperties {
+            cachePrepStmts = <span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
+            prepStmtCacheSize = <span class="string"><span class="delimiter">&quot;</span><span class="content">250</span><span class="delimiter">&quot;</span></span>
+            prepStmtCacheSqlLimit = <span class="string"><span class="delimiter">&quot;</span><span class="content">2048</span><span class="delimiter">&quot;</span></span>
+            connectTimeout = <span class="string"><span class="delimiter">&quot;</span><span class="content">15000</span><span class="delimiter">&quot;</span></span>
+            socketTimeout = <span class="string"><span class="delimiter">&quot;</span><span class="content">120000</span><span class="delimiter">&quot;</span></span>
+        }
     }
 }</code></pre>
 </div>
@@ -17012,8 +16981,8 @@ The H2 console is only intended for use during development so care should be tak
             <span class="key">dbCreate</span>: <span class="string"><span class="content">update</span></span>
             <span class="key">url</span>: <span class="string"><span class="content">jdbc:h2:prodDb;LOCK_TIMEOUT=10000;DB_CLOSE_ON_EXIT=FALSE</span></span>
             <span class="key">properties</span>:
-               <span class="key">jmxEnabled</span>: <span class="string"><span class="content">true</span></span>
-               <span class="key">initialSize</span>: <span class="string"><span class="content">5</span></span></code></pre>
+               <span class="key">registerMbeans</span>: <span class="string"><span class="content">true</span></span>
+               <span class="key">minimumIdle</span>: <span class="string"><span class="content">5</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -17051,8 +17020,8 @@ The H2 console is only intended for use during development so care should be tak
             <span class="key">dbCreate</span>: <span class="string"><span class="content">update</span></span>
             <span class="key">url</span>: <span class="string"><span class="content">jdbc:h2:prodDb;LOCK_TIMEOUT=10000;DB_CLOSE_ON_EXIT=FALSE</span></span>
             <span class="key">properties</span>:
-                <span class="key">jmxEnabled</span>: <span class="string"><span class="content">true</span></span>
-                <span class="key">initialSize</span>: <span class="string"><span class="content">5</span></span>
+                <span class="key">registerMbeans</span>: <span class="string"><span class="content">true</span></span>
+                <span class="key">minimumIdle</span>: <span class="string"><span class="content">5</span></span>
                 <span class="error">...</span>
         <span class="key">dataSources</span>:
             <span class="key">lookup</span>:
