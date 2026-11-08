@@ -348,12 +348,12 @@ On an older Gradle version <code>compileGroovy</code> fails with a <code>NoSuchM
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="console">./gradlew wrapper --gradle-version 9.8.2</code></pre>
+<pre class="CodeRay highlight"><code data-lang="console">./gradlew wrapper --gradle-version 9.9.0</code></pre>
 </div>
 </div>
 <div class="paragraph">
 <p>Afterwards, check that the <code>distributionUrl</code> in <code>gradle/wrapper/gradle-wrapper.properties</code> points to the new version.
-Gradle 9 has breaking changes of its own that may affect your build scripts and other Gradle plugins you use; consult the <a href="https://docs.gradle.org/9.8.2/userguide/upgrading_major_version_9.html">Gradle 9 upgrade guide</a>.
+Gradle 9 has breaking changes of its own that may affect your build scripts and other Gradle plugins you use; consult the <a href="https://docs.gradle.org/9.9.0/userguide/upgrading_major_version_9.html">Gradle 9 upgrade guide</a>.
 See also <a href="#groovy-compiler-config-scripts">Generated Groovy Compiler Configuration Scripts</a> if your build assigns a Groovy compiler configuration script itself.</p>
 </div>
 </div>
@@ -6786,7 +6786,7 @@ for template renders:</p>
 <div class="sect3">
 <h4 id="_85_gradle_configuration_cache">85. Gradle Configuration Cache</h4>
 <div class="paragraph">
-<p>The Grails Gradle plugins of Grails 8.0, and the Asset Pipeline and Grails Publish plugins in the versions the Grails 8.0 BOM manages, support the <a href="https://docs.gradle.org/9.8.2/userguide/configuration_cache.html">Gradle configuration cache</a>.
+<p>The Grails Gradle plugins of Grails 8.0, and the Asset Pipeline and Grails Publish plugins in the versions the Grails 8.0 BOM manages, support the <a href="https://docs.gradle.org/9.9.0/userguide/configuration_cache.html">Gradle configuration cache</a>.
 Applications and plugins created with Grails 8.0 enable it in <code>gradle.properties</code>.</p>
 </div>
 <div class="paragraph">
@@ -6929,6 +6929,34 @@ The same applies to <code>grails-data-hibernate7</code> and to any other Grails 
 </li>
 <li>
 <p>A controller compiled against a command object that was compiled without the lists, by an earlier version of Grails or without the data binding library, warns that the command object is bound without restriction and should be recompiled.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_90_an_exception_mapping_matches_the_exception_that_was_thrown_before_its_root_cause">90. An Exception Mapping Matches the Exception That Was Thrown Before Its Root Cause</h4>
+<div class="paragraph">
+<p>As of Grails 8.0.1, a <code>"500"</code> mapping that names an exception is matched against the exception that was thrown first and its root cause second, both when the error handler is chosen and when the request is routed to it. The routing used to look only at the root cause.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>A mapping that names an exception with a cause of its own now answers it, where the mapping without an exception answered before.</p>
+</li>
+<li>
+<p>Where the exception and its root cause each match a mapping, the mapping for the exception now answers. With the mappings below, a <code>DataAccessException</code> caused by a <code>SQLException</code> used to go to <code>database</code>, and now goes to <code>runtime</code>:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="string"><span class="delimiter">&quot;</span><span class="content">500</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">errors</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">database</span><span class="delimiter">'</span></span>, <span class="key">exception</span>: <span class="exception">SQLException</span>)
+<span class="string"><span class="delimiter">&quot;</span><span class="content">500</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">errors</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">runtime</span><span class="delimiter">'</span></span>, <span class="key">exception</span>: <span class="exception">RuntimeException</span>)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>To keep sending it to <code>database</code>, map <code>DataAccessException</code> there as well, declared after the mapping for <code>RuntimeException</code>: where several mappings match an exception, the one declared last answers. That sends every <code>DataAccessException</code> there, not only one caused by a <code>SQLException</code>.</p>
+</div>
+</li>
+<li>
+<p>For an exception that Groovy or Grails wrapped, the <code>cause</code> of <code>request.exception</code> in the error handler is now the exception the action threw rather than its root cause.</p>
 </li>
 </ul>
 </div>

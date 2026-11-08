@@ -966,14 +966,14 @@ Notable new features are included below.</p>
 <div class="sect3">
 <h4 id="_platform_baseline">Platform Baseline</h4>
 <div class="paragraph">
-<p>Grails 8 raises the standard build and runtime baseline to Java 21 and uses Gradle 9.8.2.
+<p>Grails 8 raises the standard build and runtime baseline to Java 21 and uses Gradle 9.9.0.
 The standard Grails BOM uses Groovy 5.1.3 and Spock 2.4-groovy-5.0.</p>
 </div>
 </div>
 <div class="sect3">
 <h4 id="_gradle_configuration_cache">Gradle Configuration Cache</h4>
 <div class="paragraph">
-<p>Starting with Grails 8.0, the Grails Gradle plugins support the <a href="https://docs.gradle.org/9.8.2/userguide/configuration_cache.html">Gradle configuration cache</a>, and new applications and plugins turn it on in their <code>gradle.properties</code>.
+<p>Starting with Grails 8.0, the Grails Gradle plugins support the <a href="https://docs.gradle.org/9.9.0/userguide/configuration_cache.html">Gradle configuration cache</a>, and new applications and plugins turn it on in their <code>gradle.properties</code>.
 A build that runs the same tasks again skips configuring the project, so repeated runs of tasks such as <code>bootRun</code> and <code>test</code> start faster.
 See <a href="commandLine.html#gradleConfigurationCache">Using the Gradle Configuration Cache</a> for how to enable it in an existing project and what it asks of build scripts.</p>
 </div>
@@ -1865,7 +1865,7 @@ for what this means for an application that sets <code>overrideAddress</code>.</
 <p>Spring Boot 4.1.2</p>
 </li>
 <li>
-<p>Gradle 9.8.2</p>
+<p>Gradle 9.9.0</p>
 </li>
 <li>
 <p>Spock 2.4-groovy-5.0</p>
@@ -1935,7 +1935,7 @@ for what this means for an application that sets <code>overrideAddress</code>.</
 </tbody>
 </table>
 <div class="paragraph">
-<p>Grails applications are built with <a href="https://gradle.org/">Gradle</a>. Gradle does not need to be installed separately: a generated application includes the Gradle wrapper (<code>gradlew</code>), which downloads the right Gradle version on first use. Grails 8 requires Gradle 9.7 or later and generates applications with Gradle 9.8.2.</p>
+<p>Grails applications are built with <a href="https://gradle.org/">Gradle</a>. Gradle does not need to be installed separately: a generated application includes the Gradle wrapper (<code>gradlew</code>), which downloads the right Gradle version on first use. Grails 8 requires Gradle 9.7 or later and generates applications with Gradle 9.9.0.</p>
 </div>
 <div class="paragraph">
 <p>To automate the installation of Grails we recommend <a href="https://sdkman.io/">SDKMAN</a> which greatly simplifies installing and managing multiple Grails versions.</p>
@@ -3576,12 +3576,12 @@ On an older Gradle version <code>compileGroovy</code> fails with a <code>NoSuchM
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="console">./gradlew wrapper --gradle-version 9.8.2</code></pre>
+<pre class="CodeRay highlight"><code data-lang="console">./gradlew wrapper --gradle-version 9.9.0</code></pre>
 </div>
 </div>
 <div class="paragraph">
 <p>Afterwards, check that the <code>distributionUrl</code> in <code>gradle/wrapper/gradle-wrapper.properties</code> points to the new version.
-Gradle 9 has breaking changes of its own that may affect your build scripts and other Gradle plugins you use; consult the <a href="https://docs.gradle.org/9.8.2/userguide/upgrading_major_version_9.html">Gradle 9 upgrade guide</a>.
+Gradle 9 has breaking changes of its own that may affect your build scripts and other Gradle plugins you use; consult the <a href="https://docs.gradle.org/9.9.0/userguide/upgrading_major_version_9.html">Gradle 9 upgrade guide</a>.
 See also <a href="#groovy-compiler-config-scripts">Generated Groovy Compiler Configuration Scripts</a> if your build assigns a Groovy compiler configuration script itself.</p>
 </div>
 </div>
@@ -10014,7 +10014,7 @@ for template renders:</p>
 <div class="sect3">
 <h4 id="_85_gradle_configuration_cache">85. Gradle Configuration Cache</h4>
 <div class="paragraph">
-<p>The Grails Gradle plugins of Grails 8.0, and the Asset Pipeline and Grails Publish plugins in the versions the Grails 8.0 BOM manages, support the <a href="https://docs.gradle.org/9.8.2/userguide/configuration_cache.html">Gradle configuration cache</a>.
+<p>The Grails Gradle plugins of Grails 8.0, and the Asset Pipeline and Grails Publish plugins in the versions the Grails 8.0 BOM manages, support the <a href="https://docs.gradle.org/9.9.0/userguide/configuration_cache.html">Gradle configuration cache</a>.
 Applications and plugins created with Grails 8.0 enable it in <code>gradle.properties</code>.</p>
 </div>
 <div class="paragraph">
@@ -10157,6 +10157,34 @@ The same applies to <code>grails-data-hibernate7</code> and to any other Grails 
 </li>
 <li>
 <p>A controller compiled against a command object that was compiled without the lists, by an earlier version of Grails or without the data binding library, warns that the command object is bound without restriction and should be recompiled.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_90_an_exception_mapping_matches_the_exception_that_was_thrown_before_its_root_cause">90. An Exception Mapping Matches the Exception That Was Thrown Before Its Root Cause</h4>
+<div class="paragraph">
+<p>As of Grails 8.0.1, a <code>"500"</code> mapping that names an exception is matched against the exception that was thrown first and its root cause second, both when the error handler is chosen and when the request is routed to it. The routing used to look only at the root cause.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>A mapping that names an exception with a cause of its own now answers it, where the mapping without an exception answered before.</p>
+</li>
+<li>
+<p>Where the exception and its root cause each match a mapping, the mapping for the exception now answers. With the mappings below, a <code>DataAccessException</code> caused by a <code>SQLException</code> used to go to <code>database</code>, and now goes to <code>runtime</code>:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="string"><span class="delimiter">&quot;</span><span class="content">500</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">errors</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">database</span><span class="delimiter">'</span></span>, <span class="key">exception</span>: <span class="exception">SQLException</span>)
+<span class="string"><span class="delimiter">&quot;</span><span class="content">500</span><span class="delimiter">&quot;</span></span>(<span class="key">controller</span>: <span class="string"><span class="delimiter">'</span><span class="content">errors</span><span class="delimiter">'</span></span>, <span class="key">action</span>: <span class="string"><span class="delimiter">'</span><span class="content">runtime</span><span class="delimiter">'</span></span>, <span class="key">exception</span>: <span class="exception">RuntimeException</span>)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>To keep sending it to <code>database</code>, map <code>DataAccessException</code> there as well, declared after the mapping for <code>RuntimeException</code>: where several mappings match an exception, the one declared last answers. That sends every <code>DataAccessException</code> there, not only one caused by a <code>SQLException</code>.</p>
+</div>
+</li>
+<li>
+<p>For an exception that Groovy or Grails wrapped, the <code>cause</code> of <code>request.exception</code> in the error handler is now the exception the action threw rather than its root cause.</p>
 </li>
 </ul>
 </div>
@@ -19262,13 +19290,13 @@ the plain <code>-cli</code> coordinate, e.g. <code>grailsCli 'com.example:my-plu
 
 <div class="paragraph">
 <p>The <a href="https://gradle.org">Gradle Build System</a> is used for build related tasks such as compilation, running tests and producing binary distributions of your Grails project.
-It is recommended to use Gradle 9.8.2 or above with Grails.</p>
+It is recommended to use Gradle 9.9.0 or above with Grails.</p>
 </div>
 <div class="paragraph">
 <p>The build is defined by the <code>build.gradle</code> file which specifies the version of your project, the dependencies of the project and the repositories where to find those dependencies (amongst other things).</p>
 </div>
 <div class="paragraph">
-<p>When you invoke the <code>grails</code> command the version of Gradle that ships with Grails (currently 9.8.2) is invoked by the <code>grails</code> process via the <a href="https://docs.gradle.org/current/userguide/tooling_api.html">Gradle Tooling API</a>:</p>
+<p>When you invoke the <code>grails</code> command the version of Gradle that ships with Grails (currently 9.9.0) is invoked by the <code>grails</code> process via the <a href="https://docs.gradle.org/current/userguide/tooling_api.html">Gradle Tooling API</a>:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -19596,16 +19624,16 @@ apply <span class="key">plugin</span>: <span class="string"><span class="delimit
 <div class="ulist">
 <ul>
 <li>
-<p><code>groovy</code> - The Groovy plugin adds support for Groovy projects. It can handle Groovy code mixed with Java. Read More: <a href="https://docs.gradle.org/9.8.2/userguide/groovy_plugin.html">The Groovy Plugin</a></p>
+<p><code>groovy</code> - The Groovy plugin adds support for Groovy projects. It can handle Groovy code mixed with Java. Read More: <a href="https://docs.gradle.org/9.9.0/userguide/groovy_plugin.html">The Groovy Plugin</a></p>
 </li>
 <li>
-<p><code>war</code> - The <a href="https://docs.gradle.org/9.8.2/userguide/war_plugin.html">WAR plugin</a> changes the packaging so that Gradle creates a WAR file. You can comment out this plugin to build a runnable JAR file for standalone deployment.</p>
+<p><code>war</code> - The <a href="https://docs.gradle.org/9.9.0/userguide/war_plugin.html">WAR plugin</a> changes the packaging so that Gradle creates a WAR file. You can comment out this plugin to build a runnable JAR file for standalone deployment.</p>
 </li>
 <li>
-<p><code>idea</code> - The IDEA plugin generates files used by <a href="https://www.jetbrains.com/idea/">IntelliJ IDEA</a>, allowing the project to be opened from IDEA. Read More: <a href="https://docs.gradle.org/9.8.2/userguide/idea_plugin.html">The IDEA Plugin</a></p>
+<p><code>idea</code> - The IDEA plugin generates files used by <a href="https://www.jetbrains.com/idea/">IntelliJ IDEA</a>, allowing the project to be opened from IDEA. Read More: <a href="https://docs.gradle.org/9.9.0/userguide/idea_plugin.html">The IDEA Plugin</a></p>
 </li>
 <li>
-<p><code>eclipse</code> - The Eclipse plugins generate files for the <a href="https://eclipseide.org/">Eclipse IDE</a>, enabling project import (File - Import&#8230;&#8203; - Existing Projects into Workspace). Read More: <a href="https://docs.gradle.org/9.8.2/userguide/eclipse_plugin.html">The Eclipse Plugin</a></p>
+<p><code>eclipse</code> - The Eclipse plugins generate files for the <a href="https://eclipseide.org/">Eclipse IDE</a>, enabling project import (File - Import&#8230;&#8203; - Existing Projects into Workspace). Read More: <a href="https://docs.gradle.org/9.9.0/userguide/eclipse_plugin.html">The Eclipse Plugin</a></p>
 </li>
 <li>
 <p><code>asset-pipeline</code> - The <a href="https://github.com/wondrify/asset-pipeline">Asset Pipeline</a> plugin enables compilation of static assets (JavaScript, CSS, etc.)</p>
@@ -19667,7 +19695,7 @@ apply <span class="key">plugin</span>: <span class="string"><span class="delimit
 
 
 <div class="paragraph">
-<p>The <a href="https://docs.gradle.org/9.8.2/userguide/configuration_cache.html">Gradle configuration cache</a> stores the result of the configuration phase - the task graph and everything the tasks need to run - and reuses it when the same tasks are requested again.
+<p>The <a href="https://docs.gradle.org/9.9.0/userguide/configuration_cache.html">Gradle configuration cache</a> stores the result of the configuration phase - the task graph and everything the tasks need to run - and reuses it when the same tasks are requested again.
 A build that reuses an entry skips configuring the projects altogether and runs more of its tasks in parallel, which makes repeated builds such as <code>./gradlew bootRun</code> or <code>./gradlew test</code> start noticeably faster.</p>
 </div>
 <div class="paragraph">
@@ -19730,7 +19758,7 @@ Read what the task needs while it is configured, into a local variable or a prov
 </div>
 <div class="paragraph">
 <p>Use the services Gradle injects instead of the methods of <code>project</code> to copy, delete or execute while a task runs, for example <code>FileSystemOperations</code> and <code>ExecOperations</code>.
-Gradle reports anything that cannot be stored, together with the line of the build script that caused it, and fails the build; see the <a href="https://docs.gradle.org/9.8.2/userguide/configuration_cache_requirements.html">configuration cache requirements</a> for the complete list.</p>
+Gradle reports anything that cannot be stored, together with the line of the build script that caused it, and fails the build; see the <a href="https://docs.gradle.org/9.9.0/userguide/configuration_cache_requirements.html">configuration cache requirements</a> for the complete list.</p>
 </div>
 <div class="paragraph">
 <p>Grails discovers the application&#8217;s main class in the <code>findMainClass</code> task, after compilation.
@@ -32853,6 +32881,9 @@ them it is necessary to add the parameter <code>keepParamsWhenRedirect: true</co
 </div>
 <div class="paragraph">
 <p>With this configuration, an <code>IllegalArgumentException</code> will be handled by the <code>illegalArgument</code> action in <code>ErrorsController</code>, a <code>NullPointerException</code> will be handled by the <code>nullPointer</code> action, and a <code>MyException</code> will be handled by the <code>customException</code> action. Other exceptions will be handled by the catch-all rule and use the <code>/errors/serverError</code> view.</p>
+</div>
+<div class="paragraph">
+<p>A mapping matches the exception that was thrown or its root cause, so <code>exception: MyException</code> handles a <code>MyException</code> whatever caused it, and also an exception caused by a <code>MyException</code>. Where both have a mapping, the one for the exception that was thrown is used. Where several mappings match the same exception, such as one for <code>IllegalArgumentException</code> and one for <code>RuntimeException</code>, the one declared last is used.</p>
 </div>
 <div class="paragraph">
 <p>You can access the exception from your custom error handling view or controller action using the request&#8217;s <code>exception</code> attribute like so:</p>
