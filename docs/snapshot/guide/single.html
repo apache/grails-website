@@ -3561,6 +3561,7 @@ While the application is still on Grails 7, declare the skill with its version, 
 <div class="paragraph">
 <p>Grails 8 requires a minimum of Java 21 to both build and run Grails applications.
 This is an increase from Grails 7, which required Java 17.
+Grails 8 also supports Java 25 (the next LTS after Java 21).
 Update your project&#8217;s toolchain, CI pipelines, and deployment environments to use JDK 21 or later.</p>
 </div>
 <div class="sect4">
@@ -10187,6 +10188,56 @@ The same applies to <code>grails-data-hibernate7</code> and to any other Grails 
 <p>For an exception that Groovy or Grails wrapped, the <code>cause</code> of <code>request.exception</code> in the error handler is now the exception the action threw rather than its root cause.</p>
 </li>
 </ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="java25-memory-upgrade">91. Metaspace and Compressed Class Pointers on Java 25</h4>
+<div class="paragraph">
+<p>Both Java 21 and Java 25 leave metaspace unlimited by default unless you set an explicit ceiling with <code>-XX:MaxMetaspaceSize</code>; this default has been unchanged since JDK 8.
+On both versions, <code>-XX:MetaspaceSize</code> sets the initial high-water mark that triggers garbage collection, not a limit on metaspace growth. The JVM adjusts this threshold according to metadata usage.</p>
+</div>
+<div class="paragraph">
+<p>A Grails application loads a large number of classes — plugins, Hibernate entity mappings, GSP-compiled views, Spring beans — so metaspace can account for a significant part of the process&#8217;s native memory on either JDK.
+In a container environment this is especially important: the heap limit (<code>-Xmx</code> or <code>-XX:MaxRAMPercentage</code>) does not cover metaspace, so a container sized only for the heap can be killed by the container runtime&#8217;s OOM killer when metaspace grows beyond the remaining native memory budget.</p>
+</div>
+<div class="paragraph">
+<p><strong>What to do when running on Java 25:</strong></p>
+</div>
+<div class="paragraph">
+<p>Set an explicit metaspace ceiling with <code>-XX:MaxMetaspaceSize</code> so the JVM raises <code>OutOfMemoryError: Metaspace</code> before the container runtime kills the process:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">java -Xmx512m -XX:MaxMetaspaceSize=256m -Dgrails.env=prod -jar application.jar</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Or, using percentage-based heap sizing in a container:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">java -XX:MaxRAMPercentage=60.0 -XX:MaxMetaspaceSize=256m -Dgrails.env=prod -jar application.jar</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Tune <code>-XX:MaxMetaspaceSize</code> from a measured baseline: run the application under representative load, observe metaspace usage with <code>jcmd &lt;pid&gt; VM.metaspace</code>, and add a safety margin.</p>
+</div>
+<div class="paragraph">
+<p>The <code>-XX:+/-UseCompressedClassPointers</code> flag is deprecated in Java 25 and becomes obsolete in JDK 27 (<a href="https://github.com/openjdk/jdk/commit/da296cbea1">JDK-8363996</a>), where it is accepted with a warning and ignored.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>If your startup scripts pass <code>-XX:+UseCompressedClassPointers</code>, remove it because it is the default.</p>
+</li>
+<li>
+<p>If they pass <code>-XX:-UseCompressedClassPointers</code> to disable compressed class pointers, check the class-space use that <code>jcmd &lt;pid&gt; VM.metaspace</code> reports before you drop it.
+Dropping it changes the memory layout, and from JDK 27 compressed class pointers are always on, whether or not the flag is there.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>See <a href="#java25-memory">Metaspace and Off-Heap Memory</a> in the deployment guide for full details, including a systemd service unit example.</p>
 </div>
 </div>
 </div>
@@ -68895,7 +68946,8 @@ JVM options, including <code>-D</code> properties and memory settings, go before
 </div>
 <div class="paragraph">
 <p>This example requires <code>/etc/myapp/</code> to exist. Place external <code>application.yml</code> or <code>application.properties</code> there.
-Size the heap for your workload and leave memory for metaspace, thread stacks, direct buffers, native libraries, and the operating system.</p>
+Size the heap for your workload and leave memory for metaspace, thread stacks, direct buffers, native libraries, and the operating system.
+Metaspace is unbounded by default; see <a href="deployment.html#java25-memory">Metaspace and Off-Heap Memory</a> for recommended settings.</p>
 </div>
 <div class="paragraph">
 <p>If the application applies the Gradle <code>war</code> plugin, it can instead produce an executable WAR:</p>
@@ -69440,6 +69492,64 @@ Keep uploads and durable data in external storage or persistent volumes; an imag
 Configure writable paths explicitly when using a read-only root filesystem.
 Heap dumps and other diagnostics need a writable destination with sufficient space and controlled access.
 Keep JVM debugging and management interfaces private; they should not be exposed through the application&#8217;s public ingress.</p>
+</div>
+<div class="sect2">
+<h3 id="java25-memory">Metaspace and Off-Heap Memory</h3>
+<div class="paragraph">
+<p>Metaspace has no upper limit by default (<code>MaxMetaspaceSize</code> is unlimited on every JDK since 8).
+Grails applications load many classes (plugins, Hibernate mappings, GSP-compiled views), so metaspace can make up a large part of the process&#8217;s native memory.
+In a container environment this matters most: the JVM heap limit (<code>-Xmx</code> or <code>-XX:MaxRAMPercentage</code>) does not cover metaspace, so a container sized only for the heap can be killed by the container runtime&#8217;s OOM killer when metaspace grows beyond the remaining native memory budget.</p>
+</div>
+<div class="paragraph">
+<p><strong>Recommended settings:</strong></p>
+</div>
+<div class="paragraph">
+<p>Set an explicit metaspace ceiling so the JVM raises <code>OutOfMemoryError: Metaspace</code> before the container runtime kills the process:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">java -Xmx512m -XX:MaxMetaspaceSize=256m -Dgrails.env=prod -jar application.jar</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Or, using percentage-based heap sizing in a container:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">java -XX:MaxRAMPercentage=60.0 -XX:MaxMetaspaceSize=256m -Dgrails.env=prod -jar application.jar</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Tune <code>-XX:MaxMetaspaceSize</code> from a measured baseline: run the application under representative load, observe the metaspace usage with <code>jcmd &lt;pid&gt; VM.metaspace</code> or a monitoring agent, and add a safety margin.</p>
+</div>
+<div class="paragraph">
+<p>For a systemd service unit, add the flags to <code>ExecStart</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="ini">ExecStart=/usr/bin/java \
+    -Xmx512m \
+    -XX:MaxMetaspaceSize=256m \
+    -Dgrails.env=prod \
+    -jar /opt/myapp/application.jar \
+    --spring.config.additional-location=file:/etc/myapp/</code></pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The <code>-XX:+/-UseCompressedClassPointers</code> flag is deprecated in Java 25. Removal is scheduled (<a href="https://github.com/openjdk/jdk/commit/da296cbea1">JDK-8363996</a>) which makes <code>UseCompressedClassPointers</code> obsolete in JDK 27. This means the flag is accepted with a warning and ignored. Anyone who relies on <code>-XX:-UseCompressedClassPointers</code> will be using compressed class space on 27 whether or not they remove the flag.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>If your startup scripts pass <code>-XX:+UseCompressedClassPointers</code> (the default), remove it.</p>
+</div>
 </div>
 </div>
 </div>
