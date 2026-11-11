@@ -10242,6 +10242,53 @@ Dropping it changes the memory layout, and from JDK 27 compressed class pointers
 <p>See <a href="#java25-memory">Metaspace and Off-Heap Memory</a> in the deployment guide for full details, including a systemd service unit example.</p>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_92_an_exception_an_action_throws_is_recorded_on_the_http_server_observation">92. An Exception an Action Throws Is Recorded on the HTTP Server Observation</h4>
+<div class="paragraph">
+<p>As of Grails 8.0.1, an exception an action throws is recorded as an error on the observation of the request.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>When an error view answered, as the <code>"500"(view: '/error')</code> mapping of a generated application does, <code>http.server.requests</code> tagged the 500 with <code>error</code> and <code>exception</code> values of <code>none</code>, and tracing did not see a failure.</p>
+</li>
+<li>
+<p>A <code>500</code> mapping to a controller tagged it with <code>GrailsWrappedRuntimeException</code> and with the <code>uri</code> of that controller, so every failure it answered looked like the same route.</p>
+</li>
+<li>
+<p>Both now report the exception the action threw and the route of the action, and the span of the request is marked as failed. That includes an <code>Error</code>, such as a failed <code>assert</code>, rather than the <code>ServletException</code> Spring MVC wraps it in. A client error is not recorded, and neither is a failure inside <code>g:include</code>, whose error page is rendered inside a page that goes on to answer the request.</p>
+</li>
+<li>
+<p>After a forward to an error controller, the <code>jakarta.servlet.error.exception</code> request attribute holds the exception the action threw rather than a <code>GrailsWrappedRuntimeException</code>, for a filter that reads it once the chain has returned. Inside the error controller it still holds the wrapper.</p>
+</li>
+<li>
+<p>These requests were already counted with <code>outcome=SERVER_ERROR</code>, but an alert that counts a non-<code>none</code> <code>error</code> value will see more server errors than before, and a dashboard that reads the <code>uri</code> of an error controller will find those failures under the routes of the actions.</p>
+</li>
+<li>
+<p>The route is now set before the Grails interceptors run, so that a failure in one is reported under the route of the action. An interceptor whose <code>before()</code> returns <code>false</code>, to render a 403 or to redirect, stopped the request before its route was set, so the request was reported with a <code>uri</code> of <code>UNKNOWN</code>, or <code>REDIRECTION</code> for a redirect. It is now reported under the route of the action, so a dashboard or alert keyed on those <code>uri</code> values sees those requests move.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_93_rlike_is_the_same_on_hibernate_5_and_hibernate_7">93. <code>rlike</code> Is the Same on Hibernate 5 and Hibernate 7</h4>
+<div class="paragraph">
+<p><code>rlike</code> is now rendered from one declaration of the supported databases in each Hibernate module, and the two modules agree on which databases fall back to <code>like</code>.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>With Hibernate 5, a database that has no regular expression operator that Grails uses, such as SQL Server, Sybase, CockroachDB and Db2 for z/OS, no longer fails with <code>rlike is not supported with the configured dialect</code>: <code>rlike</code> falls back to <code>like</code>, as it does with Hibernate 7, so <code>%</code> and <code>_</code> are the wildcards there and not regular expression characters. Check queries that used <code>rlike</code> on such a database, as they now match different rows instead of failing.</p>
+</li>
+<li>
+<p>Whether case matters follows the database: Oracle, H2 and Db2 match case-sensitively, and MySQL and MariaDB by the collation of the column. PostgreSQL matches with <code>~</code> (case-sensitive) with Hibernate 7 and <code>~*</code> (case-insensitive) with Hibernate 5; see issue 16882.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>See the <code>rlike</code> entry of the criteria reference for the databases that match with a regular expression.</p>
+</div>
+</div>
 </div>
 
 
