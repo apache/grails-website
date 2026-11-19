@@ -12713,8 +12713,8 @@ principal information is stored directly in the JWT.</p>
 <div class="sect4">
 <h5 id="_signature">Signature</h5>
 <div class="paragraph">
-<p>Depends on the algorithm specified on the header, it can be a digital signature of the base64-encoded header and claims,
-or an encryption of them using RSA.</p>
+<p>A digital signature of the base64-encoded header and claims, made with the algorithm specified in the header. An
+encrypted JWT holds such a signed JWT in encrypted form, see <a href="#rest-jwt-encrypted">Encrypted JWT&#8217;s</a>.</p>
 </div>
 </div>
 </div>
@@ -12758,7 +12758,7 @@ the algorithm used is HMAC SHA-256 with a specified shared secret. The relevant 
 </table>
 </div>
 <div class="sect3">
-<h4 id="_encrypted_jwts">Encrypted JWT&#8217;s</h4>
+<h4 id="rest-jwt-encrypted">Encrypted JWT&#8217;s</h4>
 <div class="admonitionblock note">
 <table>
 <tr>
@@ -12789,8 +12789,19 @@ Base 64.</p>
 <div class="paragraph">
 <p>If the claims contains sensitive information, you can use a
 <a href="https://tools.ietf.org/html/draft-ietf-jose-json-web-encryption">JSON Web Encryption</a> algorithm to prevent them to be decoded.
-Particularly, this plugin uses RSAES OAEP for key encryption and AES GCM (Galois/Counter Mode) algorithm with a 256 bit key
+By default, this plugin uses RSAES OAEP for key encryption and AES GCM (Galois/Counter Mode) algorithm with a 128 bit key
 for content encryption.</p>
+</div>
+<div class="paragraph">
+<p>The plugin signs the claims with the RSA private key, using RS256 (RSASSA-PKCS1-v1_5 with SHA-256), and encrypts the
+signed JWT with the RSA public key, which <a href="https://tools.ietf.org/html/rfc7519#section-5.2">RFC 7519</a> calls a nested JWT.
+The header of the encrypted JWT has the content type <code>JWT</code>. The plugin accepts an encrypted JWT only when it decrypts
+with the private key and holds a JWT whose signature verifies with the public key. An application that generates or
+validates encrypted JWT&#8217;s therefore needs both keys, and the private key must be at least 2048 bits long. Use the key
+pair for these tokens only: the plugin accepts any JWT that is signed with the private key and encrypted with the public
+key, whatever issued it. With encrypted JWT&#8217;s enabled, the plugin accepts no signed JWT&#8217;s, and with signed JWT&#8217;s, it
+accepts no encrypted JWT&#8217;s. An encrypted JWT whose key is encrypted with <code>RSA1_5</code> is accepted only when
+<code>grails.plugin.springsecurity.rest.token.generation.jwt.jweAlgorithm</code> is <code>RSA1_5</code>.</p>
 </div>
 <div class="paragraph">
 <p>By default, RSA public/private keys are generated every time the application runs. This means that  generated tokens
@@ -13729,7 +13740,28 @@ the token value as parameter:</p>
 <p><code><a href="http://your-grails-api.com/oauth/authenticate/google?callback=http://your-frontend-app.com/auth-success.html?token=" class="bare">http://your-grails-api.com/oauth/authenticate/google?callback=http://your-frontend-app.com/auth-success.html?token=</a></code></p>
 </div>
 <div class="paragraph">
-<p>In this case, the token will be <strong>concatenated</strong> to the end of the URL.</p>
+<p>In this case, the token will be <strong>concatenated</strong> to the end of the URL, so the URL needs a path, a query or a fragment
+after the host. The plugin only uses a <code>callback</code> URL whose origin, that is its scheme, host and port, is listed in
+<code>grails.plugin.springsecurity.rest.oauth.allowedCallbackOrigins</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.rest.oauth.allowedCallbackOrigins = [<span class="string"><span class="delimiter">'</span><span class="content">http://your-frontend-app.com</span><span class="delimiter">'</span></span>]</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Each entry is an origin alone. The plugin does not compare the path of the <code>callback</code> URL, so every page of a listed
+origin can be the <code>callback</code> URL, and it ignores an entry that has a path other than <code>/</code>, a query, a fragment or user
+information, such as <code><a href="http://your-frontend-app.com/app" class="bare">http://your-frontend-app.com/app</a></code>, and logs a warning. It redirects to the <code>callback</code> URL with
+every character outside US-ASCII percent-encoded as UTF-8, as browsers send it. Write a host with characters outside
+US-ASCII in its ASCII form, such as <code>https://xn--bcher-kva.example</code> for <code><a href="https://bücher.example" class="bare">https://bücher.example</a></code>; the plugin ignores
+an entry or a <code>callback</code> URL whose host is not ASCII.</p>
+</div>
+<div class="paragraph">
+<p>It compares the scheme and the host without regard to case, applies the scheme&#8217;s default port when a URL has none, and
+compares an IPv6 address by its value, so that <code>http://[::1]:8080</code> also matches <code>http://[0:0:0:0:0:0:0:1]:8080/</code>. The
+plugin ignores any other <code>callback</code> URL, and every <code>callback</code> URL when <code>allowedCallbackOrigins</code> is not set, and
+redirects to the <code>frontendCallbackUrl</code> instead.</p>
 </div>
 <div class="paragraph">
 <p>Upon successful OAuth authorisation (after step 6.1 in the above diagram), an

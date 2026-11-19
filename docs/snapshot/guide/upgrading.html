@@ -314,20 +314,26 @@ Remove the dependency once your configuration is clean.</p>
 <td class="content">
 <div class="paragraph">
 <p><strong>Let your coding agent work through this guide.</strong>
-Grails publishes the <code>grails-8-upgrade</code> agent skill, which turns this guide into a migration checklist for an AI coding agent.
+Grails publishes the <code>grails-upgrade</code> agent skill, which turns this guide into a migration checklist for an AI coding agent, and lists the changes of each Grails 8 release.
 Extract it with the SkillsJars Gradle plugin, as <a href="gettingStarted.html#agentSkills">Agent Skills</a> describes.
-While the application is still on Grails 7, declare the skill with its version, since the Grails 7 BOM does not manage it:</p>
+While the application is still on Grails 7, declare the skill with its version, since the Grails 7 BOM manages the upgrade skill of Grails 7:</p>
 </div>
 <div class="listingblock">
 <div class="title">build.gradle</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">skill 'org.apache.grails.skills:grails-8-upgrade:8.0.1-SNAPSHOT'</code></pre>
+<pre class="CodeRay highlight"><code data-lang="groovy">skill 'org.apache.grails.skills:grails-upgrade:8.0.1-SNAPSHOT'</code></pre>
 </div>
 </div>
 </td>
 </tr>
 </table>
 </div>
+<div class="paragraph">
+<p>The changes are listed by release. Apply the section of every release after the one the application is on, up to and including the release it is upgrading to.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="grails-8-0-0">Grails 8.0.0</h3>
 <div class="sect3">
 <h4 id="_1_java_21_minimum_requirement">1. Java 21 Minimum Requirement</h4>
 <div class="paragraph">
@@ -2312,33 +2318,6 @@ Declaring all three names prevents the naming strategy from changing the mapping
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="_26_11_custom_user_types">26.11 Custom User Types</h5>
-<div class="paragraph">
-<p>Hibernate 7 changed the <code>org.hibernate.usertype.UserType</code> contract. The interface is generic in the Java type, <code>sqlTypes()</code> became <code>getSqlType()</code>, and <code>nullSafeGet()</code> and <code>nullSafeSet()</code> take a column position and a <code>WrapperOptions</code> in place of the column names and the session. A <code>UserType</code> written for Hibernate 5 does not compile against Hibernate 7 and must be rewritten.</p>
-</div>
-<div class="paragraph">
-<p>A type that spans several columns no longer implements <code>UserType</code> with several <code>sqlTypes()</code>. It implements <code>org.hibernate.usertype.CompositeUserType</code>, whose <code>embeddable()</code> method names a class whose persistent attributes describe the columns. GORM binds such a property as a component: the columns of its <code>type</code> mapping are assigned to the attributes in the alphabetical order of their names, which is also the index that <code>getPropertyValue()</code> and <code>instantiate()</code> use, and a column that is not listed is named after the property and the attribute. In Hibernate 5, the columns followed the order of <code>getPropertyNames()</code> instead, so check the column order of every multi-column mapping when you port a <code>CompositeUserType</code>. The GORM guide describes the mapping under <em>Custom Hibernate Types</em>.</p>
-</div>
-</div>
-<div class="sect4">
-<h5 id="_26_12_several_unidirectional_hasmany_associations_on_one_owner">26.12 Several Unidirectional hasMany Associations on One Owner</h5>
-<div class="paragraph">
-<p>Under Hibernate 7, an owner with two or more unidirectional <code>hasMany</code> associations wrote no rows to their join tables: an element added to any of them was lost at flush (issue <a href="https://github.com/apache/grails-core/issues/16665">#16665</a>). This is fixed when each association has a join table of its own, which is the default for associations to different classes (<code>item_roles</code> and <code>item_tags</code> for <code>static hasMany = [roles: Role, tags: Tag]</code>) and also the case when two associations to the same class map different tables with <code>joinTable</code>. Each such join table is written, as under Hibernate 5.</p>
-</div>
-<div class="paragraph">
-<p>Two unidirectional associations to the same class share one join table by default, named after the owner and the element class, with a key column per association (<code>item_role</code> with <code>item_roles_id</code> and <code>item_deny_roles_id</code> for <code>static hasMany = [roles: Role, denyRoles: Role]</code>). Such a shared table is now written as well: each association keeps its rows unique by its own key column and the element. Two lists or two maps sharing a join table are written too (issue <a href="https://github.com/apache/grails-core/issues/16700">#16700</a>): each keeps its rows unique by its own key and index columns, since a position or a map key is taken once while an element may repeat, and the table has no primary key, because the one Hibernate makes over one list&#8217;s key and index columns rejects every row of the other list. A schema created by an earlier Grails 8 release has that primary key and <code>NOT NULL</code> owner-key and index columns, which <code>dbCreate</code> of <code>update</code> does not change: drop the primary key and make the owner-key and index columns nullable with a migration. On most databases that is a unique key per association; on Oracle and on Db2 for Linux, UNIX and Windows, which compare the non-null columns of a partially null row in a unique key, it is one unique key over the key columns of both associations and the element. A schema created by an earlier Grails 8 release has the single unique key Hibernate made for the first association: <code>dbCreate</code> of <code>update</code> adds the second one, and on Oracle and Db2 for Linux, UNIX and Windows a migration has to replace that key with the wider one. Each collection on a shared join table isolates its rows during reads, element removals, and bulk deletes: for lists and maps sharing the same foreign-key and element columns, queries and deletions are restricted by each list&#8217;s distinct index column so neither collection interferes with the other. A bag has no key; its elements may repeat.</p>
-</div>
-<div class="paragraph">
-<p>Removing one element of a unidirectional <code>hasMany</code> set or bag, with <code>removeFrom*</code> or by binding a smaller set of ids, deleted every join table row of the owner, so the association lost all its elements (issue <a href="https://github.com/apache/grails-core/issues/16691">#16691</a>). Hibernate 7 deletes such a row by the owner&#8217;s key and only those element columns that are not nullable, and the element column of a GORM join table is nullable. GORM now gives a set or a bag of entities in a join table a collection persister that deletes the row by the owner and the element, as Hibernate 5 did; the schema does not change. An application that configures a persister class resolver of its own with <code>hibernate.persister.resolver</code> keeps it, and with it the Hibernate 7 behaviour. Likewise, GORM configures <code>hibernate.query.sqm.translator</code> to <code>RestrictedCollectionSqmTranslatorFactory</code> by default so that <code>is empty</code> on associations that share a key column (issue <a href="https://github.com/apache/grails-core/issues/16748">#16748</a>) translates to a count query; an application that configures an SQM query translator factory of its own keeps it, and with it the standard Hibernate 7 behaviour.</p>
-</div>
-</div>
-<div class="sect4">
-<h5 id="_26_13_collection_criteria_next_to_association_blocks">26.13 Collection Criteria Next to Association Blocks</h5>
-<div class="paragraph">
-<p>Under Hibernate 7, calling a collection criterion such as <code>isNotEmpty('pets')</code>, <code>isEmpty('pets')</code>, or <code>sizeEq('pets', n)</code> next to an association block for the same collection (<code>pets { &#8230;&#8203; }</code>) threw a <code>ClassCastException</code> because the path resolved to the join rather than the collection attribute (issue <a href="https://github.com/apache/grails-core/issues/16633">#16633</a>). Collection criteria now resolve to the collection property on the parent whether they appear before or after an association block of the same name.</p>
-</div>
-</div>
 </div>
 <div class="sect3">
 <h4 id="_27_gorm_properties_are_nullable_by_default">27. GORM Properties Are Nullable by Default</h4>
@@ -2521,41 +2500,6 @@ When adding a class that extends <code>grails.util.TypeConvertingMap</code>, do 
 </td>
 </tr>
 </table>
-</div>
-</div>
-<div class="sect4">
-<h5 id="_28_4_map_entries_named_properties_or_metaclass">28.4 Map entries named <code>properties</code> or <code>metaClass</code></h5>
-<div class="paragraph">
-<p>The accessor-first resolution described above applies to every <code>Map</code>, not only to a class that declares an accessor of its own, because every Groovy object has the <code>properties</code> and <code>metaClass</code> properties.
-In Groovy 4 <code>map.properties</code> and <code>map['properties']</code> read the map entry.
-In Groovy 5 both return the Groovy meta-properties of the map object, in dynamic and in statically compiled code alike, and <code>map['properties'] = value</code> throws <code>groovy.lang.ReadOnlyPropertyException</code>.
-<code>metaClass</code> reads the same way. Assigning to it through a subscript was never a map put: in Groovy 4 as in Groovy 5 it sets the metaclass of the map, and a value that is not a <code>MetaClass</code> throws <code>groovy.lang.GroovyCastException</code>.
-<code>class</code> and <code>empty</code> are exempt and still address the map entry.</p>
-</div>
-<div class="paragraph">
-<p>Such keys are common in data an application does not control; the <code>properties</code> member of a GeoJSON <code>Feature</code> is one.
-Grails 8 stores and loads them through the <code>Map</code> API, so they round-trip through a <code>Map</code> property or an embedded map of a GORM for MongoDB entity, and through data binding of a <code>Map</code> property, whether the value arrives as a nested map or as an indexed key such as <code>attributes[properties]</code>.</p>
-</div>
-<div class="paragraph">
-<p>Application code that reads one of these keys from a <code>Map</code> must call <code>get</code>:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="predefined-type">Map</span> feature = place.geoJson    <span class="comment">// a Map property holding a GeoJSON Feature</span>
-
-feature.get(<span class="string"><span class="delimiter">'</span><span class="content">properties</span><span class="delimiter">'</span></span>)      <span class="comment">// the entry</span>
-feature.properties             <span class="comment">// the meta-properties of the map object</span>
-feature[<span class="string"><span class="delimiter">'</span><span class="content">properties</span><span class="delimiter">'</span></span>]          <span class="comment">// the same, on Groovy 5</span></code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>With GORM for MongoDB, a loaded <code>Map</code> property comes back as a dirty-checking wrapper with accessors of its own, named <code>target</code>, <code>parent</code>, <code>property</code>, <code>originalSize</code> and <code>assigned</code>.
-The wrapper resolves those five names to the map entry, in dotted and subscript form, so an entry such as <code>parent</code> reads and writes through the wrapper as it does through the plain map, and as it did in Grails 7.
-The one form that still reaches the accessor is dotted access from statically compiled code, which binds at compile time as it always has; read such an entry with <code>get</code> there.</p>
-</div>
-<div class="paragraph">
-<p>With GORM for Hibernate, a loaded <code>Map</code> property is Hibernate&#8217;s <code>PersistentMap</code>, and its accessors are not redirected.
-In Groovy 5, <code>attrs.key</code>, <code>attrs['value']</code>, <code>attrs.owner</code>, <code>attrs.role</code>, <code>attrs.size</code>, <code>attrs.session</code> and <code>attrs.dirty</code>, among others, return the state of the collection rather than the entry; read such an entry with <code>get</code>.</p>
 </div>
 </div>
 </div>
@@ -6786,8 +6730,73 @@ for template renders:</p>
 <a href="theWebLayer.html#definingInterceptors">Defining Interceptors</a>.</p>
 </div>
 </div>
+</div>
+<div class="sect2">
+<h3 id="grails-8-0-1">Grails 8.0.1</h3>
 <div class="sect3">
-<h4 id="_85_gradle_configuration_cache">85. Gradle Configuration Cache</h4>
+<h4 id="_custom_user_types">Custom User Types</h4>
+<div class="paragraph">
+<p>Hibernate 7 changed the <code>org.hibernate.usertype.UserType</code> contract. The interface is generic in the Java type, <code>sqlTypes()</code> became <code>getSqlType()</code>, and <code>nullSafeGet()</code> and <code>nullSafeSet()</code> take a column position and a <code>WrapperOptions</code> in place of the column names and the session. A <code>UserType</code> written for Hibernate 5 does not compile against Hibernate 7 and must be rewritten.</p>
+</div>
+<div class="paragraph">
+<p>A type that spans several columns no longer implements <code>UserType</code> with several <code>sqlTypes()</code>. It implements <code>org.hibernate.usertype.CompositeUserType</code>, whose <code>embeddable()</code> method names a class whose persistent attributes describe the columns. GORM binds such a property as a component: the columns of its <code>type</code> mapping are assigned to the attributes in the alphabetical order of their names, which is also the index that <code>getPropertyValue()</code> and <code>instantiate()</code> use, and a column that is not listed is named after the property and the attribute. In Hibernate 5, the columns followed the order of <code>getPropertyNames()</code> instead, so check the column order of every multi-column mapping when you port a <code>CompositeUserType</code>. The GORM guide describes the mapping under <em>Custom Hibernate Types</em>.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_several_unidirectional_hasmany_associations_on_one_owner">Several Unidirectional hasMany Associations on One Owner</h4>
+<div class="paragraph">
+<p>Under Hibernate 7, an owner with two or more unidirectional <code>hasMany</code> associations wrote no rows to their join tables: an element added to any of them was lost at flush (issue <a href="https://github.com/apache/grails-core/issues/16665">#16665</a>). This is fixed when each association has a join table of its own, which is the default for associations to different classes (<code>item_roles</code> and <code>item_tags</code> for <code>static hasMany = [roles: Role, tags: Tag]</code>) and also the case when two associations to the same class map different tables with <code>joinTable</code>. Each such join table is written, as under Hibernate 5.</p>
+</div>
+<div class="paragraph">
+<p>Two unidirectional associations to the same class share one join table by default, named after the owner and the element class, with a key column per association (<code>item_role</code> with <code>item_roles_id</code> and <code>item_deny_roles_id</code> for <code>static hasMany = [roles: Role, denyRoles: Role]</code>). Such a shared table is now written as well: each association keeps its rows unique by its own key column and the element. Two lists or two maps sharing a join table are written too (issue <a href="https://github.com/apache/grails-core/issues/16700">#16700</a>): each keeps its rows unique by its own key and index columns, since a position or a map key is taken once while an element may repeat, and the table has no primary key, because the one Hibernate makes over one list&#8217;s key and index columns rejects every row of the other list. A schema created by an earlier Grails 8 release has that primary key and <code>NOT NULL</code> owner-key and index columns, which <code>dbCreate</code> of <code>update</code> does not change: drop the primary key and make the owner-key and index columns nullable with a migration. On most databases that is a unique key per association; on Oracle and on Db2 for Linux, UNIX and Windows, which compare the non-null columns of a partially null row in a unique key, it is one unique key over the key columns of both associations and the element. A schema created by an earlier Grails 8 release has the single unique key Hibernate made for the first association: <code>dbCreate</code> of <code>update</code> adds the second one, and on Oracle and Db2 for Linux, UNIX and Windows a migration has to replace that key with the wider one. Each collection on a shared join table isolates its rows during reads, element removals, and bulk deletes: for lists and maps sharing the same foreign-key and element columns, queries and deletions are restricted by each list&#8217;s distinct index column so neither collection interferes with the other. A bag has no key; its elements may repeat.</p>
+</div>
+<div class="paragraph">
+<p>Removing one element of a unidirectional <code>hasMany</code> set or bag, with <code>removeFrom*</code> or by binding a smaller set of ids, deleted every join table row of the owner, so the association lost all its elements (issue <a href="https://github.com/apache/grails-core/issues/16691">#16691</a>). Hibernate 7 deletes such a row by the owner&#8217;s key and only those element columns that are not nullable, and the element column of a GORM join table is nullable. GORM now gives a set or a bag of entities in a join table a collection persister that deletes the row by the owner and the element, as Hibernate 5 did; the schema does not change. An application that configures a persister class resolver of its own with <code>hibernate.persister.resolver</code> keeps it, and with it the Hibernate 7 behaviour. Likewise, GORM configures <code>hibernate.query.sqm.translator</code> to <code>RestrictedCollectionSqmTranslatorFactory</code> by default so that <code>is empty</code> on associations that share a key column (issue <a href="https://github.com/apache/grails-core/issues/16748">#16748</a>) translates to a count query; an application that configures an SQM query translator factory of its own keeps it, and with it the standard Hibernate 7 behaviour.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_collection_criteria_next_to_association_blocks">Collection Criteria Next to Association Blocks</h4>
+<div class="paragraph">
+<p>Under Hibernate 7, calling a collection criterion such as <code>isNotEmpty('pets')</code>, <code>isEmpty('pets')</code>, or <code>sizeEq('pets', n)</code> next to an association block for the same collection (<code>pets { &#8230;&#8203; }</code>) threw a <code>ClassCastException</code> because the path resolved to the join rather than the collection attribute (issue <a href="https://github.com/apache/grails-core/issues/16633">#16633</a>). Collection criteria now resolve to the collection property on the parent whether they appear before or after an association block of the same name.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_map_entries_named_properties_or_metaclass">Map entries named <code>properties</code> or <code>metaClass</code></h4>
+<div class="paragraph">
+<p>The accessor-first resolution described above applies to every <code>Map</code>, not only to a class that declares an accessor of its own, because every Groovy object has the <code>properties</code> and <code>metaClass</code> properties.
+In Groovy 4 <code>map.properties</code> and <code>map['properties']</code> read the map entry.
+In Groovy 5 both return the Groovy meta-properties of the map object, in dynamic and in statically compiled code alike, and <code>map['properties'] = value</code> throws <code>groovy.lang.ReadOnlyPropertyException</code>.
+<code>metaClass</code> reads the same way. Assigning to it through a subscript was never a map put: in Groovy 4 as in Groovy 5 it sets the metaclass of the map, and a value that is not a <code>MetaClass</code> throws <code>groovy.lang.GroovyCastException</code>.
+<code>class</code> and <code>empty</code> are exempt and still address the map entry.</p>
+</div>
+<div class="paragraph">
+<p>Such keys are common in data an application does not control; the <code>properties</code> member of a GeoJSON <code>Feature</code> is one.
+Grails 8 stores and loads them through the <code>Map</code> API, so they round-trip through a <code>Map</code> property or an embedded map of a GORM for MongoDB entity, and through data binding of a <code>Map</code> property, whether the value arrives as a nested map or as an indexed key such as <code>attributes[properties]</code>.</p>
+</div>
+<div class="paragraph">
+<p>Application code that reads one of these keys from a <code>Map</code> must call <code>get</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="predefined-type">Map</span> feature = place.geoJson    <span class="comment">// a Map property holding a GeoJSON Feature</span>
+
+feature.get(<span class="string"><span class="delimiter">'</span><span class="content">properties</span><span class="delimiter">'</span></span>)      <span class="comment">// the entry</span>
+feature.properties             <span class="comment">// the meta-properties of the map object</span>
+feature[<span class="string"><span class="delimiter">'</span><span class="content">properties</span><span class="delimiter">'</span></span>]          <span class="comment">// the same, on Groovy 5</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>With GORM for MongoDB, a loaded <code>Map</code> property comes back as a dirty-checking wrapper with accessors of its own, named <code>target</code>, <code>parent</code>, <code>property</code>, <code>originalSize</code> and <code>assigned</code>.
+The wrapper resolves those five names to the map entry, in dotted and subscript form, so an entry such as <code>parent</code> reads and writes through the wrapper as it does through the plain map, and as it did in Grails 7.
+The one form that still reaches the accessor is dotted access from statically compiled code, which binds at compile time as it always has; read such an entry with <code>get</code> there.</p>
+</div>
+<div class="paragraph">
+<p>With GORM for Hibernate, a loaded <code>Map</code> property is Hibernate&#8217;s <code>PersistentMap</code>, and its accessors are not redirected.
+In Groovy 5, <code>attrs.key</code>, <code>attrs['value']</code>, <code>attrs.owner</code>, <code>attrs.role</code>, <code>attrs.size</code>, <code>attrs.session</code> and <code>attrs.dirty</code>, among others, return the state of the collection rather than the entry; read such an entry with <code>get</code>.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_gradle_configuration_cache">Gradle Configuration Cache</h4>
 <div class="paragraph">
 <p>The Grails Gradle plugins of Grails 8.0, and the Asset Pipeline and Grails Publish plugins in the versions the Grails 8.0 BOM manages, support the <a href="https://docs.gradle.org/9.9.1/userguide/configuration_cache.html">Gradle configuration cache</a>.
 Applications and plugins created with Grails 8.0 enable it in <code>gradle.properties</code>.</p>
@@ -6810,7 +6819,7 @@ See <a href="commandLine.html#gradleConfigurationCache">Using the Gradle Configu
 </div>
 </div>
 <div class="sect3">
-<h4 id="_86_grails_data_plugins_leave_the_buildscript_classpath">86. Grails Data Plugins Leave the Buildscript Classpath</h4>
+<h4 id="_grails_data_plugins_leave_the_buildscript_classpath">Grails Data Plugins Leave the Buildscript Classpath</h4>
 <div class="paragraph">
 <p>Builds generated by earlier versions of Grails Forge placed the Grails Data plugin on the Gradle <code>buildscript</code> classpath, next to the Grails Gradle plugins, and in <code>buildSrc</code> when the build used one:</p>
 </div>
@@ -6850,7 +6859,7 @@ The same applies to <code>grails-data-hibernate7</code> and to any other Grails 
 </div>
 </div>
 <div class="sect3">
-<h4 id="_87_only_tenants_withoutid_runs_without_a_tenant_with_discriminator_multi_tenancy">87. Only Tenants.withoutId runs without a tenant with DISCRIMINATOR multi-tenancy</h4>
+<h4 id="_only_tenants_withoutid_runs_without_a_tenant_with_discriminator_multi_tenancy">Only Tenants.withoutId runs without a tenant with DISCRIMINATOR multi-tenancy</h4>
 <div class="paragraph">
 <p>With <code>DISCRIMINATOR</code> multi-tenancy, only <code>Tenants.withoutId</code> and <code>@WithoutTenant</code> run without a tenant. A tenant id of <code>default</code> is a tenant id like any other, whether a <code>TenantResolver</code> returns it or it is passed to <code>Tenants.withId</code>. Queries return the instances of the tenant <code>default</code>, and a saved instance gets the tenant id <code>default</code>.</p>
 </div>
@@ -6884,7 +6893,7 @@ The same applies to <code>grails-data-hibernate7</code> and to any other Grails 
 </div>
 </div>
 <div class="sect3">
-<h4 id="_88_lookups_by_id_are_restricted_to_the_current_tenant_with_discriminator_multi_tenancy">88. Lookups by id are restricted to the current tenant with DISCRIMINATOR multi-tenancy</h4>
+<h4 id="_lookups_by_id_are_restricted_to_the_current_tenant_with_discriminator_multi_tenancy">Lookups by id are restricted to the current tenant with DISCRIMINATOR multi-tenancy</h4>
 <div class="paragraph">
 <p>With <code>DISCRIMINATOR</code> multi-tenancy, GORM for MongoDB, GORM for Neo4j and GORM&#8217;s in-memory datastore used by unit tests now restrict <code>get</code>, <code>read</code>, <code>exists</code>, <code>getAll</code>, <code>load</code> and <code>proxy</code> to the current tenant, as queries and dynamic finders already were. Previously these methods looked an instance up by its id alone, so they returned an instance that belongs to another tenant. GORM for Hibernate is unchanged: it already restricts <code>get</code>, <code>read</code>, <code>exists</code> and <code>getAll</code> to the current tenant, and <code>load</code> and <code>proxy</code> since the previous note.</p>
 </div>
@@ -6906,7 +6915,7 @@ The same applies to <code>grails-data-hibernate7</code> and to any other Grails 
 </div>
 </div>
 <div class="sect3">
-<h4 id="_89_data_binding_white_lists_apply_wherever_a_class_is_compiled">89. Data binding white lists apply wherever a class is compiled</h4>
+<h4 id="_data_binding_white_lists_apply_wherever_a_class_is_compiled">Data binding white lists apply wherever a class is compiled</h4>
 <div class="paragraph">
 <p>As of Grails 8.0.1, and 7.0.18 on the 7.0.x line, the lists of bindable properties that Grails generates for a class at compile time, from its statically typed properties, its <code>bindable</code> constraints, its <code>transients</code> list and its <code>transient</code> fields, are generated for every class that implements <code>grails.validation.Validateable</code> or declares <code>constraints</code> or <code>transients</code>, and for every class that extends one, wherever the class is compiled with the data binding library, <code>grails-web-databinding</code>, on the compilation&#8217;s classpath, as it is in an application or a plugin. A library module that compiles against GORM alone generates no lists and gets no warning. Previously only domain classes and the parameter types of controller actions compiled with their controller got them, and in the permissive mode a class without them was bound without restriction.</p>
 </div>
@@ -6937,7 +6946,7 @@ The same applies to <code>grails-data-hibernate7</code> and to any other Grails 
 </div>
 </div>
 <div class="sect3">
-<h4 id="_90_an_exception_mapping_matches_the_exception_that_was_thrown_before_its_root_cause">90. An Exception Mapping Matches the Exception That Was Thrown Before Its Root Cause</h4>
+<h4 id="_an_exception_mapping_matches_the_exception_that_was_thrown_before_its_root_cause">An Exception Mapping Matches the Exception That Was Thrown Before Its Root Cause</h4>
 <div class="paragraph">
 <p>As of Grails 8.0.1, a <code>"500"</code> mapping that names an exception is matched against the exception that was thrown first and its root cause second, both when the error handler is chosen and when the request is routed to it. The routing used to look only at the root cause.</p>
 </div>
@@ -6965,7 +6974,7 @@ The same applies to <code>grails-data-hibernate7</code> and to any other Grails 
 </div>
 </div>
 <div class="sect3">
-<h4 id="java25-memory-upgrade">91. Metaspace and Compressed Class Pointers on Java 25</h4>
+<h4 id="java25-memory-upgrade">Metaspace and Compressed Class Pointers on Java 25</h4>
 <div class="paragraph">
 <p>Both Java 21 and Java 25 leave metaspace unlimited by default unless you set an explicit ceiling with <code>-XX:MaxMetaspaceSize</code>; this default has been unchanged since JDK 8.
 On both versions, <code>-XX:MetaspaceSize</code> sets the initial high-water mark that triggers garbage collection, not a limit on metaspace growth. The JVM adjusts this threshold according to metadata usage.</p>
@@ -7015,7 +7024,7 @@ Dropping it changes the memory layout, and from JDK 27 compressed class pointers
 </div>
 </div>
 <div class="sect3">
-<h4 id="_92_an_exception_an_action_throws_is_recorded_on_the_http_server_observation">92. An Exception an Action Throws Is Recorded on the HTTP Server Observation</h4>
+<h4 id="_an_exception_an_action_throws_is_recorded_on_the_http_server_observation">An Exception an Action Throws Is Recorded on the HTTP Server Observation</h4>
 <div class="paragraph">
 <p>As of Grails 8.0.1, an exception an action throws is recorded as an error on the observation of the request.</p>
 </div>
@@ -7043,7 +7052,7 @@ Dropping it changes the memory layout, and from JDK 27 compressed class pointers
 </div>
 </div>
 <div class="sect3">
-<h4 id="_93_rlike_is_the_same_on_hibernate_5_and_hibernate_7">93. <code>rlike</code> Is the Same on Hibernate 5 and Hibernate 7</h4>
+<h4 id="_rlike_is_the_same_on_hibernate_5_and_hibernate_7"><code>rlike</code> Is the Same on Hibernate 5 and Hibernate 7</h4>
 <div class="paragraph">
 <p><code>rlike</code> is now rendered from one declaration of the supported databases in each Hibernate module, and the two modules agree on which databases fall back to <code>like</code>.</p>
 </div>
@@ -7059,6 +7068,45 @@ Dropping it changes the memory layout, and from JDK 27 compressed class pointers
 </div>
 <div class="paragraph">
 <p>See the <code>rlike</code> entry of the criteria reference for the databases that match with a regular expression.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_the_oauth_callback_parameter_of_the_spring_security_rest_plugin_needs_allowed_origins">The OAuth <code>callback</code> parameter of the Spring Security REST plugin needs allowed origins</h4>
+<div class="paragraph">
+<p>The Spring Security REST plugin redirects to the URL in the <code>callback</code> parameter of <code>/oauth/authenticate/&lt;provider&gt;</code>, with the token appended, only when the URL&#8217;s origin, that is its scheme, host and port, is listed in the new setting <code>grails.plugin.springsecurity.rest.oauth.allowedCallbackOrigins</code>, and the URL has a path, a query or a fragment after the host. It ignores any other <code>callback</code> URL, and every <code>callback</code> URL when the setting is missing, and redirects to the <code>frontendCallbackUrl</code> instead, as it does without the parameter. It checks the URL when the login starts and again when it completes, and a new login drops the <code>callback</code> URL of an earlier login that was not completed. An application that passes the <code>callback</code> parameter lists the origins of its frontend:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.rest.oauth.allowedCallbackOrigins = [<span class="string"><span class="delimiter">'</span><span class="content">https://my.frontend-app.com</span><span class="delimiter">'</span></span>]</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Since the plugin became part of Grails, the <code>callback</code> parameter failed with a <code>MissingMethodException</code>. It works again within these limits.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_encrypted_jwts_of_the_spring_security_rest_plugin_are_signed">Encrypted JWTs of the Spring Security REST plugin are signed</h4>
+<div class="paragraph">
+<p>As of Grails 8.0.1, with <code>grails.plugin.springsecurity.rest.token.storage.jwt.useEncryptedJwt</code> enabled, the Spring Security REST plugin signs the claims with the RSA private key, using RS256, before it encrypts them with the RSA public key, and it accepts an encrypted JWT only when the JWT inside carries a valid signature made with the private key.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Access and refresh tokens issued before the upgrade are no longer accepted, so users have to log in again. When several instances of an application share the keys, upgrade them together: an instance that was not upgraded rejects the tokens of an upgraded one, and the other way round.</p>
+</li>
+<li>
+<p>An application that generates or validates encrypted JWTs needs both keys, also when a custom <code>RSAKeyProvider</code> provides them. The private key must be at least 2048 bits long. A shorter key fails with an <code>IllegalArgumentException</code> when a token is generated. Use the key pair for these tokens only: the plugin accepts any JWT that is signed with the private key and encrypted with the public key, whatever issued it.</p>
+</li>
+<li>
+<p>For an encrypted JWT, <code>JwtService.parse</code> and the <code>accessTokenJwt</code> property of an <code>AccessToken</code> now return a <code>grails.plugin.springsecurity.rest.token.generation.jwt.NestedJwt</code> instead of a <code>com.nimbusds.jwt.EncryptedJWT</code>. Its claims are those of the signed JWT inside, its header is that of the encrypted JWT, and it serializes to the token.</p>
+</li>
+<li>
+<p>With encrypted JWTs enabled, a signed JWT is rejected as an invalid token, and with signed JWTs, an encrypted JWT is. Previously such a token failed with a <code>NullPointerException</code>.</p>
+</li>
+<li>
+<p>An encrypted JWT whose content encryption key is encrypted with <code>RSA1_5</code> is rejected unless <code>grails.plugin.springsecurity.rest.token.generation.jwt.jweAlgorithm</code> is <code>RSA1_5</code>. The plugin passes that setting to the new <code>jweAlgorithm</code> property of <code>JwtService</code>. A <code>jwtService</code> bean that an application defines itself accepts <code>RSA1_5</code> as before, unless the application sets that property too.</p>
+</li>
+</ul>
 </div>
 </div>
 </div>
@@ -7077,6 +7125,15 @@ Dropping it changes the memory layout, and from JDK 27 compressed class pointers
 <h3 id="_upgrade_instructions_for_grails_7_1_to_grails_7_2">Upgrade Instructions for Grails 7.1 to Grails 7.2</h3>
 <div class="paragraph">
 <p>This guide outlines the changes introduced in Grails 7.2 and the steps required to upgrade your application.</p>
+</div>
+<div class="paragraph">
+<p>The changes are listed by release. Apply the section of every release after the one the application is on, up to and including the release it is upgrading to.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="grails-7-2-0">Grails 7.2.0</h3>
+<div class="paragraph">
+<p>This release carries the changes of every Grails 7.1 release up to <a href="#grails-7-1-3">Grails 7.1.3</a>.</p>
 </div>
 <div class="sect3">
 <h4 id="_1_sitemesh_3_filter_less_integration">1. SiteMesh 3 Filter-less Integration</h4>
@@ -7192,6 +7249,36 @@ Dropping it changes the memory layout, and from JDK 27 compressed class pointers
 </div>
 </div>
 </div>
+<div class="sect2">
+<h3 id="grails-7-2-1">Grails 7.2.1</h3>
+<div class="paragraph">
+<p>This release carries the changes of <a href="#grails-7-1-4">Grails 7.1.4</a>. It has no upgrade notes of its own.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="grails-7-2-2">Grails 7.2.2</h3>
+<div class="paragraph">
+<p>This release carries the changes of <a href="#grails-7-1-5">Grails 7.1.5</a>. It has no upgrade notes of its own.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="grails-7-2-3">Grails 7.2.3</h3>
+<div class="paragraph">
+<p>This release carries the changes of <a href="#grails-7-1-6">Grails 7.1.6</a>. It has no upgrade notes of its own.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="grails-7-2-4">Grails 7.2.4</h3>
+<div class="paragraph">
+<p>This release carries the changes of <a href="#grails-7-1-7">Grails 7.1.7</a>. It has no upgrade notes of its own.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="grails-7-2-5">Grails 7.2.5</h3>
+<div class="paragraph">
+<p>This release carries the changes of <a href="#grails-7-1-8">Grails 7.1.8</a>. It has no upgrade notes of its own.</p>
+</div>
+</div>
 
 
 <h2 id="upgrading71x">3.3 Upgrading from Grails 7.0 to Grails 7.1</h2>
@@ -7209,9 +7296,17 @@ Dropping it changes the memory layout, and from JDK 27 compressed class pointers
 <p>To ensure compatibility with Grails 7.1.x, please review the following upgrade instructions carefully.
 This guide outlines the necessary steps &amp; warnings to upgrade your Grails project.</p>
 </div>
+<div class="paragraph">
+<p>The changes are listed by release. Apply the section of every release after the one the application is on, up to and including the release it is upgrading to.</p>
+</div>
 </div>
 <div class="sect2">
-<h3 id="_1_groovy_changes">1. Groovy Changes</h3>
+<h3 id="grails-7-1-0">Grails 7.1.0</h3>
+<div class="paragraph">
+<p>This release carries the changes of every Grails 7.0 release up to <a href="#grails-7-0-10">Grails 7.0.10</a>.</p>
+</div>
+<div class="sect3">
+<h4 id="_1_groovy_changes">1. Groovy Changes</h4>
 <div class="paragraph">
 <p>The Grails Gradle Plugins now automatically disables invokedynamic for all <code>GroovyCompile</code> tasks (see <a href="https://github.com/apache/grails-core/issues/15293">#15293</a>). If you have a manual <code>tasks.withType(GroovyCompile)</code> block in your <code>build.gradle</code> that sets <code>indy = false</code>, you can safely remove it:</p>
 </div>
@@ -7235,8 +7330,9 @@ This guide outlines the necessary steps &amp; warnings to upgrade your Grails pr
   }</code></pre>
 </div>
 </div>
+</div>
 <div class="sect3">
-<h4 id="_2_breaking_changes">2 Breaking changes</h4>
+<h4 id="_2_breaking_changes">2. Breaking changes</h4>
 <div class="sect4">
 <h5 id="_2_1_plugin_configuration_and_spring_conditional_annotations">2.1 Plugin configuration and Spring Conditional Annotations</h5>
 <div class="paragraph">
@@ -8284,8 +8380,21 @@ grails generate-scaffold-all Book</code></pre>
 <p>See the ../ref/Tags%20-%20GSP/flashMessages.html[flashMessages] tag reference for full details.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="_2_12_exception_log_line_includes_per_request_context">2.12 Exception Log Line Includes Per-Request Context</h5>
+</div>
+</div>
+<div class="sect2">
+<h3 id="grails-7-1-1">Grails 7.1.1</h3>
+<div class="paragraph">
+<p>This release carries the changes of <a href="#grails-7-0-11">Grails 7.0.11</a>. It has no upgrade notes of its own.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="grails-7-1-2">Grails 7.1.2</h3>
+<div class="paragraph">
+<p>This release carries the changes of <a href="#grails-7-0-12">Grails 7.0.12</a>.</p>
+</div>
+<div class="sect3">
+<h4 id="_exception_log_line_includes_per_request_context">Exception Log Line Includes Per-Request Context</h4>
 <div class="paragraph">
 <p><code>GrailsExceptionResolver</code> now appends a parenthesised clause of per-request context — the current auditor and,
 optionally, the remote client address — to its exception log headline:</p>
@@ -8301,8 +8410,8 @@ optionally, the remote client address — to its exception log headline:</p>
 <code>HttpServletRequest.getRemoteAddr()</code> — behind a reverse proxy, set <code>server.forward-headers-strategy: native</code> so
 the address reflects the real client.</p>
 </div>
-<div class="sect5">
-<h6 id="_impact">Impact</h6>
+<div class="sect4">
+<h5 id="_impact">Impact</h5>
 <div class="paragraph">
 <p>Any log parser, alert rule, or log-aggregation query that matches on the exact exception headline format will
 need to tolerate the optional ` (ip: &lt;value&gt;, user: &lt;value&gt;)` suffix. Both entries are opt-in — the auditor
@@ -8324,8 +8433,8 @@ section of the user guide for details.</p>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="_2_13_stacktrace_logger_side_effect_emission">2.13 StackTrace Logger Side-Effect Emission</h5>
+<div class="sect3">
+<h4 id="_stacktrace_logger_side_effect_emission">StackTrace Logger Side-Effect Emission</h4>
 <div class="paragraph">
 <p>Pre-7.1, <code>DefaultStackTraceFilterer.filter(Throwable)</code> emitted the unfiltered stack trace to the dedicated
 <code>StackTrace</code> logger as a side effect of cleaning the trace. The 7.1 PR that fixed duplicate-per-cause logging
@@ -8352,6 +8461,41 @@ Stack Traces section of the user guide includes a matrix of behaviours for the f
 </div>
 </div>
 </div>
+<div class="sect2">
+<h3 id="grails-7-1-3">Grails 7.1.3</h3>
+<div class="paragraph">
+<p>This release carries the changes of <a href="#grails-7-0-13">Grails 7.0.13</a>. It has no upgrade notes of its own.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="grails-7-1-4">Grails 7.1.4</h3>
+<div class="paragraph">
+<p>This release carries the changes of <a href="#grails-7-0-14">Grails 7.0.14</a>. It has no upgrade notes of its own.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="grails-7-1-5">Grails 7.1.5</h3>
+<div class="paragraph">
+<p>This release carries the changes of <a href="#grails-7-0-15">Grails 7.0.15</a>. It has no upgrade notes of its own.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="grails-7-1-6">Grails 7.1.6</h3>
+<div class="paragraph">
+<p>This release carries the changes of <a href="#grails-7-0-16">Grails 7.0.16</a>. It has no upgrade notes of its own.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="grails-7-1-7">Grails 7.1.7</h3>
+<div class="paragraph">
+<p>This release carries the changes of <a href="#grails-7-0-17">Grails 7.0.17</a>. It has no upgrade notes of its own.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="grails-7-1-8">Grails 7.1.8</h3>
+<div class="paragraph">
+<p>This release carries the changes of <a href="#grails-7-0-18">Grails 7.0.18</a>. It has no upgrade notes of its own.</p>
+</div>
 </div>
 
 
@@ -8370,6 +8514,12 @@ Stack Traces section of the user guide includes a matrix of behaviours for the f
 <p>To ensure compatibility with Grails 7.0.x, please review the following upgrade instructions carefully.
 This guide outlines the necessary steps &amp; warnings to upgrade your Grails project.</p>
 </div>
+<div class="paragraph">
+<p>The changes are listed by release. Apply the section of every release after the one the application is on, up to and including the release it is upgrading to.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="grails-7-0-0">Grails 7.0.0</h3>
 <div class="sect3">
 <h4 id="_1_java_17_as_baseline">1. Java 17 as baseline:</h4>
 <div class="paragraph">
@@ -8490,146 +8640,6 @@ Please remove older properties such as <code>gormVersion</code> &amp; <code>grai
 You can override a version in the BOM by setting the associated Gradle property.
 The possible gradle properties are generated as part of this documentation.
 Please see <a href="../ref/Versions/Grails%20BOM.html">Grails BOM Dependencies</a> for a quick reference.</p>
-</div>
-<div class="sect4">
-<h5 id="_4_1_bom_property_changes">4.1 BOM Property Changes</h5>
-<div class="paragraph">
-<p>The initial Grails 7.0.0 release had an issue where properties in the bom were not correctly populated. The 7.0.4 release restored properties, but the naming was inconsistent and duplicated. Later versions of Grails 7 reworked the properties for the following reasons:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>to follow previous naming strategies used by Grails 6 and earlier.</p>
-</li>
-<li>
-<p>to remove duplicate properties.</p>
-</li>
-<li>
-<p>to clearly delineate between profile dependencies.</p>
-</li>
-<li>
-<p>to remove non-published projects.</p>
-</li>
-<li>
-<p>to fix invalid versions for properties used by asciidoctor &amp; rxjava.</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>Detailed differences follow in subsequent sections.</p>
-</div>
-</div>
-<div class="sect4">
-<h5 id="_4_2_property_name_standardization">4.2 Property Name Standardization</h5>
-<div class="paragraph">
-<p>In the prior 7.0.0 Grails versions, there were numerous duplicated properties for third-party dependencies, with one variant using hyphens (e.g., byte-buddy.version) and an identical one using dots (e.g., byte.buddy.version), both set to the same value. This applies to properties like:</p>
-</div>
-<div class="literalblock">
-<div class="content">
-<pre>asset-pipeline-gradle.version / asset.pipeline.gradle.version
-byte-buddy.version / byte.buddy.version
-commons-text.version / commons.text.version
-directory-watcher.version / directory.watcher.version
-grails-publish-plugin.version / grails.publish.version (though this is slightly inconsistent in naming)
-javaparser-core.version / javaparser.core.version
-bootstrap-icons.version / bootstrap.icons.version (literal duplicate entries)
-commons-codec.version / commons.codec.version
-geb-spock.version / geb.spock.version
-asset-pipeline-bom.version / asset.pipeline.bom.version
-spock.version / spock.bom.version (values match but names differ slightly)
-jackson.version / jackson.bom.version
-groovy.version / groovy.bom.version
-selenium.version / selenium.bom.version</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>To resolve this duplication and standardize naming conventions, the Grails team has consolidated these properties. All dotted variants have been removed. Only the hyphenated forms are retained (e.g., byte-buddy.version, asset-pipeline-gradle.version).</p>
-</div>
-<div class="paragraph">
-<p>Additionally, Grails-specific properties in earlier Grails 7 versions used dots in their names (e.g., grails.async.version, grails.data.hibernate5.version). These have been refactored to use hyphens instead (e.g., grails-async.version, grails-data-hibernate5.version). This aligns them with the third-party property naming convention.</p>
-</div>
-<div class="paragraph">
-<p>These changes eliminate redundancy and enforce consistency across the Grails bom &amp; the boms it inherits.</p>
-</div>
-</div>
-<div class="sect4">
-<h5 id="_4_3_profile_properties_are_renamed">4.3 Profile Properties are renamed</h5>
-<div class="paragraph">
-<p>In previous Grails 7 versions, profile-specific properties were not prefixed with <code>grails-profile</code>.  These have been corrected as follows:</p>
-</div>
-<div class="literalblock">
-<div class="content">
-<pre>base.version - grails-profile-base.version
-plugin.version - grails-profile-plugin.version
-profile.version - grails-profile-profile.version
-rest.api.version - grails-profile-rest-api.version
-rest.api.plugin.version - grails-profile-rest-api-plugin.version
-web.version - grails-profile-web.version
-web.plugin.version - grails-profile-web-plugin.version</pre>
-</div>
-</div>
-</div>
-<div class="sect4">
-<h5 id="_4_4_removal_of_redundant_or_unused_properties">4.4 Removal of Redundant or Unused Properties</h5>
-<div class="paragraph">
-<p>Several groups of related properties have been consolidated or removed in later Grails 7 versions:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Liquibase: (liquibase-hibernate5.version, liquibase.version, liquibase.cdi.version, liquibase.core.version, liquibase5.hibernate.version) have been replaced by <code>liquibase-hibernate5.version</code></p>
-</li>
-<li>
-<p>MongoDB: (mongodb.version, bson.version, mongodb.driver.core.version, mongodb.driver.sync.version, bson.record.codec.version) have been replaced by <code>mongodb.version</code></p>
-</li>
-<li>
-<p>Sitemesh: (starter-sitemesh.version, spring.boot.starter.sitemesh.version) have been consolidated to <code>starter-sitemesh.version</code></p>
-</li>
-<li>
-<p>Ant: (ant.version and ant.junit.version) have been consolidated to <code>ant.version</code></p>
-</li>
-<li>
-<p>Spring Boot sub-components: (spring.boot.cli.version and spring.boot.gradle.plugin.version) have been consolidated to use <code>spring-boot.version</code></p>
-</li>
-<li>
-<p>Asciidoctor Gradle: asciidoctor.gradle.jvm.version was renamed to <code>asciidoctor-gradle-jvm.version</code></p>
-</li>
-<li>
-<p>Spring Boot dependencies: <code>spring.boot.dependencies.version</code> was renamed to <code>spring-boot.version</code></p>
-</li>
-<li>
-<p>Liquibase Hibernate: liquibase.hibernate5.version &amp; liquibase-hibernate5.version were consolidated to liquibase-hibernate5.version</p>
-</li>
-</ul>
-</div>
-</div>
-<div class="sect4">
-<h5 id="_4_5_specific_property_value_changes">4.5 Specific Property Value Changes</h5>
-<div class="paragraph">
-<p>rxjava properties were incorrect previously, they are now fixed per the below:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><code>rxjava.version</code> (for RxJava 1.x, groupId io.reactivex) was set to 3.1.11 instead of 1.3.8</p>
-</li>
-<li>
-<p><code>rxjava2.version</code> (for RxJava 2.x, groupId io.reactivex.rxjava2) was set to 3.1.11 instead of 2.2.21</p>
-</li>
-<li>
-<p><code>rxjava3.version</code> (for RxJava 3.x, groupId io.reactivex.rxjava3) was set to 3.1.11 and remains 3.1.11</p>
-</li>
-</ul>
-</div>
-</div>
-<div class="sect4">
-<h5 id="_4_6_additions_and_refinements_in_dependencymanagement">4.6 Additions and Refinements in &lt;dependencyManagement&gt;</h5>
-<div class="paragraph">
-<p>Several boms are imported and previously used customized property names for them. They now align with a single property name.  Most importantly, <code>spring-boot-dependencies</code> now uses <code>${spring-boot.version}</code> (aligning with the removal of spring.boot.dependencies.version).</p>
-</div>
-<div class="paragraph">
-<p>All published Grails projects continue to have separate properties to allow for overriding their versions individually.</p>
-</div>
 </div>
 </div>
 <div class="sect3">
@@ -9271,14 +9281,14 @@ apply <span class="key">plugin</span>: <span class="string"><span class="delimit
 <div class="listingblock">
 <div class="title">application.yml</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="yml">    <span class="key">hibernate</span>:
-        <span class="key">allow_update_outside_transaction</span>: <span class="string"><span class="content">true</span></span>
+<pre class="CodeRay highlight"><code data-lang="yml"><span class="key">hibernate</span>:
+    <span class="key">allow_update_outside_transaction</span>: <span class="string"><span class="content">true</span></span>
     <span class="key">cache</span>:
         <span class="key">queries</span>: <span class="string"><span class="content">false</span></span>
         <span class="key">use_second_level_cache</span>: <span class="string"><span class="content">true</span></span>
         <span class="key">use_query_cache</span>: <span class="string"><span class="content">false</span></span>
         <span class="key">region</span>:
-        <span class="key">factory_class</span>: <span class="string"><span class="content">'org.hibernate.cache.ehcache.SingletonEhCacheRegionFactory'</span></span></code></pre>
+            <span class="key">factory_class</span>: <span class="string"><span class="content">'org.hibernate.cache.ehcache.SingletonEhCacheRegionFactory'</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -9290,8 +9300,8 @@ apply <span class="key">plugin</span>: <span class="string"><span class="delimit
 <div class="listingblock">
 <div class="title">application.yml</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="yml">    <span class="key">hibernate</span>:
-        <span class="key">allow_update_outside_transaction</span>: <span class="string"><span class="content">true</span></span>
+<pre class="CodeRay highlight"><code data-lang="yml"><span class="key">hibernate</span>:
+    <span class="key">allow_update_outside_transaction</span>: <span class="string"><span class="content">true</span></span>
     <span class="key">cache</span>:
         <span class="key">queries</span>: <span class="string"><span class="content">false</span></span>
         <span class="key">use_second_level_cache</span>: <span class="string"><span class="content">true</span></span>
@@ -9599,13 +9609,23 @@ tasks.withType(JavaExec).configureEach {
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="_12_26_enum_jsonxml_serialization">12.26 Enum JSON/XML Serialization</h5>
+</div>
+</div>
+<div class="sect2">
+<h3 id="grails-7-0-1">Grails 7.0.1</h3>
+<div class="paragraph">
+<p>This release has no upgrade notes.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="grails-7-0-2">Grails 7.0.2</h3>
+<div class="sect3">
+<h4 id="_enum_jsonxml_serialization">Enum JSON/XML Serialization</h4>
 <div class="paragraph">
 <p>As of Grails 7.0.2, enum serialization has been enhanced to support round-trip compatibility between JSON/XML serialization and deserialization. The legacy enum marshaller, which produced verbose output with type metadata, has been deprecated in favor of a simpler format that matches how enums are expected on input.</p>
 </div>
-<div class="sect5">
-<h6 id="_legacy_behavior_deprecated">Legacy Behavior (Deprecated)</h6>
+<div class="sect4">
+<h5 id="_legacy_behavior_deprecated">Legacy Behavior (Deprecated)</h5>
 <div class="paragraph">
 <p>Previously, enums were serialized with metadata:</p>
 </div>
@@ -9634,8 +9654,8 @@ tasks.withType(JavaExec).configureEach {
 <p>This format is <strong>asymmetric</strong> - when POSTing data, you send <code>"stage":"SUBMIT"</code>, but when GETting data, you receive the verbose object structure.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="_new_behavior_recommended">New Behavior (Recommended)</h6>
+<div class="sect4">
+<h5 id="_new_behavior_recommended">New Behavior (Recommended)</h5>
 <div class="paragraph">
 <p>The new <code>SimpleEnumMarshaller</code> serializes enums as simple string values, providing <strong>round-trip compatibility</strong>:</p>
 </div>
@@ -9661,8 +9681,8 @@ tasks.withType(JavaExec).configureEach {
 <p>Now the format you POST is the same format you GET back.</p>
 </div>
 </div>
-<div class="sect5">
-<h6 id="_migration">Migration</h6>
+<div class="sect4">
+<h5 id="_migration">Migration</h5>
 <div class="paragraph">
 <p>To opt-in to the new behavior, add the following to your <code>application.yml</code>:</p>
 </div>
@@ -9680,8 +9700,8 @@ tasks.withType(JavaExec).configureEach {
 </div>
 </div>
 </div>
-<div class="sect5">
-<h6 id="_deprecation_timeline">Deprecation Timeline</h6>
+<div class="sect4">
+<h5 id="_deprecation_timeline">Deprecation Timeline</h5>
 <div class="ulist">
 <ul>
 <li>
@@ -9698,14 +9718,195 @@ tasks.withType(JavaExec).configureEach {
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="_13_upgrading_the_spring_security_plugin">13. Upgrading the Spring Security Plugin</h4>
+<div class="sect2">
+<h3 id="grails-7-0-3">Grails 7.0.3</h3>
 <div class="paragraph">
-<p>If your application uses the Grails Spring Security plugin, please consult the <a href="https://apache.github.io/grails-spring-security/snapshot/guide/index.html#upgrading-from-previous-versions">Upgrading from Previous Versions</a> section of the Spring Security plugin documentation for specific upgrade instructions related to Grails 7.</p>
+<p>This release has no upgrade notes.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="grails-7-0-4">Grails 7.0.4</h3>
+<div class="paragraph">
+<p>This release has no upgrade notes.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="grails-7-0-5">Grails 7.0.5</h3>
+<div class="paragraph">
+<p>This release has no upgrade notes.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="grails-7-0-6">Grails 7.0.6</h3>
+<div class="sect3">
+<h4 id="_bom_property_changes">BOM Property Changes</h4>
+<div class="paragraph">
+<p>The initial Grails 7.0.0 release had an issue where properties in the bom were not correctly populated. The 7.0.4 release restored properties, but the naming was inconsistent and duplicated. Later versions of Grails 7 reworked the properties for the following reasons:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>to follow previous naming strategies used by Grails 6 and earlier.</p>
+</li>
+<li>
+<p>to remove duplicate properties.</p>
+</li>
+<li>
+<p>to clearly delineate between profile dependencies.</p>
+</li>
+<li>
+<p>to remove non-published projects.</p>
+</li>
+<li>
+<p>to fix invalid versions for properties used by asciidoctor &amp; rxjava.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Detailed differences follow in subsequent sections.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_14_changes_in_cli_and_forge_generated_configuration_files">14. Changes in CLI- and Forge-generated configuration files</h4>
+<h4 id="_property_name_standardization">Property Name Standardization</h4>
+<div class="paragraph">
+<p>In the prior 7.0.0 Grails versions, there were numerous duplicated properties for third-party dependencies, with one variant using hyphens (e.g., byte-buddy.version) and an identical one using dots (e.g., byte.buddy.version), both set to the same value. This applies to properties like:</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>asset-pipeline-gradle.version / asset.pipeline.gradle.version
+byte-buddy.version / byte.buddy.version
+commons-text.version / commons.text.version
+directory-watcher.version / directory.watcher.version
+grails-publish-plugin.version / grails.publish.version (though this is slightly inconsistent in naming)
+javaparser-core.version / javaparser.core.version
+bootstrap-icons.version / bootstrap.icons.version (literal duplicate entries)
+commons-codec.version / commons.codec.version
+geb-spock.version / geb.spock.version
+asset-pipeline-bom.version / asset.pipeline.bom.version
+spock.version / spock.bom.version (values match but names differ slightly)
+jackson.version / jackson.bom.version
+groovy.version / groovy.bom.version
+selenium.version / selenium.bom.version</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>To resolve this duplication and standardize naming conventions, the Grails team has consolidated these properties. All dotted variants have been removed. Only the hyphenated forms are retained (e.g., byte-buddy.version, asset-pipeline-gradle.version).</p>
+</div>
+<div class="paragraph">
+<p>Additionally, Grails-specific properties in earlier Grails 7 versions used dots in their names (e.g., grails.async.version, grails.data.hibernate5.version). These have been refactored to use hyphens instead (e.g., grails-async.version, grails-data-hibernate5.version). This aligns them with the third-party property naming convention.</p>
+</div>
+<div class="paragraph">
+<p>These changes eliminate redundancy and enforce consistency across the Grails bom &amp; the boms it inherits.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_profile_properties_are_renamed">Profile Properties are renamed</h4>
+<div class="paragraph">
+<p>In previous Grails 7 versions, profile-specific properties were not prefixed with <code>grails-profile</code>.  These have been corrected as follows:</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>base.version - grails-profile-base.version
+plugin.version - grails-profile-plugin.version
+profile.version - grails-profile-profile.version
+rest.api.version - grails-profile-rest-api.version
+rest.api.plugin.version - grails-profile-rest-api-plugin.version
+web.version - grails-profile-web.version
+web.plugin.version - grails-profile-web-plugin.version</pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_removal_of_redundant_or_unused_properties">Removal of Redundant or Unused Properties</h4>
+<div class="paragraph">
+<p>Several groups of related properties have been consolidated or removed in later Grails 7 versions:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Liquibase: (liquibase-hibernate5.version, liquibase.version, liquibase.cdi.version, liquibase.core.version, liquibase5.hibernate.version) have been replaced by <code>liquibase-hibernate5.version</code></p>
+</li>
+<li>
+<p>MongoDB: (mongodb.version, bson.version, mongodb.driver.core.version, mongodb.driver.sync.version, bson.record.codec.version) have been replaced by <code>mongodb.version</code></p>
+</li>
+<li>
+<p>Sitemesh: (starter-sitemesh.version, spring.boot.starter.sitemesh.version) have been consolidated to <code>starter-sitemesh.version</code></p>
+</li>
+<li>
+<p>Ant: (ant.version and ant.junit.version) have been consolidated to <code>ant.version</code></p>
+</li>
+<li>
+<p>Spring Boot sub-components: (spring.boot.cli.version and spring.boot.gradle.plugin.version) have been consolidated to use <code>spring-boot.version</code></p>
+</li>
+<li>
+<p>Asciidoctor Gradle: asciidoctor.gradle.jvm.version was renamed to <code>asciidoctor-gradle-jvm.version</code></p>
+</li>
+<li>
+<p>Spring Boot dependencies: <code>spring.boot.dependencies.version</code> was renamed to <code>spring-boot.version</code></p>
+</li>
+<li>
+<p>Liquibase Hibernate: liquibase.hibernate5.version &amp; liquibase-hibernate5.version were consolidated to liquibase-hibernate5.version</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_specific_property_value_changes">Specific Property Value Changes</h4>
+<div class="paragraph">
+<p>rxjava properties were incorrect previously, they are now fixed per the below:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>rxjava.version</code> (for RxJava 1.x, groupId io.reactivex) was set to 3.1.11 instead of 1.3.8</p>
+</li>
+<li>
+<p><code>rxjava2.version</code> (for RxJava 2.x, groupId io.reactivex.rxjava2) was set to 3.1.11 instead of 2.2.21</p>
+</li>
+<li>
+<p><code>rxjava3.version</code> (for RxJava 3.x, groupId io.reactivex.rxjava3) was set to 3.1.11 and remains 3.1.11</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_additions_and_refinements_in_dependencymanagement">Additions and Refinements in &lt;dependencyManagement&gt;</h4>
+<div class="paragraph">
+<p>Several boms are imported and previously used customized property names for them. They now align with a single property name.  Most importantly, <code>spring-boot-dependencies</code> now uses <code>${spring-boot.version}</code> (aligning with the removal of spring.boot.dependencies.version).</p>
+</div>
+<div class="paragraph">
+<p>All published Grails projects continue to have separate properties to allow for overriding their versions individually.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="grails-7-0-7">Grails 7.0.7</h3>
+<div class="paragraph">
+<p>This release has no upgrade notes.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="grails-7-0-8">Grails 7.0.8</h3>
+<div class="paragraph">
+<p>This release has no upgrade notes.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="grails-7-0-9">Grails 7.0.9</h3>
+<div class="paragraph">
+<p>This release has no upgrade notes.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="grails-7-0-10">Grails 7.0.10</h3>
+<div class="paragraph">
+<p>This release has no upgrade notes.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="grails-7-0-11">Grails 7.0.11</h3>
+<div class="sect3">
+<h4 id="_changes_in_cli_and_forge_generated_configuration_files">Changes in CLI- and Forge-generated configuration files</h4>
 <div class="paragraph">
 <p>From Grails 7.0.11 onwards, the CLIs (<code>grails-shell-cli</code> and <code>grails-forge-cli</code>) and the <a href="https://start.grails.org">Grails Forge website</a> no longer include several previously generated properties in <code>application.yml</code>.</p>
 </div>
@@ -9750,7 +9951,7 @@ tasks.withType(JavaExec).configureEach {
 </div>
 </div>
 <div class="sect3">
-<h4 id="_15_grails_micronaut_bom_required_when_using_micronaut">15. grails-micronaut-bom Required when using Micronaut</h4>
+<h4 id="_grails_micronaut_bom_required_when_using_micronaut">grails-micronaut-bom Required when using Micronaut</h4>
 <div class="paragraph">
 <p>Grails 7 introduces a dedicated <code>grails-micronaut-bom</code> for projects that integrate with Micronaut.
 The Micronaut platform declares its own managed versions for libraries such as <code>javaparser-core</code> that conflict with the versions managed by <code>grails-bom</code>.
@@ -9798,6 +9999,533 @@ Applications generated by the Grails Forge automatically use <code>enforcedPlatf
 </td>
 </tr>
 </table>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="grails-7-0-12">Grails 7.0.12</h3>
+<div class="paragraph">
+<p>This release has no upgrade notes.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="grails-7-0-13">Grails 7.0.13</h3>
+<div class="sect3">
+<h4 id="_stop_app_no_longer_uses_jmx_or_the_actuator_shutdown_endpoint">stop-app no longer uses JMX or the Actuator shutdown endpoint</h4>
+<div class="paragraph">
+<p>The interactive CLI <code>stop-app</code> command no longer stops a running application through JMX or the Spring Boot Actuator <code>/actuator/shutdown</code> endpoint. Both mechanisms were unreliable on current JDKs and default configurations.</p>
+</div>
+<div class="paragraph">
+<p>Instead, <code>run-app</code> records the application&#8217;s process id in a PID file (<code>build/run-app.pid</code>) and <code>stop-app</code> reads that file to stop the process directly. As a result:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The <code>--host</code> and <code>--port</code> options of <code>stop-app</code> have been removed. <code>stop-app</code> now stops the application started by <code>run-app</code> for the current project. If you previously scripted <code>grails stop-app --host=&#8230;&#8203; --port=&#8230;&#8203;</code>, drop those options.</p>
+</li>
+<li>
+<p><code>stop-app</code> only stops an application that was started with <code>run-app</code> for the same project. It can be invoked from interactive mode or from a separate terminal.</p>
+</li>
+<li>
+<p>On Linux and macOS the application is shut down gracefully (the equivalent of <code>SIGTERM</code>), so JVM shutdown hooks and Spring&#8217;s orderly shutdown run. On Windows the application is terminated on a best-effort basis and a graceful shutdown is not guaranteed.</p>
+</li>
+<li>
+<p>Every <code>bootRun</code> invocation (including a direct <code>./gradlew bootRun</code>) now writes <code>build/run-app.pid</code> while the application is running; the file is removed once the application stops. Customizing the Gradle build directory (<code>layout.buildDirectory</code>) is not supported by <code>stop-app</code>, which always looks for the PID file under the conventional <code>build</code> directory.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="grails-7-0-14">Grails 7.0.14</h3>
+<div class="sect3">
+<h4 id="_upgrading_the_spring_security_plugins">Upgrading the Spring Security Plugins</h4>
+<div class="paragraph">
+<p>As of Grails 7, the Spring Security plugins&#8201;&#8212;&#8201;Core, ACL, CAS, LDAP, OAuth2, REST, and UI&#8201;&#8212;&#8201;are part of Grails core and are documented in the <a href="security.html#springSecurity">Security &gt; Spring Security</a> section of this guide. This section covers upgrading an application from the Grails 6.x era (plugin versions 5.x/6.x, Spring Security 5.8.x) to Grails 7 (Spring Security 6.x).</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Documentation for earlier, independently-versioned plugin releases remains available at the <a href="https://apache.github.io/grails-spring-security/">legacy Spring Security plugin documentation site</a>.
+</td>
+</tr>
+</table>
+</div>
+<div class="sect4">
+<h5 id="_dependency_changes">Dependency Changes</h5>
+<div class="paragraph">
+<p>All Spring Security plugin artifacts have moved to the <code>org.apache.grails</code> group. The most notable change is that <code>spring-security-core</code> has been renamed to <code>grails-spring-security</code> (dropping the <code>-core</code> suffix).</p>
+</div>
+<div class="paragraph">
+<p>Update your <code>build.gradle</code> dependencies as follows:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Old Dependency</th>
+<th class="tableblock halign-left valign-top">New Dependency</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.plugins:spring-security-core</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.apache.grails:grails-spring-security</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.plugins:spring-security-acl</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.apache.grails:grails-spring-security-acl</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.plugins:spring-security-cas</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.apache.grails:grails-spring-security-cas</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.plugins:spring-security-ldap</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.apache.grails:grails-spring-security-ldap</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.plugins:spring-security-oauth2</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.apache.grails:grails-spring-security-oauth2</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.plugins:spring-security-rest</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.apache.grails:grails-spring-security-rest</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.plugins:spring-security-rest-gorm</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.apache.grails:grails-spring-security-rest-datamapping</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.plugins:spring-security-rest-grailscache</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.apache.grails:grails-spring-security-rest-grails-cache</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.plugins:spring-security-rest-memcached</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.apache.grails:grails-spring-security-rest-memcached</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.plugins:spring-security-rest-redis</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.apache.grails:grails-spring-security-rest-redis</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.plugins:spring-security-ui</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.apache.grails:grails-spring-security-ui</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The coordinate rename script described in the <strong>Coordinate Changes</strong> section above also updates these Spring Security artifacts automatically.</p>
+</div>
+<div class="sect5">
+<h6 id="_example">Example</h6>
+<div class="paragraph">
+<p>A typical Spring Security Core dependency change:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">// Before (Grails 6)</span>
+implementation <span class="string"><span class="delimiter">'</span><span class="content">org.grails.plugins:spring-security-core:6.1.1</span><span class="delimiter">'</span></span>
+
+<span class="comment">// After (Grails 7)</span>
+implementation <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-spring-security</span><span class="delimiter">'</span></span></code></pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+With the unified Grails BOM, versions are managed automatically when using a Grails Gradle plugin. You no longer need to specify the version explicitly.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_rest_plugin_token_storage_submodules">REST Plugin Token Storage Submodules</h5>
+<div class="paragraph">
+<p>If you use the Spring Security REST plugin with a specific token storage backend, note the following renames:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>spring-security-rest-gorm</code> is now <code>grails-spring-security-rest-datamapping</code> (reflecting the rename of GORM to Grails Data Mapping)</p>
+</li>
+<li>
+<p><code>spring-security-rest-grailscache</code> is now <code>grails-spring-security-rest-grails-cache</code></p>
+</li>
+<li>
+<p><code>spring-security-rest-memcached</code> is now <code>grails-spring-security-rest-memcached</code></p>
+</li>
+<li>
+<p><code>spring-security-rest-redis</code> is now <code>grails-spring-security-rest-redis</code></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_spring_security_6_x_changes">Spring Security 6.x Changes</h5>
+<div class="paragraph">
+<p>The underlying Spring Security framework has been upgraded from 5.8.x to 6.x. Key changes that may affect your application:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Jakarta EE namespace</strong>: Spring Security 6 uses <code>jakarta.servlet</code> instead of <code>javax.servlet</code>. See the <a href="https://docs.spring.io/spring-security/reference/migration/index.html">Spring Security Migration Guide</a> for details.</p>
+</li>
+<li>
+<p><strong>Security filter chain configuration</strong>: The <code>WebSecurityConfigurerAdapter</code> has been removed in Spring Security 6. If you have custom security configurations extending this class, you will need to migrate to the component-based approach. The Grails Spring Security plugin handles the core filter chain configuration internally, but any custom Spring Security beans may need updating.</p>
+</li>
+<li>
+<p><strong>Default security behaviors</strong>: Some default behaviors have changed in Spring Security 6 (e.g., CSRF protection, session management). Review the <a href="https://docs.spring.io/spring-security/reference/migration-7/index.html">Spring Security reference documentation</a> for the complete list of changes.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_configuration_compatibility">Configuration Compatibility</h5>
+<div class="paragraph">
+<p>The <code>grails.plugin.springsecurity.*</code> configuration namespace remains unchanged. Your existing <code>application.groovy</code> or <code>application.yml</code> security configuration should work without modification after updating the dependencies.</p>
+</div>
+<div class="paragraph">
+<p>If you encounter any issues during the upgrade, please file an issue at <a href="https://github.com/apache/grails-core/issues">the grails-core GitHub repository</a>.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="grails-7-0-15">Grails 7.0.15</h3>
+<div class="paragraph">
+<p>This release has no upgrade notes.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="grails-7-0-16">Grails 7.0.16</h3>
+<div class="sect3">
+<h4 id="_upgrading_the_quartz_plugin">Upgrading the Quartz Plugin</h4>
+<div class="paragraph">
+<p>As of Grails 7, the Quartz plugin is part of Grails core and is documented in the <a href="backgroundJobs.html#backgroundJobsAdvanced">Background Jobs &gt; Advanced Scheduling</a> section of this guide.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Documentation for earlier, independently-versioned plugin releases remains available at the <a href="https://apache.github.io/grails-quartz/">legacy Quartz plugin documentation site</a>.
+</td>
+</tr>
+</table>
+</div>
+<div class="sect4">
+<h5 id="_coordinate_changes">Coordinate Changes</h5>
+<div class="paragraph">
+<p>The plugin artifact has moved to the <code>org.apache.grails</code> group and has been renamed from <code>quartz</code> to <code>grails-quartz</code>, matching the naming convention used by the other Grails plugins.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Grails 6 Coordinate</th>
+<th class="tableblock halign-left valign-top">Grails 7 Coordinate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.plugins:quartz</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.apache.grails:grails-quartz</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The coordinate rename script described in the <strong>Coordinate Changes</strong> section above also updates this artifact automatically.</p>
+</div>
+<div class="paragraph">
+<p>The version is now managed by the Grails BOM, so it should be removed from the dependency declaration:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
+    <span class="comment">// Grails 6</span>
+    <span class="comment">// implementation 'org.grails.plugins:quartz:2.0.13'</span>
+
+    <span class="comment">// Grails 7</span>
+    implementation <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-quartz</span><span class="delimiter">'</span></span>
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_spring_context_support">spring-context-support</h5>
+<div class="paragraph">
+<p>The plugin builds its scheduler from <code>SchedulerFactoryBean</code> and its job factory from <code>AdaptableJobFactory</code>, both of which live in <code>org.springframework:spring-context-support</code>. Plugin version 4.0.x did not declare that dependency, and it is not reliably inherited from the rest of the stack, so an application failed at startup with:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code>java.lang.NoClassDefFoundError: org/springframework/scheduling/quartz/AdaptableJobFactory</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>until <code>spring-context-support</code> was added by hand. This affected any application using the standalone plugin releases, including one generated with the <code>grails-quartz</code> feature.</p>
+</div>
+<div class="paragraph">
+<p>The dependency is now declared by the plugin and comes in transitively. If you added it explicitly as a workaround, it can be removed:</p>
+</div>
+<div class="listingblock">
+<div class="title">build.gradle</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
+    implementation <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-quartz</span><span class="delimiter">'</span></span>
+
+    <span class="comment">// no longer required -- provided transitively by grails-quartz</span>
+    <span class="comment">// implementation 'org.springframework:spring-context-support'</span>
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_job_class_properties">Job Class Properties</h5>
+<div class="paragraph">
+<p>Job configuration properties such as <code>concurrent</code>, <code>sessionRequired</code>, <code>description</code>, and <code>group</code> must be declared as <code>static</code> rather than <code>def</code>. This changed in plugin version 2.0.13, so applications coming from an older release need to update their job classes:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">MyJob</span> {
+
+    <span class="comment">// Grails 6 and earlier</span>
+    <span class="comment">// def concurrent = false</span>
+
+    <span class="directive">static</span> concurrent = <span class="predefined-constant">false</span>
+
+    <span class="directive">static</span> triggers = {
+        simple <span class="key">repeatInterval</span>: <span class="integer">5000L</span>
+    }
+
+    <span class="type">void</span> execute() {
+        <span class="comment">// ...</span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>See the <a href="backgroundJobs.html#quartzJobProperties">Job Properties</a> section for the full set of supported properties and their defaults.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="grails-7-0-17">Grails 7.0.17</h3>
+<div class="sect3">
+<h4 id="_gorm_for_mongodb_rejects_map_criterion_values_that_contain_keys">GORM for MongoDB rejects Map criterion values that contain <code>$</code> keys</h4>
+<div class="paragraph">
+<p><code>findWhere</code>, <code>findAllWhere</code>, criteria queries, the <code>where</code> DSL and dynamic finders now throw <code>InvalidDataAccessResourceUsageException</code> when a <code>Map</code> passed as a criterion value contains a key starting with <code>$</code> at any level, on any property type including enums. MongoDB interprets such a value document as an operator expression rather than as a value. Maps without such keys are still sent as literal subdocument comparisons, so exact matches on <code>Map</code> properties, dotted paths and array elements are unchanged, and geospatial criteria are exempt. Code that deliberately passed an operator document through a criteria value should use the native <code>find(Bson)</code> API instead.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="grails-7-0-18">Grails 7.0.18</h3>
+<div class="sect3">
+<h4 id="_interceptor_uri_matching_uses_the_dispatched_path">Interceptor URI Matching Uses the Dispatched Path</h4>
+<div class="paragraph">
+<p>Interceptors that match on <code>uri</code>, with <code>match(uri: &#8230;&#8203;)</code> or <code>excludes(uri: &#8230;&#8203;)</code>, now match the same path that URL
+mappings route on: percent escapes are decoded, matrix parameters (<code>;name=value</code>) are removed and the context path is
+stripped before the pattern is applied. Previously the raw request URI was matched, so an encoded (<code>/%61dmin/users</code>)
+or matrix-parameter (<code>/admin;x=1/users</code>) request could reach a controller without triggering an interceptor declared
+for <code>/admin/**</code>. Interceptors matched by controller, action or namespace are unaffected.</p>
+</div>
+<div class="paragraph">
+<p>Review interceptors that use <code>uri</code> matching for the following changes:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Interceptors combining <code>match(uri:)</code> with an <code>excludes(&#8230;&#8203;)</code> now run under a context path.</strong>
+In earlier versions a matcher that paired a <code>uri</code> pattern with any exclusion (<code>excludes(uri:)</code>, <code>excludes(controller:)</code>,
+<code>excludes(action:)</code> or a closure) never matched when the application was deployed under a non-root context path (for
+example <code>server.servlet.context-path=/app</code>), because the exclusion check required the pattern to match both the
+context-prefixed and the context-relative request URI, which a pattern such as <code>/api/<strong></code> cannot do. Only that shape was
+affected: <code>matchAll()</code> with exclusions, <code>match(controller:)</code> and other name-based matchers, <code>match(uri:)</code> without an
+exclusion, and <code>uri</code> patterns that match both forms such as <code>/</strong></code> all ran as expected. The affected shape now behaves
+as configured, so an interceptor written that way starts executing under a context path.</p>
+</li>
+<li>
+<p><strong>Patterns are matched against the path within the application only.</strong>
+A pattern is no longer also compared with the context-prefixed request URI, so <code>match(uri: '/*/*')</code> no longer matches
+<code>/app/save</code> under the context path <code>/app</code>. Patterns that begin with the context path, such as
+<code>match(uri: '/app/admin/**')</code>, are still accepted for backwards compatibility.</p>
+</li>
+<li>
+<p><strong>Includes are matched against the included path.</strong>
+During a <code>&lt;g:include&gt;</code> or <code>RequestDispatcher</code> include, <code>uri</code> matchers see the included path rather than the URI of the
+outer request. This is consistent with the controller selected for the include and with <code>match(controller:)</code>
+matchers, which already matched the included controller.</p>
+</li>
+<li>
+<p><strong>Custom <code>grails.interceptors.Matcher</code> implementations receive the canonical path.</strong>
+The <code>uri</code> argument passed to <code>doesMatch</code> is now the decoded, application-relative path without matrix parameters.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The Spring Security plugin applies the same canonicalization when matching <code>ipRestrictions</code> patterns, so an encoded or
+matrix-parameter variant of a restricted path is subject to the same restriction as the plain path.</p>
+</div>
+<div class="paragraph">
+<p>The canonical form follows the URI and Servlet specifications, with two deliberate exceptions. Path parameters are
+removed from each segment before percent-decoding, as Jakarta Servlet 6.0 section 3.5.2 requires of containers, so an
+encoded semicolon (<code>%3B</code>) is a literal character and not a parameter delimiter (RFC 3986 section 2.2). Percent-encoded
+unreserved characters such as <code>%61</code> are decoded (RFC 3986 section 2.3), and the path is decoded exactly once
+(RFC 3986 section 2.4). The exceptions are inherited from Spring&#8217;s <code>UrlPathHelper</code>, which Grails URL mapping dispatch
+has used since Grails 3: the context path is compared case-insensitively although RFC 3986 section 6.2.2.1 and
+RFC 9110 section 4.2.3 define paths as case-sensitive, and during a <code>RequestDispatcher</code> include the included path is
+matched. Interceptors and the Spring Security plugin follow dispatch on both points because a matcher that disagrees
+with dispatch lets a request reach a controller without its interceptors or restrictions.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_only_tenants_withoutid_runs_without_a_tenant_with_discriminator_multi_tenancy">Only Tenants.withoutId runs without a tenant with DISCRIMINATOR multi-tenancy</h4>
+<div class="paragraph">
+<p>With <code>DISCRIMINATOR</code> multi-tenancy, only <code>Tenants.withoutId</code> and <code>@WithoutTenant</code> run without a tenant. A tenant id of <code>DEFAULT</code> is a tenant id like any other, whether a <code>TenantResolver</code> returns it or it is passed to <code>Tenants.withId</code>. Queries return the instances of the tenant <code>DEFAULT</code>, and a saved instance gets the tenant id <code>DEFAULT</code>.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Code that relied on a resolver returning <code>DEFAULT</code> to work with every tenant has to run inside <code>Tenants.withoutId</code> or in a method annotated with <code>@WithoutTenant</code>. Examples are <code>SubDomainTenantResolver</code> on <code>localhost</code> during development, and <code>new FixedTenantResolver()</code>.</p>
+</li>
+<li>
+<p>With GORM for MongoDB and GORM&#8217;s in-memory datastore, queries inside <code>Tenants.withoutId</code> still return only the instances of the tenant <code>DEFAULT</code>. There, <code>Tenants.withoutId</code> only lets a saved instance keep the tenant id that is set on it.</p>
+</li>
+<li>
+<p>With a tenant id property that isn&#8217;t a <code>String</code>, such as a <code>Long</code>, a tenant id of <code>DEFAULT</code> now fails. A save throws a <code>TenantException</code>, and a query with GORM for Hibernate throws an <code>IllegalArgumentException</code>. Have the resolver return a tenant id of the property&#8217;s type.</p>
+</li>
+<li>
+<p>Inside <code>Tenants.withoutId</code>, <code>Tenants.currentId()</code> returns <code>DEFAULT</code>, and <code>Tenants.withCurrent</code> and <code>@CurrentTenant</code> keep running without a tenant. <code>Tenants.isWithoutId()</code> tells whether the current code runs without a tenant id.</p>
+</li>
+<li>
+<p>GORM for Hibernate also restricts a collection of a multi-tenant entity to the current tenant when it is loaded lazily or fetched by join, also when it is a many-to-many collection or a query fetches it by join through another association, and <code>load</code> and <code>proxy</code> of a multi-tenant entity run a query, as <code>get</code> does. Like <code>get</code>, they return <code>null</code> when no instance is found, instead of a proxy that fails when it is used. A collection of a multi-tenant entity that is mapped with <code>fetch: 'join'</code> is loaded eagerly with a select of its own instead, and loading one lazily without a current tenant, outside <code>Tenants.withoutId</code>, throws <code>TenantNotFoundException</code>.</p>
+</li>
+<li>
+<p>Before a query on an entity that isn&#8217;t multi-tenant but has a collection of a multi-tenant entity, directly or through its associations, GORM for Hibernate now calls the <code>TenantResolver</code> and activates the filter for the current tenant, so that a collection the query fetches by join is restricted. When there is no current tenant, because the resolver throws a <code>TenantNotFoundException</code> or returns <code>null</code>, such a query runs as before. Any other exception from the resolver fails the query. A query that the resolver runs on an entity that isn&#8217;t multi-tenant while GORM resolves the tenant does not call the resolver again. A query on a multi-tenant entity does, so a resolver must not run one.</p>
+</li>
+<li>
+<p>A <code>TenantResolver</code> that returns <code>null</code> now causes a <code>TenantNotFoundException</code>, as a resolver that finds no tenant does, in every multi-tenancy mode.</p>
+</li>
+<li>
+<p>The <code>DATABASE</code> and <code>SCHEMA</code> modes are otherwise unchanged.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_lookups_by_id_are_restricted_to_the_current_tenant_with_discriminator_multi_tenancy">Lookups by id are restricted to the current tenant with DISCRIMINATOR multi-tenancy</h4>
+<div class="paragraph">
+<p>With <code>DISCRIMINATOR</code> multi-tenancy, GORM for MongoDB and GORM&#8217;s in-memory datastore used by unit tests now restrict <code>get</code>, <code>read</code>, <code>exists</code>, <code>getAll</code>, <code>load</code> and <code>proxy</code> to the current tenant, as queries and dynamic finders already were. Previously these methods looked an instance up by its id alone, so they returned an instance that belongs to another tenant. GORM for Hibernate is unchanged: it already restricts <code>get</code>, <code>read</code>, <code>exists</code> and <code>getAll</code> to the current tenant, and <code>load</code> and <code>proxy</code> since the previous note.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The id of another tenant&#8217;s instance is treated like an id that does not exist: <code>get</code> and <code>read</code> return <code>null</code>, <code>exists</code> returns <code>false</code>, <code>getAll</code> returns <code>null</code> in its place, and the proxy returned by <code>load</code> or <code>proxy</code> throws when it is initialized.</p>
+</li>
+<li>
+<p>Without a current tenant, these methods throw <code>TenantNotFoundException</code>, as a query does. <code>getAll</code> without ids still returns an empty list.</p>
+</li>
+<li>
+<p>Inside <code>Tenants.withoutId { }</code> a lookup by id is still not restricted to a tenant, and neither is a proxy returned by <code>load</code> or <code>proxy</code> that is initialized there. As the previous note says, only <code>withoutId</code> lifts the restriction: a tenant id of <code>DEFAULT</code> restricts a lookup by id to that tenant as it restricts a query.</p>
+</li>
+<li>
+<p>A lookup by id still finds an instance that the session holds for the current tenant, including one that has been saved but not flushed, and it does not flush the session.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_data_binding_white_lists_apply_wherever_a_class_is_compiled">Data binding white lists apply wherever a class is compiled</h4>
+<div class="paragraph">
+<p>As of Grails 7.0.18, the list of bindable properties that Grails generates for a class at compile time, from its statically typed properties, its <code>bindable</code> constraints, its <code>transients</code> list and its <code>transient</code> fields, is generated for every class that implements <code>grails.validation.Validateable</code> or declares <code>constraints</code> or <code>transients</code>, and for every class that extends one, wherever the class is compiled with the data binding library, <code>grails-web-databinding</code>, on the compilation&#8217;s classpath, as it is in an application or a plugin. A library module that compiles against GORM alone generates no list and gets no warning. Previously only domain classes and the parameter types of controller actions compiled with their controller got the list, and a class without one was bound without restriction.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>A command object compiled apart from the controller that binds it, in a plugin or in a shared module, a <code>Validateable</code> object bound as a nested property, and a command object declared inside another class are now bound by their <code>bindable</code> constraints and their <code>transients</code>, like a command object compiled with its controller. As a consequence, their dynamically typed properties, declared with <code>def</code> or as <code>Object</code>, are no longer bound by default. Declare a type for such a property, or mark it <code>bindable: true</code>.</p>
+</li>
+<li>
+<p>A GORM entity compiled outside <code>grails-app/domain</code>, such as an <code>@Entity</code> class in <code>src/main/groovy</code> or in a shared module, now gets the list a domain class in <code>grails-app/domain</code> gets, as GORM declares a <code>transients</code> list on every entity, and is bound by the same rules. In particular, <code>bindData</code> no longer binds its <code>id</code>, <code>version</code>, <code>dateCreated</code> and <code>lastUpdated</code>. Previously such a class was bound without restriction, its <code>id</code> and <code>version</code> included.</p>
+</li>
+<li>
+<p>A class compiled against an already compiled parent takes the parent&#8217;s bindable properties from the compiled parent. When the parent was compiled by an earlier version of Grails, or without the data binding library on its compile classpath, the compiler warns that the list of the subclass is derived from the parent&#8217;s bytecode and asks for the parent to be recompiled. Recompile the plugin or module that holds the parent with Grails 7.0.18 or later to clear the warning.</p>
+</li>
+<li>
+<p>A property of type <code>org.springframework.validation.Errors</code>, such as the <code>errors</code> property of a domain class or of a <code>Validateable</code> object, is never bound from request data, whatever a generated list names.</p>
+</li>
+<li>
+<p><code>bindData</code> with an <code>exclude</code> list, including the <code>bindData(target, source, List excludes)</code> overloads, keeps the generated list in effect and removes the excluded properties from it. Previously an <code>exclude</code> list without an <code>include</code> list set the generated list aside, so that only the excluded properties were kept out. An empty <code>include</code> list still binds every property that is not excluded.</p>
+</li>
+<li>
+<p>Request data bound into an association that was loaded lazily, as <code>book.properties = params</code> binds the nested <code>author</code> parameters into the book&#8217;s author, is bound by the list generated for the association&#8217;s class. Previously an association that was still a proxy was bound without restriction.</p>
+</li>
+<li>
+<p>A class that gets the list now carries it as a new <code>public static final</code> field. A class that implements <code>Serializable</code> without declaring a <code>serialVersionUID</code>, such as a <code>Validateable</code> object kept in a persisted HTTP session or in a distributed cache, therefore gets a new default <code>serialVersionUID</code>, and instances serialized before the upgrade do not deserialize after it. Declare a <code>serialVersionUID</code> on such a class.</p>
+</li>
+<li>
+<p>A controller compiled against a command object that was compiled without the list, by an earlier version of Grails or without the data binding library, warns that the command object is bound without restriction and should be recompiled.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_the_oauth_callback_parameter_of_the_spring_security_rest_plugin_needs_allowed_origins">The OAuth <code>callback</code> parameter of the Spring Security REST plugin needs allowed origins</h4>
+<div class="paragraph">
+<p>The Spring Security REST plugin redirects to the URL in the <code>callback</code> parameter of <code>/oauth/authenticate/&lt;provider&gt;</code>, with the token appended, only when the URL&#8217;s origin, that is its scheme, host and port, is listed in the new setting <code>grails.plugin.springsecurity.rest.oauth.allowedCallbackOrigins</code>, and the URL has a path, a query or a fragment after the host. It ignores any other <code>callback</code> URL, and every <code>callback</code> URL when the setting is missing, and redirects to the <code>frontendCallbackUrl</code> instead, as it does without the parameter. It checks the URL when the login starts and again when it completes, and a new login drops the <code>callback</code> URL of an earlier login that was not completed. An application that passes the <code>callback</code> parameter lists the origins of its frontend:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">grails.plugin.springsecurity.rest.oauth.allowedCallbackOrigins = [<span class="string"><span class="delimiter">'</span><span class="content">https://my.frontend-app.com</span><span class="delimiter">'</span></span>]</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Since the plugin became part of Grails, the <code>callback</code> parameter failed with a <code>MissingMethodException</code>. It works again within these limits.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_encrypted_jwts_of_the_spring_security_rest_plugin_are_signed">Encrypted JWTs of the Spring Security REST plugin are signed</h4>
+<div class="paragraph">
+<p>As of Grails 7.0.18, with <code>grails.plugin.springsecurity.rest.token.storage.jwt.useEncryptedJwt</code> enabled, the Spring Security REST plugin signs the claims with the RSA private key, using RS256, before it encrypts them with the RSA public key, and it accepts an encrypted JWT only when the JWT inside carries a valid signature made with the private key.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Access and refresh tokens issued before the upgrade are no longer accepted, so users have to log in again. When several instances of an application share the keys, upgrade them together: an instance that was not upgraded rejects the tokens of an upgraded one, and the other way round.</p>
+</li>
+<li>
+<p>An application that generates or validates encrypted JWTs needs both keys, also when a custom <code>RSAKeyProvider</code> provides them. The private key must be at least 2048 bits long. A shorter key fails with an <code>IllegalArgumentException</code> when a token is generated. Use the key pair for these tokens only: the plugin accepts any JWT that is signed with the private key and encrypted with the public key, whatever issued it.</p>
+</li>
+<li>
+<p>For an encrypted JWT, <code>JwtService.parse</code> and the <code>accessTokenJwt</code> property of an <code>AccessToken</code> now return a <code>grails.plugin.springsecurity.rest.token.generation.jwt.NestedJwt</code> instead of a <code>com.nimbusds.jwt.EncryptedJWT</code>. Its claims are those of the signed JWT inside, its header is that of the encrypted JWT, and it serializes to the token.</p>
+</li>
+<li>
+<p>With encrypted JWTs enabled, a signed JWT is rejected as an invalid token, and with signed JWTs, an encrypted JWT is. Previously such a token failed with a <code>NullPointerException</code>.</p>
+</li>
+<li>
+<p>An encrypted JWT whose content encryption key is encrypted with <code>RSA1_5</code> is rejected unless <code>grails.plugin.springsecurity.rest.token.generation.jwt.jweAlgorithm</code> is <code>RSA1_5</code>. The plugin passes that setting to the new <code>jweAlgorithm</code> property of <code>JwtService</code>. A <code>jwtService</code> bean that an application defines itself accepts <code>RSA1_5</code> as before, unless the application sets that property too.</p>
+</li>
+</ul>
 </div>
 </div>
 </div>
@@ -10060,409 +10788,6 @@ grailsGradlePluginVersion=6.0.0</code></pre>
 </div>
 <div class="paragraph">
 <p>Micronaut for Spring 4.5.1 provides seamless integration between Micronaut and Spring, allowing you to leverage the strengths of both frameworks in your Grails project.</p>
-</div>
-<div class="sect4">
-<h5 id="_12_27_stop_app_no_longer_uses_jmx_or_the_actuator_shutdown_endpoint">12.27 stop-app no longer uses JMX or the Actuator shutdown endpoint</h5>
-<div class="paragraph">
-<p>The interactive CLI <code>stop-app</code> command no longer stops a running application through JMX or the Spring Boot Actuator <code>/actuator/shutdown</code> endpoint. Both mechanisms were unreliable on current JDKs and default configurations.</p>
-</div>
-<div class="paragraph">
-<p>Instead, <code>run-app</code> records the application&#8217;s process id in a PID file (<code>build/run-app.pid</code>) and <code>stop-app</code> reads that file to stop the process directly. As a result:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>The <code>--host</code> and <code>--port</code> options of <code>stop-app</code> have been removed. <code>stop-app</code> now stops the application started by <code>run-app</code> for the current project. If you previously scripted <code>grails stop-app --host=&#8230;&#8203; --port=&#8230;&#8203;</code>, drop those options.</p>
-</li>
-<li>
-<p><code>stop-app</code> only stops an application that was started with <code>run-app</code> for the same project. It can be invoked from interactive mode or from a separate terminal.</p>
-</li>
-<li>
-<p>On Linux and macOS the application is shut down gracefully (the equivalent of <code>SIGTERM</code>), so JVM shutdown hooks and Spring&#8217;s orderly shutdown run. On Windows the application is terminated on a best-effort basis and a graceful shutdown is not guaranteed.</p>
-</li>
-<li>
-<p>Every <code>bootRun</code> invocation (including a direct <code>./gradlew bootRun</code>) now writes <code>build/run-app.pid</code> while the application is running; the file is removed once the application stops. Customizing the Gradle build directory (<code>layout.buildDirectory</code>) is not supported by <code>stop-app</code>, which always looks for the PID file under the conventional <code>build</code> directory.</p>
-</li>
-</ul>
-</div>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_13_upgrading_the_spring_security_plugins">13. Upgrading the Spring Security Plugins</h4>
-<div class="paragraph">
-<p>As of Grails 7, the Spring Security plugins&#8201;&#8212;&#8201;Core, ACL, CAS, LDAP, OAuth2, REST, and UI&#8201;&#8212;&#8201;are part of Grails core and are documented in the <a href="security.html#springSecurity">Security &gt; Spring Security</a> section of this guide. This section covers upgrading an application from the Grails 6.x era (plugin versions 5.x/6.x, Spring Security 5.8.x) to Grails 7 (Spring Security 6.x).</p>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-Documentation for earlier, independently-versioned plugin releases remains available at the <a href="https://apache.github.io/grails-spring-security/">legacy Spring Security plugin documentation site</a>.
-</td>
-</tr>
-</table>
-</div>
-<div class="sect4">
-<h5 id="_dependency_changes">Dependency Changes</h5>
-<div class="paragraph">
-<p>All Spring Security plugin artifacts have moved to the <code>org.apache.grails</code> group. The most notable change is that <code>spring-security-core</code> has been renamed to <code>grails-spring-security</code> (dropping the <code>-core</code> suffix).</p>
-</div>
-<div class="paragraph">
-<p>Update your <code>build.gradle</code> dependencies as follows:</p>
-</div>
-<table class="tableblock frame-all grid-all stretch">
-<colgroup>
-<col style="width: 50%;">
-<col style="width: 50%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Old Dependency</th>
-<th class="tableblock halign-left valign-top">New Dependency</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.plugins:spring-security-core</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.apache.grails:grails-spring-security</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.plugins:spring-security-acl</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.apache.grails:grails-spring-security-acl</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.plugins:spring-security-cas</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.apache.grails:grails-spring-security-cas</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.plugins:spring-security-ldap</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.apache.grails:grails-spring-security-ldap</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.plugins:spring-security-oauth2</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.apache.grails:grails-spring-security-oauth2</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.plugins:spring-security-rest</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.apache.grails:grails-spring-security-rest</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.plugins:spring-security-rest-gorm</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.apache.grails:grails-spring-security-rest-datamapping</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.plugins:spring-security-rest-grailscache</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.apache.grails:grails-spring-security-rest-grails-cache</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.plugins:spring-security-rest-memcached</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.apache.grails:grails-spring-security-rest-memcached</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.plugins:spring-security-rest-redis</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.apache.grails:grails-spring-security-rest-redis</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.plugins:spring-security-ui</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.apache.grails:grails-spring-security-ui</code></p></td>
-</tr>
-</tbody>
-</table>
-<div class="paragraph">
-<p>The coordinate rename script described in the <strong>Coordinate Changes</strong> section above also updates these Spring Security artifacts automatically.</p>
-</div>
-<div class="sect5">
-<h6 id="_example">Example</h6>
-<div class="paragraph">
-<p>A typical Spring Security Core dependency change:</p>
-</div>
-<div class="listingblock">
-<div class="title">build.gradle</div>
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">// Before (Grails 6)</span>
-implementation <span class="string"><span class="delimiter">'</span><span class="content">org.grails.plugins:spring-security-core:6.1.1</span><span class="delimiter">'</span></span>
-
-<span class="comment">// After (Grails 7)</span>
-implementation <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-spring-security</span><span class="delimiter">'</span></span></code></pre>
-</div>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-With the unified Grails BOM, versions are managed automatically when using a Grails Gradle plugin. You no longer need to specify the version explicitly.
-</td>
-</tr>
-</table>
-</div>
-</div>
-</div>
-<div class="sect4">
-<h5 id="_rest_plugin_token_storage_submodules">REST Plugin Token Storage Submodules</h5>
-<div class="paragraph">
-<p>If you use the Spring Security REST plugin with a specific token storage backend, note the following renames:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><code>spring-security-rest-gorm</code> is now <code>grails-spring-security-rest-datamapping</code> (reflecting the rename of GORM to Grails Data Mapping)</p>
-</li>
-<li>
-<p><code>spring-security-rest-grailscache</code> is now <code>grails-spring-security-rest-grails-cache</code></p>
-</li>
-<li>
-<p><code>spring-security-rest-memcached</code> is now <code>grails-spring-security-rest-memcached</code></p>
-</li>
-<li>
-<p><code>spring-security-rest-redis</code> is now <code>grails-spring-security-rest-redis</code></p>
-</li>
-</ul>
-</div>
-</div>
-<div class="sect4">
-<h5 id="_spring_security_6_x_changes">Spring Security 6.x Changes</h5>
-<div class="paragraph">
-<p>The underlying Spring Security framework has been upgraded from 5.8.x to 6.x. Key changes that may affect your application:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><strong>Jakarta EE namespace</strong>: Spring Security 6 uses <code>jakarta.servlet</code> instead of <code>javax.servlet</code>. See the <a href="https://docs.spring.io/spring-security/reference/migration/index.html">Spring Security Migration Guide</a> for details.</p>
-</li>
-<li>
-<p><strong>Security filter chain configuration</strong>: The <code>WebSecurityConfigurerAdapter</code> has been removed in Spring Security 6. If you have custom security configurations extending this class, you will need to migrate to the component-based approach described in <a href="https://spring.io/blog/2022/02/21/spring-security-without-the-websecurityconfigureradapter">Spring Security without the WebSecurityConfigurerAdapter</a>. The Grails Spring Security plugin handles the core filter chain configuration internally through the <code>grails.plugin.springsecurity.*</code> namespace, so for most apps no migration is needed. However, user-defined <code>@Bean SecurityFilterChain</code>, <code>@Bean WebSecurityCustomizer</code>, <code>@Bean AuthenticationManager</code>, and <code>@Bean UserDetailsManager</code> beans are not automatically wired into the plugin&#8217;s filter chain, authentication providers, or user lookup. See the "Coexistence with the component-based Spring Security configuration model" section in the Installation chapter for the full coexistence matrix and the equivalent plugin configuration for each pattern.</p>
-</li>
-<li>
-<p><strong>Default security behaviors</strong>: Some default behaviors have changed in Spring Security 6 (e.g., CSRF protection, session management). Review the <a href="https://docs.spring.io/spring-security/reference/migration-7/index.html">Spring Security reference documentation</a> for the complete list of changes.</p>
-</li>
-</ul>
-</div>
-</div>
-<div class="sect4">
-<h5 id="_configuration_compatibility">Configuration Compatibility</h5>
-<div class="paragraph">
-<p>The <code>grails.plugin.springsecurity.*</code> configuration namespace remains unchanged. Your existing <code>application.groovy</code> or <code>application.yml</code> security configuration should work without modification after updating the dependencies.</p>
-</div>
-<div class="paragraph">
-<p>If you encounter any issues during the upgrade, please file an issue at <a href="https://github.com/apache/grails-core/issues">the grails-core GitHub repository</a>.</p>
-</div>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_14_changes_in_cli_and_forge_generated_configuration_files">14. Changes in CLI- and Forge-generated configuration files</h4>
-<div class="paragraph">
-<p>From Grails 7.0.11 onwards, the CLIs (<code>grails-shell-cli</code> and <code>grails-forge-cli</code>) and the <a href="https://start.grails.org">Grails Forge website</a> no longer include several previously generated properties in <code>application.yml</code>.</p>
-</div>
-<div class="paragraph">
-<p>Most of the removed entries simply restated framework defaults, so omitting them reduces clutter without changing behavior. However, <code>grails.urlmapping.cache.maxsize</code> is a special case: older generated applications explicitly set it to <code>1000</code>, while the framework default is now <code>5000</code>. If you want to preserve the older generated cache size, keep that property in your application.</p>
-</div>
-<div class="paragraph">
-<p>If the application you are upgrading relies on a custom value for any of the following properties, or if you want to preserve the previous generated value of <code>grails.urlmapping.cache.maxsize</code>, keep that setting in your <code>application.yml</code> file.</p>
-</div>
-<div class="paragraph">
-<p>These are the properties that were removed from generated <code>application.yml</code> files:</p>
-</div>
-<div class="listingblock">
-<div class="title">application.yml</div>
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="yml"><span class="key">grails</span>:
-  <span class="key">controllers</span>:
-    <span class="key">defaultScope</span>: <span class="string"><span class="content">singleton</span></span> <span class="comment"># already framework default</span>
-  <span class="key">converters</span>:
-    <span class="key">encoding</span>: <span class="string"><span class="content">UTF-8</span></span> <span class="comment"># already framework default</span>
-  <span class="key">mime</span>:
-    <span class="key">disable</span>:
-      <span class="key">accept</span>:
-        <span class="key">header</span>:
-          <span class="key">userAgents</span>: <span class="comment"># already framework default</span>
-            - <span class="string"><span class="content">Gecko</span></span>
-            - <span class="string"><span class="content">WebKit</span></span>
-            - <span class="string"><span class="content">Presto</span></span>
-            - <span class="string"><span class="content">Trident</span></span>
-  <span class="key">urlmapping</span>:
-    <span class="key">cache</span>:
-      <span class="key">maxsize</span>: <span class="string"><span class="content">1000</span></span> <span class="comment"># Attention! framework default: 5000</span>
-  <span class="key">views</span>:
-    <span class="key">default</span>:
-      <span class="key">codec</span>: <span class="string"><span class="content">html</span></span> <span class="comment"># redundant because GSP expressions already default to html encoding</span>
-    <span class="key">gsp</span>:
-      <span class="key">codecs</span>:
-        <span class="key">expression</span>: <span class="string"><span class="content">html</span></span> <span class="comment"># already framework default</span>
-        <span class="key">taglib</span>: <span class="string"><span class="content">none</span></span> <span class="comment"># already framework default</span>
-        <span class="key">staticparts</span>: <span class="string"><span class="content">none</span></span> <span class="comment"># already framework default</span></code></pre>
-</div>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_15_grails_micronaut_bom_required_when_using_micronaut">15. grails-micronaut-bom Required when using Micronaut</h4>
-<div class="paragraph">
-<p>Grails 7 introduces a dedicated <code>grails-micronaut-bom</code> for projects that integrate with Micronaut.
-The Micronaut platform declares its own managed versions for libraries such as <code>javaparser-core</code> that conflict with the versions managed by <code>grails-bom</code>.
-Without an enforced BOM, Gradle&#8217;s default conflict resolution (highest version wins) allows the Micronaut platform to silently override <code>grails-bom</code> versions, leading to binary incompatibilities at runtime.</p>
-</div>
-<div class="paragraph">
-<p>The <code>grails-micronaut-bom</code> layers Micronaut-specific overrides on top of <code>grails-bom</code>. When applied as <code>enforcedPlatform</code>, all of its constraints become strictly versioned and cannot be overridden by any transitive dependency.</p>
-</div>
-<div class="paragraph">
-<p>Regular Grails projects (without Micronaut) should continue to use <code>platform("org.apache.grails:grails-bom:$grailsVersion")</code> and will receive the Spring-managed dependency versions. Applying <code>enforcedPlatform</code> to those projects is unnecessary and would force grails-bom versions over Spring&#8217;s managed defaults.</p>
-</div>
-<div class="paragraph">
-<p>The Grails Gradle Plugin will error at configuration time if <code>grails-micronaut</code> is detected and <code>grails-micronaut-bom</code> is not applied as <code>enforcedPlatform</code>.</p>
-</div>
-<div class="listingblock">
-<div class="title">build.gradle</div>
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
-    <span class="comment">// enforcedPlatform on grails-micronaut-bom is required when using grails-micronaut</span>
-    implementation enforcedPlatform(<span class="string"><span class="delimiter">&quot;</span><span class="content">org.apache.grails:grails-micronaut-bom:</span><span class="inline"><span class="inline-delimiter">$</span>grailsVersion</span><span class="delimiter">&quot;</span></span>)
-
-    implementation <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-micronaut</span><span class="delimiter">'</span></span>
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The Micronaut auto-setup (which performs the validation along with other Micronaut-specific configuration) defaults to on. It can be disabled via the <code>grails</code> extension when a project deliberately deviates from the recommended setup:</p>
-</div>
-<div class="listingblock">
-<div class="title">build.gradle</div>
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">grails {
-    micronautAutoSetup = <span class="predefined-constant">false</span> <span class="comment">// not recommended</span>
-}</code></pre>
-</div>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-Applications generated by the Grails Forge automatically use <code>enforcedPlatform</code> on <code>grails-micronaut-bom</code> when the Micronaut feature is selected.
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_16_upgrading_the_quartz_plugin">16. Upgrading the Quartz Plugin</h4>
-<div class="paragraph">
-<p>As of Grails 7, the Quartz plugin is part of Grails core and is documented in the <a href="backgroundJobs.html#backgroundJobsAdvanced">Background Jobs &gt; Advanced Scheduling</a> section of this guide.</p>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-Documentation for earlier, independently-versioned plugin releases remains available at the <a href="https://apache.github.io/grails-quartz/">legacy Quartz plugin documentation site</a>.
-</td>
-</tr>
-</table>
-</div>
-<div class="sect4">
-<h5 id="_16_1_coordinate_changes">16.1 Coordinate Changes</h5>
-<div class="paragraph">
-<p>The plugin artifact has moved to the <code>org.apache.grails</code> group and has been renamed from <code>quartz</code> to <code>grails-quartz</code>, matching the naming convention used by the other Grails plugins.</p>
-</div>
-<table class="tableblock frame-all grid-all stretch">
-<colgroup>
-<col style="width: 50%;">
-<col style="width: 50%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Grails 6 Coordinate</th>
-<th class="tableblock halign-left valign-top">Grails 7 Coordinate</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.grails.plugins:quartz</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>org.apache.grails:grails-quartz</code></p></td>
-</tr>
-</tbody>
-</table>
-<div class="paragraph">
-<p>The coordinate rename script described in the <strong>Coordinate Changes</strong> section above also updates this artifact automatically.</p>
-</div>
-<div class="paragraph">
-<p>The version is now managed by the Grails BOM, so it should be removed from the dependency declaration:</p>
-</div>
-<div class="listingblock">
-<div class="title">build.gradle</div>
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
-    <span class="comment">// Grails 6</span>
-    <span class="comment">// implementation 'org.grails.plugins:quartz:2.0.13'</span>
-
-    <span class="comment">// Grails 7</span>
-    implementation <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-quartz</span><span class="delimiter">'</span></span>
-}</code></pre>
-</div>
-</div>
-</div>
-<div class="sect4">
-<h5 id="_16_2_spring_context_support">16.2 spring-context-support</h5>
-<div class="paragraph">
-<p>The plugin builds its scheduler from <code>SchedulerFactoryBean</code> and its job factory from <code>AdaptableJobFactory</code>, both of which live in <code>org.springframework:spring-context-support</code>. Plugin version 4.0.x did not declare that dependency, and it is not reliably inherited from the rest of the stack, so an application failed at startup with:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code>java.lang.NoClassDefFoundError: org/springframework/scheduling/quartz/AdaptableJobFactory</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>until <code>spring-context-support</code> was added by hand. This affected any application using the standalone plugin releases, including one generated with the <code>grails-quartz</code> feature.</p>
-</div>
-<div class="paragraph">
-<p>The dependency is now declared by the plugin and comes in transitively. If you added it explicitly as a workaround, it can be removed:</p>
-</div>
-<div class="listingblock">
-<div class="title">build.gradle</div>
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy">dependencies {
-    implementation <span class="string"><span class="delimiter">'</span><span class="content">org.apache.grails:grails-quartz</span><span class="delimiter">'</span></span>
-
-    <span class="comment">// no longer required -- provided transitively by grails-quartz</span>
-    <span class="comment">// implementation 'org.springframework:spring-context-support'</span>
-}</code></pre>
-</div>
-</div>
-</div>
-<div class="sect4">
-<h5 id="_16_3_job_class_properties">16.3 Job Class Properties</h5>
-<div class="paragraph">
-<p>Job configuration properties such as <code>concurrent</code>, <code>sessionRequired</code>, <code>description</code>, and <code>group</code> must be declared as <code>static</code> rather than <code>def</code>. This changed in plugin version 2.0.13, so applications coming from an older release need to update their job classes:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="type">class</span> <span class="class">MyJob</span> {
-
-    <span class="comment">// Grails 6 and earlier</span>
-    <span class="comment">// def concurrent = false</span>
-
-    <span class="directive">static</span> concurrent = <span class="predefined-constant">false</span>
-
-    <span class="directive">static</span> triggers = {
-        simple <span class="key">repeatInterval</span>: <span class="integer">5000L</span>
-    }
-
-    <span class="type">void</span> execute() {
-        <span class="comment">// ...</span>
-    }
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>See the <a href="backgroundJobs.html#quartzJobProperties">Job Properties</a> section for the full set of supported properties and their defaults.</p>
-</div>
 </div>
 </div>
 </div>
