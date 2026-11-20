@@ -109,7 +109,11 @@ extends org.grails.orm.hibernate.support.hibernate5.support.OpenSessionInViewInt
  The default datasource's SessionFactory is managed by the parent class.
  Additional (non-default) datasource SessionFactories are managed by this
  subclass, which opens and closes sessions for each one alongside the
- default session.
+ default session. As the parent class does for the default session, a request
+ that finds a session already bound, such as an include within a request that
+ opened one, uses that session and leaves it to the one that opened it, and a
+ request that goes asynchronous closes the sessions it opened, so that they do
+ not stay bound to the thread for the next request that thread serves.
   <DL><DT><B>Authors:</B></DT><DD>Graeme Rocher</DD></DL><DL><DT><B>Since:</B></DT><DD>0.5</DD></DL></p>
 
           </li>
@@ -199,29 +203,36 @@ extends org.grails.orm.hibernate.support.hibernate5.support.OpenSessionInViewInt
                         
                         <tr class="rowColor">
                             <td class="colFirst"><code></code></td>
+                            <td class="colLast"><code>public&nbsp;void</code></td>
+                            <td class="colLast"><code><strong><a href="#afterConcurrentHandlingStarted(org.springframework.web.context.request.WebRequest)">afterConcurrentHandlingStarted</a></strong>(org.springframework.web.context.request.WebRequest request)</code><br>Called instead of <a href='#postHandle'>postHandle</a> and <a href='#afterCompletion'>afterCompletion</a> on the thread that started asynchronous
+ handling. </td>
+                        </tr>
+                        
+                        <tr class="altColor">
+                            <td class="colFirst"><code></code></td>
                             <td class="colLast"><code>protected&nbsp;void</code></td>
                             <td class="colLast"><code><strong><a href="#applyFlushMode(org.hibernate.Session)">applyFlushMode</a></strong>(org.hibernate.Session session)</code><br></td>
                         </tr>
                         
-                        <tr class="altColor">
+                        <tr class="rowColor">
                             <td class="colFirst"><code></code></td>
                             <td class="colLast"><code>protected&nbsp;org.hibernate.Session</code></td>
                             <td class="colLast"><code><strong><a href="#openSession()">openSession</a></strong>()</code><br></td>
                         </tr>
                         
-                        <tr class="rowColor">
+                        <tr class="altColor">
                             <td class="colFirst"><code></code></td>
                             <td class="colLast"><code>public&nbsp;void</code></td>
                             <td class="colLast"><code><strong><a href="#postHandle(org.springframework.web.context.request.WebRequest, org.springframework.ui.ModelMap)">postHandle</a></strong>(org.springframework.web.context.request.WebRequest request, org.springframework.ui.ModelMap model)</code><br></td>
                         </tr>
                         
-                        <tr class="altColor">
+                        <tr class="rowColor">
                             <td class="colFirst"><code></code></td>
                             <td class="colLast"><code>public&nbsp;void</code></td>
                             <td class="colLast"><code><strong><a href="#preHandle(org.springframework.web.context.request.WebRequest)">preHandle</a></strong>(org.springframework.web.context.request.WebRequest request)</code><br></td>
                         </tr>
                         
-                        <tr class="rowColor">
+                        <tr class="altColor">
                             <td class="colFirst"><code></code></td>
                             <td class="colLast"><code>public&nbsp;void</code></td>
                             <td class="colLast"><code><strong><a href="#setHibernateDatastore(org.grails.orm.hibernate.AbstractHibernateDatastore)">setHibernateDatastore</a></strong>(<a href='../../../../../org/grails/orm/hibernate/AbstractHibernateDatastore.html'>AbstractHibernateDatastore</a> hibernateDatastore)</code><br></td>
@@ -300,6 +311,22 @@ extends org.grails.orm.hibernate.support.hibernate5.support.OpenSessionInViewInt
                             <li class="blockList">
                                 <h4>@java.lang.Override<br>public&nbsp;void <strong>afterCompletion</strong>(org.springframework.web.context.request.WebRequest request, java.lang.Exception ex)</h4>
                                 <p></p>
+                            </li>
+                        </ul>
+                    
+                        <a name="afterConcurrentHandlingStarted(org.springframework.web.context.request.WebRequest)"><!-- --></a>
+                        <ul class="blockListLast">
+                            <li class="blockList">
+                                <h4>@java.lang.Override<br>public&nbsp;void <strong>afterConcurrentHandlingStarted</strong>(org.springframework.web.context.request.WebRequest request)</h4>
+                                <p> Called instead of <a href='#postHandle'>postHandle</a> and <a href='#afterCompletion'>afterCompletion</a> on the thread that started asynchronous
+ handling. The sessions this interceptor opened for the other datasources are closed here, so that the thread
+ goes back to its pool without them. Each is flushed first when <a href='#postHandle'>postHandle</a> would flush it and Hibernate
+ allows the flush: inside a transaction, or with <CODE>hibernate.allow_update_outside_transaction</CODE>.
+
+ <p>The parent class only unbinds the default session, and leaves closing it to the interceptors it registers for
+ a <CODE>Callable</CODE> or <CODE>DeferredResult</CODE>. A promise or <CODE>startAsync()</CODE> in a Grails controller starts
+ asynchronous handling without them, so the default session this interceptor opened is closed here too.
+     </p>
                             </li>
                         </ul>
                     
