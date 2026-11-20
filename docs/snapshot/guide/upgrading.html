@@ -355,12 +355,12 @@ On an older Gradle version <code>compileGroovy</code> fails with a <code>NoSuchM
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="console">./gradlew wrapper --gradle-version 9.9.1</code></pre>
+<pre class="CodeRay highlight"><code data-lang="console">./gradlew wrapper --gradle-version 9.9.2</code></pre>
 </div>
 </div>
 <div class="paragraph">
 <p>Afterwards, check that the <code>distributionUrl</code> in <code>gradle/wrapper/gradle-wrapper.properties</code> points to the new version.
-Gradle 9 has breaking changes of its own that may affect your build scripts and other Gradle plugins you use; consult the <a href="https://docs.gradle.org/9.9.1/userguide/upgrading_major_version_9.html">Gradle 9 upgrade guide</a>.
+Gradle 9 has breaking changes of its own that may affect your build scripts and other Gradle plugins you use; consult the <a href="https://docs.gradle.org/9.9.2/userguide/upgrading_major_version_9.html">Gradle 9 upgrade guide</a>.
 See also <a href="#groovy-compiler-config-scripts">Generated Groovy Compiler Configuration Scripts</a> if your build assigns a Groovy compiler configuration script itself.</p>
 </div>
 </div>
@@ -6798,7 +6798,7 @@ In Groovy 5, <code>attrs.key</code>, <code>attrs['value']</code>, <code>attrs.ow
 <div class="sect3">
 <h4 id="_gradle_configuration_cache">Gradle Configuration Cache</h4>
 <div class="paragraph">
-<p>The Grails Gradle plugins of Grails 8.0, and the Asset Pipeline and Grails Publish plugins in the versions the Grails 8.0 BOM manages, support the <a href="https://docs.gradle.org/9.9.1/userguide/configuration_cache.html">Gradle configuration cache</a>.
+<p>The Grails Gradle plugins of Grails 8.0, and the Asset Pipeline and Grails Publish plugins in the versions the Grails 8.0 BOM manages, support the <a href="https://docs.gradle.org/9.9.2/userguide/configuration_cache.html">Gradle configuration cache</a>.
 Applications and plugins created with Grails 8.0 enable it in <code>gradle.properties</code>.</p>
 </div>
 <div class="paragraph">
@@ -7107,6 +7107,67 @@ Dropping it changes the memory layout, and from JDK 27 compressed class pointers
 <p>An encrypted JWT whose content encryption key is encrypted with <code>RSA1_5</code> is rejected unless <code>grails.plugin.springsecurity.rest.token.generation.jwt.jweAlgorithm</code> is <code>RSA1_5</code>. The plugin passes that setting to the new <code>jweAlgorithm</code> property of <code>JwtService</code>. A <code>jwtService</code> bean that an application defines itself accepts <code>RSA1_5</code> as before, unless the application sets that property too.</p>
 </li>
 </ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_more_gsp_tags_html_encode_the_attribute_values_they_write">More GSP tags HTML-encode the attribute values they write</h4>
+<div class="paragraph">
+<p>These tags now HTML-encode the values they write into attributes, as <code>&lt;g:link&gt;</code> and <code>&lt;g:textField&gt;</code> already did and as these tags already encoded their other attributes:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>&lt;g:form&gt;</code>, <code>&lt;g:uploadForm&gt;</code> and <code>&lt;g:formActionSubmit&gt;</code>: the URL in <code>action</code> and <code>formaction</code>, and the hidden fields that a <code>RequestDataValueProcessor</code> adds to a form.</p>
+</li>
+<li>
+<p><code>&lt;g:checkBox&gt;</code>: <code>name</code>, <code>value</code>, <code>form</code>, and the <code>id</code> taken from the name, on the checkbox and on its hidden field.</p>
+</li>
+<li>
+<p><code>&lt;g:actionSubmitImage&gt;</code>: <code>value</code>, the <code>action</code> in the button&#8217;s name, and <code>src</code>.</p>
+</li>
+<li>
+<p><code>&lt;g:datePicker&gt;</code>: <code>name</code>, <code>id</code> and <code>selectDateClass</code>, on the labels, the hidden field and each select.</p>
+</li>
+<li>
+<p><code>&lt;g:radio&gt;</code> and <code>&lt;g:radioGroup&gt;</code>: <code>name</code>, and on <code>&lt;g:radio&gt;</code> the <code>id</code> taken from it.</p>
+</li>
+<li>
+<p><code>&lt;g:select&gt;</code>: the key of <code>noSelection</code>.</p>
+</li>
+<li>
+<p><code>&lt;g:field&gt;</code>: <code>type</code>.</p>
+</li>
+<li>
+<p><code>&lt;g:withTag&gt;</code>: the values of <code>attrs</code> that are not closures.</p>
+</li>
+<li>
+<p><code>&lt;g:external&gt;</code>: <code>uri</code>, and <code>&lt;g:javascript&gt;</code>: <code>src</code>.</p>
+</li>
+<li>
+<p><code>&lt;g:paginate&gt;</code>: <code>class</code>, on the current step.</p>
+</li>
+<li>
+<p><code>&lt;g:sortableColumn&gt;</code>: <code>title</code>, which it writes as the text of the column&#8217;s link. A text from <code>titleKey</code> is written as the message source returns it. Mark a <code>title</code> that holds markup with <code>raw()</code>.</p>
+</li>
+<li>
+<p><code>&lt;g:renderException&gt;</code>: <code>detailsClass</code>, <code>stackClass</code>, <code>filenameClass</code>, <code>snippetClass</code>, <code>lineClass</code>, <code>lineNumberClass</code> and <code>lineErrorClass</code>.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The browser decodes the attribute, so a value without a character reference reaches it unchanged. The markup changes, though: an <code>&amp;</code> in the URL of a form is written as <code>&amp;amp;</code>, as <code>&lt;g:link&gt;</code> writes it in an <code>href</code>.</p>
+</div>
+<div class="paragraph">
+<p>A value encoded with <code>encodeAsHTML()</code> before it reaches the tag is written once, not encoded again. That holds for a String, for a value captured from a GSP body with <code>&lt;g:set&gt;</code>, and for the output of a tag such as <code>fieldValue()</code>, also when a <code>RequestDataValueProcessor</code> returns the value unchanged. When the processor changes the value, the tag encodes what the processor returns, so a value encoded beforehand is encoded twice, as <code>&lt;g:textField&gt;</code> already did. There is one more exception: <code>&lt;g:form&gt;</code> and <code>&lt;g:formActionSubmit&gt;</code> build their URL from <code>uri</code>, <code>base</code>, <code>controller</code> and their other link attributes and only then encode it, so a value encoded beforehand is encoded twice there, as it already was in the <code>href</code> of <code>&lt;g:link&gt;</code>. Pass those values unencoded. A <code>url</code> attribute that the tag writes as it is given is written once. A character reference written in the page, as in <code>name="a&amp;amp;b"</code>, is encoded as well: write the character itself.</p>
+</div>
+<div class="paragraph">
+<p>A value marked with <code>raw()</code> is still written as given by the tags that wrote it so before, and so are the text and the <code>default</code> of <code>message()</code>, which comes back marked raw. Where a <code>RequestDataValueProcessor</code> is registered, <code>&lt;g:textField&gt;</code> and the other field tags encode what the processor returns, as before, and <code>&lt;g:radio&gt;</code> encodes such a value in any case, as before. Do not pass request data through <code>raw()</code> or as the <code>default</code> of <code>message()</code>.</p>
+</div>
+<div class="paragraph">
+<p><code>&lt;g:radio&gt;</code> now encodes its <code>value</code> once. It encoded it twice, so a value with <code>&amp;</code>, <code>&lt;</code>, <code>&gt;</code>, <code>"</code> or <code>'</code> was submitted with character references in it, such as <code>R&amp;amp;D</code> for <code>R&amp;D</code>.</p>
+</div>
+<div class="paragraph">
+<p>A value encoded beforehand is no longer encoded twice in the <code>value</code> of <code>&lt;g:textField&gt;</code>, <code>&lt;g:hiddenField&gt;</code> and the other field tags when a <code>RequestDataValueProcessor</code> returns it unchanged, nor in an option of <code>&lt;g:select&gt;</code>, with or without a processor. <code>&lt;g:paginate&gt;</code> and <code>&lt;g:sortableColumn&gt;</code> write a <code>class</code> that was encoded beforehand once next to the classes they add, such as <code>step</code> and <code>sortable</code>; they encoded it twice.</p>
 </div>
 </div>
 </div>
@@ -10526,6 +10587,67 @@ with dispatch lets a request reach a controller without its interceptors or rest
 <p>An encrypted JWT whose content encryption key is encrypted with <code>RSA1_5</code> is rejected unless <code>grails.plugin.springsecurity.rest.token.generation.jwt.jweAlgorithm</code> is <code>RSA1_5</code>. The plugin passes that setting to the new <code>jweAlgorithm</code> property of <code>JwtService</code>. A <code>jwtService</code> bean that an application defines itself accepts <code>RSA1_5</code> as before, unless the application sets that property too.</p>
 </li>
 </ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_more_gsp_tags_html_encode_the_attribute_values_they_write">More GSP tags HTML-encode the attribute values they write</h4>
+<div class="paragraph">
+<p>These tags now HTML-encode the values they write into attributes, as <code>&lt;g:link&gt;</code> and <code>&lt;g:textField&gt;</code> already did and as these tags already encoded their other attributes:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>&lt;g:form&gt;</code>, <code>&lt;g:uploadForm&gt;</code> and <code>&lt;g:formActionSubmit&gt;</code>: the URL in <code>action</code> and <code>formaction</code>, and the hidden fields that a <code>RequestDataValueProcessor</code> adds to a form.</p>
+</li>
+<li>
+<p><code>&lt;g:checkBox&gt;</code>: <code>name</code>, <code>value</code>, <code>form</code>, and the <code>id</code> taken from the name, on the checkbox and on its hidden field.</p>
+</li>
+<li>
+<p><code>&lt;g:actionSubmit&gt;</code> and <code>&lt;g:actionSubmitImage&gt;</code>: <code>value</code>, the <code>action</code> in the button&#8217;s name, and <code>src</code>.</p>
+</li>
+<li>
+<p><code>&lt;g:datePicker&gt;</code>: <code>name</code>, <code>id</code> and <code>selectDateClass</code>, on the labels, the hidden field and each select.</p>
+</li>
+<li>
+<p><code>&lt;g:radio&gt;</code> and <code>&lt;g:radioGroup&gt;</code>: <code>name</code>, and on <code>&lt;g:radio&gt;</code> the <code>id</code> taken from it.</p>
+</li>
+<li>
+<p><code>&lt;g:select&gt;</code>: the key of <code>noSelection</code>.</p>
+</li>
+<li>
+<p><code>&lt;g:field&gt;</code>: <code>type</code>.</p>
+</li>
+<li>
+<p><code>&lt;g:withTag&gt;</code>: the values of <code>attrs</code> that are not closures.</p>
+</li>
+<li>
+<p><code>&lt;g:external&gt;</code>: <code>uri</code>, and <code>&lt;g:javascript&gt;</code>: <code>src</code>.</p>
+</li>
+<li>
+<p><code>&lt;g:paginate&gt;</code>: <code>class</code>, on the current step.</p>
+</li>
+<li>
+<p><code>&lt;g:sortableColumn&gt;</code>: <code>title</code>, which it writes as the text of the column&#8217;s link. A text from <code>titleKey</code> is written as the message source returns it. Mark a <code>title</code> that holds markup with <code>raw()</code>.</p>
+</li>
+<li>
+<p><code>&lt;g:renderException&gt;</code>: <code>detailsClass</code>, <code>stackClass</code>, <code>filenameClass</code>, <code>snippetClass</code>, <code>lineClass</code>, <code>lineNumberClass</code> and <code>lineErrorClass</code>.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The browser decodes the attribute, so a value without a character reference reaches it unchanged. The markup changes, though: an <code>&amp;</code> in the URL of a form is written as <code>&amp;amp;</code>, as <code>&lt;g:link&gt;</code> writes it in an <code>href</code>.</p>
+</div>
+<div class="paragraph">
+<p>A value encoded with <code>encodeAsHTML()</code> before it reaches the tag is written once, not encoded again. That holds for a String, for a value captured from a GSP body with <code>&lt;g:set&gt;</code>, and for the output of a tag such as <code>fieldValue()</code>, also when a <code>RequestDataValueProcessor</code> returns the value unchanged. When the processor changes the value, the tag encodes what the processor returns, so a value encoded beforehand is encoded twice, as <code>&lt;g:textField&gt;</code> already did. There is one more exception: <code>&lt;g:form&gt;</code> and <code>&lt;g:formActionSubmit&gt;</code> build their URL from <code>uri</code>, <code>base</code>, <code>controller</code> and their other link attributes and only then encode it, so a value encoded beforehand is encoded twice there, as it already was in the <code>href</code> of <code>&lt;g:link&gt;</code>. Pass those values unencoded. A <code>url</code> attribute that the tag writes as it is given is written once. A character reference written in the page, as in <code>name="a&amp;amp;b"</code>, is encoded as well: write the character itself.</p>
+</div>
+<div class="paragraph">
+<p>A value marked with <code>raw()</code> is still written as given by the tags that wrote it so before, and so are the text and the <code>default</code> of <code>message()</code>, which comes back marked raw. Where a <code>RequestDataValueProcessor</code> is registered, <code>&lt;g:textField&gt;</code> and the other field tags encode what the processor returns, as before, and <code>&lt;g:radio&gt;</code> encodes such a value in any case, as before. Do not pass request data through <code>raw()</code> or as the <code>default</code> of <code>message()</code>.</p>
+</div>
+<div class="paragraph">
+<p><code>&lt;g:radio&gt;</code> now encodes its <code>value</code> once. It encoded it twice, so a value with <code>&amp;</code>, <code>&lt;</code>, <code>&gt;</code>, <code>"</code> or <code>'</code> was submitted with character references in it, such as <code>R&amp;amp;D</code> for <code>R&amp;D</code>.</p>
+</div>
+<div class="paragraph">
+<p>A value encoded beforehand is no longer encoded twice in the <code>value</code> of <code>&lt;g:textField&gt;</code>, <code>&lt;g:hiddenField&gt;</code> and the other field tags when a <code>RequestDataValueProcessor</code> returns it unchanged, nor in an option of <code>&lt;g:select&gt;</code>, with or without a processor. <code>&lt;g:paginate&gt;</code> and <code>&lt;g:sortableColumn&gt;</code> write a <code>class</code> that was encoded beforehand once next to the classes they add, such as <code>step</code> and <code>sortable</code>; they encoded it twice.</p>
 </div>
 </div>
 </div>
