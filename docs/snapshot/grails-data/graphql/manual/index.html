@@ -2554,13 +2554,60 @@ This process only handles how an ObjectId will be created from either Java argum
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">graphql.schema.GraphQLScalarType</span>
-<span class="keyword">import</span> <span class="include">org.bson.types.ObjectId</span>
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">graphql.language.StringValue</span>
 <span class="keyword">import</span> <span class="include">graphql.schema.Coercing</span>
+<span class="keyword">import</span> <span class="include">graphql.schema.CoercingParseValueException</span>
+<span class="keyword">import</span> <span class="include">graphql.schema.CoercingSerializeException</span>
+<span class="keyword">import</span> <span class="include">graphql.schema.GraphQLScalarType</span>
+<span class="keyword">import</span> <span class="include">org.bson.types.ObjectId</span>
 
 GraphQLTypeManager typeManager
 
-Unresolved directive <span class="keyword">in</span> guide/types.adoc - <span class="key">include</span>::<span class="regexp"><span class="delimiter">/</span><span class="content">Users</span><span class="delimiter">/</span></span>runner/work/grails-core/grails-core/grails-data-graphql/core/src/test/groovy/org/grails/gorm/graphql/MongoSchemaSpec.groovy.disabled[tags=registerObjectId]</code></pre>
+typeManager.registerType(ObjectId, GraphQLScalarType.newScalar()
+        .name(<span class="string"><span class="delimiter">&quot;</span><span class="content">ObjectId</span><span class="delimiter">&quot;</span></span>).description(<span class="string"><span class="delimiter">&quot;</span><span class="content">Hex representation of a Mongo object id</span><span class="delimiter">&quot;</span></span>).coercing(<span class="keyword">new</span> Coercing&lt;ObjectId, ObjectId&gt;() {
+
+    <span class="directive">protected</span> Optional&lt;ObjectId&gt; convert(<span class="predefined-type">Object</span> input) {
+        <span class="keyword">if</span> (input <span class="keyword">instanceof</span> ObjectId) {
+            Optional.of((ObjectId) input)
+        } <span class="keyword">else</span> <span class="keyword">if</span> (input <span class="keyword">instanceof</span> <span class="predefined-type">String</span>) {
+            parseObjectId((<span class="predefined-type">String</span>) input)
+        } <span class="keyword">else</span> {
+            Optional.empty()
+        }
+    }
+
+    <span class="annotation">@Override</span>
+    ObjectId serialize(<span class="predefined-type">Object</span> input) {
+        convert(input).orElseThrow({
+            <span class="keyword">throw</span> <span class="keyword">new</span> CoercingSerializeException(<span class="string"><span class="delimiter">&quot;</span><span class="content">Could not convert </span><span class="inline"><span class="inline-delimiter">${</span>input.class.name<span class="inline-delimiter">}</span></span><span class="content"> to an ObjectId</span><span class="delimiter">&quot;</span></span>)
+        })
+    }
+
+    <span class="annotation">@Override</span>
+    ObjectId parseValue(<span class="predefined-type">Object</span> input) {
+        convert(input).orElseThrow({
+            <span class="keyword">throw</span> <span class="keyword">new</span> CoercingParseValueException(<span class="string"><span class="delimiter">&quot;</span><span class="content">Could not convert </span><span class="inline"><span class="inline-delimiter">${</span>input.class.name<span class="inline-delimiter">}</span></span><span class="content"> to an ObjectId</span><span class="delimiter">&quot;</span></span>)
+        })
+    }
+
+    <span class="annotation">@Override</span>
+    ObjectId parseLiteral(<span class="predefined-type">Object</span> input) {
+        <span class="keyword">if</span> (input <span class="keyword">instanceof</span> StringValue) {
+            parseObjectId(((StringValue) input).value).orElse(<span class="predefined-constant">null</span>)
+        } <span class="keyword">else</span> {
+            <span class="predefined-constant">null</span>
+        }
+    }
+
+    <span class="directive">protected</span> Optional&lt;ObjectId&gt; parseObjectId(<span class="predefined-type">String</span> input) {
+        <span class="keyword">if</span> (ObjectId.isValid(input)) {
+            Optional.of(<span class="keyword">new</span> ObjectId(input))
+        } <span class="keyword">else</span> {
+            Optional.empty()
+        }
+    }
+
+}).build())</code></pre>
 </div>
 </div>
 </div>
@@ -3390,7 +3437,7 @@ Your application renders GraphQL responses with its configured object mapper, so
 <div id="footer">
 <div id="footer-text">
 Version 8.0.1-SNAPSHOT<br>
-Last updated 2026-11-20 16:48:39 UTC
+Last updated 2026-11-22 15:02:01 UTC
 </div>
 </div>
 </body>
