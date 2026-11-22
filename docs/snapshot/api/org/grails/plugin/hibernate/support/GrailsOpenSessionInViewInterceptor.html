@@ -111,9 +111,10 @@ extends org.grails.orm.hibernate.support.hibernate5.support.OpenSessionInViewInt
  subclass, which opens and closes sessions for each one alongside the
  default session. As the parent class does for the default session, a request
  that finds a session already bound, such as an include within a request that
- opened one, uses that session and leaves it to the one that opened it, and a
- request that goes asynchronous closes the sessions it opened, so that they do
- not stay bound to the thread for the next request that thread serves.
+ opened one, uses that session and leaves it to the one that opened it. A
+ request that goes asynchronous takes the sessions it opened off the thread, so
+ that they do not stay bound to it for the next request that thread serves, and
+ they are closed when the asynchronous request completes.
   <DL><DT><B>Authors:</B></DT><DD>Graeme Rocher</DD></DL><DL><DT><B>Since:</B></DT><DD>0.5</DD></DL></p>
 
           </li>
@@ -319,13 +320,18 @@ extends org.grails.orm.hibernate.support.hibernate5.support.OpenSessionInViewInt
                             <li class="blockList">
                                 <h4>@java.lang.Override<br>public&nbsp;void <strong>afterConcurrentHandlingStarted</strong>(<a href='https://docs.spring.io/spring-framework/docs/7.0.11/javadoc-api/org/springframework/web/context/request/WebRequest.html' title='WebRequest'>WebRequest</a> request)</h4>
                                 <p> Called instead of <a href='#postHandle'>postHandle</a> and <a href='#afterCompletion'>afterCompletion</a> on the thread that started asynchronous
- handling. The sessions this interceptor opened for the other datasources are closed here, so that the thread
- goes back to its pool without them. Each is flushed first when <a href='#postHandle'>postHandle</a> would flush it and Hibernate
- allows the flush: inside a transaction, or with <CODE>hibernate.allow_update_outside_transaction</CODE>.
+ handling. The sessions this interceptor opened for the other datasources are unbound here, so that the thread
+ goes back to its pool without them, and closed when the asynchronous request completes, whether a promise,
+ <CODE>startAsync()</CODE>, a <CODE>Callable</CODE> or a <CODE>DeferredResult</CODE> started it. Each is flushed first
+ when <a href='#postHandle'>postHandle</a> would flush it and Hibernate allows the flush: inside a transaction, or with
+ <CODE>hibernate.allow_update_outside_transaction</CODE>.
 
  <p>The parent class only unbinds the default session, and leaves closing it to the interceptors it registers for
- a <CODE>Callable</CODE> or <CODE>DeferredResult</CODE>. A promise or <CODE>startAsync()</CODE> in a Grails controller starts
- asynchronous handling without them, so the default session this interceptor opened is closed here too.
+ a <CODE>Callable</CODE> or <CODE>DeferredResult</CODE>, which close it in the dispatch that the result starts. A promise or
+ <CODE>startAsync()</CODE> in a Grails controller starts asynchronous handling without them, so the default session
+ this interceptor opened is unbound here too, and closed when the asynchronous request completes. So is the
+ default session the parent class unbinds, unless it is closed by then: a request can complete without that
+ dispatch, such as one that a task the action started, and did not return, completes.
      </p>
                             </li>
                         </ul>
