@@ -114,7 +114,11 @@ extends org.grails.orm.hibernate.support.hibernate5.support.OpenSessionInViewInt
  opened one, uses that session and leaves it to the one that opened it. A
  request that goes asynchronous takes the sessions it opened off the thread, so
  that they do not stay bound to it for the next request that thread serves, and
- they are closed when the asynchronous request completes.
+ they are closed when the asynchronous request completes. Which sessions a
+ request found bound is recorded by the identity of their factory, taken as
+ Spring's TransactionSynchronizationManager takes it, the target of an
+ InfrastructureProxy, not by how the factory prints: <CODE>Object.toString()</CODE>
+ is not unique.
   <DL><DT><B>Authors:</B></DT><DD>Graeme Rocher</DD></DL><DL><DT><B>Since:</B></DT><DD>0.5</DD></DL></p>
 
           </li>
@@ -199,7 +203,7 @@ extends org.grails.orm.hibernate.support.hibernate5.support.OpenSessionInViewInt
                         <tr class="altColor">
                             <td class="colFirst"><code></code></td>
                             <td class="colLast"><code>public&nbsp;void</code></td>
-                            <td class="colLast"><code><strong><a href="#afterCompletion(org.springframework.web.context.request.WebRequest, java.lang.Exception)">afterCompletion</a></strong>(<a href='https://docs.spring.io/spring-framework/docs/7.0.11/javadoc-api/org/springframework/web/context/request/WebRequest.html' title='WebRequest'>WebRequest</a> request, java.lang.Exception ex)</code><br></td>
+                            <td class="colLast"><code><strong><a href="#afterCompletion(org.springframework.web.context.request.WebRequest, java.lang.Exception)">afterCompletion</a></strong>(<a href='https://docs.spring.io/spring-framework/docs/7.0.11/javadoc-api/org/springframework/web/context/request/WebRequest.html' title='WebRequest'>WebRequest</a> request, java.lang.Exception ex)</code><br>Closes the sessions this request opened, and counts down those it found bound. </td>
                         </tr>
                         
                         <tr class="rowColor">
@@ -217,23 +221,32 @@ extends org.grails.orm.hibernate.support.hibernate5.support.OpenSessionInViewInt
                         
                         <tr class="rowColor">
                             <td class="colFirst"><code></code></td>
-                            <td class="colLast"><code>protected&nbsp;org.hibernate.Session</code></td>
-                            <td class="colLast"><code><strong><a href="#openSession()">openSession</a></strong>()</code><br></td>
+                            <td class="colLast"><code>protected&nbsp;java.lang.String</code></td>
+                            <td class="colLast"><code><strong><a href="#getParticipateAttributeName()">getParticipateAttributeName</a></strong>()</code><br> <DL><DT><B>Returns:</B></DT><DD>the name of the request attribute that records whether the request found the default session bound, and
+ that the parent class registers the request's asynchronous interceptors under: shared by the interceptors using
+ the same factory, as the parent's name is, and not by those whose factory only prints the same way</DD></DL></td>
                         </tr>
                         
                         <tr class="altColor">
                             <td class="colFirst"><code></code></td>
-                            <td class="colLast"><code>public&nbsp;void</code></td>
-                            <td class="colLast"><code><strong><a href="#postHandle(org.springframework.web.context.request.WebRequest, org.springframework.ui.ModelMap)">postHandle</a></strong>(<a href='https://docs.spring.io/spring-framework/docs/7.0.11/javadoc-api/org/springframework/web/context/request/WebRequest.html' title='WebRequest'>WebRequest</a> request, <a href='https://docs.spring.io/spring-framework/docs/7.0.11/javadoc-api/org/springframework/ui/ModelMap.html' title='ModelMap'>ModelMap</a> model)</code><br></td>
+                            <td class="colLast"><code>protected&nbsp;org.hibernate.Session</code></td>
+                            <td class="colLast"><code><strong><a href="#openSession()">openSession</a></strong>()</code><br>Opens the default session as the parent class does, setting its flush mode to MANUAL, then applies
+ <a href='#applyFlushMode'>its flush mode</a>. </td>
                         </tr>
                         
                         <tr class="rowColor">
                             <td class="colFirst"><code></code></td>
                             <td class="colLast"><code>public&nbsp;void</code></td>
-                            <td class="colLast"><code><strong><a href="#preHandle(org.springframework.web.context.request.WebRequest)">preHandle</a></strong>(<a href='https://docs.spring.io/spring-framework/docs/7.0.11/javadoc-api/org/springframework/web/context/request/WebRequest.html' title='WebRequest'>WebRequest</a> request)</code><br></td>
+                            <td class="colLast"><code><strong><a href="#postHandle(org.springframework.web.context.request.WebRequest, org.springframework.ui.ModelMap)">postHandle</a></strong>(<a href='https://docs.spring.io/spring-framework/docs/7.0.11/javadoc-api/org/springframework/web/context/request/WebRequest.html' title='WebRequest'>WebRequest</a> request, <a href='https://docs.spring.io/spring-framework/docs/7.0.11/javadoc-api/org/springframework/ui/ModelMap.html' title='ModelMap'>ModelMap</a> model)</code><br></td>
                         </tr>
                         
                         <tr class="altColor">
+                            <td class="colFirst"><code></code></td>
+                            <td class="colLast"><code>public&nbsp;void</code></td>
+                            <td class="colLast"><code><strong><a href="#preHandle(org.springframework.web.context.request.WebRequest)">preHandle</a></strong>(<a href='https://docs.spring.io/spring-framework/docs/7.0.11/javadoc-api/org/springframework/web/context/request/WebRequest.html' title='WebRequest'>WebRequest</a> request)</code><br></td>
+                        </tr>
+                        
+                        <tr class="rowColor">
                             <td class="colFirst"><code></code></td>
                             <td class="colLast"><code>public&nbsp;void</code></td>
                             <td class="colLast"><code><strong><a href="#setHibernateDatastore(org.grails.orm.hibernate.AbstractHibernateDatastore)">setHibernateDatastore</a></strong>(<a href='../../../../../org/grails/orm/hibernate/AbstractHibernateDatastore.html'>AbstractHibernateDatastore</a> hibernateDatastore)</code><br></td>
@@ -311,7 +324,10 @@ extends org.grails.orm.hibernate.support.hibernate5.support.OpenSessionInViewInt
                         <ul class="blockListLast">
                             <li class="blockList">
                                 <h4>@java.lang.Override<br>public&nbsp;void <strong>afterCompletion</strong>(<a href='https://docs.spring.io/spring-framework/docs/7.0.11/javadoc-api/org/springframework/web/context/request/WebRequest.html' title='WebRequest'>WebRequest</a> request, java.lang.Exception ex)</h4>
-                                <p></p>
+                                <p> Closes the sessions this request opened, and counts down those it found bound. When the request failed, Spring
+ passes the failure here and throws it on afterwards, so a failure to release a session is attached to it; without
+ one, a failure to close a session is logged, as the parent class does.
+     </p>
                             </li>
                         </ul>
                     
@@ -327,11 +343,13 @@ extends org.grails.orm.hibernate.support.hibernate5.support.OpenSessionInViewInt
  <CODE>hibernate.allow_update_outside_transaction</CODE>.
 
  <p>The parent class only unbinds the default session, and leaves closing it to the interceptors it registers for
- a <CODE>Callable</CODE> or <CODE>DeferredResult</CODE>, which close it in the dispatch that the result starts. A promise or
- <CODE>startAsync()</CODE> in a Grails controller starts asynchronous handling without them, so the default session
- this interceptor opened is unbound here too, and closed when the asynchronous request completes. So is the
- default session the parent class unbinds, unless it is closed by then: a request can complete without that
- dispatch, such as one that a task the action started, and did not return, completes.
+ a <CODE>Callable</CODE> or <CODE>DeferredResult</CODE>. A promise or <CODE>startAsync()</CODE> in a Grails controller starts
+ asynchronous handling without them, so the default session this interceptor opened is unbound here too, and
+ closed when the asynchronous request completes.
+
+ <p>When a flush fails, that failure is thrown once every session is taken off the thread, and a failure to
+ release one is attached to it. Without an asynchronous request to wait for, the sessions are closed here, and a
+ failure to close one is attached to that failure too.
      </p>
                             </li>
                         </ul>
@@ -344,11 +362,30 @@ extends org.grails.orm.hibernate.support.hibernate5.support.OpenSessionInViewInt
                             </li>
                         </ul>
                     
+                        <a name="getParticipateAttributeName()"><!-- --></a>
+                        <ul class="blockListLast">
+                            <li class="blockList">
+                                <h4>@java.lang.Override<br>protected&nbsp;java.lang.String <strong>getParticipateAttributeName</strong>()</h4>
+                                <p>
+      <DL><DT><B>Returns:</B></DT><DD>the name of the request attribute that records whether the request found the default session bound, and
+ that the parent class registers the request's asynchronous interceptors under: shared by the interceptors using
+ the same factory, as the parent's name is, and not by those whose factory only prints the same way</DD></DL></p>
+                            </li>
+                        </ul>
+                    
                         <a name="openSession()"><!-- --></a>
                         <ul class="blockListLast">
                             <li class="blockList">
                                 <h4>@java.lang.Override<br>protected&nbsp;org.hibernate.Session <strong>openSession</strong>()</h4>
-                                <p></p>
+                                <p> Opens the default session as the parent class does, setting its flush mode to MANUAL, then applies
+ <a href='#applyFlushMode'>its flush mode</a>. A org.hibernate.HibernateException from opening it or setting MANUAL is
+ wrapped, as the parent class does; a failure of <a href='#applyFlushMode'>applyFlushMode</a> is thrown on as it is.
+
+ <p>The session is not bound yet, so when a step fails, it is closed here, before the failure is thrown on: any
+ failure, as code written in Groovy can throw a checked exception it does not declare. A failure to close it is
+ attached to the failure that is thrown. A session bound for the factory while this one was set up is left as
+ it is, and this one is closed with an java.lang.IllegalStateException, instead of being bound over it.
+     </p>
                             </li>
                         </ul>
                     
