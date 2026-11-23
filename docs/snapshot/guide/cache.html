@@ -673,6 +673,15 @@ test.</p>
 <div class="paragraph">
 <p>The most common method you would call on the <code>grailsCacheManager</code> is <code>getCache(String name)</code> to access a <a href="https://docs.spring.io/spring-framework/docs/7.0.11/javadoc-api//org/springframework/cache/Cache.html">Cache</a> instance programmatically. This shouldn&#8217;t be needed often however. From the <code>Cache</code> instance you can also access the underlying cache implementation using <code>cache.getNativeCache()</code>.</p>
 </div>
+<div class="paragraph">
+<p>The cache tags cache with the <code>grailsCacheManager</code> bean, which they are given by name. A cache provider plugin replaces it by defining a bean of that name, and an application can do the same with a <code>GrailsCacheManager</code> of its own.</p>
+</div>
+<div class="paragraph">
+<p>The cache annotations, and <code>GrailsCacheAdminService</code>, are given their cache manager by type, as Spring injects one. Where the application context has another cache manager too, such as one the application defines for Spring&#8217;s own caching, or the one the Spring Security plugin defines when <code>cacheUsers</code> is set, Spring chooses between them as it does for any injection: the one marked primary, for example, or the one with the highest <code>@Priority</code>. Only where Spring cannot choose, because none of them is marked primary or has a <code>@Priority</code> above the others, and <code>grailsCacheManager</code> is one of the cache managers it could inject, do the annotations use <code>grailsCacheManager</code>. Two cache managers both marked primary, or sharing the highest <code>@Priority</code>, still fail to start, as Spring rejects them before it looks further. A cache manager whose <code>@Priority</code> is only on the object its factory method or <code>FactoryBean</code> returns, with the declared type a plain <code>CacheManager</code>, is not seen as preferred beside <code>grailsCacheManager</code>, which the annotations then use; mark it primary to keep it. So with a cache manager of the application&#8217;s own marked primary, the annotations cache with that one, while the cache tags still cache with <code>grailsCacheManager</code>.</p>
+</div>
+<div class="paragraph">
+<p>A cache manager may have no cache of the name an annotation gives, as a <code>JCacheCacheManager</code> has none it was not configured with. The annotated method then runs uncached, and a warning names the class and the cache once for each cache manager.</p>
+</div>
 
 
 <h2 id="cacheTags">25.2 Caching Tags</h2>
