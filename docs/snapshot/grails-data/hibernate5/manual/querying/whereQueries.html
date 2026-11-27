@@ -900,37 +900,61 @@ def results = query.list(sort: "firstName")</code></pre>
 <div class="sect4">
 <h5 id="_sorting_with_associations">Sorting with Associations</h5>
 <div class="paragraph">
-<p>When sorting by properties of associated entities, you must define an explicit alias within the <code>where</code> query.
-Without an explicit alias, sorting on association properties may fail due to dynamically generated aliases.</p>
-</div>
-<div class="paragraph">
-<p>For example the following query will fail:</p>
+<p>To sort by a property of an associated entity, use the association path. This also works when the <code>where</code> query uses the same association:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">// fails because a dynamic alias is used
-Pet.where {
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def results = Pet.where {
     owner.firstName == "Fred"
 }.list(sort: "owner.lastName")</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>In this case GORM will generate an alias for the <code>owner</code> association such as <code>owner_alias_0</code>. These generated aliases are internal and are not suitable for later reference in sorting or projections.</p>
+<p>The path can cross more than one association, such as <code>owner.employer.name</code> where both <code>owner</code> and <code>employer</code> are associations. An association that the <code>where</code> query already joins is reused for the sort, and any other association on the path is joined for it.</p>
 </div>
 <div class="paragraph">
-<p>To avoid this problem, define an explicit alias:</p>
+<p>An association is joined with an inner join unless the query requests another join type for it, so a sort by <code>owner.lastName</code> leaves out the pets that have no owner. To keep them, request a left join with the <code>fetch</code> argument:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-groovy" data-lang="groovy">// 1. Define alias
-def query = Pet.where {
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">import jakarta.persistence.criteria.JoinType
+
+def results = Pet.where {
+    year(birthDate) == 2011
+}.list(sort: "owner.lastName", fetch: [owner: JoinType.LEFT])</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A sort by the identifier of the last association on a longer path, such as <code>owner.employer.id</code>, does not join that association. It sorts by the foreign key that <code>owner</code> holds, and so keeps the pets whose owner has no employer. A <code>hasOne</code> association has no such foreign key and is joined.</p>
+</div>
+<div class="paragraph">
+<p>To make every sort keep the instances without the association, enable the <code>grails.gorm.leftJoinAssociationSort</code> setting:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-yaml" data-lang="yaml">grails:
+    gorm:
+        leftJoinAssociationSort: true</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>An association that is joined only for a sort is then joined with a left join, so a sort by <code>owner.lastName</code> keeps the pets that have no owner. Whether they come first or last depends on how the database sorts nulls. If the query requests a join type for the association, for example with <code>fetch: [owner: JoinType.INNER]</code>, the association is joined with that join type, with and without the sort. The setting applies to every query that takes a sort, such as <code>list</code> and dynamic finders, not only to <code>where</code> queries. A collection is the exception: a sort by a property of a collection joins it with an inner join, so it leaves out the instances whose collection is empty.</p>
+</div>
+<div class="paragraph">
+<p>If the <code>where</code> query defines an explicit alias for the association, you can sort by the alias instead:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-groovy" data-lang="groovy">def query = Pet.where {
     def o = owner
     o.firstName == "Fred"
 }
 
-// 2. Execute query using alias for sorting
 def results = query.list(sort: "o.lastName")</code></pre>
 </div>
+</div>
+<div class="paragraph">
+<p>An alias exists only in a query that defines it, and a sort by an alias that the query does not define is ignored. When the same sort is applied to queries with different criteria, for example from a sortable table with optional filters, sort by the association path.</p>
 </div>
 </div>
 </div>

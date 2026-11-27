@@ -1498,6 +1498,11 @@ p.delete()</code></pre>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>false</code></p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails.gorm.leftJoinAssociationSort</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Whether a sort by a property of an association joins the association with a left join and so keeps the instances whose association is <code>null</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>false</code></p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>grails.gorm.default.mapping</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The default mapping to apply to all classes</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code></p></td>
@@ -3146,6 +3151,44 @@ Author.findAllByNameLike(<span class="string"><span class="delimiter">&quot;</sp
  .list()</code></pre>
 </div>
 </div>
+<div class="paragraph">
+<p>A <a href="#whereQueries">Where Query</a>, a detached criteria, a dynamic finder or a criteria query can also be given the type of the join, as a <code>jakarta.persistence.criteria.JoinType</code>. Pass it in the <code>fetch</code> argument, or as the second argument of the <code>join</code> method of a where query, a detached criteria or a criteria query:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">jakarta.persistence.criteria.JoinType</span>
+
+<span class="comment">// only the authors that have a location</span>
+Author.where {
+    name ==~ <span class="string"><span class="delimiter">&quot;</span><span class="content">Stephen%</span><span class="delimiter">&quot;</span></span>
+}.list(<span class="key">fetch</span>: [<span class="key">location</span>: JoinType.INNER])
+
+Author.where {
+    name ==~ <span class="string"><span class="delimiter">&quot;</span><span class="content">Stephen%</span><span class="delimiter">&quot;</span></span>
+}.join(<span class="string"><span class="delimiter">'</span><span class="content">location</span><span class="delimiter">'</span></span>, JoinType.INNER)
+ .list()
+
+Author.withCriteria {
+    like(<span class="string"><span class="delimiter">'</span><span class="content">name</span><span class="delimiter">'</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">Stephen%</span><span class="delimiter">&quot;</span></span>)
+    join(<span class="string"><span class="delimiter">'</span><span class="content">location</span><span class="delimiter">'</span></span>, JoinType.INNER)
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>'join'</code> and <code>JoinType.LEFT</code> fetch the association with an outer join, so the query returns every instance that it matches. <code>JoinType.INNER</code> fetches the association as well, but leaves out the instances whose association is <code>null</code>, or whose collection is empty, also for a collection of a basic type, such as <code>static hasMany = [tags: String]</code>. <code>JoinType.RIGHT</code> fetches the association and leaves out the same instances. A right join of an association to a single instance also has a row for each associated instance that no instance refers to, such as a location without an author, unless the criteria of the query exclude it. The list contains a <code>null</code> for each such row, and <code>count</code> and the <code>totalCount</code> of a paged list count each of them. For a collection, a right join returns the same instances as an inner join.</p>
+</div>
+<div class="paragraph">
+<p>When the requested path passes through a collection, as <code>flights</code> does in <code>fetch: ['flights.destination': JoinType.INNER]</code>, the query is restricted to the instances for which the join returns a row, here the airports that have a flight with a destination. The collection and the other associations on the path are fetched as well, with outer joins, so that the collection holds all of its elements: each airport is loaded with all of its flights, also those without a destination. A join type never leaves elements out of a fetched collection, which would leave a collection in the session that lacks some of its elements; it only decides which instances the query returns. To load only some elements of a collection, query for them, as in <code>Flight.where { airport == someAirport &amp;&amp; destination != null }</code>. A where query and a dynamic finder return each instance once, and a criteria query returns an instance once for each element of a collection that it fetches, as for any fetch of a collection. Each instance is counted once.</p>
+</div>
+<div class="paragraph">
+<p>A requested join type applies whether or not the query has a sort on the association, and also to <code>count</code>, to the <code>totalCount</code> of a paged list, to a query that is used as a subquery, and to <code>updateAll</code> and <code>deleteAll</code>, which leave out the instances that the join type leaves out of <code>list</code>. A sort is not applied to an update or a delete: while <code>grails.gorm.leftJoinAssociationSort</code> is off, a sort by a property of an association leaves the instances whose association is <code>null</code> out of <code>list</code>, and <code>updateAll</code> and <code>deleteAll</code> still change them.</p>
+</div>
+<div class="paragraph">
+<p>MySQL does not allow an update or a delete to select from the table that it modifies, and neither does MariaDB before version 10.3. With a MySQL dialect, or a MariaDB dialect older than <code>MariaDB103Dialect</code>, <code>updateAll</code> and <code>deleteAll</code> select the identifiers of the instances first, and then update or delete the instances with those identifiers, when the join type is requested for a path that leads back to the queried class, such as the <code>parent</code> of a category, or that starts with a collection of a basic type.</p>
+</div>
+<div class="paragraph">
+<p>An association that the query has criteria on is joined for those criteria with the requested join type. A fetch mode that is requested for the association afterwards, as <code>join('location')</code> or <code>select('location')</code> after <code>join('location', JoinType.LEFT)</code>, replaces the join type for the fetch of the association, so the join type no longer leaves out any instance by itself, but the join of the criteria keeps it. This holds for a where query, a detached criteria and a criteria query. A join type is requested for a nested association by its path, as in <code>join('flights.destination', JoinType.LEFT)</code>.</p>
+</div>
 </div>
 <div class="sect2">
 <h3 id="_using_batch_fetching">6.8. Using Batch Fetching</h3>
@@ -4346,37 +4389,61 @@ Person p = bartQuery.find()</code></pre>
 <div class="sect4">
 <h5 id="_sorting_with_associations">Sorting with Associations</h5>
 <div class="paragraph">
-<p>When sorting by properties of associated entities, you must define an explicit alias within the <code>where</code> query.
-Without an explicit alias, sorting on association properties may fail due to dynamically generated aliases.</p>
-</div>
-<div class="paragraph">
-<p>For example the following query will fail:</p>
+<p>To sort by a property of an associated entity, use the association path. This also works when the <code>where</code> query uses the same association:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">// fails because a dynamic alias is used</span>
-Pet.where {
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> results = Pet.where {
     owner.firstName == <span class="string"><span class="delimiter">&quot;</span><span class="content">Fred</span><span class="delimiter">&quot;</span></span>
 }.list(<span class="key">sort</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">owner.lastName</span><span class="delimiter">&quot;</span></span>)</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>In this case GORM will generate an alias for the <code>owner</code> association such as <code>owner_alias_0</code>. These generated aliases are internal and are not suitable for later reference in sorting or projections.</p>
+<p>The path can cross more than one association, such as <code>owner.employer.name</code> where both <code>owner</code> and <code>employer</code> are associations. An association that the <code>where</code> query already joins is reused for the sort, and any other association on the path is joined for it.</p>
 </div>
 <div class="paragraph">
-<p>To avoid this problem, define an explicit alias:</p>
+<p>An association is joined with an inner join unless the query requests another join type for it, so a sort by <code>owner.lastName</code> leaves out the pets that have no owner. To keep them, request a left join with the <code>fetch</code> argument:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="groovy"><span class="comment">// 1. Define alias</span>
-<span class="keyword">def</span> query = Pet.where {
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">jakarta.persistence.criteria.JoinType</span>
+
+<span class="keyword">def</span> results = Pet.where {
+    year(birthDate) == <span class="integer">2011</span>
+}.list(<span class="key">sort</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">owner.lastName</span><span class="delimiter">&quot;</span></span>, <span class="key">fetch</span>: [<span class="key">owner</span>: JoinType.LEFT])</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A sort by the identifier of the last association on a longer path, such as <code>owner.employer.id</code>, does not join that association. It sorts by the foreign key that <code>owner</code> holds, and so keeps the pets whose owner has no employer. A <code>hasOne</code> association has no such foreign key and is joined.</p>
+</div>
+<div class="paragraph">
+<p>To make every sort keep the instances without the association, enable the <code>grails.gorm.leftJoinAssociationSort</code> setting:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">grails</span>:
+    <span class="key">gorm</span>:
+        <span class="key">leftJoinAssociationSort</span>: <span class="string"><span class="content">true</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>An association that is joined only for a sort is then joined with a left join, so a sort by <code>owner.lastName</code> keeps the pets that have no owner. Whether they come first or last depends on how the database sorts nulls. If the query requests a join type for the association, for example with <code>fetch: [owner: JoinType.INNER]</code>, the association is joined with that join type, with and without the sort. The setting applies to every query that takes a sort, such as <code>list</code> and dynamic finders, not only to <code>where</code> queries. A collection is the exception: a sort by a property of a collection joins it with an inner join, so it leaves out the instances whose collection is empty.</p>
+</div>
+<div class="paragraph">
+<p>If the <code>where</code> query defines an explicit alias for the association, you can sort by the alias instead:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">def</span> query = Pet.where {
     <span class="keyword">def</span> o = owner
     o.firstName == <span class="string"><span class="delimiter">&quot;</span><span class="content">Fred</span><span class="delimiter">&quot;</span></span>
 }
 
-<span class="comment">// 2. Execute query using alias for sorting</span>
 <span class="keyword">def</span> results = query.list(<span class="key">sort</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">o.lastName</span><span class="delimiter">&quot;</span></span>)</code></pre>
 </div>
+</div>
+<div class="paragraph">
+<p>An alias exists only in a query that defines it, and a sort by an alias that the query does not define is ignored. When the same sort is applied to queries with different criteria, for example from a sortable table with optional filters, sort by the association path.</p>
 </div>
 </div>
 </div>

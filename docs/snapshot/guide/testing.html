@@ -3677,6 +3677,32 @@ Docker must be available for Testcontainers to start a MongoDB container.
 <div class="paragraph">
 <p>If a shared <code>MongoDatastore</code> field is declared and <code>shouldInitializeDatastore()</code> returns <code>true</code> (the default), the datastore is bootstrapped against domain classes in the packages returned by <code>getMongoPackages()</code> (defaults to the package of the specification).</p>
 </div>
+<div class="sect2">
+<h3 id="_sharing_a_container_with_test_helpers">Sharing a Container with Test Helpers</h3>
+<div class="paragraph">
+<p>Since Grails 7.0.18, a unit-test helper that is not a specification can call the public
+<code>org.apache.grails.testing.mongo.StartMongoGrailsUnitExtension.getSharedContainer()</code> accessor. This lets the helper
+reuse the container that <code>AutoStartedMongoSpec</code> instances on the same thread share instead of starting another one.
+The first request on a thread starts its container; later requests on that thread return the same container.</p>
+</div>
+<div class="paragraph">
+<p>Call the accessor after Spock has started its global extensions, for example from <code>setupSpec()</code> or a helper called
+by it:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy"><span class="keyword">import</span> <span class="include">org.apache.grails.testing.mongo.StartMongoGrailsUnitExtension</span>
+
+<span class="keyword">def</span> container = StartMongoGrailsUnitExtension.getSharedContainer()</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The accessor throws <code>IllegalStateException</code> before the unit-test extension has started or after it has stopped.
+Spock manages the extension&#8217;s lifecycle, and the extension stops the shared containers when the test run ends.
+Callers must not stop the returned container or invoke the extension&#8217;s lifecycle methods themselves: another
+specification or helper can still need the container.</p>
+</div>
+</div>
 </div>
 </div>
 <div class="sect1">
@@ -3684,6 +3710,9 @@ Docker must be available for Testcontainers to start a MongoDB container.
 <div class="sectionbody">
 <div class="paragraph">
 <p>For integration tests, Spock global extensions start a single MongoDB container for the test run when MongoDB is not already listening on port <code>27017</code>. Connection details are exposed via system properties such as <code>grails.mongodb.url</code>, <code>grails.mongodb.host</code>, and <code>grails.mongodb.port</code>.</p>
+</div>
+<div class="paragraph">
+<p>The extension stops a container it started when the test run ends. It does not stop an existing MongoDB server.</p>
 </div>
 </div>
 </div>
